@@ -103,6 +103,8 @@ git push -u origin feature/<your-feature>-<role>
 * This uploads your branch to GitHub
 * You only need `-u` the first time; future pushes can use `git push`
 
+* or u can use yung git thingies sa VSCODE check niyo nalang :>>>
+
 ---
 
 ### Step 5: Create a Pull Request (PR)
