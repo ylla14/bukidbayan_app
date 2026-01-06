@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 This guide explains **how to work on your tasks safely** using feature branches, dev integration, and pull requests.
 
-1. Branches Overview
+## 1️⃣ Branches Overview
 
 | Branch      | Purpose                                                                 |
 | ----------- | ----------------------------------------------------------------------- |
@@ -46,7 +46,7 @@ feature/profile-backend
 
 ---
 
-2. Workflow Steps
+## 2️⃣ Workflow Steps
 
 ### Step 1: Set up local repo
 
