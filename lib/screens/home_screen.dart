@@ -1,6 +1,7 @@
 
+import 'package:bukidbayan_app/components/app_bar.dart';
+import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/theme/theme.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,10 +13,8 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: lightColorScheme.primary,
-        title: Text("Home"),
-      ),
+      appBar: CustomAppBar(),
+      drawer: CustomDrawer(),
       body: Center(
         child: Column(
           children: [

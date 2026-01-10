@@ -1,6 +1,7 @@
 // profile_screen.dart
+import 'package:bukidbayan_app/components/app_bar.dart';
+import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/theme/theme.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -12,10 +13,8 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: lightColorScheme.primary,
-        title: Text("Profile"),
-      ),
+      appBar: CustomAppBar(),
+      drawer: CustomDrawer(),
       body: Column(
         children: [
           Text('Welcome to ProfileScreen'),
