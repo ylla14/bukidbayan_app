@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/screens/rent_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/home_screen.dart';
 import 'package:bukidbayan_app/screens/profile_screen.dart';
@@ -15,6 +16,7 @@ class _BottomNavState extends State<BottomNav> {
 
   final List<Widget> screens = [
     HomeScreen(),     // Full home screen widget
+    RentScreen(),
     ProfileScreen(),  // Full profile screen widget
   ];
 
@@ -23,6 +25,7 @@ class _BottomNavState extends State<BottomNav> {
     return Scaffold(
       body: screens[currentIndex],  // Each screen handles its own layout
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: currentIndex,
         onTap: (index) {
           setState(() {
@@ -38,11 +41,45 @@ class _BottomNavState extends State<BottomNav> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.build),
+            label: 'Rent',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
           ),
         ],
       ),
+
+      // body: screens[currentIndex],
+      // bottomNavigationBar: NavigationBar(
+      //   animationDuration: const Duration(seconds: 1),
+      //   selectedIndex: currentIndex,
+      //   onDestinationSelected: (index){
+      //     setState(() {
+      //       currentIndex = index;
+      //     });
+      //   },
+      //   backgroundColor: lightColorScheme.primary,
+      //   destinations: _navBarItems,
+      // ),
     );
   }
 }
+
+// const _navBarItems = [
+//   NavigationDestination(
+//     icon: Icon(Icons.home),
+//     selectedIcon: Icon(Icons.home_rounded),
+//     label: 'Home',
+//   ),
+//   NavigationDestination(
+//     icon: Icon(Icons.build),
+//     selectedIcon: Icon(Icons.build_rounded),
+//     label: 'Rent',
+//   ),
+//   NavigationDestination(
+//     icon: Icon(Icons.person),
+//     label: 'Profile',
+//   )
+// ];
