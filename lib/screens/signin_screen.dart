@@ -176,17 +176,19 @@ class _SignInScreenState extends State<SignInScreen> {
                 // ),
 
                 SignButton(
-                  buttonText: 'Sign In', 
+                  buttonText: 'Sign In',
                   onPressed:  () async{
                       if (_formSignInKey.currentState!.validate() &&
                           rememberPassword) {
-                        bool success = await authService.login(emailController.text, passwordController.text);
+                        try {
+                          var user = await authService.login(emailController.text, passwordController.text);
 
-                        if(success){
-                          // showConfirmSnackbar(context: context, title: 'Welcome', message: 'Logging In');
-                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (e) => BottomNav()));
-                        } else {
-                            showErrorSnackbar(context: context, title: 'Error', message: 'Invalid Credentials');
+                          if(user != null){
+                            // showConfirmSnackbar(context: context, title: 'Welcome', message: 'Logging In');
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (e) => BottomNav()));
+                          }
+                        } catch (e) {
+                          showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
                         }
                       } else if (!rememberPassword) {
                         ScaffoldMessenger.of(context).showSnackBar(
