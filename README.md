@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 This guide explains **how to work on your tasks safely** using feature branches, dev integration, and pull requests.
 
-1. Branches Overview
+## 1️⃣ Branches Overview
 
 | Branch      | Purpose                                                                 |
 | ----------- | ----------------------------------------------------------------------- |
@@ -46,7 +46,7 @@ feature/profile-backend
 
 ---
 
-2. Workflow Steps
+## 2️⃣ Workflow Steps
 
 ### Step 1: Set up local repo
 
@@ -103,6 +103,8 @@ git push -u origin feature/<your-feature>-<role>
 * This uploads your branch to GitHub
 * You only need `-u` the first time; future pushes can use `git push`
 
+* or u can use yung git thingies sa VSCODE check niyo nalang :>>>
+
 ---
 
 ### Step 5: Create a Pull Request (PR)
@@ -118,13 +120,84 @@ git push -u origin feature/<your-feature>-<role>
 
 ---
 
-### Step 6: Testing and merging
+Absolutely! Let’s add the **exact Git commands** for each of these steps so your collaborators can **copy-paste safely**. I’ll rewrite Step 6 with the commands included:
 
-* Backend should merge **first** → dev
-* Frontend pulls dev to test against backend
-* Once everything works → frontend merges PR into dev
-* Dev now has integrated FE + BE
-* Once dev is stable → merge dev → main
+---
+
+### Step 6: Testing and Merging (with Git commands)
+
+1. **Backend merges first → dev (usually be also creates first)**
+
+```bash
+# Switch to dev branch
+git checkout dev
+
+# Pull latest changes from remote dev
+git pull origin dev
+
+# Merge backend feature branch into dev
+git merge feature/login-backend   # replace with your backend branch name
+
+# Push dev to GitHub
+git push origin dev
+```
+
+2. **Frontend pulls dev to test against backend**
+
+```bash
+# Switch to your frontend feature branch
+git checkout feature/login-frontend  # replace with your frontend branch
+
+# Pull latest dev (with backend code) into your branch
+git pull origin dev
+
+# Now you can run/test FE with BE locally
+```
+
+3. **Once everything works → frontend merges PR into dev**
+
+```bash
+# Switch to dev branch
+git checkout dev
+
+# Merge frontend branch into dev
+git merge feature/login-frontend  # replace with your frontend branch
+
+# Push dev to GitHub
+git push origin dev
+```
+
+4. **Dev now has integrated FE + BE**
+   
+6. **Once dev is stable → merge dev → main**
+
+```bash
+# Switch to main branch
+git checkout main
+
+# Pull latest from remote main
+git pull origin main
+
+# Merge dev into main
+git merge dev
+
+# Push main to GitHub
+git push origin main
+```
+
+---
+
+💡 Notes / Tips:
+
+* Replace `feature/login-frontend` and `feature/login-backend` with the actual branch names your team uses.
+* Always **pull latest dev/main before merging** to avoid conflicts.
+* Keep `main` stable — only merge after dev is fully tested.
+
+---
+
+If you want, I can **update your full README** with **all steps + commands for cloning, branching, committing, pushing, and PRs**, so your whole team has **one copy-paste-ready workflow**.
+
+Do you want me to do that?
 
 ---
 

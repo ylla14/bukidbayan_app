@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1067298464223",
+    "project_id": "bukidbayan-capstoners",
+    "storage_bucket": "bukidbayan-capstoners.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1067298464223:android:33272481e0e2a870e9646a",
+        "android_client_info": {
+          "package_name": "com.example.bukidbayan_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsLae7_9bssgvUxmhOpkx6eW9K2FqIrEU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

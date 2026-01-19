@@ -180,18 +180,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 SizedBox(height: 25),
 
                 SignButton(
-                  buttonText: 'Sign Up', 
+                  buttonText: 'Sign Up',
                    onPressed: () async {
                       if (_formSignInKey.currentState!.validate()) {
                         try {
                           await authService.signUp(emailController.text, passwordController.text, firstNameController.text, lastNameController.text);
-                          showConfirmSnackbar(context: context, title: 'Confirm', message: 'Account Created');
-                          authService.printAllUsers();
+                          if (!mounted) return;
+                          showConfirmSnackbar(context: context, title: 'Success', message: 'Account Created Successfully!');
+                          // Navigate to sign in screen after successful signup
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (e) => const SignInScreen()),
+                          );
                          } catch (e){
-                          showErrorSnackbar(context: context, title: 'Error', message: 'User Already Exists');
+                          if (!mounted) return;
+                          showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
                          }
-                        
-                      } 
+
+                      }
                     },
                   ),
 
