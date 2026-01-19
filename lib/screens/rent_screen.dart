@@ -218,11 +218,9 @@ class _RentScreenState extends State<RentScreen> {
                   items: items.map((item) {
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        item.imageUrl[1],
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                      ),
+                      // child: Image.network(item.imageUrl[1], fit: BoxFit.cover, width: double.infinity,),
+                      child: Image.asset(item.imageUrl[0], fit: BoxFit.cover, width: double.infinity,),
+
                     );
                   }).toList(),
                 ),

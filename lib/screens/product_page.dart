@@ -29,7 +29,8 @@ class _ProductPageState extends State<ProductPage> {
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.zero,
           child: InteractiveViewer(
-            child: Image.network(imageUrl, fit: BoxFit.contain),
+            // child: Image.network(imageUrl, fit: BoxFit.contain),
+            child: Image.asset(imageUrl, fit: BoxFit.contain),
           ),
         ),
       ),

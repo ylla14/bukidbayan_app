@@ -39,8 +39,12 @@ final List<RentItem> items = [
   RentItem(
     title: "Item 1",
     imageUrl: [
-      "https://i.pinimg.com/736x/65/50/01/655001d9f809051060e4a8417e85af07.jpg",
-      "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+      // "https://i.pinimg.com/736x/65/50/01/655001d9f809051060e4a8417e85af07.jpg",
+      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+     
+      'assets/images/rent1.jpg',
+      'assets/images/rent2.jpeg',
+      'assets/images/rent3.jpeg',
     ],
     category: "Hand Tool",
     price: "105",
@@ -53,8 +57,11 @@ final List<RentItem> items = [
   RentItem(
     title: "Item 2",
     imageUrl: [
-      "https://i.pinimg.com/736x/ce/58/c5/ce58c546f766df0654ee3b3e1bd9fad0.jpg",
-      "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+      // "https://i.pinimg.com/736x/ce/58/c5/ce58c546f766df0654ee3b3e1bd9fad0.jpg",
+      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+
+      'assets/images/rent4.jpeg',
+      'assets/images/rent5.jpeg',
     ],
     category: "Tractor",
     price: "200",
@@ -70,8 +77,12 @@ final List<RentItem> items = [
   RentItem(
     title: "Item 3",
     imageUrl: [
-      "https://i.pinimg.com/736x/cd/6f/82/cd6f82478ba340ee729c3735ef788912.jpg",
-      "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+      // "https://i.pinimg.com/736x/cd/6f/82/cd6f82478ba340ee729c3735ef788912.jpg",
+      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+
+      'assets/images/rent6.jpeg',
+      'assets/images/rent2.jpeg',
+      'assets/images/rent5.jpeg',
     ],
     category: "Machine",
     price: "50",
@@ -83,8 +94,12 @@ final List<RentItem> items = [
   RentItem(
     title: "Item 4",
     imageUrl: [
-      "https://i.pinimg.com/1200x/58/de/53/58de530d9f145f66336a0ceb11c81a4a.jpg",
-      "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+      // "https://i.pinimg.com/1200x/58/de/53/58de530d9f145f66336a0ceb11c81a4a.jpg",
+      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+
+      'assets/images/rent7.jpeg',
+      'assets/images/rent4.jpeg',
+      'assets/images/rent8.jpg',
     ],
     category: "Machine",
     price: "90",
@@ -99,8 +114,11 @@ final List<RentItem> items = [
   RentItem(
     title: "Item 5",
     imageUrl: [
-      "https://i.pinimg.com/736x/e2/f9/66/e2f96658bcfbd5b735b30d61bdf3f1c2.jpg",
-      "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+      // "https://i.pinimg.com/736x/e2/f9/66/e2f96658bcfbd5b735b30d61bdf3f1c2.jpg",
+      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
+
+      'assets/images/rent3.jpeg',
+      'assets/images/rent5.jpeg',
     ],
     category: "Machine",
     price: "300",

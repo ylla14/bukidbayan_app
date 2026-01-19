@@ -29,7 +29,8 @@ class ProductImageCarousel extends StatelessWidget {
             onPageChanged: onPageChanged,
             itemBuilder: (_, index) => GestureDetector(
               onTap: () => onImageTap(images[index]),
-              child: Image.network(images[index], fit: BoxFit.cover),
+              // child: Image.network(images[index], fit: BoxFit.cover),
+              child: Image.asset(images[index], fit: BoxFit.cover),
             ),
           ),
 

@@ -18,10 +18,8 @@ class RentItemCard extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-              ),
+              // child: Image.network(imageUrl, fit: BoxFit.cover,),
+              child: Image.asset(imageUrl, fit: BoxFit.cover,),
             ),
           ),
           Padding(
