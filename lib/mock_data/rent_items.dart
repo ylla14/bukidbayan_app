@@ -43,8 +43,8 @@ final List<RentItem> items = [
       // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
      
       'assets/images/rent1.jpg',
-      'assets/images/rent2.jpeg',
       'assets/images/rent3.jpeg',
+      'assets/images/rent5.jpeg',
     ],
     category: "Hand Tool",
     price: "105",
@@ -81,7 +81,7 @@ final List<RentItem> items = [
       // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
 
       'assets/images/rent6.jpeg',
-      'assets/images/rent2.jpeg',
+      'assets/images/rent3.jpeg',
       'assets/images/rent5.jpeg',
     ],
     category: "Machine",
