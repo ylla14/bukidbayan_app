@@ -7,6 +7,15 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+             colors: [lightColorScheme.primary, lightColorScheme.secondary],
+             stops: [0.0, 0.9]
+          )
+          
+        ),
+      ),
       backgroundColor: lightColorScheme.primary,
       centerTitle: true,
       title: Icon(Icons.person),
