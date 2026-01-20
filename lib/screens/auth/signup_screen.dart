@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
-import 'package:bukidbayan_app/screens/signin_screen.dart';
+import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
 
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_scaffold.dart';
@@ -25,6 +25,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
+
+  bool _isPasswordHidden = true;
 
 
   @override
@@ -149,32 +151,62 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                 SizedBox(height: 30),
 
-                TextFormField(
-                  controller: passwordController,
-                  obscureText: true,
-                  obscuringCharacter: '*',
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please Enter Password!';
-                    }
-                    return null;
-                  },
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: _isPasswordHidden,
+                      obscuringCharacter: '*',
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please Enter Password!';
+                        }
+                        return null;
+                      },
+                    
+                      decoration: InputDecoration(
+                        label: const Text('Password'),
+                        hintText: 'Enter Password',
+                        hintStyle: TextStyle(color: Colors.black26),
 
-                  decoration: InputDecoration(
-                    label: const Text('Password'),
-                    hintText: 'Enter Password',
-                    hintStyle: TextStyle(color: Colors.black26),
-
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black12),
-                      borderRadius: BorderRadius.circular(10),
+                        suffixIcon: Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: IconButton(
+                            icon: Icon(
+                              _isPasswordHidden ? Icons.visibility_off : Icons.visibility,
+                              color: Colors.black45,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordHidden = !_isPasswordHidden;
+                              });
+                            },
+                          ),
+                        ),
+                    
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                    
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
 
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black12),
-                      borderRadius: BorderRadius.circular(10),
+                    Text(
+                      '• Minimum of 6 characters\n'
+                      '• Avoid common passwords (e.g. "123456", "password", birthdays, etc..)',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500
+                      ),
                     ),
-                  ),
+                  ],
                 ),
 
                 SizedBox(height: 25),

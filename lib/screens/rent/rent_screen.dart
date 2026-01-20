@@ -1,8 +1,8 @@
 import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
-import 'package:bukidbayan_app/screens/equipment_listing_form_screen.dart';
-import 'package:bukidbayan_app/screens/product_page.dart';
+import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
+import 'package:bukidbayan_app/screens/rent/product_page.dart';
 
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:carousel_slider/carousel_slider.dart';

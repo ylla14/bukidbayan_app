@@ -1,9 +1,9 @@
 import 'package:bukidbayan_app/components/bottom_nav.dart';
 import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/screens/home_screen.dart';
+import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
 
-import 'package:bukidbayan_app/screens/signup_screen.dart';
+import 'package:bukidbayan_app/screens/auth/signup_screen.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_scaffold.dart';
@@ -22,6 +22,8 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool rememberPassword = true;
+  bool _isPasswordHidden = true;
+
   
 
   @override
@@ -81,7 +83,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                 TextFormField(
                   controller: passwordController,
-                  obscureText: true,
+                  obscureText: _isPasswordHidden,
                   obscuringCharacter: '*',
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -89,23 +91,37 @@ class _SignInScreenState extends State<SignInScreen> {
                     }
                     return null;
                   },
-
                   decoration: InputDecoration(
                     label: const Text('Password'),
                     hintText: 'Enter Password',
-                    hintStyle: TextStyle(color: Colors.black26),
+                    hintStyle: const TextStyle(color: Colors.black26),
 
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black12),
-                      borderRadius: BorderRadius.circular(10),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: Icon(
+                          _isPasswordHidden ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.black45,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordHidden = !_isPasswordHidden;
+                          });
+                        },
+                      ),
                     ),
 
+                    border: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.black12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black12),
+                      borderSide: const BorderSide(color: Colors.black12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
+
 
                 SizedBox(height: 25),
 
@@ -189,6 +205,8 @@ class _SignInScreenState extends State<SignInScreen> {
                           }
                         } catch (e) {
                           showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
+                          // String message = e.toString().replaceAll('Exception: ', '');
+                          // print('Message: $message');
                         }
                       } else if (!rememberPassword) {
                         ScaffoldMessenger.of(context).showSnackBar(
