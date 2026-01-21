@@ -23,6 +23,8 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool rememberPassword = true;
   bool _isPasswordHidden = true;
+  bool _isSigningIn = false;
+
 
   
 
@@ -192,33 +194,55 @@ class _SignInScreenState extends State<SignInScreen> {
                 // ),
 
                 SignButton(
-                  buttonText: 'Sign In',
-                  onPressed:  () async{
-                      if (_formSignInKey.currentState!.validate() &&
-                          rememberPassword) {
-                        try {
-                          var user = await authService.login(emailController.text, passwordController.text);
+                  buttonText: _isSigningIn ? 'Signing In...' : 'Sign In',
+                  onPressed: _isSigningIn
+                      ? null
+                      : () async {
+                          if (!_formSignInKey.currentState!.validate()) return;
 
-                          if(user != null){
-                            // showConfirmSnackbar(context: context, title: 'Welcome', message: 'Logging In');
-                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (e) => BottomNav()));
+                          if (!rememberPassword) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please agree to the processing of personal data',
+                                ),
+                              ),
+                            );
+                            return;
                           }
-                        } catch (e) {
-                          showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
-                          // String message = e.toString().replaceAll('Exception: ', '');
-                          // print('Message: $message');
-                        }
-                      } else if (!rememberPassword) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Please agree to the processing of personal data',
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                  ),
+
+                          setState(() => _isSigningIn = true);
+
+                          try {
+                            var user = await authService.login(
+                              emailController.text,
+                              passwordController.text,
+                            );
+
+                            if (!mounted) return;
+
+                            if (user != null) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (_) => BottomNav()),
+                              );
+                            }
+                          } catch (e) {
+                            if (!mounted) return;
+
+                            showErrorSnackbar(
+                              context: context,
+                              title: 'Error',
+                              message: e.toString().replaceAll('Exception: ', ''),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isSigningIn = false);
+                            }
+                          }
+                        },
+                ),
+
 
                 const SizedBox(height: 25.0),
 

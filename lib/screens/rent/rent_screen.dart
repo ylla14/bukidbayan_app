@@ -159,12 +159,21 @@ class _RentScreenState extends State<RentScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (e) => const EquipmentListingScreen(),));
-            },
-            icon: Icon(Icons.add_box_rounded),
-          ),
+          // IconButton(
+          //   onPressed: () {
+          //     Navigator.push(context, MaterialPageRoute(builder: (e) => const EquipmentListingScreen(),));
+          //   },
+          //   icon: Icon(Icons.add_box_rounded),
+          // ),
+
+             IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              iconSize: 35,
+              onPressed: () {
+                // TODO: navigate to notifications screen
+              },
+            ),
+
         ],
       ),
 
@@ -188,9 +197,97 @@ class _RentScreenState extends State<RentScreen> {
               //     },
               //   ),
               // ),
+
+              /// CREATE LISTING & RENT BUTTONS
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Row(
+                  children: [
+                    /// CREATE LISTING BUTTON
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.green.shade100,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: Icon(Icons.add_box_rounded, color: lightColorScheme.primary,),
+                        label: Text(
+                          'Create',
+                          style: TextStyle(
+                            color: lightColorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const EquipmentListingScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 8),
+
+                    /// RENT BUTTON
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.green.shade100,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon:  Icon(Icons.shopping_cart_outlined, color: lightColorScheme.primary,),
+                        label:  Text(
+                          'My Equipment',
+                          style: TextStyle(
+                            color: lightColorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () {
+                          // TODO: navigate to rent-related screen if needed
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 10),
 
-              /// FILTER BUTTONS
+
+              /// CAROUSEL (only when no filters)
+              if (searchQuery.isEmpty && activeCategory == null)
+                CarouselSlider(
+                  options: CarouselOptions(
+                    height: 180,
+                    autoPlay: true,
+                    enlargeCenterPage: true,
+                    viewportFraction: 0.950,
+                  ),
+                  items: items.map((item) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      // child: Image.network(item.imageUrl[1], fit: BoxFit.cover, width: double.infinity,),
+                      child: Image.asset(item.imageUrl[0], fit: BoxFit.cover, width: double.infinity,),
+
+                    );
+                  }).toList(),
+                ),
+                
+
+              const SizedBox(height: 10),
+
+                            /// FILTER BUTTONS
               SizedBox(
                 height: 40, // adjust height as needed
                 child: ListView(
@@ -203,27 +300,6 @@ class _RentScreenState extends State<RentScreen> {
                   ],
                 ),
               ),
-
-              const SizedBox(height: 10),
-
-              /// CAROUSEL (only when no filters)
-              if (searchQuery.isEmpty && activeCategory == null)
-                CarouselSlider(
-                  options: CarouselOptions(
-                    height: 180,
-                    autoPlay: true,
-                    enlargeCenterPage: true,
-                    viewportFraction: 0.8,
-                  ),
-                  items: items.map((item) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      // child: Image.network(item.imageUrl[1], fit: BoxFit.cover, width: double.infinity,),
-                      child: Image.asset(item.imageUrl[0], fit: BoxFit.cover, width: double.infinity,),
-
-                    );
-                  }).toList(),
-                ),
 
               const SizedBox(height: 10),
 

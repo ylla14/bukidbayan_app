@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/screens/crowdfunding/cfdashboard_screen.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
@@ -15,9 +16,10 @@ class _BottomNavState extends State<BottomNav> {
   int currentIndex = 0;
 
   final List<Widget> screens = [
-    HomeScreen(),     // Full home screen widget
+    HomeScreen(),    
     RentScreen(),
-    ProfileScreen(),  // Full profile screen widget
+    CfDashboardScreen(),
+    ProfileScreen(),  
   ];
 
   @override
@@ -42,7 +44,11 @@ class _BottomNavState extends State<BottomNav> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.build),
-            label: 'Rent',
+            label: 'Equipment',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.volunteer_activism), // 🤝 Crowdfunding
+            label: 'Campaigns',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

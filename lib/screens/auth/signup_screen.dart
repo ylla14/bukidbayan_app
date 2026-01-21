@@ -27,6 +27,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController lastNameController = TextEditingController();
 
   bool _isPasswordHidden = true;
+  bool _isSigningUp = false;
 
 
   @override
@@ -212,9 +213,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 SizedBox(height: 25),
 
                 SignButton(
-                  buttonText: 'Sign Up',
-                   onPressed: () async {
+                  buttonText: _isSigningUp ? 'Signing Up' : 'Sign Up',
+                  onPressed: _isSigningUp
+                  ? null
+                  :() async {
                       if (_formSignInKey.currentState!.validate()) {
+
+                        setState(() => _isSigningUp = true);
+
                         try {
                           await authService.signUp(emailController.text, passwordController.text, firstNameController.text, lastNameController.text);
                           if (!mounted) return;
@@ -225,7 +231,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             MaterialPageRoute(builder: (e) => const SignInScreen()),
                           );
                          } catch (e){
-                          if (!mounted) return;
+                          if (mounted) {
+                              setState(() => _isSigningUp = false);
+                            }
                           showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
                          }
 

@@ -5,11 +5,11 @@ class SignButton extends StatelessWidget {
   const SignButton({
     super.key,
     required this.buttonText,
-    required this.onPressed,
+    this.onPressed,
   });
 
   final String buttonText;
-  final VoidCallback onPressed; // Use VoidCallback for a normal onPressed
+  final Future<void> Function()? onPressed; // ✅ async-safe
 
   @override
   Widget build(BuildContext context) {
@@ -20,8 +20,12 @@ class SignButton extends StatelessWidget {
           backgroundColor: lightColorScheme.primary,
           foregroundColor: lightColorScheme.onPrimary,
         ),
+        onPressed: onPressed == null
+            ? null
+            : () {
+                onPressed!(); // execute async callback
+              },
         child: Text(buttonText),
-        onPressed: onPressed, // Just use the passed callback
       ),
     );
   }

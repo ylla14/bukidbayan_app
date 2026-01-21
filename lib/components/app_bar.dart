@@ -27,6 +27,23 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           },
         ),
       ),
+      actions: [
+          // IconButton(
+          //   onPressed: () {
+          //     Navigator.push(context, MaterialPageRoute(builder: (e) => const EquipmentListingScreen(),));
+          //   },
+          //   icon: Icon(Icons.add_box_rounded),
+          // ),
+
+             IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              iconSize: 35,
+              onPressed: () {
+                // TODO: navigate to notifications screen
+              },
+            ),
+
+        ],
     );
   }
 
