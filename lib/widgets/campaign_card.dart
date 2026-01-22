@@ -28,6 +28,8 @@ class CampaignCard extends StatelessWidget {
     final progress = campaign.progress.clamp(0.0, 1.0);
 
     return Card(
+      color: lightColorScheme.onPrimary,
+      surfaceTintColor: Colors.transparent,
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

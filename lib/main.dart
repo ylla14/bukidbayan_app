@@ -13,12 +13,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BukidBayan',
-      theme: ThemeData(
-        scaffoldBackgroundColor: lightColorScheme.surface,
-      ),
-      home: WelcomeScreen(),
-    );
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      scaffoldBackgroundColor: Colors.white,
+      colorScheme: lightColorScheme,
+      useMaterial3: true,
+    ),
+    home: const WelcomeScreen(),
+  );
+
   }
 }
 
