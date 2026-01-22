@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'BukidBayan',
       theme: ThemeData(
-        scaffoldBackgroundColor: lightColorScheme.background,
+        scaffoldBackgroundColor: lightColorScheme.surface,
       ),
       home: WelcomeScreen(),
     );

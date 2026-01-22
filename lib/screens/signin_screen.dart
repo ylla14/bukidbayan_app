@@ -1,7 +1,6 @@
 import 'package:bukidbayan_app/components/bottom_nav.dart';
 import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/screens/home_screen.dart';
 
 import 'package:bukidbayan_app/screens/signup_screen.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';

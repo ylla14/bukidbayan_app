@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/home_screen.dart';
 import 'package:bukidbayan_app/screens/profile_screen.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
+import 'package:bukidbayan_app/screens/crowdfunding_screen.dart';
+
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -15,7 +17,8 @@ class _BottomNavState extends State<BottomNav> {
   int currentIndex = 0;
 
   final List<Widget> screens = [
-    HomeScreen(),     // Full home screen widget
+    HomeScreen(),   // Full home screen widget
+    CrowdfundingScreen(),  
     RentScreen(),
     ProfileScreen(),  // Full profile screen widget
   ];
@@ -39,6 +42,10 @@ class _BottomNavState extends State<BottomNav> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.volunteer_activism),
+            label: 'Crowdfund',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.build),

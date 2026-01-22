@@ -20,8 +20,8 @@ class SignButton extends StatelessWidget {
           backgroundColor: lightColorScheme.primary,
           foregroundColor: lightColorScheme.onPrimary,
         ),
-        child: Text(buttonText),
-        onPressed: onPressed, // Just use the passed callback
+        onPressed: onPressed,
+        child: Text(buttonText), // Just use the passed callback
       ),
     );
   }
