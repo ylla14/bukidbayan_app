@@ -1,6 +1,6 @@
-import 'package:bukidbayan_app/widgets/spec_row.dart';
 import 'package:flutter/material.dart';
-import '../../../mock_data/rent_items.dart';
+import 'package:bukidbayan_app/widgets/spec_row.dart';
+import 'package:bukidbayan_app/models/rentModel.dart';
 
 class ProductSpecs extends StatelessWidget {
   final RentItem item;
@@ -9,6 +9,24 @@ class ProductSpecs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final specs = <SpecRow>[];
+
+    // Always show category
+    specs.add(SpecRow(title: 'Category', value: item.category));
+
+    // Conditionally show only if not null
+    if (item.brand != null) specs.add(SpecRow(title: 'Brand', value: item.brand!));
+    if (item.yearModel != null) specs.add(SpecRow(title: 'Year Model', value: item.yearModel!));
+    if (item.power != null) specs.add(SpecRow(title: 'Power', value: item.power!));
+    if (item.fuelType != null) specs.add(SpecRow(title: 'Fuel Type', value: item.fuelType!));
+    if (item.condition != null) specs.add(SpecRow(title: 'Condition', value: item.condition!));
+    if (item.attachments != null) specs.add(SpecRow(title: 'Attachments', value: item.attachments!));
+    if (item.operatorIncluded != null) {
+      specs.add(SpecRow(
+          title: 'Operator Included?',
+          value: item.operatorIncluded! ? 'Yes' : 'No'));
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -19,19 +37,7 @@ class ProductSpecs extends StatelessWidget {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
-          SpecRow(title: 'Category', value: item.category),
-          SpecRow(title: 'Brand', value: item.brand ?? '---'),
-          SpecRow(title:'Year Model', value: item.yearModel ?? '---'),
-          SpecRow(title: 'Power', value: item.power ?? '---'),
-          SpecRow(title: 'Fuel Type', value: item.fuelType ?? '---'),
-          SpecRow(title: 'Condition', value: item.condition ?? '---'),
-          SpecRow(title: 'Attachments', value: item.attachments ?? '---'),
-          SpecRow(
-            title: 'Operator Included?',
-            value: item.operatorIncluded == null
-                ? '---'
-                : (item.operatorIncluded! ? 'Yes' : 'No'),
-          ),
+          ...specs,
         ],
       ),
     );

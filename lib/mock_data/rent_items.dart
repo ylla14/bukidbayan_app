@@ -4,6 +4,9 @@ class RentItem {
   final String category;
   final String price;
 
+  // Rent rate (required)
+  final String rentRate; // e.g. "per day", "per week"
+
   // Availability
   final String? availableFrom;
   final String? availableTo;
@@ -17,13 +20,27 @@ class RentItem {
   final String? attachments;
   final bool? operatorIncluded;
 
+  // Requirements
+  final bool landSizeRequirement; // REQUIRED
+  final int? landSizeMin; // optional
+  final int? landSizeMax; // optional
+
+  final bool maxCropHeightRequirement; // REQUIRED
+  final double? maxCropHeight; // optional
+
   RentItem({
     required this.title,
     required this.imageUrl,
     required this.category,
     required this.price,
-    required this.availableFrom,
-    required this.availableTo,
+    required this.rentRate,
+    required this.landSizeRequirement,
+    required this.maxCropHeightRequirement,
+    this.landSizeMin,
+    this.landSizeMax,
+    this.maxCropHeight,
+    this.availableFrom,
+    this.availableTo,
     this.brand,
     this.yearModel,
     this.power,
@@ -35,36 +52,34 @@ class RentItem {
 }
 
 
+
 final List<RentItem> items = [
   RentItem(
     title: "Item 1",
     imageUrl: [
-      // "https://i.pinimg.com/736x/65/50/01/655001d9f809051060e4a8417e85af07.jpg",
-      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
-     
       'assets/images/rent1.jpg',
       'assets/images/rent3.jpeg',
       'assets/images/rent5.jpeg',
     ],
     category: "Hand Tool",
     price: "105",
+    rentRate: "per day", // new
     availableFrom: "Jan 20, 2026",
     availableTo: "Feb 10, 2026",
     brand: "Makita",
     condition: "Good",
+    landSizeRequirement: false,
+    maxCropHeightRequirement: false,
   ),
-
   RentItem(
     title: "Item 2",
     imageUrl: [
-      // "https://i.pinimg.com/736x/ce/58/c5/ce58c546f766df0654ee3b3e1bd9fad0.jpg",
-      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
-
       'assets/images/rent4.jpeg',
       'assets/images/rent5.jpeg',
     ],
     category: "Tractor",
     price: "200",
+    rentRate: "per day",
     availableFrom: "Jan 25, 2026",
     availableTo: "Mar 01, 2026",
     brand: "John Deere",
@@ -72,59 +87,62 @@ final List<RentItem> items = [
     power: "75 HP",
     fuelType: "Diesel",
     operatorIncluded: true,
+    landSizeRequirement: true,
+    landSizeMin: 500, // optional min size
+    landSizeMax: 1000, // optional max size
+    maxCropHeightRequirement: true,
+    maxCropHeight: 120, // optional height in cm
   ),
-
   RentItem(
     title: "Item 3",
     imageUrl: [
-      // "https://i.pinimg.com/736x/cd/6f/82/cd6f82478ba340ee729c3735ef788912.jpg",
-      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
-
       'assets/images/rent6.jpeg',
       'assets/images/rent3.jpeg',
       'assets/images/rent5.jpeg',
     ],
     category: "Machine",
     price: "50",
+    rentRate: "per day",
     availableFrom: "Feb 01, 2026",
     availableTo: "Feb 15, 2026",
     condition: "Used",
+    landSizeRequirement: false,
+    maxCropHeightRequirement: true,
+    maxCropHeight: 80,
   ),
-
   RentItem(
     title: "Item 4",
     imageUrl: [
-      // "https://i.pinimg.com/1200x/58/de/53/58de530d9f145f66336a0ceb11c81a4a.jpg",
-      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
-
       'assets/images/rent7.jpeg',
       'assets/images/rent4.jpeg',
       'assets/images/rent8.jpg',
     ],
     category: "Machine",
     price: "90",
+    rentRate: "per day",
     availableFrom: "Jan 18, 2026",
     availableTo: "Apr 30, 2026",
     brand: "Caterpillar",
     yearModel: "2020",
     fuelType: "Diesel",
     attachments: "Bucket, Blade",
+    landSizeRequirement: true,
+    maxCropHeightRequirement: false,
   ),
-
   RentItem(
     title: "Item 5",
     imageUrl: [
-      // "https://i.pinimg.com/736x/e2/f9/66/e2f96658bcfbd5b735b30d61bdf3f1c2.jpg",
-      // "https://i.pinimg.com/736x/22/ae/3b/22ae3bb2f7b46bed0e3a99a025835ab0.jpg",
-
       'assets/images/rent3.jpeg',
       'assets/images/rent5.jpeg',
     ],
     category: "Machine",
     price: "300",
+    rentRate: "per day",
     availableFrom: "Mar 01, 2026",
     availableTo: "Mar 20, 2026",
     power: "150 HP",
     operatorIncluded: false,
+    landSizeRequirement: false,
+    maxCropHeightRequirement: false,
   ),
 ];

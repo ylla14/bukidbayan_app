@@ -3,9 +3,16 @@ import 'package:flutter/material.dart';
 class RentItemCard extends StatelessWidget {
   final String title;
   final String price;
+  final String rentRate; // 👈 add this
   final String imageUrl;
 
-  const RentItemCard({super.key, required this.title, required this.imageUrl, required this.price});
+  const RentItemCard({
+    super.key,
+    required this.title,
+    required this.imageUrl,
+    required this.price,
+    required this.rentRate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +24,9 @@ class RentItemCard extends StatelessWidget {
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              // child: Image.network(imageUrl, fit: BoxFit.cover,),
-              child: Image.asset(imageUrl, fit: BoxFit.cover,),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Image.asset(imageUrl, fit: BoxFit.cover),
             ),
           ),
           Padding(
@@ -35,21 +42,37 @@ class RentItemCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      price,
+                      '₱$price ${_getRateSuffix(rentRate)}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      "est.", // small indicator
+                      "est.",
                       style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ],
-            )
+            ),
           ),
         ],
       ),
     );
   }
+
+  String _getRateSuffix(String rentRate) {
+    switch (rentRate.toLowerCase()) {
+      case 'per hour':
+        return '/hour';
+      case 'per day':
+        return '/day';
+      case 'per week':
+        return '/week';
+      case 'per month':
+        return '/month';
+      default:
+        return '';
+    }
+  }
 }
+
 
