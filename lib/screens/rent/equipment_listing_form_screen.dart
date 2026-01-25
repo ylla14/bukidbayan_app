@@ -1,10 +1,16 @@
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
+import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:bukidbayan_app/mock_data/rent_items.dart';
+import 'package:bukidbayan_app/models/equipment.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/services/auth_services.dart';
+import 'package:bukidbayan_app/services/cloudinary_service.dart';
 
 const List<String> rentalUnit = <String>['Per Hour', 'Per Day', 'Per Week', 'Per Month'];
 const List<String> condition = <String>['Brand New', 'Excellent', 'Good', 'Fair', 'Needs Maintenance'];
@@ -120,10 +126,15 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                   )
                                 : ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(
-                                      File(image.path),
-                                      fit: BoxFit.cover,
-                                    ),
+                                    child: kIsWeb
+                                        ? Image.network(
+                                            image.path,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Image.file(
+                                            File(image.path),
+                                            fit: BoxFit.cover,
+                                          ),
                                   ),
                           ),
                         ),
@@ -913,28 +924,152 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
     }
   }
 
-  void _onSavePressed() {
+  Future<void> _onSavePressed() async {
     final isFormValid = _formKey.currentState!.validate();
 
     bool hasImage = images.any((img) => img != null);
 
-  setState(() {
-        showLandSizeError = landSizeRequired == null;
-        showCropHeightError = cropHeightRequired == null;
-        showImageError = !hasImage;
-        showAvailabilityError = availableFrom == null || availableUntil == null;
-      });
+    setState(() {
+      showLandSizeError = landSizeRequired == null;
+      showCropHeightError = cropHeightRequired == null;
+      showImageError = !hasImage;
+      showAvailabilityError = availableFrom == null || availableUntil == null;
+    });
 
-  if (!isFormValid ||
-      landSizeRequired == null ||
-      cropHeightRequired == null ||
-      !hasImage ||
-      availableFrom == null ||
-      availableUntil == null) {
-    return;
-  }
+    if (!isFormValid ||
+        landSizeRequired == null ||
+        cropHeightRequired == null ||
+        !hasImage ||
+        availableFrom == null ||
+        availableUntil == null) {
+      return;
+    }
 
-    print('Save successful');
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final authService = AuthService();
+      final firestoreService = FirestoreService();
+      final currentUser = authService.currentUser;
+
+      if (currentUser == null) {
+        throw Exception('You must be logged in to create a listing');
+      }
+
+      // Get user data for owner name
+      final userData = await authService.getUserData(currentUser.uid);
+      final ownerName = userData?['firstName'] != null && userData?['lastName'] != null
+          ? '${userData!['firstName']} ${userData['lastName']}'
+          : currentUser.email?.split('@')[0] ?? 'Unknown';
+
+      // Build requirements list
+      final List<String> requirementsList = [];
+      if (landSizeRequired == true && _landSizeController.text.isNotEmpty) {
+        requirementsList.add('Land Size: ${_landSizeController.text}');
+      }
+      if (cropHeightRequired == true && _cropHeightController.text.isNotEmpty) {
+        requirementsList.add('Max Crop Height: ${_cropHeightController.text}');
+      }
+
+      // Upload images to Cloudinary
+      final cloudinaryService = CloudinaryService();
+      final selectedImages = images.where((img) => img != null).map((img) => img!).toList();
+
+      List<String> imageUrls = [];
+
+      if (selectedImages.isNotEmpty) {
+        try {
+          // Upload all images to Cloudinary
+          imageUrls = await cloudinaryService.uploadMultipleImages(
+            selectedImages,
+            onProgress: (current, total) {
+              print('Uploading image $current of $total');
+            },
+          );
+
+          print('Successfully uploaded ${imageUrls.length} images to Cloudinary');
+        } catch (e) {
+          // If Cloudinary upload fails, throw error
+          throw Exception('Failed to upload images: $e');
+        }
+      }
+
+      // Create Equipment object
+      final equipment = Equipment(
+        name: _equipmentNameController.text.trim(),
+        description: _equipmentDescriptionController.text.trim(),
+        category: selectedCategory,
+        brand: _equipmentBrandController.text.trim().isEmpty
+            ? null
+            : _equipmentBrandController.text.trim(),
+        yearModel: _yearController.text.trim().isEmpty
+            ? null
+            : _yearController.text.trim(),
+        power: _powerController.text.trim().isEmpty
+            ? 'N/A'
+            : _powerController.text.trim(),
+        condition: selectedCondition ?? 'Good',
+        attachments: _attachmentsController.text.trim().isEmpty
+            ? null
+            : _attachmentsController.text.trim(),
+        operatorIncluded: operatorIncluded ?? false,
+        availableFrom: availableFrom,
+        availableUntil: availableUntil,
+        requirements: requirementsList,
+        reviews: [],
+        price: double.parse(_equipmentPriceController.text.trim()),
+        rentalUnit: selectedRentalUnit ?? 'Per Day',
+        ownerId: currentUser.uid,
+        ownerName: ownerName,
+        imageUrls: imageUrls,
+        fuelType: _fuelController.text.trim().isEmpty
+            ? null
+            : _fuelController.text.trim(),
+        defects: selectedCondition == 'Needs Maintenance'
+            ? _defectsController.text.trim()
+            : null,
+        isAvailable: true,
+      );
+
+      // Save to Firestore
+      await firestoreService.addEquipment(equipment.toMap());
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Show success message
+      if (mounted) {
+        showConfirmSnackbar(
+          context: context,
+          title: 'Success!',
+          message: 'Equipment listed successfully!',
+        );
+
+        // Navigate back after short delay
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) Navigator.pop(context);
+        });
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Show error message
+      if (mounted) {
+        showErrorSnackbar(
+          context: context,
+          title: 'Error',
+          message: e.toString(),
+        );
+      }
+    }
   }
 
 

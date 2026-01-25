@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math' show sin, cos, sqrt, atan2;
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -128,13 +129,16 @@ class FirestoreService {
     }
   }
 
-  // SEARCH AND FILTER METHODS
+  // SEARCH AND FILTER METHODS (KF8 - Equipment Discovery)
 
   // Search equipment by category
   Stream<QuerySnapshot> searchEquipmentByCategory(String category) {
     return _firestore
         .collection('equipment')
         .where('category', isEqualTo: category)
+        .where('isAvailable', isEqualTo: true)
+        // Note: orderBy requires a composite index
+        // .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
@@ -143,6 +147,142 @@ class FirestoreService {
     return _firestore
         .collection('equipment')
         .where('isAvailable', isEqualTo: true)
+        // Note: orderBy requires a composite index.
+        // Create index in Firebase Console or remove orderBy for now
+        // .orderBy('createdAt', descending: true)
         .snapshots();
+  }
+
+  // Filter equipment by operator availability
+  Stream<QuerySnapshot> searchEquipmentByOperator(bool operatorIncluded) {
+    return _firestore
+        .collection('equipment')
+        .where('isAvailable', isEqualTo: true)
+        .where('operatorIncluded', isEqualTo: operatorIncluded)
+        // Note: orderBy requires a composite index
+        // .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  // Combined filter: category + operator availability
+  Stream<QuerySnapshot> searchEquipmentByCategoryAndOperator(
+    String category,
+    bool operatorIncluded,
+  ) {
+    return _firestore
+        .collection('equipment')
+        .where('category', isEqualTo: category)
+        .where('isAvailable', isEqualTo: true)
+        .where('operatorIncluded', isEqualTo: operatorIncluded)
+        // Note: orderBy requires a composite index
+        // .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  // Get equipment by location (requires latitude/longitude for proximity search)
+  // Note: For location proximity, we need to fetch all equipment and filter client-side
+  // or use a geohashing solution like GeoFlutterFire (requires additional package)
+  Future<List<DocumentSnapshot>> searchEquipmentByLocation(
+    double userLat,
+    double userLng,
+    double radiusInKm,
+  ) async {
+    // Fetch all available equipment
+    final snapshot = await _firestore
+        .collection('equipment')
+        .where('isAvailable', isEqualTo: true)
+        .get();
+
+    // Filter by distance client-side
+    final nearbyEquipment = snapshot.docs.where((doc) {
+      final data = doc.data();
+      final lat = data['latitude'];
+      final lng = data['longitude'];
+
+      if (lat == null || lng == null) return false;
+
+      final distance = _calculateDistance(
+        userLat,
+        userLng,
+        lat.toDouble(),
+        lng.toDouble(),
+      );
+
+      return distance <= radiusInKm;
+    }).toList();
+
+    return nearbyEquipment;
+  }
+
+  // Calculate distance between two coordinates (Haversine formula)
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const double earthRadiusKm = 6371.0;
+
+    final dLat = _degreesToRadians(lat2 - lat1);
+    final dLon = _degreesToRadians(lon2 - lon1);
+
+    final a = (sin(dLat / 2) * sin(dLat / 2)) +
+        (cos(_degreesToRadians(lat1)) *
+            cos(_degreesToRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2));
+
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadiusKm * c;
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * (3.141592653589793 / 180.0);
+  }
+
+  // ADVANCED SEARCH (combines multiple criteria)
+  Future<List<DocumentSnapshot>> advancedEquipmentSearch({
+    String? category,
+    bool? operatorIncluded,
+    double? minPrice,
+    double? maxPrice,
+    String? condition,
+  }) async {
+    Query query = _firestore
+        .collection('equipment')
+        .where('isAvailable', isEqualTo: true);
+
+    // Apply filters
+    if (category != null) {
+      query = query.where('category', isEqualTo: category);
+    }
+
+    if (operatorIncluded != null) {
+      query = query.where('operatorIncluded', isEqualTo: operatorIncluded);
+    }
+
+    if (condition != null) {
+      query = query.where('condition', isEqualTo: condition);
+    }
+
+    final snapshot = await query.get();
+
+    // Filter by price range client-side (Firestore has limitations with range queries)
+    var results = snapshot.docs;
+
+    if (minPrice != null || maxPrice != null) {
+      results = results.where((doc) {
+        final price = (doc.data() as Map<String, dynamic>)['price'] ?? 0;
+        final priceValue = price is int ? price.toDouble() : price as double;
+
+        if (minPrice != null && priceValue < minPrice) return false;
+        if (maxPrice != null && priceValue > maxPrice) return false;
+
+        return true;
+      }).toList();
+    }
+
+    return results;
   }
 }

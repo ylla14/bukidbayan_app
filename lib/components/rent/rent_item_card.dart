@@ -7,6 +7,16 @@ class RentItemCard extends StatelessWidget {
 
   const RentItemCard({super.key, required this.title, required this.imageUrl, required this.price});
 
+  // Helper to check if URL is a real image URL (Cloudinary, http/https)
+  bool _isNetworkUrl(String url) {
+    return url.startsWith('http://') || url.startsWith('https://');
+  }
+
+  // Helper to check if URL is an asset path
+  bool _isAssetUrl(String url) {
+    return url.startsWith('assets/');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -18,8 +28,7 @@ class RentItemCard extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              // child: Image.network(imageUrl, fit: BoxFit.cover,),
-              child: Image.asset(imageUrl, fit: BoxFit.cover,),
+              child: _buildImage(),
             ),
           ),
           Padding(
@@ -50,6 +59,72 @@ class RentItemCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // Build appropriate image widget based on URL type
+  Widget _buildImage() {
+    // If it's a Cloudinary or network URL
+    if (_isNetworkUrl(imageUrl)) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(
+                Icons.broken_image,
+                size: 50,
+                color: Colors.grey,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    // If it's an asset path
+    else if (_isAssetUrl(imageUrl)) {
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(
+                Icons.image_not_supported,
+                size: 50,
+                color: Colors.grey,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    // Fallback for placeholder or invalid URLs
+    else {
+      return Container(
+        color: Colors.grey[300],
+        child: const Center(
+          child: Icon(
+            Icons.agriculture,
+            size: 50,
+            color: Colors.grey,
+          ),
+        ),
+      );
+    }
   }
 }
 
