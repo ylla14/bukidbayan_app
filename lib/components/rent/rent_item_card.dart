@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 class RentItemCard extends StatelessWidget {
   final String title;
   final String price;
-  final String rentRate; // 👈 add this
   final String imageUrl;
 
-  const RentItemCard({
-    super.key,
-    required this.title,
-    required this.imageUrl,
-    required this.price,
-    required this.rentRate,
-  });
+  const RentItemCard({super.key, required this.title, required this.imageUrl, required this.price});
+
+  // Helper to check if URL is a real image URL (Cloudinary, http/https)
+  bool _isNetworkUrl(String url) {
+    return url.startsWith('http://') || url.startsWith('https://');
+  }
+
+  // Helper to check if URL is an asset path
+  bool _isAssetUrl(String url) {
+    return url.startsWith('assets/');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +27,8 @@ class RentItemCard extends StatelessWidget {
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.asset(imageUrl, fit: BoxFit.cover),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: _buildImage(),
             ),
           ),
           Padding(
@@ -42,37 +44,86 @@ class RentItemCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '₱$price ${_getRateSuffix(rentRate)}',
+                      price,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      "est.",
+                      "est.", // small indicator
                       style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ],
-            ),
+            )
           ),
         ],
       ),
     );
   }
 
-  String _getRateSuffix(String rentRate) {
-    switch (rentRate.toLowerCase()) {
-      case 'per hour':
-        return '/hour';
-      case 'per day':
-        return '/day';
-      case 'per week':
-        return '/week';
-      case 'per month':
-        return '/month';
-      default:
-        return '';
+  // Build appropriate image widget based on URL type
+  Widget _buildImage() {
+    // If it's a Cloudinary or network URL
+    if (_isNetworkUrl(imageUrl)) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(
+                Icons.broken_image,
+                size: 50,
+                color: Colors.grey,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    // If it's an asset path
+    else if (_isAssetUrl(imageUrl)) {
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(
+                Icons.image_not_supported,
+                size: 50,
+                color: Colors.grey,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    // Fallback for placeholder or invalid URLs
+    else {
+      return Container(
+        color: Colors.grey[300],
+        child: const Center(
+          child: Icon(
+            Icons.agriculture,
+            size: 50,
+            color: Colors.grey,
+          ),
+        ),
+      );
     }
   }
 }
-
-

@@ -45,6 +45,7 @@ dependencies:
   flutter_time_picker_spinner: ^2.0.0
   path_provider: ^2.0.14
   intl: ^0.18.1
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
