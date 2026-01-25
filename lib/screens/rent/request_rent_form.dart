@@ -6,11 +6,14 @@ import 'package:bukidbayan_app/widgets/custom_divider.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/models/rentModel.dart';
+// import 'package:bukidbayan_app/models/rentModel.dart';
+import 'package:bukidbayan_app/mock_data/rent_items.dart';
+
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_expandable.dart';
 import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:image_picker/image_picker.dart';
+
 
 class RequestRentForm extends StatefulWidget {
   final RentItem item;

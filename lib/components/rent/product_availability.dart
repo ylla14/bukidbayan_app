@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/widgets/availability_box.dart';
-import 'package:bukidbayan_app/models/rentModel.dart';
+// import 'package:bukidbayan_app/models/rentModel.dart';
+import 'package:bukidbayan_app/mock_data/rent_items.dart';
+
 
 class ProductAvailability extends StatelessWidget {
   final RentItem item;

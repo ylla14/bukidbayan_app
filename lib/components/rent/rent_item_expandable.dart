@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/models/rentModel.dart';
+// import 'package:bukidbayan_app/models/rentModel.dart';
+import 'package:bukidbayan_app/mock_data/rent_items.dart';
+
 
 class RentItemExpandable extends StatelessWidget {
   final RentItem item;
@@ -18,7 +20,7 @@ class RentItemExpandable extends StatelessWidget {
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.asset(
-            item.imageUrls.first,
+            item.imageUrl.first,
             width: 60,
             height: 60,
             fit: BoxFit.cover,

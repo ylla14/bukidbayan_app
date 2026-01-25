@@ -1,7 +1,8 @@
 import 'package:bukidbayan_app/components/rent/product_availability.dart';
 import 'package:bukidbayan_app/components/rent/product_image_carousel.dart';
 import 'package:bukidbayan_app/components/rent/product_specs.dart';
-import 'package:bukidbayan_app/models/rentModel.dart';
+// import 'package:bukidbayan_app/models/rentModel.dart';
+import 'package:bukidbayan_app/mock_data/rent_items.dart';
 import 'package:bukidbayan_app/screens/rent/request_rent_form.dart';
 
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -91,7 +92,7 @@ class _ProductPageState extends State<ProductPage> {
           children: [
             // IMAGE SLIDER
             ProductImageCarousel(
-              images: item.imageUrls,
+              images: item.imageUrl,
               controller: _pageController,
               currentIndex: _currentIndex,
               onPageChanged: (index) {

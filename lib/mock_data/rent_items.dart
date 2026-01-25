@@ -3,9 +3,12 @@ class RentItem {
   final List<String> imageUrl;
   final String category;
   final String price;
+  final String id;
+  final String description;
 
   // Rent rate (required)
   final String rentRate; // e.g. "per day", "per week"
+  
 
   // Availability
   final String? availableFrom;
@@ -47,7 +50,9 @@ class RentItem {
     this.fuelType,
     this.condition,
     this.attachments,
-    this.operatorIncluded,
+    this.operatorIncluded, 
+    required this.id, 
+    required this.description,
   });
 }
 
@@ -55,6 +60,7 @@ class RentItem {
 
 final List<RentItem> items = [
   RentItem(
+    id: "1",
     title: "Item 1",
     imageUrl: [
       'assets/images/rent1.jpg',
@@ -70,8 +76,11 @@ final List<RentItem> items = [
     condition: "Good",
     landSizeRequirement: false,
     maxCropHeightRequirement: false,
+    description: "A reliable hand tool suitable for small farming and gardening tasks.",
+
   ),
   RentItem(
+    id: "2",
     title: "Item 2",
     imageUrl: [
       'assets/images/rent4.jpeg',
@@ -92,8 +101,11 @@ final List<RentItem> items = [
     landSizeMax: 1000, // optional max size
     maxCropHeightRequirement: true,
     maxCropHeight: 120, // optional height in cm
+    description: "Powerful tractor ideal for medium to large farms, comes with operator.",
+
   ),
   RentItem(
+    id: "3",
     title: "Item 3",
     imageUrl: [
       'assets/images/rent6.jpeg',
@@ -109,8 +121,11 @@ final List<RentItem> items = [
     landSizeRequirement: false,
     maxCropHeightRequirement: true,
     maxCropHeight: 80,
+    description: "Compact machine suitable for small-scale farming and light soil work.",
+
   ),
   RentItem(
+    id: "4",
     title: "Item 4",
     imageUrl: [
       'assets/images/rent7.jpeg',
@@ -128,8 +143,11 @@ final List<RentItem> items = [
     attachments: "Bucket, Blade",
     landSizeRequirement: true,
     maxCropHeightRequirement: false,
+    description: "Versatile heavy machine for large-scale earthmoving and excavation projects.",
+
   ),
   RentItem(
+    id: "5",
     title: "Item 5",
     imageUrl: [
       'assets/images/rent3.jpeg',
@@ -144,5 +162,7 @@ final List<RentItem> items = [
     operatorIncluded: false,
     landSizeRequirement: false,
     maxCropHeightRequirement: false,
+    description: "High-powered machine for heavy-duty farming tasks. Operator not included.",
+
   ),
 ];

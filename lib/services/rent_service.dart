@@ -1,4 +1,6 @@
-import 'package:bukidbayan_app/models/rentModel.dart';
+// import 'package:bukidbayan_app/models/rentModel.dart';
+import 'package:bukidbayan_app/mock_data/rent_items.dart';
+
 
 
 class RentService {
@@ -13,7 +15,7 @@ Future<void> seedRentItems() async {
     RentItem(
       id: '1',
       title: "Item 1",
-      imageUrls: [
+      imageUrl: [
         'assets/images/rent1.jpg',
         'assets/images/rent3.jpeg',
         'assets/images/rent5.jpeg',
@@ -33,7 +35,7 @@ Future<void> seedRentItems() async {
     RentItem(
       id: '2',
       title: "Item 2",
-      imageUrls: [
+      imageUrl: [
         'assets/images/rent4.jpeg',
         'assets/images/rent5.jpeg',
       ],
@@ -58,7 +60,7 @@ Future<void> seedRentItems() async {
     RentItem(
       id: '3',
       title: "Item 3",
-      imageUrls: [
+      imageUrl: [
         'assets/images/rent6.jpeg',
         'assets/images/rent3.jpeg',
         'assets/images/rent5.jpeg',
@@ -78,7 +80,7 @@ Future<void> seedRentItems() async {
     RentItem(
       id: '4',
       title: "Item 4",
-      imageUrls: [
+      imageUrl: [
         'assets/images/rent7.jpeg',
         'assets/images/rent4.jpeg',
         'assets/images/rent8.jpg',
@@ -100,7 +102,7 @@ Future<void> seedRentItems() async {
     RentItem(
       id: '5',
       title: "Item 5",
-      imageUrls: [
+      imageUrl: [
         'assets/images/rent3.jpeg',
         'assets/images/rent5.jpeg',
       ],

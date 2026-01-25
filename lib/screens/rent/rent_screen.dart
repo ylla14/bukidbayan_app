@@ -7,8 +7,10 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 
 // 🔹 NEW
-import 'package:bukidbayan_app/models/rentModel.dart';
+// import 'package:bukidbayan_app/models/rentModel.dart';
 import 'package:bukidbayan_app/services/rent_service.dart';
+import 'package:bukidbayan_app/mock_data/rent_items.dart';
+
 
 class RentScreen extends StatefulWidget {
   const RentScreen({super.key});
@@ -242,7 +244,7 @@ class _RentScreenState extends State<RentScreen> {
                   return ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Image.asset(
-                      item.imageUrls.first,
+                      item.imageUrl.first,
                       fit: BoxFit.cover,
                       width: double.infinity,
                     ),
@@ -487,7 +489,7 @@ class _RentScreenState extends State<RentScreen> {
                     },
                     child: RentItemCard(
                       title: item.title,
-                      imageUrl: item.imageUrls.first,
+                      imageUrl: item.imageUrl.first,
                       price: item.price,
                       rentRate: item.rentRate,
                     ),
