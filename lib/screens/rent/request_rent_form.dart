@@ -203,52 +203,58 @@ class _RequestRentFormState extends State<RequestRentForm> {
             const SizedBox(height: 16),
 
             /// SUBMIT
-            OutlinedButton(
-            onPressed: () async {
-              if (!isScheduleComplete || !isStep2Complete) {
-                showErrorSnackbar(
-                  context: context,
-                  title: 'Incomplete',
-                  message: 'Please complete all required fields',
-                );
-                return;
-              }
+             Align(
+              alignment: Alignment.center,
+              child: OutlinedButton(
+                onPressed: () async {
+                  if (!isScheduleComplete || !isStep2Complete) {
+                    showErrorSnackbar(
+                      context: context,
+                      title: 'Incomplete',
+                      message: 'Please complete all required fields',
+                    );
+                    return;
+                  }
 
-              String? landPath;
-              String? cropPath;
+                  String? landPath;
+                  String? cropPath;
 
-              if (landSizeProof != null) landPath = await _requestService.saveFileLocally(landSizeProof!);
-              if (cropHeightProof != null) cropPath = await _requestService.saveFileLocally(cropHeightProof!);
+                  if (landSizeProof != null) {
+                    landPath = await _requestService.saveFileLocally(landSizeProof!);
+                  }
+                  if (cropHeightProof != null) {
+                    cropPath = await _requestService.saveFileLocally(cropHeightProof!);
+                  }
 
-              final request = RentRequest(
-                itemId: widget.item.id,
-                name: nameController.text,
-                address: addressController.text,
-                start: startDateTime!,
-                end: returnDateTime!,
-                landSizeProofPath: landPath,
-                cropHeightProofPath: cropPath,
-              );
+                  final request = RentRequest(
+                    itemId: widget.item.id,
+                    name: nameController.text,
+                    address: addressController.text,
+                    start: startDateTime!,
+                    end: returnDateTime!,
+                    landSizeProofPath: landPath,
+                    cropHeightProofPath: cropPath,
+                  );
 
-              await _requestService.saveRequest(request);
+                  await _requestService.saveRequest(request);
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Request saved!')),
-              );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Request saved!')),
+                  );
 
-              Navigator.pop(context);
-            },
-            child: Text(
-              'Submit',
-              style: TextStyle(
-                color: lightColorScheme.primary,
-                fontSize: 16,
+                  Navigator.pop(context);
+                },
+                child: Text(
+                  'Submit',
+                  style: TextStyle(
+                    color: lightColorScheme.primary,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
-          ),
           ],
-        
-        ),
+        )
       ),
     );
   }
@@ -300,7 +306,7 @@ Widget _requirementUploadTile({
             ),
           ),
 
-          // ❌ REMOVE BUTTON (only when file exists)
+          // REMOVE BUTTON (only when file exists)
           if (file != null)
             IconButton(
               icon: const Icon(Icons.close),

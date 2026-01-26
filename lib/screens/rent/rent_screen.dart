@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
+import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:carousel_slider/carousel_slider.dart';
@@ -43,22 +44,22 @@ class _RentScreenState extends State<RentScreen> {
     minPrice = 0;
     maxPrice = 10000;
     priceRange = RangeValues(minPrice, maxPrice);
-    _loadItems();
+    // _loadItems();
   }
 
-  Future<void> _loadItems() async {
-    await _rentService.seedRentItems();
-    final items = await _rentService.getAllItems();
+  // Future<void> _loadItems() async {
+  //   await _rentService.seedRentItems();
+  //   final items = await _rentService.getAllItems();
 
-    setState(() {
-      allItems = items;
-      filteredItems = items;
+  //   setState(() {
+  //     allItems = items;
+  //     filteredItems = items;
 
-      minPrice = _getMinPrice(items);
-      maxPrice = _getMaxPrice(items);
-      priceRange = RangeValues(minPrice, maxPrice);
-    });
-  }
+  //     minPrice = _getMinPrice(items);
+  //     maxPrice = _getMaxPrice(items);
+  //     priceRange = RangeValues(minPrice, maxPrice);
+  //   });
+  // }
 
   double _getMinPrice(List<RentItem> items) {
     if (items.isEmpty) return 0;
@@ -75,50 +76,54 @@ class _RentScreenState extends State<RentScreen> {
         .reduce((a, b) => a > b ? a : b)
         .toDouble();
   }
+void applyFilters() {
+  setState(() {
+    filteredItems = allItems.where((item) {
+      final matchesSearch = item.title
+          .toLowerCase()
+          .contains(searchQuery.toLowerCase());
 
-  void applyFilters() {
-    setState(() {
-      filteredItems = allItems.where((item) {
-        final matchesSearch = item.title
-            .toLowerCase()
-            .contains(searchQuery.toLowerCase());
+      final matchesCategory =
+          activeCategory == null || item.category == activeCategory;
 
-        final matchesCategory =
-            activeCategory == null || item.category == activeCategory;
-
-        final matchesPrice = !isPriceFilterActive ||
-            (() {
-              final price = int.parse(
-                item.price.replaceAll(RegExp(r'[^0-9]'), ''),
-              );
-              return price >= priceRange.start &&
-                  price <= priceRange.end;
-            })();
-
-        return matchesSearch && matchesCategory && matchesPrice;
-      }).toList();
-    });
-  // Filter equipment list based on current filters
-  List<Equipment> applyFilters(List<Equipment> equipmentList) {
-    return equipmentList.where((equipment) {
-      // Search filter
-      final matchesSearch = searchQuery.isEmpty ||
-          equipment.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          (equipment.description.toLowerCase().contains(searchQuery.toLowerCase()));
-
-      // Category filter
-      final matchesCategory = activeCategory == null || equipment.category == activeCategory;
-
-      // Price filter
       final matchesPrice = !isPriceFilterActive ||
-          (equipment.price >= priceRange.start && equipment.price <= priceRange.end);
+          (() {
+            final price = int.parse(
+              item.price.replaceAll(RegExp(r'[^0-9]'), ''),
+            );
+            return price >= priceRange.start &&
+                price <= priceRange.end;
+          })();
 
-      // Operator filter
-      final matchesOperator = operatorFilter == null || equipment.operatorIncluded == operatorFilter;
-
-      return matchesSearch && matchesCategory && matchesPrice && matchesOperator;
+      return matchesSearch && matchesCategory && matchesPrice;
     }).toList();
-  }
+  });
+}
+
+List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
+  return equipmentList.where((equipment) {
+    final matchesSearch = searchQuery.isEmpty ||
+        equipment.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+        equipment.description.toLowerCase().contains(searchQuery.toLowerCase());
+
+    final matchesCategory =
+        activeCategory == null || equipment.category == activeCategory;
+
+    final matchesPrice = !isPriceFilterActive ||
+        (equipment.price >= priceRange.start &&
+            equipment.price <= priceRange.end);
+
+    final matchesOperator =
+        operatorFilter == null ||
+        equipment.operatorIncluded == operatorFilter;
+
+    return matchesSearch &&
+        matchesCategory &&
+        matchesPrice &&
+        matchesOperator;
+  }).toList();
+}
+
 
   void clearFilters() {
     setState(() {
@@ -248,7 +253,15 @@ class _RentScreenState extends State<RentScreen> {
                       ),
                       icon: const Icon(Icons.shopping_cart_outlined),
                       label: const Text('My Equipment'),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const MyEquipment(),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -257,31 +270,96 @@ class _RentScreenState extends State<RentScreen> {
 
             const SizedBox(height: 10),
 
-            /// CAROUSEL
-            if (searchQuery.isEmpty && activeCategory == null)
-              CarouselSlider(
-                options: CarouselOptions(
-                  height: 180,
-                  autoPlay: true,
-                  enlargeCenterPage: true,
-                  viewportFraction: 0.925
-                ),
-                items: allItems.map((item) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      item.imageUrl.first,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
-                  );
-                }).toList(),
-              ),
+            // /// CAROUSEL
+            // if (searchQuery.isEmpty && activeCategory == null)
+            //   CarouselSlider(
+            //     options: CarouselOptions(
+            //       height: 180,
+            //       autoPlay: true,
+            //       enlargeCenterPage: true,
+            //       viewportFraction: 0.925
+            //     ),
+            //     items: allItems.map((item) {
+            //       return ClipRRect(
+            //         borderRadius: BorderRadius.circular(12),
+            //         child: Image.asset(
+            //           item.imageUrl.first,
+            //           fit: BoxFit.cover,
+            //           width: double.infinity,
+            //         ),
+            //       );
+            //     }).toList(),
+            //   ),
+
+              // /// CAROUSEL (only when no filters)
+              // if (searchQuery.isEmpty && activeCategory == null)
+              //   CarouselSlider(
+              //     options: CarouselOptions(
+              //       height: 180,
+              //       autoPlay: true,
+              //       enlargeCenterPage: true,
+              //       viewportFraction: 0.950,
+              //     ),
+              //     items: items.map((item) {
+              //       return ClipRRect(
+              //         borderRadius: BorderRadius.circular(12),
+              //         // child: Image.network(item.imageUrl[1], fit: BoxFit.cover, width: double.infinity,),
+              //         child: Image.asset(item.imageUrl[0], fit: BoxFit.cover, width: double.infinity,),
+              //       );
+              //     }).toList(),
+              //   ),
+
+            // CAROUSEL
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestoreService.getAvailableEquipment(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const SizedBox(); // or a placeholder widget
+                }
+
+                final equipmentList = snapshot.data!.docs
+                    .map((doc) => Equipment.fromFirestore(doc))
+                    .toList();
+
+                // You can limit the carousel to, say, 5 featured items
+                final carouselItems = equipmentList.take(5).toList();
+
+                return CarouselSlider(
+                  options: CarouselOptions(
+                    height: 180,
+                    autoPlay: true,
+                    enlargeCenterPage: true,
+                    viewportFraction: 0.925,
+                  ),
+                  items: carouselItems.map((equipment) {
+                    final imageUrl = equipment.imageUrls.isNotEmpty
+                        ? equipment.imageUrls[0]
+                        : 'assets/images/rent1.jpg'; // fallback
+
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/rent1.jpg',
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          );
+                        },
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
 
             const SizedBox(height: 10),
 
           /// FILTERS SECTION (Category + Price)
-          if (searchQuery.isEmpty && activeCategory == null)
+          if (searchQuery.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
@@ -593,7 +671,8 @@ class _RentScreenState extends State<RentScreen> {
                       .toList();
 
                   // Apply filters
-                  final filteredEquipment = applyFilters(allEquipment);
+                  final filteredEquipment = applyEquipmentFilters(allEquipment);
+
 
                   if (filteredEquipment.isEmpty) {
                     return Center(
@@ -657,7 +736,17 @@ class _RentScreenState extends State<RentScreen> {
                         fuelType: equipment.fuelType,
                         condition: equipment.condition,
                         attachments: equipment.attachments,
-                        operatorIncluded: equipment.operatorIncluded,
+                        operatorIncluded: equipment.operatorIncluded, 
+                        rentRate: equipment.rentRate ?? 'Unknown Rent Rate', 
+                        landSizeRequirement: equipment.landSizeRequirement, 
+                        maxCropHeightRequirement: equipment.maxCropHeightRequirement, 
+                        id: '', 
+                        description: equipment.description,
+                        landSizeMax: equipment.landSizeMax,
+                        landSizeMin: equipment.landSizeMin,
+                        maxCropHeight: equipment.maxCropHeight,
+                        ownerName: equipment.ownerName ?? 'Unknown Owner',
+                        rentalUnit: equipment.rentalUnit // <-- safe fallback                        
                       );
 
                       return GestureDetector(
@@ -675,19 +764,14 @@ class _RentScreenState extends State<RentScreen> {
                               ? equipment.imageUrls[0]
                               : 'assets/images/rent1.jpg',
                           price: '₱${equipment.price.toStringAsFixed(0)}',
+                          ownerName: equipment.ownerName,
+                          rentalUnit: equipment.rentalUnit
                         ),
                       );
                     },
-                    child: RentItemCard(
-                      title: item.title,
-                      imageUrl: item.imageUrl.first,
-                      price: item.price,
-                      rentRate: item.rentRate,
-                    ),
                   );
                 },
               ),
-            ),
           ],
         ),
       ),

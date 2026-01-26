@@ -70,6 +70,9 @@ class _ProductPageState extends State<ProductPage> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+print('landSizeMin: ${item.landSizeMin}');
+print('landSizeMax: ${item.landSizeMax}');
+print('maxCropHeight: ${item.maxCropHeight}');
 
     return Scaffold(
       appBar: AppBar(
@@ -171,27 +174,34 @@ class _ProductPageState extends State<ProductPage> {
                 runSpacing: 8,
                 children: [
                   if (item.landSizeRequirement)
-                    _requirementChip(item.landSizeMin != null &&
-                            item.landSizeMax != null
-                        ? 'Land size: ${item.landSizeMin}–${item.landSizeMax} sqm'
-                        : 'Land size requirement'),
+                    _requirementChip(
+                      (item.landSizeMin != null && item.landSizeMax != null)
+                          ? 'Land size requirement: ${item.landSizeMin} – ${item.landSizeMax} sqm'
+                          : 'Land size requirement',
+                    ),
                   if (item.maxCropHeightRequirement)
-                    _requirementChip(item.maxCropHeight != null
-                        ? 'Max crop height: ${item.maxCropHeight} cm'
-                        : 'Max crop height required'),
+                    _requirementChip(
+                      item.maxCropHeight != null
+                          ? 'Max crop height: ${item.maxCropHeight} cm'
+                          : 'Max crop height required',
+                    ),
 
-                  if(!item.landSizeRequirement && !item.maxCropHeightRequirement)
-                  _requirementChip('------')
-                  // if (item.operatorIncluded == true) _requirementChip('Operator included'),
-                  // if (item.fuelType != null) _requirementChip('Fuel: ${item.fuelType}'),
-                  // if (item.brand != null) _requirementChip('Brand: ${item.brand}'),
-                  // if (item.yearModel != null) _requirementChip('Year model: ${item.yearModel}'),
-                  // if (item.condition != null) _requirementChip('Condition: ${item.condition}'),
-                  // if (item.attachments != null) _requirementChip('Attachments: ${item.attachments}'),
-                  // if (item.power != null) _requirementChip('Power: ${item.power}'),
+                  // fallback if no requirements
+                  if (!item.landSizeRequirement && !item.maxCropHeightRequirement)
+                    _requirementChip('No specific requirements'),
                 ],
-              ),
+              )
             ),
+
+            CustomDivider(),
+            
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _ownerChip(item.ownerName),
+            ),
+
+
+            CustomDivider(),
 
             // REVIEWS (placeholder)
             Padding(
@@ -261,7 +271,7 @@ class _ProductPageState extends State<ProductPage> {
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 Text(
-                  '₱${item.price} ${_getRateSuffix(item.rentRate)}',
+                  '₱${item.price} ${_getRateSuffix(item.rentalUnit)}',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -294,4 +304,43 @@ class _ProductPageState extends State<ProductPage> {
       ),
     );
   }
+
+Widget _ownerChip(String? ownerName) {
+  final displayName = ownerName ?? 'Unknown Owner';
+  final initials = displayName.isNotEmpty
+      ? displayName.trim().split(' ').map((e) => e[0]).take(2).join()
+      : 'U';
+
+  return Row(
+    children: [
+      // Bigger circular avatar
+      CircleAvatar(
+        radius: 24, // bigger than before
+        backgroundColor: Colors.blueAccent,
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ),
+      const SizedBox(width: 12),
+      // Owner name
+      Expanded(
+        child: Text(
+          displayName,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
+}
+
+
 }

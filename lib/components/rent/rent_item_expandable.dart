@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 // import 'package:bukidbayan_app/models/rentModel.dart';
 import 'package:bukidbayan_app/mock_data/rent_items.dart';
 
-
 class RentItemExpandable extends StatelessWidget {
   final RentItem item;
   const RentItemExpandable({super.key, required this.item});
@@ -18,43 +17,49 @@ class RentItemExpandable extends StatelessWidget {
         tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            item.imageUrl.first,
-            width: 60,
-            height: 60,
-            fit: BoxFit.cover,
-          ),
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 60,
+          height: 60,
+          child: _buildImage(item.imageUrl.first),
         ),
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+      ),
+       title: Row(
+  crossAxisAlignment: CrossAxisAlignment.center,
+  children: [
+    // IMAGE + TITLE/CATEGORY STACKED
+    Row(
+      children: [
+        // TITLE + CATEGORY
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title + Category
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.category,
-                    style: const TextStyle(
-                        fontSize: 13, color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-            // Price aligned to the right
             Text(
-                  '₱${item.price} ${_getRateSuffix(item.rentRate)}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+              item.title,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.category,
+              style: const TextStyle(
+                  fontSize: 13, color: Colors.black54),
+            ),
           ],
         ),
+      ],
+    ),
+
+    const Spacer(), // push the price to the far right
+
+    // PRICE
+    Text(
+      '₱${item.price} ${_getRateSuffix(item.rentalUnit)}',
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    ),
+  ],
+),
+
         trailing: const Icon(Icons.expand_more),
         children: [
           const Divider(),
@@ -87,6 +92,49 @@ class RentItemExpandable extends StatelessWidget {
       ),
     );
   }
+
+  // Add this helper function inside RentItemExpandable
+Widget _buildImage(String imageUrl) {
+  bool isNetworkUrl(String url) => url.startsWith('http://') || url.startsWith('https://');
+  bool isAssetUrl(String url) => url.startsWith('assets/');
+
+  if (isNetworkUrl(imageUrl)) {
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return const Center(child: CircularProgressIndicator());
+      },
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: Colors.grey[300],
+        child: const Center(
+          child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+        ),
+      ),
+    );
+  } else if (isAssetUrl(imageUrl)) {
+    return Image.asset(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: Colors.grey[300],
+        child: const Center(
+          child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+        ),
+      ),
+    );
+  } else {
+    // fallback
+    return Container(
+      color: Colors.grey[300],
+      child: const Center(
+        child: Icon(Icons.agriculture, size: 40, color: Colors.grey),
+      ),
+    );
+  }
+}
+
   String _getRateSuffix(String rentRate) {
     switch (rentRate.toLowerCase()) {
       case 'per hour':
@@ -102,4 +150,3 @@ class RentItemExpandable extends StatelessWidget {
     }
   }
 }
-
