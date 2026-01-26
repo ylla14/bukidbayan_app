@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/theme/theme.dart';
+import 'package:bukidbayan_app/widgets/custom_dropdown_form_field.dart';
 import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:flutter/material.dart';
@@ -12,8 +13,20 @@ import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
 
+// import 'package:bukidbayan_app/models/rentModel.dart';
+import 'package:bukidbayan_app/services/rent_service.dart';
+
+
 const List<String> rentalUnit = <String>['Per Hour', 'Per Day', 'Per Week', 'Per Month'];
 const List<String> condition = <String>['Brand New', 'Excellent', 'Good', 'Fair', 'Needs Maintenance'];
+
+// Options for dropdowns
+final List<String> brandOptions = ['Mitsubishi', 'Kubota', 'John Deere', 'Honda', 'Stihl'];
+final List<String> yearOptions = List.generate(20, (i) => (DateTime.now().year - i).toString());
+final List<String> powerOptions = ['10 HP', '20 HP', '34 HP', '50 HP', '75 HP'];
+final List<String> fuelOptions = ['Diesel', 'Gasoline', 'Electric', 'Hybrid'];
+
+
 
 class EquipmentListingScreen extends StatefulWidget {
   const EquipmentListingScreen({super.key});
@@ -30,16 +43,23 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   final _equipmentPriceController = TextEditingController();
   final _equipmentBrandController = TextEditingController();
   final _landSizeController = TextEditingController();
-  final _cropHeightController = TextEditingController();
   final _yearController = TextEditingController();
   final _powerController = TextEditingController();
   final _fuelController = TextEditingController();
   final _attachmentsController = TextEditingController();
   final _defectsController = TextEditingController();
+  final _landSizeMinController = TextEditingController();
+  final _landSizeMaxController = TextEditingController();
+  final _maxCropHeightController = TextEditingController();
+
+  String? selectedBrand;
+  String? selectedYear;
+  String? selectedPower;
+  String? selectedFuel;
 
   bool? operatorIncluded;
-  bool? landSizeRequired;
-  bool? cropHeightRequired;
+  bool? landSizeRequirement;
+  bool? maxCropHeightRequirement;
 
   bool showLandSizeError = false;
   bool showCropHeightError = false;
@@ -55,14 +75,36 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
     .toSet()
     .toList();
 
+//   List<String> uniqueCategories = [];
+
+// @override
+// void initState() {
+//   super.initState();
+//   _loadCategories();
+// }
+
+// Future<void> _loadCategories() async {
+//   await _rentService.seedRentItems();
+//   final allItems = await _rentService.getAllItems();
+//   setState(() {
+//     uniqueCategories = allItems
+//         .map((item) => item.category)
+//         .toSet()
+//         .toList();
+//   });
+// }
+
   String? selectedCategory;
   String? selectedRentalUnit;
   String? selectedCondition;
+  
 
   final ImagePicker _picker = ImagePicker();
   // Max 10 images (null = empty slot)
   final List<XFile?> images = List.generate(10, (_) => null);
   bool _isPickingImage = false;
+
+  // final RentService _rentService = RentService();
 
   @override
   Widget build(BuildContext context) {
@@ -267,72 +309,86 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       ),
                       const SizedBox(height: 10),
         
-                      //BRAND & YEAR
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Brand / Model', style: TextStyle(fontSize: 12)),
-                                SizedBox(height: 6),
-                                CustomTextFormField(
-                                  hint: 'e.g. Mitsubishi????', controller: _equipmentBrandController,
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Year Model', style: TextStyle(fontSize: 12)),
-                                SizedBox(height: 6),
-                                CustomTextFormField(
-                                  hint: 'e.g. 2021',
-                                  keyboardType: TextInputType.number, controller: _yearController
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 12),
-                      
-                      //POWER & FUEL TYPE
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Power / Capacity', style: TextStyle(fontSize: 12)),
-                                SizedBox(height: 6),
-                                CustomTextFormField(
-                                  hint: 'e.g. 34 HP / 1.5 tons', controller: _powerController
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Fuel Type', style: TextStyle(fontSize: 12)),
-                                SizedBox(height: 6),
-                                CustomTextFormField(
-                                  hint: 'e.g. Diesel', controller: _fuelController
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 12),
+                     // BRAND & YEAR
+Row(
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Brand / Model', style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 6),
+          CustomDropdownFormField(
+            value: selectedBrand,
+            options: brandOptions,
+            hint: 'Select Brand',
+            onChanged: (value) => setState(() => selectedBrand = value),
+            // validator: (value) => value == null ? 'Required' : null,
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Year Model', style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 6),
+          CustomDropdownFormField(
+            value: selectedYear,
+            options: yearOptions,
+            hint: 'Select Year',
+            onChanged: (value) => setState(() => selectedYear = value),
+            // validator: (value) => value == null ? 'Required' : null,
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 12),
+
+// POWER & FUEL
+Row(
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Power / Capacity', style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 6),
+          CustomDropdownFormField(
+            value: selectedPower,
+            options: powerOptions,
+            hint: 'Select Power',
+            onChanged: (value) => setState(() => selectedPower = value),
+            // validator: (value) => value == null ? 'Required' : null,
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Fuel Type', style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 6),
+          CustomDropdownFormField(
+            value: selectedFuel,
+            options: fuelOptions,
+            hint: 'Select Fuel Type',
+            onChanged: (value) => setState(() => selectedFuel = value),
+            // validator: (value) => value == null ? 'Required' : null,
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+
                       
                       /// CONDI 
                       Column(
@@ -509,15 +565,22 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         
         
                       /// LAND REQS
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Land Size Requirement',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+
+                      const SizedBox(height: 8),
                       ToggleButtons(
                         isSelected: [
-                          landSizeRequired == true,
-                          landSizeRequired == false,
+                          landSizeRequirement == true,
+                          landSizeRequirement == false,
                         ],
                         onPressed: (index) {
                           setState(() {
-                      landSizeRequired = index == 0;
-                      showLandSizeError = false;
+                            landSizeRequirement = index == 0;
+                            showLandSizeError = false;
                           });
                         },
                         borderRadius: BorderRadius.circular(20),
@@ -534,37 +597,63 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                           Text('No'),
                         ],
                       ),
-                      
+
                       /// ERROR TEXT (only shows if not selected)
                       if (showLandSizeError)
                         const Padding(
                           padding: EdgeInsets.only(top: 4),
                           child: Text(
-                      'Required',
-                      style: TextStyle(color: Colors.red, fontSize: 12),
+                            'Required',
+                            style: TextStyle(color: Colors.red, fontSize: 12),
                           ),
                         ),
-        
-        
-                      if (landSizeRequired == true) ...[
+
+                      if (landSizeRequirement == true) ...[
                         const SizedBox(height: 6),
                         const Text(
-                          'Ilagay ang minimum na lawak ng lupa:',
+                          'Specify the land size range:',
                           style: TextStyle(fontSize: 12),
                         ),
                         const SizedBox(height: 4),
-                        CustomTextFormField(
-                          controller: _landSizeController,
-                          hint: 'e.g. Minimum 1 hectare',
-                          validator: (value) {
-                      if (landSizeRequired == true &&
-                          (value == null || value.isEmpty)) {
-                        return 'Required';
-                      }
-                      return null;
-                          },
+
+                        /// Row for Min - Max
+                        Row(
+                          children: [
+                            /// Minimum Size Field
+                            Expanded(
+                              child: CustomTextFormField(
+                                controller: _landSizeMinController,
+                                keyboardType: TextInputType.number,
+                                hint: 'Min (e.g. 1 ha)',
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            /// Maximum Size Field
+                            Expanded(
+                              child: CustomTextFormField(
+                                controller: _landSizeMaxController,
+                                keyboardType: TextInputType.number,
+                                hint: 'Max (e.g. 5 ha)',
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ],
+
+
                       
         
                       /// GRASS / CROP HEIGHT
@@ -577,12 +666,12 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         
                       ToggleButtons(
                         isSelected: [
-                          cropHeightRequired == true,
-                          cropHeightRequired == false,
+                          maxCropHeightRequirement == true,
+                          maxCropHeightRequirement == false,
                         ],
                         onPressed: (index) {
                           setState(() {
-                            cropHeightRequired = index == 0;
+                            maxCropHeightRequirement = index == 0;
                             showCropHeightError = false;
                           });
                         },
@@ -611,7 +700,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                           ),
                         ),
         
-                      if (cropHeightRequired == true) ...[
+                      if (maxCropHeightRequirement == true) ...[
                         const SizedBox(height: 6),
                         Text(
                           'Ilagay ang pinapayagang taas ng damo o pananim:',
@@ -621,9 +710,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                         CustomTextFormField(
                           hint: 'e.g. Hanggang 30 cm lamang',
                           maxLines: 1,
-                          controller: _cropHeightController,
+                          controller: _maxCropHeightController,
                           validator: (value) {
-                            if (cropHeightRequired == true &&
+                            if (maxCropHeightRequirement == true &&
                                 (value == null || value.isEmpty)) {
                               return 'Required';
                             }
@@ -930,15 +1019,15 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
     bool hasImage = images.any((img) => img != null);
 
     setState(() {
-      showLandSizeError = landSizeRequired == null;
-      showCropHeightError = cropHeightRequired == null;
+      showLandSizeError = landSizeRequirement == null;
+      showCropHeightError = maxCropHeightRequirement == null;
       showImageError = !hasImage;
       showAvailabilityError = availableFrom == null || availableUntil == null;
     });
 
     if (!isFormValid ||
-        landSizeRequired == null ||
-        cropHeightRequired == null ||
+        landSizeRequirement == null ||
+        maxCropHeightRequirement == null ||
         !hasImage ||
         availableFrom == null ||
         availableUntil == null) {
@@ -969,15 +1058,33 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
           ? '${userData!['firstName']} ${userData['lastName']}'
           : currentUser.email?.split('@')[0] ?? 'Unknown';
 
-      // Build requirements list
       final List<String> requirementsList = [];
-      if (landSizeRequired == true && _landSizeController.text.isNotEmpty) {
-        requirementsList.add('Land Size: ${_landSizeController.text}');
-      }
-      if (cropHeightRequired == true && _cropHeightController.text.isNotEmpty) {
-        requirementsList.add('Max Crop Height: ${_cropHeightController.text}');
-      }
 
+    print('MIN: ${_landSizeMinController.text}');
+    print('MAX: ${_landSizeMaxController.text}');
+    print('CROP: ${_maxCropHeightController.text}');
+
+    if (landSizeRequirement == true) {
+      requirementsList.add(
+        _landSizeMinController.text.isNotEmpty &&
+        _landSizeMaxController.text.isNotEmpty
+            ? '${_landSizeMinController.text} – ${_landSizeMaxController.text}'
+            : 'Land size requirement',
+      );
+    }
+
+    if (maxCropHeightRequirement == true) {
+      requirementsList.add(
+        _maxCropHeightController.text.isNotEmpty
+            ? '${_maxCropHeightController.text}'
+            : 'Max crop height required',
+      );
+    }
+
+
+    if (requirementsList.isEmpty) {
+      requirementsList.add('No specific requirements');
+    }
       // Upload images to Cloudinary
       final cloudinaryService = CloudinaryService();
       final selectedImages = images.where((img) => img != null).map((img) => img!).toList();
@@ -1006,15 +1113,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         name: _equipmentNameController.text.trim(),
         description: _equipmentDescriptionController.text.trim(),
         category: selectedCategory,
-        brand: _equipmentBrandController.text.trim().isEmpty
-            ? null
-            : _equipmentBrandController.text.trim(),
-        yearModel: _yearController.text.trim().isEmpty
-            ? null
-            : _yearController.text.trim(),
-        power: _powerController.text.trim().isEmpty
-            ? 'N/A'
-            : _powerController.text.trim(),
+        brand: selectedBrand, // ✅ use dropdown value
+        yearModel: selectedYear, // ✅ use dropdown value
+        power: selectedPower ?? 'N/A', // ✅ use dropdown value
         condition: selectedCondition ?? 'Good',
         attachments: _attachmentsController.text.trim().isEmpty
             ? null
@@ -1029,13 +1130,21 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         ownerId: currentUser.uid,
         ownerName: ownerName,
         imageUrls: imageUrls,
-        fuelType: _fuelController.text.trim().isEmpty
-            ? null
-            : _fuelController.text.trim(),
+        fuelType: selectedFuel,
         defects: selectedCondition == 'Needs Maintenance'
             ? _defectsController.text.trim()
             : null,
-        isAvailable: true,
+        isAvailable: true, 
+        landSizeRequirement: landSizeRequirement ?? false,
+        maxCropHeightRequirement: maxCropHeightRequirement ?? false,
+        landSizeMin:  _landSizeMinController.text,
+        landSizeMax:  _landSizeMaxController.text,
+        maxCropHeight: _maxCropHeightController.text.trim().isEmpty
+            ? null
+            : _maxCropHeightController.text.trim(),
+
+        
+
       );
 
       // Save to Firestore
@@ -1071,6 +1180,133 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       }
     }
   }
+
+//   void _onSavePressed() async {
+//   final isFormValid = _formKey.currentState!.validate();
+
+//   bool hasImage = images.any((img) => img != null);
+
+//   setState(() {
+//     showLandSizeError = landSizeRequired == null;
+//     showCropHeightError = cropHeightRequired == null;
+//     showImageError = !hasImage;
+//     showAvailabilityError = availableFrom == null || availableUntil == null;
+//   });
+
+//   if (!isFormValid ||
+//       landSizeRequired == null ||
+//       cropHeightRequired == null ||
+//       !hasImage ||
+//       availableFrom == null ||
+//       availableUntil == null) {
+//     // Show error message
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: const Text('Please fill in all required fields'),
+//         backgroundColor: Colors.red,
+//         behavior: SnackBarBehavior.floating,
+//       ),
+//     );
+//     return;
+//   }
+
+//   try {
+//     // Generate unique ID (in real app, this would come from database)
+//     final String newId = DateTime.now().millisecondsSinceEpoch.toString();
+
+//     // Collect image paths (convert XFile to asset-style paths or file paths)
+//     final List<String> imageUrls = images
+//         .where((img) => img != null)
+//         .map((img) => img!.path)
+//         .toList();
+
+//     // Format dates
+//     final String formattedFrom = "${availableFrom!.month.toString().padLeft(2, '0')}/${availableFrom!.day.toString().padLeft(2, '0')}/${availableFrom!.year}";
+//     final String formattedTo = "${availableUntil!.month.toString().padLeft(2, '0')}/${availableUntil!.day.toString().padLeft(2, '0')}/${availableUntil!.year}";
+
+//     // Parse land size values if applicable
+//     int? minLandSize;
+//     int? maxLandSize;
+//     if (landSizeRequired == true) {
+//       minLandSize = int.tryParse(_minLandSizeController.text.replaceAll(RegExp(r'[^0-9]'), ''));
+//       maxLandSize = int.tryParse(_maxLandSizeController.text.replaceAll(RegExp(r'[^0-9]'), ''));
+//     }
+
+//     // Parse crop height if applicable
+//     double? maxCropHeightValue;
+//     if (cropHeightRequired == true) {
+//       maxCropHeightValue = double.tryParse(_cropHeightController.text.replaceAll(RegExp(r'[^0-9]'), ''));
+//     }
+
+//     // Create new RentItem
+//     final RentItem newItem = RentItem(
+//       id: newId,
+//       title: _equipmentNameController.text.trim(),
+//       imageUrls: imageUrls,
+//       category: selectedCategory!,
+//       price: _equipmentPriceController.text.trim(),
+//       rentRate: selectedRentalUnit!.toLowerCase().replaceAll('per ', ''),
+//       availableFrom: formattedFrom,
+//       availableTo: formattedTo,
+//       brand: _equipmentBrandController.text.trim().isNotEmpty 
+//           ? _equipmentBrandController.text.trim() 
+//           : null,
+//       yearModel: _yearController.text.trim().isNotEmpty 
+//           ? _yearController.text.trim() 
+//           : null,
+//       power: _powerController.text.trim().isNotEmpty 
+//           ? _powerController.text.trim() 
+//           : null,
+//       fuelType: _fuelController.text.trim().isNotEmpty 
+//           ? _fuelController.text.trim() 
+//           : null,
+//       condition: selectedCondition,
+//       defects: selectedCondition == 'Needs Maintenance' && _defectsController.text.trim().isNotEmpty
+//           ? _defectsController.text.trim()
+//           : null,
+//       attachments: _attachmentsController.text.trim().isNotEmpty 
+//           ? _attachmentsController.text.trim() 
+//           : null,
+//       operatorIncluded: operatorIncluded,
+//       landSizeRequirement: landSizeRequired ?? false,
+//       landSizeMin: minLandSize,
+//       landSizeMax: maxLandSize,
+//       maxCropHeightRequirement: cropHeightRequired ?? false,
+//       maxCropHeight: maxCropHeightValue,
+//       description: _equipmentDescriptionController.text.trim(),
+//     );
+
+//     // Save to service
+//     await _rentService.addRentItem(newItem);
+
+//     // Show success message
+//     if (mounted) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: const Text('Equipment listing created successfully!'),
+//           backgroundColor: Colors.green,
+//           behavior: SnackBarBehavior.floating,
+//         ),
+//       );
+
+//       // Navigate back to previous screen
+//       Navigator.pop(context);
+//     }
+
+//   } catch (e) {
+//     // Show error message
+//     if (mounted) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('Error saving equipment: $e'),
+//           backgroundColor: Colors.red,
+//           behavior: SnackBarBehavior.floating,
+//         ),
+//       );
+//     }
+//     debugPrint('Error saving equipment: $e');
+//   }
+// }
 
 
 }

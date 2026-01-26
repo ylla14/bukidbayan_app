@@ -1,4 +1,4 @@
-import 'package:bukidbayan_app/screens/crowdfunding/cfdashboard_screen.dart';
+import 'package:bukidbayan_app/screens/crowdfunding_screen.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
@@ -18,7 +18,7 @@ class _BottomNavState extends State<BottomNav> {
   final List<Widget> screens = [
     HomeScreen(),    
     RentScreen(),
-    CfDashboardScreen(),
+    CrowdfundingScreen(),
     ProfileScreen(),  
   ];
 

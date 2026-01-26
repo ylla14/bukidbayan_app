@@ -2,40 +2,54 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Equipment {
   final String? id; // Firestore document ID
-  final String name; // REQUIRED
-  final String description; // REQUIRED
-  final String? category; // e.g., Hand Tool, Tractor, Machine
+
+  // REQUIRED BASIC INFO
+  final String name;
+  final String description;
+
+  // CLASSIFICATION
+  final String? category;
   final String? brand;
   final String? yearModel;
-  final String power; // REQUIRED - e.g., "75 HP" or "Manual"
-  final String condition; // REQUIRED - Brand New, Excellent, Good, Fair, Needs Maintenance
-  final String? attachments; // e.g., "Plow, Harrow"
-  final bool operatorIncluded; // Operator inclusion status
-  final DateTime? availableFrom; // Availability date range
+
+  // TECHNICAL DETAILS
+  final String? power;
+  final String condition;
+  final String? attachments;
+  final String? fuelType;
+  final String? defects;
+
+  // RENTAL DETAILS
+  final double price;
+  final String rentalUnit; // Per Hour, Per Day, etc.
+  final String rentRate; // NEW (e.g., "Fixed", "Negotiable")
+
+  // REQUIREMENTS
+  final List<String> requirements;
+  final bool landSizeRequirement; // NEW (hectares, sqm, etc.)
+  final bool maxCropHeightRequirement; // NEW (cm or meters)
+  final String? landSizeMin; // optional
+  final String? landSizeMax; // optional
+  final String? maxCropHeight; // optional
+
+  // OPERATOR & AVAILABILITY
+  final bool operatorIncluded;
+  final bool isAvailable;
+  final DateTime? availableFrom;
   final DateTime? availableUntil;
-  final List<String> requirements; // Usage requirements (land size, crop height, etc.)
-  final List<String> reviews; // Array of review IDs or review content
 
-  // Pricing information
-  final double price; // Rental price
-  final String rentalUnit; // Per Hour, Per Day, Per Week, Per Month
-
-  // Owner and location information
-  final String ownerId; // User ID of the equipment owner
+  // OWNER & LOCATION
+  final String ownerId;
   final String? ownerName;
-  final String? location; // For location proximity filtering
+  final String? location;
   final double? latitude;
   final double? longitude;
 
-  // Image URLs (using external URLs since no Firebase Storage on free plan)
+  // MEDIA & REVIEWS
   final List<String> imageUrls;
+  final List<String> reviews;
 
-  // Additional fields
-  final String? fuelType;
-  final String? defects; // For equipment that needs maintenance
-  final bool isAvailable; // Quick availability check
-
-  // Timestamps
+  // TIMESTAMPS
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -46,30 +60,36 @@ class Equipment {
     this.category,
     this.brand,
     this.yearModel,
-    required this.power,
+    this.power,
     required this.condition,
     this.attachments,
-    this.operatorIncluded = false,
-    this.availableFrom,
-    this.availableUntil,
-    this.requirements = const [],
-    this.reviews = const [],
+    this.fuelType,
+    this.defects,
     required this.price,
     required this.rentalUnit,
+    this.rentRate = '',
+    this.requirements = const [],
+    required this.landSizeRequirement,
+    required this.maxCropHeightRequirement,
+    this.landSizeMin,
+    this.landSizeMax,
+    this.maxCropHeight,
+    this.operatorIncluded = false,
+    this.isAvailable = true,
+    this.availableFrom,
+    this.availableUntil,
     required this.ownerId,
     this.ownerName,
     this.location,
     this.latitude,
     this.longitude,
     this.imageUrls = const [],
-    this.fuelType,
-    this.defects,
-    this.isAvailable = true,
+    this.reviews = const [],
     this.createdAt,
     this.updatedAt,
   });
 
-  // Convert Equipment to Map for Firestore
+  // TO FIRESTORE
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -80,28 +100,40 @@ class Equipment {
       'power': power,
       'condition': condition,
       'attachments': attachments,
-      'operatorIncluded': operatorIncluded,
-      'availableFrom': availableFrom != null ? Timestamp.fromDate(availableFrom!) : null,
-      'availableUntil': availableUntil != null ? Timestamp.fromDate(availableUntil!) : null,
-      'requirements': requirements,
-      'reviews': reviews,
+      'fuelType': fuelType,
+      'defects': defects,
       'price': price,
       'rentalUnit': rentalUnit,
+      'rentRate': rentRate,
+      'requirements': requirements,
+      'landSizeRequirement': landSizeRequirement,
+      'maxCropHeightRequirement': maxCropHeightRequirement,
+      'landSizeMin': landSizeMin,
+      'landSizeMax': landSizeMax,
+      'maxCropHeight': maxCropHeight,
+      'operatorIncluded': operatorIncluded,
+      'isAvailable': isAvailable,
+      'availableFrom':
+          availableFrom != null ? Timestamp.fromDate(availableFrom!) : null,
+      'availableUntil':
+          availableUntil != null ? Timestamp.fromDate(availableUntil!) : null,
       'ownerId': ownerId,
       'ownerName': ownerName,
       'location': location,
       'latitude': latitude,
       'longitude': longitude,
       'imageUrls': imageUrls,
-      'fuelType': fuelType,
-      'defects': defects,
-      'isAvailable': isAvailable,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : FieldValue.serverTimestamp(),
+      'reviews': reviews,
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
+      'updatedAt': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
     };
   }
 
-  // Create Equipment from Firestore DocumentSnapshot
+  // FROM FIRESTORE
   factory Equipment.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
@@ -110,26 +142,57 @@ class Equipment {
       name: data['name'] ?? '',
       description: data['description'] ?? '',
       category: data['category'],
-      brand: data['brand'],
-      yearModel: data['yearModel'],
-      power: data['power'] ?? '',
+      // brand: data['brand'],
+      // yearModel: data['yearModel'],
+      // power: data['power'] ?? '',
+      power: (data['power'] as String?)?.isNotEmpty == true
+        ? data['power']
+        : null,
+      brand: (data['brand'] as String?)?.isNotEmpty == true
+          ? data['brand']
+          : null,
+      fuelType: (data['fuelType'] as String?)?.isNotEmpty == true
+          ? data['fuelType']
+          : null,
+      yearModel: (data['yearModel'] as String?)?.isNotEmpty == true
+          ? data['brand']
+          : null,
       condition: data['condition'] ?? '',
       attachments: data['attachments'],
+      // fuelType: data['fuelType'],
+      defects: data['defects'],
+      price: (data['price'] ?? 0).toDouble(),
+      rentalUnit: data['rentalUnit'] ?? 'Per Day',
+      rentRate: data['rentRate'] ?? '',
+      requirements: data['requirements'] != null
+          ? List<String>.from(data['requirements'])
+          : [],
+      landSizeRequirement: data['landSizeRequirement'] is bool
+          ? data['landSizeRequirement']
+          : data['landSizeRequirement'] == 'true',
+      maxCropHeightRequirement: data['maxCropHeightRequirement'] is bool
+          ? data['maxCropHeightRequirement']
+          : data['maxCropHeightRequirement'] == 'true',
+
+     landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true
+          ? data['landSizeMin']
+          : null,
+      landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true
+          ? data['landSizeMax']
+          : null,
+      maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true
+          ? data['maxCropHeight']
+          : null,
+
+
       operatorIncluded: data['operatorIncluded'] ?? false,
+      isAvailable: data['isAvailable'] ?? true,
       availableFrom: data['availableFrom'] != null
           ? (data['availableFrom'] as Timestamp).toDate()
           : null,
       availableUntil: data['availableUntil'] != null
           ? (data['availableUntil'] as Timestamp).toDate()
           : null,
-      requirements: data['requirements'] != null
-          ? List<String>.from(data['requirements'])
-          : [],
-      reviews: data['reviews'] != null
-          ? List<String>.from(data['reviews'])
-          : [],
-      price: (data['price'] ?? 0).toDouble(),
-      rentalUnit: data['rentalUnit'] ?? 'Per Day',
       ownerId: data['ownerId'] ?? '',
       ownerName: data['ownerName'],
       location: data['location'],
@@ -138,9 +201,9 @@ class Equipment {
       imageUrls: data['imageUrls'] != null
           ? List<String>.from(data['imageUrls'])
           : [],
-      fuelType: data['fuelType'],
-      defects: data['defects'],
-      isAvailable: data['isAvailable'] ?? true,
+      reviews: data['reviews'] != null
+          ? List<String>.from(data['reviews'])
+          : [],
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
@@ -150,9 +213,8 @@ class Equipment {
     );
   }
 
-  // Create a copy of Equipment with updated fields
+  // COPY WITH
   Equipment copyWith({
-    String? id,
     String? name,
     String? description,
     String? category,
@@ -161,27 +223,33 @@ class Equipment {
     String? power,
     String? condition,
     String? attachments,
-    bool? operatorIncluded,
-    DateTime? availableFrom,
-    DateTime? availableUntil,
-    List<String>? requirements,
-    List<String>? reviews,
+    String? fuelType,
+    String? defects,
     double? price,
     String? rentalUnit,
+    String? rentRate,
+    List<String>? requirements,
+    bool? landSizeRequirement,
+    bool? maxCropHeightRequirement,
+    bool? operatorIncluded,
+    final String? landSizeMin, // optional
+    final String? landSizeMax, // optional
+    final String? maxCropHeight, // optional
+    bool? isAvailable,
+    DateTime? availableFrom,
+    DateTime? availableUntil,
     String? ownerId,
     String? ownerName,
     String? location,
     double? latitude,
     double? longitude,
     List<String>? imageUrls,
-    String? fuelType,
-    String? defects,
-    bool? isAvailable,
+    List<String>? reviews,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return Equipment(
-      id: id ?? this.id,
+      id: id,
       name: name ?? this.name,
       description: description ?? this.description,
       category: category ?? this.category,
@@ -190,22 +258,29 @@ class Equipment {
       power: power ?? this.power,
       condition: condition ?? this.condition,
       attachments: attachments ?? this.attachments,
-      operatorIncluded: operatorIncluded ?? this.operatorIncluded,
-      availableFrom: availableFrom ?? this.availableFrom,
-      availableUntil: availableUntil ?? this.availableUntil,
-      requirements: requirements ?? this.requirements,
-      reviews: reviews ?? this.reviews,
+      fuelType: fuelType ?? this.fuelType,
+      defects: defects ?? this.defects,
       price: price ?? this.price,
       rentalUnit: rentalUnit ?? this.rentalUnit,
+      rentRate: rentRate ?? this.rentRate,
+      requirements: requirements ?? this.requirements,
+      landSizeRequirement: landSizeRequirement ?? this.landSizeRequirement,
+      maxCropHeightRequirement: maxCropHeightRequirement ?? this.maxCropHeightRequirement,
+      operatorIncluded:
+          operatorIncluded ?? this.operatorIncluded,
+      landSizeMin: landSizeMin ?? this.landSizeMin,
+      landSizeMax: landSizeMax ?? this.landSizeMax,
+      maxCropHeight: maxCropHeight ?? this.maxCropHeight,   
+      isAvailable: isAvailable ?? this.isAvailable,
+      availableFrom: availableFrom ?? this.availableFrom,
+      availableUntil: availableUntil ?? this.availableUntil,
       ownerId: ownerId ?? this.ownerId,
       ownerName: ownerName ?? this.ownerName,
       location: location ?? this.location,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       imageUrls: imageUrls ?? this.imageUrls,
-      fuelType: fuelType ?? this.fuelType,
-      defects: defects ?? this.defects,
-      isAvailable: isAvailable ?? this.isAvailable,
+      reviews: reviews ?? this.reviews,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
