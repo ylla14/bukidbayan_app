@@ -11,8 +11,8 @@ class RentItem {
   final String? rentRate;
 
   // Availability
-  final String? availableFrom;
-  final String? availableTo;
+  final DateTime? availableFrom;
+  final DateTime? availableTo;
 
   // Optional technical specifications
   final String? brand;
@@ -98,16 +98,17 @@ final List<RentItem> items = [
     ],
     category: "Hand Tool",
     price: "105",
-    rentalUnit: "per day", // new
-    availableFrom: "Jan 20, 2026",
-    availableTo: "Feb 10, 2026",
+    rentalUnit: "per day",
+    availableFrom: DateTime(2026, 1, 20),
+    availableTo: DateTime(2026, 2, 10),
     brand: "Makita",
     condition: "Good",
     landSizeRequirement: false,
     maxCropHeightRequirement: false,
-    description: "A reliable hand tool suitable for small farming and gardening tasks.",
-
+    description:
+        "A reliable hand tool suitable for small farming and gardening tasks.",
   ),
+
   RentItem(
     id: "2",
     title: "Item 2",
@@ -118,21 +119,22 @@ final List<RentItem> items = [
     category: "Tractor",
     price: "200",
     rentalUnit: "per day",
-    availableFrom: "Jan 25, 2026",
-    availableTo: "Mar 01, 2026",
+    availableFrom: DateTime(2026, 1, 25),
+    availableTo: DateTime(2026, 3, 1),
     brand: "John Deere",
     yearModel: "2019",
     power: "75 HP",
     fuelType: "Diesel",
     operatorIncluded: true,
     landSizeRequirement: true,
-    landSizeMin: "500", // optional min size
-    landSizeMax: "1000", // optional max size
+    landSizeMin: "500",
+    landSizeMax: "1000",
     maxCropHeightRequirement: true,
-    maxCropHeight: "120", // optional height in cm
-    description: "Powerful tractor ideal for medium to large farms, comes with operator.",
-
+    maxCropHeight: "120",
+    description:
+        "Powerful tractor ideal for medium to large farms, comes with operator.",
   ),
+
   RentItem(
     id: "3",
     title: "Item 3",
@@ -144,15 +146,16 @@ final List<RentItem> items = [
     category: "Machine",
     price: "50",
     rentalUnit: "per day",
-    availableFrom: "Feb 01, 2026",
-    availableTo: "Feb 15, 2026",
+    availableFrom: DateTime(2026, 2, 1),
+    availableTo: DateTime(2026, 2, 15),
     condition: "Used",
     landSizeRequirement: false,
     maxCropHeightRequirement: true,
     maxCropHeight: "80",
-    description: "Compact machine suitable for small-scale farming and light soil work.",
-
+    description:
+        "Compact machine suitable for small-scale farming and light soil work.",
   ),
+
   RentItem(
     id: "4",
     title: "Item 4",
@@ -164,17 +167,18 @@ final List<RentItem> items = [
     category: "Machine",
     price: "90",
     rentalUnit: "per day",
-    availableFrom: "Jan 18, 2026",
-    availableTo: "Apr 30, 2026",
+    availableFrom: DateTime(2026, 1, 18),
+    availableTo: DateTime(2026, 4, 30),
     brand: "Caterpillar",
     yearModel: "2020",
     fuelType: "Diesel",
     attachments: "Bucket, Blade",
     landSizeRequirement: true,
     maxCropHeightRequirement: false,
-    description: "Versatile heavy machine for large-scale earthmoving and excavation projects.",
-
+    description:
+        "Versatile heavy machine for large-scale earthmoving and excavation projects.",
   ),
+
   RentItem(
     id: "5",
     title: "Item 5",
@@ -185,13 +189,13 @@ final List<RentItem> items = [
     category: "Machine",
     price: "300",
     rentalUnit: "per day",
-    availableFrom: "Mar 01, 2026",
-    availableTo: "Mar 20, 2026",
+    availableFrom: DateTime(2026, 3, 1),
+    availableTo: DateTime(2026, 3, 20),
     power: "150 HP",
     operatorIncluded: false,
     landSizeRequirement: false,
     maxCropHeightRequirement: false,
-    description: "High-powered machine for heavy-duty farming tasks. Operator not included.",
-
+    description:
+        "High-powered machine for heavy-duty farming tasks. Operator not included.",
   ),
 ];

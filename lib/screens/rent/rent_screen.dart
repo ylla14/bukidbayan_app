@@ -3,13 +3,13 @@ import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
+import 'package:bukidbayan_app/widgets/custom_icon_button.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 
 // 🔹 NEW
 // import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/services/rent_service.dart';
 import 'package:bukidbayan_app/mock_data/rent_items.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
@@ -215,58 +215,40 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
         child: Column(
           children: [
             /// CREATE & MY EQUIPMENT
-            Padding(
-              padding: const EdgeInsets.fromLTRB(13, 5, 13, 5),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.green.shade100,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)
+            Row(
+              children: [
+                Expanded(
+                  child: CustomIconButton(
+                    icon: const Icon(Icons.add_box_rounded),
+                    label: const Text('Create'),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const EquipmentListingScreen(),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      icon: const Icon(Icons.add_box_rounded),
-                      label: const Text('Create'),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const EquipmentListingScreen(),
-                          ),
-                        );
-                      },
-                    ),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.green.shade100,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CustomIconButton(
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    label: const Text('My Equipment'),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyEquipment(),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      icon: const Icon(Icons.shopping_cart_outlined),
-                      label: const Text('My Equipment'),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const MyEquipment(),
-                          ),
-                        );
-                      },
-                    ),
+                      );
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+
 
             const SizedBox(height: 10),
 
@@ -310,6 +292,7 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
               //   ),
 
             // CAROUSEL
+            if (searchQuery.isEmpty && activeCategory == null)
             StreamBuilder<QuerySnapshot>(
               stream: _firestoreService.getAvailableEquipment(),
               builder: (context, snapshot) {
@@ -708,68 +691,75 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                   }
 
                   return GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: filteredEquipment.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 0.8,
-                    ),
-                    itemBuilder: (context, index) {
-                      final equipment = filteredEquipment[index];
+  physics: const NeverScrollableScrollPhysics(),
+  shrinkWrap: true,
+  itemCount: filteredEquipment.length,
+  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 2,
+    crossAxisSpacing: 8,
+    mainAxisSpacing: 8,
+    childAspectRatio: 0.8,
+  ),
+  itemBuilder: (context, index) {
+    final equipment = filteredEquipment[index];
 
-                      // Create a temporary RentItem for compatibility with existing ProductPage
-                      final tempItem = RentItem(
-                        title: equipment.name,
-                        imageUrl: equipment.imageUrls.isNotEmpty
-                            ? equipment.imageUrls
-                            : ['assets/images/rent1.jpg'], // Fallback image
-                        category: equipment.category ?? 'Other',
-                        price: equipment.price.toString(),
-                        availableFrom: equipment.availableFrom?.toString().split(' ')[0],
-                        availableTo: equipment.availableUntil?.toString().split(' ')[0],
-                        brand: equipment.brand,
-                        yearModel: equipment.yearModel,
-                        power: equipment.power,
-                        fuelType: equipment.fuelType,
-                        condition: equipment.condition,
-                        attachments: equipment.attachments,
-                        operatorIncluded: equipment.operatorIncluded, 
-                        rentRate: equipment.rentRate ?? 'Unknown Rent Rate', 
-                        landSizeRequirement: equipment.landSizeRequirement, 
-                        maxCropHeightRequirement: equipment.maxCropHeightRequirement, 
-                        id: '', 
-                        description: equipment.description,
-                        landSizeMax: equipment.landSizeMax,
-                        landSizeMin: equipment.landSizeMin,
-                        maxCropHeight: equipment.maxCropHeight,
-                        ownerName: equipment.ownerName ?? 'Unknown Owner',
-                        rentalUnit: equipment.rentalUnit // <-- safe fallback                        
-                      );
+    return FutureBuilder<String?>(
+      future: _firestoreService.getUserNameById(equipment.ownerId),
+      builder: (context, snapshot) {
+        final ownerName = snapshot.data ?? 'Unknown Owner';
 
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProductPage(item: tempItem),
-                            ),
-                          );
-                        },
-                        child: RentItemCard(
-                          title: equipment.name,
-                          imageUrl: equipment.imageUrls.isNotEmpty
-                              ? equipment.imageUrls[0]
-                              : 'assets/images/rent1.jpg',
-                          price: '₱${equipment.price.toStringAsFixed(0)}',
-                          ownerName: equipment.ownerName,
-                          rentalUnit: equipment.rentalUnit
-                        ),
-                      );
-                    },
-                  );
+        return GestureDetector(
+          onTap: () {
+            final tempItem = RentItem(
+              title: equipment.name,
+              imageUrl: equipment.imageUrls.isNotEmpty
+                  ? equipment.imageUrls
+                  : ['assets/images/rent1.jpg'],
+              category: equipment.category ?? 'Other',
+              price: equipment.price.toString(),
+              availableFrom: equipment.availableFrom,
+              availableTo: equipment.availableUntil,
+              brand: equipment.brand,
+              yearModel: equipment.yearModel,
+              power: equipment.power,
+              fuelType: equipment.fuelType,
+              condition: equipment.condition,
+              attachments: equipment.attachments,
+              operatorIncluded: equipment.operatorIncluded,
+              rentRate: equipment.rentRate ?? 'Unknown Rent Rate',
+              landSizeRequirement: equipment.landSizeRequirement,
+              maxCropHeightRequirement: equipment.maxCropHeightRequirement,
+              id: equipment.id ?? 'UNKNOWN ID',
+              description: equipment.description,
+              landSizeMax: equipment.landSizeMax,
+              landSizeMin: equipment.landSizeMin,
+              maxCropHeight: equipment.maxCropHeight,
+              ownerName: ownerName,
+              rentalUnit: equipment.rentalUnit,
+            );
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductPage(item: tempItem),
+              ),
+            );
+          },
+          child: RentItemCard(
+            title: equipment.name,
+            imageUrl: equipment.imageUrls.isNotEmpty
+                ? equipment.imageUrls[0]
+                : 'assets/images/rent1.jpg',
+            price: '₱${equipment.price.toStringAsFixed(0)}',
+            ownerName: ownerName,
+            rentalUnit: equipment.rentalUnit,
+          ),
+        );
+      },
+    );
+  },
+);
+
                 },
               ),
           ],

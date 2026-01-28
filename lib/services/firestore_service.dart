@@ -129,6 +129,32 @@ class FirestoreService {
     }
   }
 
+  /// 🔹 NEW METHOD
+  /// Fetch user name by ID (useful for ownerId -> display owner name)
+  Future<String?> getUserNameById(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null) {
+          final firstName = data['firstName'] as String?;
+          final lastName = data['lastName'] as String?;
+          final fullName = [firstName, lastName].whereType<String>().join(' ');
+          print('Fetched name for userId $userId: $fullName');
+          return fullName.isNotEmpty ? fullName : null;
+        }
+      } else {
+        print('No user document found for userId: $userId');
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user name: $e');
+      return null;
+    }
+  }
+
+
+
   // SEARCH AND FILTER METHODS (KF8 - Equipment Discovery)
 
   // Search equipment by category
@@ -285,4 +311,6 @@ class FirestoreService {
 
     return results;
   }
+  
 }
+

@@ -14,8 +14,6 @@ import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
 
 // import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/services/rent_service.dart';
-
 
 const List<String> rentalUnit = <String>['Per Hour', 'Per Day', 'Per Week', 'Per Month'];
 const List<String> condition = <String>['Brand New', 'Excellent', 'Good', 'Fair', 'Needs Maintenance'];
@@ -74,25 +72,6 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
     .map((item) => item.category)
     .toSet()
     .toList();
-
-//   List<String> uniqueCategories = [];
-
-// @override
-// void initState() {
-//   super.initState();
-//   _loadCategories();
-// }
-
-// Future<void> _loadCategories() async {
-//   await _rentService.seedRentItems();
-//   final allItems = await _rentService.getAllItems();
-//   setState(() {
-//     uniqueCategories = allItems
-//         .map((item) => item.category)
-//         .toSet()
-//         .toList();
-//   });
-// }
 
   String? selectedCategory;
   String? selectedRentalUnit;
@@ -310,84 +289,84 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       const SizedBox(height: 10),
         
                      // BRAND & YEAR
-Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Brand / Model', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedBrand,
-            options: brandOptions,
-            hint: 'Select Brand',
-            onChanged: (value) => setState(() => selectedBrand = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Year Model', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedYear,
-            options: yearOptions,
-            hint: 'Select Year',
-            onChanged: (value) => setState(() => selectedYear = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-  ],
-),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Brand / Model', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: selectedBrand,
+                                  options: brandOptions,
+                                  hint: 'Select Brand',
+                                  onChanged: (value) => setState(() => selectedBrand = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Year Model', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: selectedYear,
+                                  options: yearOptions,
+                                  hint: 'Select Year',
+                                  onChanged: (value) => setState(() => selectedYear = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
 
-const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-// POWER & FUEL
-Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Power / Capacity', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedPower,
-            options: powerOptions,
-            hint: 'Select Power',
-            onChanged: (value) => setState(() => selectedPower = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Fuel Type', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedFuel,
-            options: fuelOptions,
-            hint: 'Select Fuel Type',
-            onChanged: (value) => setState(() => selectedFuel = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-  ],
-),
+                      // POWER & FUEL
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Power / Capacity', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: selectedPower,
+                                  options: powerOptions,
+                                  hint: 'Select Power',
+                                  onChanged: (value) => setState(() => selectedPower = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Fuel Type', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: selectedFuel,
+                                  options: fuelOptions,
+                                  hint: 'Select Fuel Type',
+                                  onChanged: (value) => setState(() => selectedFuel = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
 
                       
                       /// CONDI 
@@ -730,6 +709,7 @@ Row(
         
 
                       const SizedBox(height: 16),
+                     
                       //DATE PRICKER
                       const Text(
                         'Availability',
@@ -1180,133 +1160,4 @@ Row(
       }
     }
   }
-
-//   void _onSavePressed() async {
-//   final isFormValid = _formKey.currentState!.validate();
-
-//   bool hasImage = images.any((img) => img != null);
-
-//   setState(() {
-//     showLandSizeError = landSizeRequired == null;
-//     showCropHeightError = cropHeightRequired == null;
-//     showImageError = !hasImage;
-//     showAvailabilityError = availableFrom == null || availableUntil == null;
-//   });
-
-//   if (!isFormValid ||
-//       landSizeRequired == null ||
-//       cropHeightRequired == null ||
-//       !hasImage ||
-//       availableFrom == null ||
-//       availableUntil == null) {
-//     // Show error message
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: const Text('Please fill in all required fields'),
-//         backgroundColor: Colors.red,
-//         behavior: SnackBarBehavior.floating,
-//       ),
-//     );
-//     return;
-//   }
-
-//   try {
-//     // Generate unique ID (in real app, this would come from database)
-//     final String newId = DateTime.now().millisecondsSinceEpoch.toString();
-
-//     // Collect image paths (convert XFile to asset-style paths or file paths)
-//     final List<String> imageUrls = images
-//         .where((img) => img != null)
-//         .map((img) => img!.path)
-//         .toList();
-
-//     // Format dates
-//     final String formattedFrom = "${availableFrom!.month.toString().padLeft(2, '0')}/${availableFrom!.day.toString().padLeft(2, '0')}/${availableFrom!.year}";
-//     final String formattedTo = "${availableUntil!.month.toString().padLeft(2, '0')}/${availableUntil!.day.toString().padLeft(2, '0')}/${availableUntil!.year}";
-
-//     // Parse land size values if applicable
-//     int? minLandSize;
-//     int? maxLandSize;
-//     if (landSizeRequired == true) {
-//       minLandSize = int.tryParse(_minLandSizeController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-//       maxLandSize = int.tryParse(_maxLandSizeController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-//     }
-
-//     // Parse crop height if applicable
-//     double? maxCropHeightValue;
-//     if (cropHeightRequired == true) {
-//       maxCropHeightValue = double.tryParse(_cropHeightController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-//     }
-
-//     // Create new RentItem
-//     final RentItem newItem = RentItem(
-//       id: newId,
-//       title: _equipmentNameController.text.trim(),
-//       imageUrls: imageUrls,
-//       category: selectedCategory!,
-//       price: _equipmentPriceController.text.trim(),
-//       rentRate: selectedRentalUnit!.toLowerCase().replaceAll('per ', ''),
-//       availableFrom: formattedFrom,
-//       availableTo: formattedTo,
-//       brand: _equipmentBrandController.text.trim().isNotEmpty 
-//           ? _equipmentBrandController.text.trim() 
-//           : null,
-//       yearModel: _yearController.text.trim().isNotEmpty 
-//           ? _yearController.text.trim() 
-//           : null,
-//       power: _powerController.text.trim().isNotEmpty 
-//           ? _powerController.text.trim() 
-//           : null,
-//       fuelType: _fuelController.text.trim().isNotEmpty 
-//           ? _fuelController.text.trim() 
-//           : null,
-//       condition: selectedCondition,
-//       defects: selectedCondition == 'Needs Maintenance' && _defectsController.text.trim().isNotEmpty
-//           ? _defectsController.text.trim()
-//           : null,
-//       attachments: _attachmentsController.text.trim().isNotEmpty 
-//           ? _attachmentsController.text.trim() 
-//           : null,
-//       operatorIncluded: operatorIncluded,
-//       landSizeRequirement: landSizeRequired ?? false,
-//       landSizeMin: minLandSize,
-//       landSizeMax: maxLandSize,
-//       maxCropHeightRequirement: cropHeightRequired ?? false,
-//       maxCropHeight: maxCropHeightValue,
-//       description: _equipmentDescriptionController.text.trim(),
-//     );
-
-//     // Save to service
-//     await _rentService.addRentItem(newItem);
-
-//     // Show success message
-//     if (mounted) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: const Text('Equipment listing created successfully!'),
-//           backgroundColor: Colors.green,
-//           behavior: SnackBarBehavior.floating,
-//         ),
-//       );
-
-//       // Navigate back to previous screen
-//       Navigator.pop(context);
-//     }
-
-//   } catch (e) {
-//     // Show error message
-//     if (mounted) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text('Error saving equipment: $e'),
-//           backgroundColor: Colors.red,
-//           behavior: SnackBarBehavior.floating,
-//         ),
-//       );
-//     }
-//     debugPrint('Error saving equipment: $e');
-//   }
-// }
-
-
 }

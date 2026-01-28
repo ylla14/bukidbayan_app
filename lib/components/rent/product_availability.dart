@@ -26,14 +26,18 @@ class ProductAvailability extends StatelessWidget {
               Expanded(
                 child: AvailabilityBox(
                   label: 'From',
-                  value: item.availableFrom ?? 'Not specified',
+                  value: item.availableFrom != null 
+                      ? '${item.availableFrom!.month}/${item.availableFrom!.day}/${item.availableFrom!.year}'
+                      : 'Not specified',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: AvailabilityBox(
                   label: 'To',
-                  value: item.availableTo ?? 'Not specified',
+                  value: item.availableTo != null
+                      ? '${item.availableTo!.month}/${item.availableTo!.day}/${item.availableTo!.year}'
+                      : 'Not specified',
                 ),
               ),
             ],

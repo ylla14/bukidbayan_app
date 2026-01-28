@@ -1,5 +1,6 @@
 class RentRequest {
   final String itemId;
+  final String itemName; // <-- added this
   final String name;
   final String address;
   final DateTime start;
@@ -9,6 +10,7 @@ class RentRequest {
 
   RentRequest({
     required this.itemId,
+    required this.itemName, // <-- added this
     required this.name,
     required this.address,
     required this.start,
@@ -19,6 +21,7 @@ class RentRequest {
 
   Map<String, dynamic> toMap() => {
         'itemId': itemId,
+        'itemName': itemName, // <-- added this
         'name': name,
         'address': address,
         'start': start.toIso8601String(),
@@ -29,6 +32,7 @@ class RentRequest {
 
   factory RentRequest.fromMap(Map<String, dynamic> map) => RentRequest(
         itemId: map['itemId'],
+        itemName: map['itemName'], // <-- added this
         name: map['name'],
         address: map['address'],
         start: DateTime.parse(map['start']),
