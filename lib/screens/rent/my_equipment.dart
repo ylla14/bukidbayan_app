@@ -1,17 +1,147 @@
+import 'package:bukidbayan_app/mock_data/rent_items.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
+import 'package:bukidbayan_app/screens/rent/product_page.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class MyEquipment extends StatelessWidget {
-  const MyEquipment({super.key});
+  MyEquipment({super.key});
+
+  final FirestoreService _firestoreService = FirestoreService();
+
 
   @override
   Widget build(BuildContext context) {
-    return  ElevatedButton(
-      onPressed: addSampleEquipment,
-      child: Text('Add 5 Sample Equipment'),
+    final String uid = FirebaseAuth.instance.currentUser!.uid;
+
+    return Scaffold(
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [lightColorScheme.primary, lightColorScheme.secondary],
+            ),
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('equipment')
+                  .where('ownerId', isEqualTo: uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('No equipment listed yet.'));
+                }
+
+                final equipmentList = snapshot.data!.docs
+                    .map((doc) => Equipment.fromFirestore(doc))
+                    .toList();
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: equipmentList.length,
+                  itemBuilder: (context, index) {
+                    return buildEquipmentCard(equipmentList[index]);
+                  },
+                );
+              },
+            ),
+          ),
+
+          
+
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: ElevatedButton(
+              onPressed: addSampleEquipment,
+              child: const Text('Add Sample Equipment'),
+            ),
+          ),
+        ],
+      ),
     );
   }
+
+Widget buildEquipmentCard(Equipment equipment) {
+  return FutureBuilder<String?>(
+    future: _firestoreService.getUserNameById(equipment.ownerId),
+    builder: (context, snapshot) {
+      final ownerName = snapshot.data ?? 'Unknown Owner';
+
+      return GestureDetector(
+        onTap: () {
+          final tempItem = RentItem(
+            title: equipment.name,
+            imageUrl: equipment.imageUrls.isNotEmpty
+                ? equipment.imageUrls
+                : ['assets/images/rent1.jpg'],
+            category: equipment.category ?? 'Other',
+            price: equipment.price.toString(),
+            availableFrom: equipment.availableFrom,
+            availableTo: equipment.availableUntil,
+            brand: equipment.brand,
+            yearModel: equipment.yearModel,
+            power: equipment.power,
+            fuelType: equipment.fuelType,
+            condition: equipment.condition,
+            attachments: equipment.attachments,
+            operatorIncluded: equipment.operatorIncluded,
+            rentRate: equipment.rentRate ?? 'Unknown Rent Rate',
+            landSizeRequirement: equipment.landSizeRequirement,
+            maxCropHeightRequirement: equipment.maxCropHeightRequirement,
+            id: equipment.id ?? 'UNKNOWN ID',
+            description: equipment.description,
+            landSizeMax: equipment.landSizeMax,
+            landSizeMin: equipment.landSizeMin,
+            maxCropHeight: equipment.maxCropHeight,
+            ownerName: ownerName,
+            rentalUnit: equipment.rentalUnit,
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProductPage(item: tempItem),
+            ),
+          );
+        },
+        child: Card(
+          elevation: 3,
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            title: Text(equipment.name),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(equipment.category ?? 'No category'),
+                Text('₱${equipment.price} ${equipment.rentalUnit}'),
+                Text(
+                  equipment.isAvailable ? 'Available' : 'Unavailable',
+                  style: TextStyle(
+                    color: equipment.isAvailable ? Colors.green : Colors.red,
+                  ),
+                ),
+                Text('Owner: $ownerName'),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
 
 
 void addSampleEquipment() async {

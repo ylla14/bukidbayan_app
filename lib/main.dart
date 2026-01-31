@@ -1,3 +1,5 @@
+import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
+import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/welcome_screen.dart';
@@ -19,6 +21,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      routes: {
+        '/login': (context) =>  SignInScreen(),
+        // '/home': (context) =>  HomeScreen(),
+        // add more screens here as needed
+      },
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       scaffoldBackgroundColor: Colors.white,

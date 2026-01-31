@@ -4,6 +4,7 @@ import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/widgets/custom_icon_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -23,6 +24,8 @@ class RentScreen extends StatefulWidget {
 }
 
 class _RentScreenState extends State<RentScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final FirestoreService _firestoreService = FirestoreService();
   final SearchController _searchController = SearchController();
 
@@ -165,10 +168,13 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
     );
   }
 
+  Future<void> logout() async {
+  await _auth.signOut();
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const CustomDrawer(),
+      drawer: CustomDrawer(onLogout: logout,),      
       appBar: AppBar(
         centerTitle: true,
         flexibleSpace: Container(
@@ -240,7 +246,7 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const MyEquipment(),
+                          builder: (_) => MyEquipment(),
                         ),
                       );
                     },
@@ -691,74 +697,74 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                   }
 
                   return GridView.builder(
-  physics: const NeverScrollableScrollPhysics(),
-  shrinkWrap: true,
-  itemCount: filteredEquipment.length,
-  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-    crossAxisCount: 2,
-    crossAxisSpacing: 8,
-    mainAxisSpacing: 8,
-    childAspectRatio: 0.8,
-  ),
-  itemBuilder: (context, index) {
-    final equipment = filteredEquipment[index];
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: filteredEquipment.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 0.8,
+                    ),
+                    itemBuilder: (context, index) {
+                      final equipment = filteredEquipment[index];
 
-    return FutureBuilder<String?>(
-      future: _firestoreService.getUserNameById(equipment.ownerId),
-      builder: (context, snapshot) {
-        final ownerName = snapshot.data ?? 'Unknown Owner';
+                      return FutureBuilder<String?>(
+                        future: _firestoreService.getUserNameById(equipment.ownerId),
+                        builder: (context, snapshot) {
+                          final ownerName = snapshot.data ?? 'Unknown Owner';
 
-        return GestureDetector(
-          onTap: () {
-            final tempItem = RentItem(
-              title: equipment.name,
-              imageUrl: equipment.imageUrls.isNotEmpty
-                  ? equipment.imageUrls
-                  : ['assets/images/rent1.jpg'],
-              category: equipment.category ?? 'Other',
-              price: equipment.price.toString(),
-              availableFrom: equipment.availableFrom,
-              availableTo: equipment.availableUntil,
-              brand: equipment.brand,
-              yearModel: equipment.yearModel,
-              power: equipment.power,
-              fuelType: equipment.fuelType,
-              condition: equipment.condition,
-              attachments: equipment.attachments,
-              operatorIncluded: equipment.operatorIncluded,
-              rentRate: equipment.rentRate ?? 'Unknown Rent Rate',
-              landSizeRequirement: equipment.landSizeRequirement,
-              maxCropHeightRequirement: equipment.maxCropHeightRequirement,
-              id: equipment.id ?? 'UNKNOWN ID',
-              description: equipment.description,
-              landSizeMax: equipment.landSizeMax,
-              landSizeMin: equipment.landSizeMin,
-              maxCropHeight: equipment.maxCropHeight,
-              ownerName: ownerName,
-              rentalUnit: equipment.rentalUnit,
-            );
+                          return GestureDetector(
+                            onTap: () {
+                              final tempItem = RentItem(
+                                title: equipment.name,
+                                imageUrl: equipment.imageUrls.isNotEmpty
+                                    ? equipment.imageUrls
+                                    : ['assets/images/rent1.jpg'],
+                                category: equipment.category ?? 'Other',
+                                price: equipment.price.toString(),
+                                availableFrom: equipment.availableFrom,
+                                availableTo: equipment.availableUntil,
+                                brand: equipment.brand,
+                                yearModel: equipment.yearModel,
+                                power: equipment.power,
+                                fuelType: equipment.fuelType,
+                                condition: equipment.condition,
+                                attachments: equipment.attachments,
+                                operatorIncluded: equipment.operatorIncluded,
+                                rentRate: equipment.rentRate ?? 'Unknown Rent Rate',
+                                landSizeRequirement: equipment.landSizeRequirement,
+                                maxCropHeightRequirement: equipment.maxCropHeightRequirement,
+                                id: equipment.id ?? 'UNKNOWN ID',
+                                description: equipment.description,
+                                landSizeMax: equipment.landSizeMax,
+                                landSizeMin: equipment.landSizeMin,
+                                maxCropHeight: equipment.maxCropHeight,
+                                ownerName: ownerName,
+                                rentalUnit: equipment.rentalUnit,
+                              );
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ProductPage(item: tempItem),
-              ),
-            );
-          },
-          child: RentItemCard(
-            title: equipment.name,
-            imageUrl: equipment.imageUrls.isNotEmpty
-                ? equipment.imageUrls[0]
-                : 'assets/images/rent1.jpg',
-            price: '₱${equipment.price.toStringAsFixed(0)}',
-            ownerName: ownerName,
-            rentalUnit: equipment.rentalUnit,
-          ),
-        );
-      },
-    );
-  },
-);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProductPage(item: tempItem),
+                                ),
+                              );
+                            },
+                            child: RentItemCard(
+                              title: equipment.name,
+                              imageUrl: equipment.imageUrls.isNotEmpty
+                                  ? equipment.imageUrls[0]
+                                  : 'assets/images/rent1.jpg',
+                              price: '₱${equipment.price.toStringAsFixed(0)}',
+                              ownerName: ownerName,
+                              rentalUnit: equipment.rentalUnit,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
 
                 },
               ),

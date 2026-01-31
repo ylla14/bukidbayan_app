@@ -6,6 +6,7 @@ import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_icon_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:intl/intl.dart'; // For date formatting
@@ -20,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final RentRequestService _requestService = RentRequestService();
   List<RentRequest> _requests = [];
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
 
   @override
   void initState() {
@@ -36,11 +39,16 @@ class _HomeScreenState extends State<HomeScreen> {
     return DateFormat('MMM dd, yyyy • hh:mm a').format(date);
   }
 
+  Future<void> logout() async {
+  await _auth.signOut();
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(),
-      drawer: CustomDrawer(),
+      drawer: CustomDrawer(onLogout: logout,),      
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: SizedBox(
