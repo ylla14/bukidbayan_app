@@ -4,14 +4,16 @@ import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/widgets/custom_icon_button.dart';
+import 'package:bukidbayan_app/components/rent/rent_screen/active_filters_chip.dart';
+import 'package:bukidbayan_app/components/rent/rent_screen/category_filter_bar.dart';
+import 'package:bukidbayan_app/components/rent/rent_screen/equipment_carousel.dart';
+import 'package:bukidbayan_app/components/rent/rent_screen/operator_filter_button.dart';
+import 'package:bukidbayan_app/components/rent/rent_screen/price_filter_sheet.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 
-// 🔹 NEW
-// import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -29,8 +31,8 @@ class _RentScreenState extends State<RentScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final SearchController _searchController = SearchController();
 
-  List<RentItem> allItems = [];
-  List<RentItem> filteredItems = [];
+  List<Equipment> allItems = [];
+  List<Equipment> filteredItems = [];
 
   String searchQuery = '';
   String? activeCategory;
@@ -47,42 +49,12 @@ class _RentScreenState extends State<RentScreen> {
     minPrice = 0;
     maxPrice = 10000;
     priceRange = RangeValues(minPrice, maxPrice);
-    // _loadItems();
   }
 
-  // Future<void> _loadItems() async {
-  //   await _rentService.seedRentItems();
-  //   final items = await _rentService.getAllItems();
-
-  //   setState(() {
-  //     allItems = items;
-  //     filteredItems = items;
-
-  //     minPrice = _getMinPrice(items);
-  //     maxPrice = _getMaxPrice(items);
-  //     priceRange = RangeValues(minPrice, maxPrice);
-  //   });
-  // }
-
-  double _getMinPrice(List<RentItem> items) {
-    if (items.isEmpty) return 0;
-    return items
-        .map((e) => int.parse(e.price.replaceAll(RegExp(r'[^0-9]'), '')))
-        .reduce((a, b) => a < b ? a : b)
-        .toDouble();
-  }
-
-  double _getMaxPrice(List<RentItem> items) {
-    if (items.isEmpty) return 500;
-    return items
-        .map((e) => int.parse(e.price.replaceAll(RegExp(r'[^0-9]'), '')))
-        .reduce((a, b) => a > b ? a : b)
-        .toDouble();
-  }
 void applyFilters() {
   setState(() {
     filteredItems = allItems.where((item) {
-      final matchesSearch = item.title
+      final matchesSearch = item.name
           .toLowerCase()
           .contains(searchQuery.toLowerCase());
 
@@ -90,18 +62,14 @@ void applyFilters() {
           activeCategory == null || item.category == activeCategory;
 
       final matchesPrice = !isPriceFilterActive ||
-          (() {
-            final price = int.parse(
-              item.price.replaceAll(RegExp(r'[^0-9]'), ''),
-            );
-            return price >= priceRange.start &&
-                price <= priceRange.end;
-          })();
+          (item.price >= priceRange.start &&
+           item.price <= priceRange.end);
 
       return matchesSearch && matchesCategory && matchesPrice;
     }).toList();
   });
 }
+
 
 List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
   return equipmentList.where((equipment) {
@@ -127,7 +95,6 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
   }).toList();
 }
 
-
   void clearFilters() {
     setState(() {
       searchQuery = '';
@@ -139,38 +106,22 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
     });
   }
 
-  Widget categoryButton(String category) {
-    final bool isSelected = activeCategory == category;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.green.shade100 : null,
-          side: BorderSide(color: isSelected ? Colors.green : Colors.grey),
-        ),
-        onPressed: () {
-          setState(() {
-            activeCategory =
-                activeCategory == category ? null : category;
-            applyFilters();
-          });
-        },
-        child: Text(
-          category,
-          style: TextStyle(
-            color: isSelected ? Colors.green.shade900 : Colors.black,
-            fontWeight:
-                isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
+  Future<void> logout() async {
+    await _auth.signOut();
   }
 
-  Future<void> logout() async {
-  await _auth.signOut();
+  bool calculateAvailability(Equipment equipment) {
+  final from = equipment.availableFrom;
+  final until = equipment.availableUntil;
+
+  if (from == null || until == null) {
+    return false; // no dates = unavailable
+  }
+
+  final now = DateTime.now();
+  return now.isAfter(from) && now.isBefore(until);
 }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -221,129 +172,66 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
         child: Column(
           children: [
             /// CREATE & MY EQUIPMENT
-            Row(
-              children: [
-                Expanded(
-                  child: CustomIconButton(
-                    icon: const Icon(Icons.add_box_rounded),
-                    label: const Text('Create'),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EquipmentListingScreen(),
-                        ),
-                      );
-                    },
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10.0, 0, 10.0, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CustomIconButton(
+                      icon: const Icon(Icons.add_box_rounded),
+                      label: const Text('Create'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const EquipmentListingScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: CustomIconButton(
-                    icon: const Icon(Icons.shopping_cart_outlined),
-                    label: const Text('My Equipment'),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MyEquipment(),
-                        ),
-                      );
-                    },
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: CustomIconButton(
+                      icon: const Icon(Icons.shopping_cart_outlined),
+                      label: const Text('My Equipment'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MyEquipment(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
 
             const SizedBox(height: 10),
 
-            // /// CAROUSEL
-            // if (searchQuery.isEmpty && activeCategory == null)
-            //   CarouselSlider(
-            //     options: CarouselOptions(
-            //       height: 180,
-            //       autoPlay: true,
-            //       enlargeCenterPage: true,
-            //       viewportFraction: 0.925
-            //     ),
-            //     items: allItems.map((item) {
-            //       return ClipRRect(
-            //         borderRadius: BorderRadius.circular(12),
-            //         child: Image.asset(
-            //           item.imageUrl.first,
-            //           fit: BoxFit.cover,
-            //           width: double.infinity,
-            //         ),
-            //       );
-            //     }).toList(),
-            //   ),
-
-              // /// CAROUSEL (only when no filters)
-              // if (searchQuery.isEmpty && activeCategory == null)
-              //   CarouselSlider(
-              //     options: CarouselOptions(
-              //       height: 180,
-              //       autoPlay: true,
-              //       enlargeCenterPage: true,
-              //       viewportFraction: 0.950,
-              //     ),
-              //     items: items.map((item) {
-              //       return ClipRRect(
-              //         borderRadius: BorderRadius.circular(12),
-              //         // child: Image.network(item.imageUrl[1], fit: BoxFit.cover, width: double.infinity,),
-              //         child: Image.asset(item.imageUrl[0], fit: BoxFit.cover, width: double.infinity,),
-              //       );
-              //     }).toList(),
-              //   ),
-
             // CAROUSEL
             if (searchQuery.isEmpty && activeCategory == null)
-            StreamBuilder<QuerySnapshot>(
-              stream: _firestoreService.getAvailableEquipment(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const SizedBox(); // or a placeholder widget
-                }
+              StreamBuilder<QuerySnapshot>(
+                stream: _firestoreService.getAvailableEquipment(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const SizedBox();
+                  }
 
-                final equipmentList = snapshot.data!.docs
-                    .map((doc) => Equipment.fromFirestore(doc))
-                    .toList();
+                  final equipmentList = snapshot.data!.docs
+                      .map((doc) => Equipment.fromFirestore(doc))
+                      .toList();
 
-                // You can limit the carousel to, say, 5 featured items
-                final carouselItems = equipmentList.take(5).toList();
+                  return EquipmentCarousel(
+                    equipment: equipmentList,
+                    maxItems: 5,
+                  );
+                },
+              ),
 
-                return CarouselSlider(
-                  options: CarouselOptions(
-                    height: 180,
-                    autoPlay: true,
-                    enlargeCenterPage: true,
-                    viewportFraction: 0.925,
-                  ),
-                  items: carouselItems.map((equipment) {
-                    final imageUrl = equipment.imageUrls.isNotEmpty
-                        ? equipment.imageUrls[0]
-                        : 'assets/images/rent1.jpg'; // fallback
-
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Image.asset(
-                            'assets/images/rent1.jpg',
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                          );
-                        },
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
 
             const SizedBox(height: 10),
 
@@ -360,60 +248,37 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        categoryButton('Hand Tool'),
-                        categoryButton('Tractor'),
-                        categoryButton('Machine'),
-                    const SizedBox(width: 8),
-                    // Operator filter button
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: operatorFilter == true
-                              ? Colors.blue.shade100
-                              : null,
-                          side: BorderSide(
-                            color: operatorFilter == true
-                                ? Colors.blue
-                                : Colors.grey,
-                          ),
+                        CategoryFilterBar(
+                          activeCategory: activeCategory,
+                          onCategorySelected: (category) {
+                            setState(() {
+                              activeCategory =
+                                  activeCategory == category ? null : category;
+                            });
+                          },
                         ),
-                        onPressed: () {
-                          setState(() {
-                            if (operatorFilter == true) {
-                              operatorFilter = null;
-                            } else {
-                              operatorFilter = true;
-                            }
-                          });
-                        },
-                        icon: Icon(
-                          Icons.person,
-                          size: 18,
-                          color: operatorFilter == true
-                              ? Colors.blue.shade900
-                              : Colors.black,
+
+                        const SizedBox(width: 8),
+
+                        OperatorFilterButton(
+                          isActive: operatorFilter,
+                          onPressed: () {
+                            setState(() {
+                              if (operatorFilter == true) {
+                                operatorFilter = null;
+                              } else {
+                                operatorFilter = true;
+                              }
+                            });
+                          },
                         ),
-                        label: Text(
-                          'With Operator',
-                          style: TextStyle(
-                            color: operatorFilter == true
-                                ? Colors.blue.shade900
-                                : Colors.black,
-                            fontWeight: operatorFilter == true
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    ),
                       ],
                     ),
                   ),
 
+
                   const SizedBox(height: 8),
 
-                  // PRICE FILTER
                   Row(
                     children: [
                       const Text(
@@ -423,6 +288,7 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+
                       IconButton(
                         icon: const Icon(Icons.filter_list),
                         onPressed: () {
@@ -430,121 +296,18 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                             context: context,
                             isScrollControlled: true,
                             shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(16),
-                              ),
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                             ),
-                            builder: (context) {
-                              return StatefulBuilder(
-                                builder: (context, setModalState) {
-                                  return Padding(
-                                    padding: EdgeInsets.fromLTRB(
-                                      16,
-                                      16,
-                                      16,
-                                      MediaQuery.of(context).viewInsets.bottom + 16,
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Filter by Price',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text('PHP ${priceRange.start.toInt()}'),
-                                            Text('PHP ${priceRange.end.toInt()}'),
-                                          ],
-                                        ),
-                                        SliderTheme(
-                                          data: SliderTheme.of(context).copyWith(
-                                            activeTrackColor: lightColorScheme.primary,
-                                            inactiveTrackColor: Colors.green.shade100,
-                                            thumbColor: lightColorScheme.primary,
-                                            overlayColor: Colors.green.shade100,
-                                            rangeThumbShape:
-                                                const RoundRangeSliderThumbShape(
-                                                    enabledThumbRadius: 10),
-                                            valueIndicatorColor: lightColorScheme.primary,
-                                            valueIndicatorTextStyle:
-                                                const TextStyle(color: Colors.white),
-                                          ),
-                                          child: RangeSlider(
-                                            min: minPrice,
-                                            max: maxPrice,
-                                            divisions: 10,
-                                            values: priceRange,
-                                            labels: RangeLabels(
-                                              'PHP ${priceRange.start.toInt()}',
-                                              'PHP ${priceRange.end.toInt()}',
-                                            ),
-                                            onChanged: (values) {
-                                              setModalState(() {
-                                                priceRange = values;
-                                              });
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: OutlinedButton(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    priceRange =
-                                                        RangeValues(minPrice, maxPrice);
-                                                    isPriceFilterActive = false;
-                                                    filteredItems = allItems;
-                                                  });
-                                                  Navigator.pop(context);
-                                                },
-                                                child: Text(
-                                                  'Clear',
-                                                  style: TextStyle(
-                                                      color: lightColorScheme.primary),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: OutlinedButton(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    isPriceFilterActive = true;
-                                                    filteredItems = allItems.where((item) {
-                                                      final price = int.parse(
-                                                        item.price.replaceAll(
-                                                            RegExp(r'[^0-9]'), ''),
-                                                      );
-                                                      return price >=
-                                                              priceRange.start.toInt() &&
-                                                          price <=
-                                                              priceRange.end.toInt();
-                                                    }).toList();
-                                                  });
-                                                  Navigator.pop(context);
-                                                },
-                                                child: Text(
-                                                  'Apply',
-                                                  style: TextStyle(
-                                                      color: lightColorScheme.primary),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  );
+                            builder: (_) {
+                              return PriceFilterSheet(
+                                initialRange: priceRange,
+                                minPrice: minPrice,
+                                maxPrice: maxPrice,
+                                onApply: (range, isActive) {
+                                  setState(() {
+                                    priceRange = range;
+                                    isPriceFilterActive = isActive;
+                                  });
                                 },
                               );
                             },
@@ -552,49 +315,57 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                         },
                       ),
 
-                      // ACTIVE PRICE FILTER CHIP
-                      if (isPriceFilterActive)
-                        Row(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(left: 6),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: lightColorScheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: lightColorScheme.primary,
-                                  width: 1,
+                      const SizedBox(width: 8),
+
+                      // 👇 ONLY THIS PART SCROLLS
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              if (activeCategory != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ActiveFiltersChip(
+                                    label: activeCategory!,
+                                    onClear: () =>
+                                        setState(() => activeCategory = null),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                'PHP ${priceRange.start.toInt()} – ${priceRange.end.toInt()}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: lightColorScheme.primary,
-                                  fontWeight: FontWeight.w600,
+
+                              if (operatorFilter == true)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ActiveFiltersChip(
+                                    label: 'With Operator',
+                                    onClear: () =>
+                                        setState(() => operatorFilter = null),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Clear filters',
-                              iconSize: 18,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                clearFilters();
-                                setState(() {
-                                  isPriceFilterActive = false;
-                                  priceRange = RangeValues(minPrice, maxPrice);
-                                });
-                              },
-                            ),
-                          ],
+
+                              if (isPriceFilterActive)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ActiveFiltersChip(
+                                    label:
+                                        'PHP ${priceRange.start.toInt()} – ${priceRange.end.toInt()}',
+                                    onClear: () {
+                                      setState(() {
+                                        isPriceFilterActive = false;
+                                        priceRange =
+                                            RangeValues(minPrice, maxPrice);
+                                      });
+                                    },
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
+                      ),
                     ],
-                  ),
+                  )
+
+
                 ],
               ),
             ),
@@ -655,116 +426,145 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                   }
 
                   // Convert Firestore documents to Equipment objects
-                  final allEquipment = snapshot.data!.docs
-                      .map((doc) => Equipment.fromFirestore(doc))
-                      .toList();
+                  // final allEquipment = snapshot.data!.docs
+                  //     .map((doc) => Equipment.fromFirestore(doc))
+                  //     .toList();
 
-                  // Apply filters
-                  final filteredEquipment = applyEquipmentFilters(allEquipment);
+                  // // Apply filters
+                  // final filteredEquipment = applyEquipmentFilters(allEquipment);
 
+                 final allEquipment = snapshot.data!.docs
+                    .map((doc) => Equipment.fromFirestore(doc))
+                    .toList();
 
-                  if (filteredEquipment.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(40.0),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 64,
-                              color: Colors.grey[400],
+                // Exclude items owned by the current user
+                final currentUserId = _auth.currentUser?.uid;
+                final equipmentNotOwnedByUser = allEquipment
+                    .where((equipment) => equipment.ownerId != currentUserId)
+                    .toList();
+
+                // Apply your existing filters
+                final filteredEquipment = applyEquipmentFilters(equipmentNotOwnedByUser);
+
+                if (filteredEquipment.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40.0),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No equipment found',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No equipment found',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your filters',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Try adjusting your filters',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  }
-
-                  return GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: filteredEquipment.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 0.8,
                     ),
-                    itemBuilder: (context, index) {
-                      final equipment = filteredEquipment[index];
-
-                      return FutureBuilder<String?>(
-                        future: _firestoreService.getUserNameById(equipment.ownerId),
-                        builder: (context, snapshot) {
-                          final ownerName = snapshot.data ?? 'Unknown Owner';
-
-                          return GestureDetector(
-                            onTap: () {
-                              final tempItem = RentItem(
-                                title: equipment.name,
-                                imageUrl: equipment.imageUrls.isNotEmpty
-                                    ? equipment.imageUrls
-                                    : ['assets/images/rent1.jpg'],
-                                category: equipment.category ?? 'Other',
-                                price: equipment.price.toString(),
-                                availableFrom: equipment.availableFrom,
-                                availableTo: equipment.availableUntil,
-                                brand: equipment.brand,
-                                yearModel: equipment.yearModel,
-                                power: equipment.power,
-                                fuelType: equipment.fuelType,
-                                condition: equipment.condition,
-                                attachments: equipment.attachments,
-                                operatorIncluded: equipment.operatorIncluded,
-                                rentRate: equipment.rentRate ?? 'Unknown Rent Rate',
-                                landSizeRequirement: equipment.landSizeRequirement,
-                                maxCropHeightRequirement: equipment.maxCropHeightRequirement,
-                                id: equipment.id ?? 'UNKNOWN ID',
-                                description: equipment.description,
-                                landSizeMax: equipment.landSizeMax,
-                                landSizeMin: equipment.landSizeMin,
-                                maxCropHeight: equipment.maxCropHeight,
-                                ownerName: ownerName,
-                                rentalUnit: equipment.rentalUnit,
-                              );
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProductPage(item: tempItem),
-                                ),
-                              );
-                            },
-                            child: RentItemCard(
-                              title: equipment.name,
-                              imageUrl: equipment.imageUrls.isNotEmpty
-                                  ? equipment.imageUrls[0]
-                                  : 'assets/images/rent1.jpg',
-                              price: '₱${equipment.price.toStringAsFixed(0)}',
-                              ownerName: ownerName,
-                              rentalUnit: equipment.rentalUnit,
-                            ),
-                          );
-                        },
-                      );
-                    },
                   );
+                }
+
+                // GRID
+                // GRID
+return GridView.builder(
+  physics: const NeverScrollableScrollPhysics(),
+  shrinkWrap: true,
+  itemCount: filteredEquipment.length,
+  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 2,
+    crossAxisSpacing: 8,
+    mainAxisSpacing: 8,
+    childAspectRatio: 0.8,
+  ),
+  itemBuilder: (context, index) {
+    final equipment = filteredEquipment[index];
+
+    // Listen to live updates for this equipment
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('equipment')
+          .doc(equipment.id)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          // Placeholder while loading
+          return RentItemCard(
+            title: equipment.name,
+            imageUrl: equipment.imageUrls.isNotEmpty
+                ? equipment.imageUrls[0]
+                : 'assets/images/rent1.jpg',
+            price: '₱${equipment.price.toStringAsFixed(0)}',
+            ownerName: 'Loading...',
+            isAvailable: false,
+            rentalUnit: equipment.rentalUnit,
+          );
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+
+        // ✅ Use the actual Firestore field
+        final isAvailableFirestore = data['isAvailable'] ?? true;
+
+        // Optional: include availableFrom/availableUntil date check
+        final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
+        final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
+        final now = DateTime.now();
+        final dateOk = availableFrom != null &&
+            availableUntil != null &&
+            now.isAfter(availableFrom) &&
+            now.isBefore(availableUntil);
+
+        final finalAvailability = isAvailableFirestore && dateOk;
+
+        return FutureBuilder<String?>(
+          future: _firestoreService.getUserNameById(equipment.ownerId),
+          builder: (context, ownerSnapshot) {
+            final ownerName = ownerSnapshot.data ?? 'Unknown Owner';
+
+            return GestureDetector(
+              onTap: () {
+                final tempItem = equipment.copyWith(ownerName: ownerName);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProductPage(item: tempItem),
+                  ),
+                );
+              },
+              child: RentItemCard(
+                title: equipment.name,
+                imageUrl: equipment.imageUrls.isNotEmpty
+                    ? equipment.imageUrls[0]
+                    : 'assets/images/rent1.jpg',
+                price: '₱${equipment.price.toStringAsFixed(0)}',
+                ownerName: ownerName,
+                rentalUnit: equipment.rentalUnit,
+                isAvailable: finalAvailability, // ✅ proper availability
+              ),
+            );
+          },
+        );
+      },
+    );
+  },
+);
+
+
 
                 },
               ),

@@ -1,4 +1,3 @@
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
@@ -82,15 +81,15 @@ Widget buildEquipmentCard(Equipment equipment) {
 
       return GestureDetector(
         onTap: () {
-          final tempItem = RentItem(
-            title: equipment.name,
-            imageUrl: equipment.imageUrls.isNotEmpty
+          final tempItem = Equipment(
+            name: equipment.name,
+            imageUrls: equipment.imageUrls.isNotEmpty
                 ? equipment.imageUrls
                 : ['assets/images/rent1.jpg'],
             category: equipment.category ?? 'Other',
-            price: equipment.price.toString(),
+            price: equipment.price,
             availableFrom: equipment.availableFrom,
-            availableTo: equipment.availableUntil,
+            availableUntil: equipment.availableUntil,
             brand: equipment.brand,
             yearModel: equipment.yearModel,
             power: equipment.power,
@@ -108,6 +107,7 @@ Widget buildEquipmentCard(Equipment equipment) {
             maxCropHeight: equipment.maxCropHeight,
             ownerName: ownerName,
             rentalUnit: equipment.rentalUnit,
+            ownerId: equipment.ownerId
           );
 
           Navigator.push(
@@ -147,114 +147,41 @@ Widget buildEquipmentCard(Equipment equipment) {
 void addSampleEquipment() async {
   final List<Equipment> sampleEquipment = [
     Equipment(
-      name: 'Hand Tractor | "Kuliglig"',
-      description: 'Powerful hand tractor for small farms.',
-      category: 'Machine',
-      brand: 'Kubota',
-      yearModel: '2024',
-      power: '8 HP',
-      condition: 'Brand New',
+      name: 'John Deere S700 Harvester',
+      description: 'A high-efficiency combine harvester suitable for large-scale rice and corn harvesting.',
+      category: 'Harvester',
+      brand: 'John Deere',
+      yearModel: '2021',
+      power: '460 HP',
+      condition: 'Excellent',
+      attachments: 'Grain header, corn header',
       fuelType: 'Diesel',
-      price: 1500,
+      defects: null,
+      price: 15000.0,
       rentalUnit: 'Per Day',
       rentRate: 'Fixed',
+      requirements: ['Valid ID', 'Signed Rental Agreement'],
       landSizeRequirement: true,
       maxCropHeightRequirement: true,
-      operatorIncluded: false,
-      isAvailable: true,
-      ownerId: '01QlKC8JOfdvXkDC9fM4PRNmTOG2',
-      imageUrls: [
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411406/0c0f224390f336992685d157655b689a_hhkout.jpg',
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411407/3f09299c57ed9d94b1b4412c1bc85a8f_obtbzl.jpg',
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411407/5cd722318b19c69d1c9a6d4bdeaecb4d_j3ojus.jpg'
-      ],
-    ),
-      Equipment(
-      name: 'Rotavator | "Giling - Bundok"',
-      description: 'Rotavator for soil preparation.',
-      category: 'Machine',
-      brand: 'John Deere',
-      yearModel: '2022',
-      power: '15 HP',
-      condition: 'Used',
-      fuelType: 'Diesel',
-      price: 2000,
-      rentalUnit: 'Per Day',
-      rentRate: 'Negotiable',
-      landSizeRequirement: true,
-      maxCropHeightRequirement: true,
+      landSizeMin: '2 hectares',
+      landSizeMax: '50 hectares',
+      maxCropHeight: '250 cm',
       operatorIncluded: true,
       isAvailable: true,
-      ownerId: 'ajqjR0HzfWaMQr2zKotP59oh81e2',
+      availableFrom: DateTime.now(),
+      availableUntil: DateTime.now().add(Duration(days: 30)),
+      ownerId: '01QlKC8JOfdvXkDC9fM4PRNmTOG2',
+      ownerName: 'Yaeno Muteki',
+      location: 'Laguna, Philippines',
+      latitude: 14.1700,
+      longitude: 121.2500,
       imageUrls: [
         'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411693/22ea101a99634bd98f9f1ad168a872cd_tymcwb.jpg',
         'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411693/e65a7f3d8b7399f85b7ec22b5ad7595c_uvyoz2.jpg',
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411693/6cf9ab0aa67b280450ae85fe35c3a329_ura3pb.jpg',
       ],
-    ),
-    Equipment(
-      name: 'Pampatubig', // Nickname: “Water Pump”
-      description: 'Ideal for irrigating medium-sized rice fields.',
-      category: 'Machine',
-      brand: 'Honda',
-      yearModel: '2023',
-      power: '5 HP',
-      condition: 'Brand New',
-      fuelType: 'Oil',
-      price: 800,
-      rentalUnit: 'Per Day',
-      rentRate: 'Fixed',
-      landSizeRequirement: true,
-      maxCropHeightRequirement: false,
-      operatorIncluded: false,
-      isAvailable: true,
-      ownerId: 'Msl2UVxTplNWkx8QVRUMvrAYgyA2',
-      imageUrls: [
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411861/00bf7f3b2f18bee3c753106608e13c82_lalfni.jpg',
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411861/db087407776360db50bc961f94e9977e_bt6goj.jpg',
-      ],
-    ),
-    Equipment(
-      name: 'Water Sprayer',
-      description: 'Electric water sprayer for crops.',
-      category: 'Machine',
-      brand: 'Stihl',
-      yearModel: '2025',
-      power: '2 HP',
-      condition: 'Brand New',
-      fuelType: 'Electric',
-      price: 500,
-      rentalUnit: 'Per Day',
-      rentRate: 'Fixed',
-      landSizeRequirement: false,
-      maxCropHeightRequirement: false,
-      operatorIncluded: false,
-      isAvailable: true,
-      ownerId: 'EN3Nlympc7Xon6Kdkqygsmr8al73',
-      imageUrls: [
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769411966/7d86410f82f146b7c146b42f986be013_honwwg.jpg',
-      ],
-    ),
-    Equipment(
-      name: 'Seeder',
-      description: 'Seeder for planting seeds efficiently.',
-      category: 'Machine',
-      brand: 'AGCO',
-      yearModel: '2023',
-      power: '10 HP',
-      condition: 'Brand New',
-      fuelType: 'Diesel',
-      price: 1800,
-      rentalUnit: 'Per Day',
-      rentRate: 'Fixed',
-      landSizeRequirement: true,
-      maxCropHeightRequirement: true,
-      operatorIncluded: true,
-      isAvailable: true,
-      ownerId: '2rRsSFFaPFMHU9mu1z9yDjkjuQm1',
-      imageUrls: [
-        'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1769412140/fe6031ffa4cc30951c80857e3783aaed_etjtvn.jpg',
-      ],
+      reviews: ['Very efficient!', 'Well-maintained equipment.'],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     ),
   ];
 

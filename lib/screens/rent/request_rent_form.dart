@@ -1,5 +1,9 @@
 import 'dart:io';
 
+import 'package:bukidbayan_app/blocs/request_bloc.dart';
+import 'package:bukidbayan_app/blocs/request_event.dart';
+import 'package:bukidbayan_app/blocs/request_state.dart';
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
@@ -9,17 +13,17 @@ import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
 import 'package:bukidbayan_app/widgets/date_picker_field.dart';
 import 'package:bukidbayan_app/widgets/requirement_upload_tile.dart';
 import 'package:bukidbayan_app/widgets/step_header.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-// import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_expandable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
 
 class RequestRentForm extends StatefulWidget {
-  final RentItem item;
+  final Equipment item;
   const RequestRentForm({super.key, required this.item});
 
   @override
@@ -38,6 +42,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final RentRequestService _requestService = RentRequestService();
+  
 
 
   final ImagePicker _picker = ImagePicker();
@@ -158,7 +163,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
                     final DateTime now = DateTime.now();
                     final DateTime initial = startDate ?? widget.item.availableFrom!;
                     final DateTime first = widget.item.availableFrom!;
-                    final DateTime last = widget.item.availableTo!;
+                    final DateTime last = widget.item.availableUntil!;
 
                     final DateTime? picked = await showDatePicker(
                       context: context,
@@ -186,7 +191,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
                       : () async {
                           final DateTime initial = returnDate ?? startDate!;
                           final DateTime first = startDate!;
-                          final DateTime last = widget.item.availableTo!;
+                          final DateTime last = widget.item.availableUntil!;
 
                           final DateTime? picked = await showDatePicker(
                             context: context,
@@ -306,16 +311,22 @@ class _RequestRentFormState extends State<RequestRentForm> {
                   if (cropHeightProof != null) {
                     cropPath = await _requestService.saveFileLocally(cropHeightProof!);
                   }
+                  
+                  final currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
                   final request = RentRequest(
-                    itemId: widget.item.id,
-                    itemName: widget.item.title, // <-- added here
+                    requestId: '',
+                    itemId: widget.item.id ?? 'Unknown',
+                    itemName: widget.item.name, // <-- added here
                     name: nameController.text,
                     address: addressController.text,
                     start: startDate!,
                     end: returnDate!,
                     landSizeProofPath: landPath,
                     cropHeightProofPath: cropPath,
+                    status: RentRequestStatus.pending,
+                    renterId: currentUserId,
+                    ownerId: widget.item.ownerId
                   );
 
 
@@ -328,8 +339,32 @@ class _RequestRentFormState extends State<RequestRentForm> {
             
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const RequestSentPage()),
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider(
+                        create: (_) => RequestBloc()..add(LoadRequest(request.itemId)), // <-- pass the actual ID
+                        child: BlocBuilder<RequestBloc, RequestState>(
+                          builder: (context, state) {
+                            if (state is RequestLoaded) {
+                              return RequestSentPage(requestId: request.itemId); // <-- same ID
+                            } else if (state is RequestLoading) {
+                              return const Scaffold(
+                                body: Center(child: CircularProgressIndicator()),
+                              );
+                            } else if (state is RequestError) {
+                              return Scaffold(
+                                body: Center(child: Text('Error: ${state.message}')),
+                              );
+                            } else {
+                              return const Scaffold(
+                                body: Center(child: Text('Unknown state')),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ),
                   );
+
                 },
                 child: Text(
                   'Submit',
@@ -346,95 +381,4 @@ class _RequestRentFormState extends State<RequestRentForm> {
       ),
     );
   }
-
-  /// ---------- HELPERS ----------
-
-  // void _openDatePicker(
-  //   BuildContext context, {
-  //   DateTime? initial,
-  //   required DateTime availabilityFrom,
-  //   required DateTime availabilityTo,
-  //   required Function(DateTime) onConfirm,
-  // }) {
-  //   DateTime tempDate = initial ?? availabilityFrom;
-
-  //   showModalBottomSheet(
-  //     context: context,
-  //     shape: const RoundedRectangleBorder(
-  //       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-  //     ),
-  //     builder: (_) {
-  //       return StatefulBuilder(
-  //         builder: (context, setModalState) {
-  //           return Padding(
-  //             padding: const EdgeInsets.all(16),
-  //             child: Column(
-  //               mainAxisSize: MainAxisSize.min,
-  //               children: [
-  //                 CalendarDatePicker(
-  //                   initialDate: tempDate,
-  //                   firstDate: availabilityFrom,
-  //                   lastDate: availabilityTo,
-  //                   onDateChanged: (date) {
-  //                     setModalState(() {
-  //                       tempDate = DateTime(
-  //                         date.year,
-  //                         date.month,
-  //                         date.day,
-  //                       );
-  //                     });
-  //                   },
-  //                 ),
-  //                 const SizedBox(height: 8),
-  //                 TextButton(
-  //                   onPressed: () {
-  //                     Navigator.pop(context);
-  //                     onConfirm(tempDate);
-  //                   },
-  //                   child: const Text('Done'),
-  //                 ),
-  //               ],
-  //             ),
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
-
-//   Future<void> _pickDate({required bool isStart}) async {
-//   final DateTime now = DateTime.now();
-
-//   final DateTime initial = isStart
-//       ? now
-//       : (availableFrom ?? now);
-
-//   final DateTime first = isStart
-//       ? now
-//       : (availableFrom ?? now);
-
-//   final DateTime? picked = await showDatePicker(
-//     context: context,
-//     initialDate: initial,
-//     firstDate: first,
-//     lastDate: DateTime(now.year + 5),
-//   );
-
-//   if (picked != null) {
-//     setState(() {
-//       if (isStart) {
-//         availableFrom = picked;
-
-//         // Auto-clear "until" if invalid
-//         if (availableUntil != null &&
-//             availableUntil!.isBefore(picked)) {
-//           availableUntil = null;
-//         }
-//       } else {
-//         availableUntil = picked;
-//       }
-//     });
-//   }
-// }
-
 }

@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math' show sin, cos, sqrt, atan2;
 
@@ -168,16 +169,108 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Search equipment by availability
+// Search equipment by availability (all items, available first)
   Stream<QuerySnapshot> getAvailableEquipment() {
     return _firestore
         .collection('equipment')
-        .where('isAvailable', isEqualTo: true)
-        // Note: orderBy requires a composite index.
-        // Create index in Firebase Console or remove orderBy for now
-        // .orderBy('createdAt', descending: true)
+        .orderBy('isAvailable', descending: true) // Available first
+        .orderBy('createdAt', descending: true)   // Most recent first
         .snapshots();
   }
+
+   /// ✅ New Cubit-friendly method
+  Stream<List<Equipment>> getAvailableEquipmentStream() {
+    return _firestore.collection('equipment').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => Equipment.fromFirestore(doc)).toList();
+    });
+  }
+
+  /// Get unique equipment categories from Firestore
+  Future<List<String>> getUniqueEquipmentCategories() async {
+    try {
+      final snapshot = await _firestore.collection('equipment').get();
+
+      // Map all documents to their category
+      final categories = snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            final category = data['category'] as String?;
+            return category;
+          })
+          .where((category) => category != null && category.isNotEmpty)
+          .cast<String>()
+          .toList();
+
+      // Convert to a set to remove duplicates, then back to a list
+      final uniqueCategories = categories.toSet().toList();
+
+      return uniqueCategories;
+    } catch (e) {
+      print('Error fetching unique categories: $e');
+      return [];
+    }
+  }
+
+
+  bool calculateAvailability(Map<String, dynamic> data) {
+  final availableFrom = data['availableFrom'] as Timestamp?;
+  final availableUntil = data['availableUntil'] as Timestamp?;
+
+  if (availableFrom == null || availableUntil == null) {
+    return false; // no dates = unavailable
+  }
+
+  final now = DateTime.now();
+  final from = availableFrom.toDate();
+  final until = availableUntil.toDate();
+
+  return now.isAfter(from) && now.isBefore(until);
+}
+
+
+
+    Future<void> setAvailability(String equipmentId, bool value) async {
+    await _firestore
+        .collection('equipment')
+        .doc(equipmentId)
+        .update({'isAvailable': value});
+  }
+
+  Future<void> validateEquipmentAvailability(String equipmentId) async {
+    final docRef = FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
+    final doc = await docRef.get();
+
+    final data = doc.data() as Map<String, dynamic>?;
+
+    if (data == null) return;
+
+    final availableFrom = data['availableFrom'];
+    final availableUntil = data['availableUntil'];
+
+    bool isAvailable;
+
+    if (availableFrom != null && availableUntil != null) {
+      final now = DateTime.now();
+      final from = (availableFrom as Timestamp).toDate();
+      final until = (availableUntil as Timestamp).toDate();
+      isAvailable = now.isAfter(from) && now.isBefore(until);
+    } else {
+      // Dates missing → mark as unavailable
+      isAvailable = false;
+    }
+
+    // Update Firestore
+    await docRef.update({'isAvailable': isAvailable});
+  }
+
+  Future<void> validateAllEquipmentAvailability() async {
+    final snapshot = await FirebaseFirestore.instance.collection('equipment').get();
+
+    for (var doc in snapshot.docs) {
+      await validateEquipmentAvailability(doc.id);
+    }
+  }
+
 
   // Filter equipment by operator availability
   Stream<QuerySnapshot> searchEquipmentByOperator(bool operatorIncluded) {
@@ -208,6 +301,36 @@ class FirestoreService {
   // Get equipment by location (requires latitude/longitude for proximity search)
   // Note: For location proximity, we need to fetch all equipment and filter client-side
   // or use a geohashing solution like GeoFlutterFire (requires additional package)
+  
+  double _degreesToRadians(double degrees) {
+    return degrees * (3.141592653589793 / 180.0);
+  }
+
+  
+
+  // Calculate distance between two coordinates (Haversine formula)
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const double earthRadiusKm = 6371.0;
+
+    final dLat = _degreesToRadians(lat2 - lat1);
+    final dLon = _degreesToRadians(lon2 - lon1);
+
+    final a = (sin(dLat / 2) * sin(dLat / 2)) +
+        (cos(_degreesToRadians(lat1)) *
+            cos(_degreesToRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2));
+
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadiusKm * c;
+  }
+
   Future<List<DocumentSnapshot>> searchEquipmentByLocation(
     double userLat,
     double userLng,
@@ -238,33 +361,6 @@ class FirestoreService {
     }).toList();
 
     return nearbyEquipment;
-  }
-
-  // Calculate distance between two coordinates (Haversine formula)
-  double _calculateDistance(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
-  ) {
-    const double earthRadiusKm = 6371.0;
-
-    final dLat = _degreesToRadians(lat2 - lat1);
-    final dLon = _degreesToRadians(lon2 - lon1);
-
-    final a = (sin(dLat / 2) * sin(dLat / 2)) +
-        (cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2));
-
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-
-    return earthRadiusKm * c;
-  }
-
-  double _degreesToRadians(double degrees) {
-    return degrees * (3.141592653589793 / 180.0);
   }
 
   // ADVANCED SEARCH (combines multiple criteria)
@@ -311,6 +407,6 @@ class FirestoreService {
 
     return results;
   }
+
   
 }
-

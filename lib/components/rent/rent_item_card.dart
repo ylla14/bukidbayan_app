@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/widgets/availability_chip.dart';
 import 'package:flutter/material.dart';
 
 class RentItemCard extends StatelessWidget {
@@ -6,6 +7,7 @@ class RentItemCard extends StatelessWidget {
   final String? ownerName;
   final String imageUrl;
   final String rentalUnit;
+  final bool isAvailable;
 
   const RentItemCard({
     super.key,
@@ -14,6 +16,8 @@ class RentItemCard extends StatelessWidget {
     required this.price,
     this.ownerName,
     required this.rentalUnit,
+    required this.isAvailable,
+
   });
 
   bool _isNetworkUrl(String url) =>
@@ -32,9 +36,21 @@ class RentItemCard extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: _buildImage(),
+              child: Stack(
+                children: [
+                  Positioned.fill(child: _buildImage()),
+
+                  // AVAILABILITY CHIP
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: AvailabilityChip(isAvailable: isAvailable)
+                  ),
+                ],
+              ),
             ),
           ),
+
 
           // DETAILS
           Padding(
@@ -140,5 +156,5 @@ class RentItemCard extends StatelessWidget {
       default:
         return '';
     }
-  }
+  } 
 }

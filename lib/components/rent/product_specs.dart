@@ -1,11 +1,11 @@
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/widgets/spec_row.dart';
 // import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 
 
 class ProductSpecs extends StatelessWidget {
-  final RentItem item;
+  final Equipment item;
 
   const ProductSpecs({super.key, required this.item});
 
@@ -14,7 +14,7 @@ class ProductSpecs extends StatelessWidget {
     final specs = <SpecRow>[];
 
     // Always show category
-    specs.add(SpecRow(title: 'Category', value: item.category));
+    specs.add(SpecRow(title: 'Category', value: item.category ?? 'Unknown'));
 
     // Conditionally show only if not null
     if (item.brand != null) specs.add(SpecRow(title: 'Brand', value: item.brand!));
