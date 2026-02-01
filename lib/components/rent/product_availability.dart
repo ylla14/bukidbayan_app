@@ -1,11 +1,11 @@
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/widgets/availability_box.dart';
 // import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 
 
 class ProductAvailability extends StatelessWidget {
-  final RentItem item;
+  final Equipment item;
 
   const ProductAvailability({super.key, required this.item});
 
@@ -26,14 +26,18 @@ class ProductAvailability extends StatelessWidget {
               Expanded(
                 child: AvailabilityBox(
                   label: 'From',
-                  value: item.availableFrom ?? 'Not specified',
+                  value: item.availableFrom != null 
+                      ? '${item.availableFrom!.month}/${item.availableFrom!.day}/${item.availableFrom!.year}'
+                      : 'Not specified',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: AvailabilityBox(
                   label: 'To',
-                  value: item.availableTo ?? 'Not specified',
+                  value: item.availableUntil != null
+                      ? '${item.availableUntil!.month}/${item.availableUntil!.day}/${item.availableUntil!.year}'
+                      : 'Not specified',
                 ),
               ),
             ],

@@ -1,3 +1,5 @@
+import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_dropdown_form_field.dart';
 import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
@@ -6,16 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
 
 // import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/services/rent_service.dart';
-
 
 const List<String> rentalUnit = <String>['Per Hour', 'Per Day', 'Per Week', 'Per Month'];
 const List<String> condition = <String>['Brand New', 'Excellent', 'Good', 'Fair', 'Needs Maintenance'];
@@ -23,17 +21,21 @@ const List<String> condition = <String>['Brand New', 'Excellent', 'Good', 'Fair'
 // Options for dropdowns
 final List<String> brandOptions = ['Mitsubishi', 'Kubota', 'John Deere', 'Honda', 'Stihl'];
 final List<String> yearOptions = List.generate(20, (i) => (DateTime.now().year - i).toString());
-final List<String> powerOptions = ['10 HP', '20 HP', '34 HP', '50 HP', '75 HP'];
-final List<String> fuelOptions = ['Diesel', 'Gasoline', 'Electric', 'Hybrid'];
+final List<String> powerOptions = ['10 HP', '20 HP', '24 HP', '32 HP', '34 HP', '50 HP', '75 HP'];
+final List<String> fuelOptions = ['Diesel', 'Gasoline', 'Electric', 'Hybrid', 'Oil'];
 
 
 
 class EquipmentListingScreen extends StatefulWidget {
-  const EquipmentListingScreen({super.key});
+  final Equipment? existingEquipment; // optional
+
+
+  const EquipmentListingScreen({super.key, this.existingEquipment});
 
   @override
   State<EquipmentListingScreen> createState() => _EquipmentListingScreenState();
 }
+
 
 class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -69,30 +71,15 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   DateTime? availableUntil;
   bool showAvailabilityError = false;
 
-  List<RentItem> itemCategories = items;
-  final List<String> uniqueCategories = items
-    .map((item) => item.category)
-    .toSet()
-    .toList();
+  // List<RentItem> itemCategories = items;
+  // final List<String> uniqueCategories = items
+  //   .map((item) => item.category)
+  //   .toSet()
+  //   .toList();
 
-//   List<String> uniqueCategories = [];
+  List<String> uniqueCategories = []; // will fetch from Firestore
+  bool isLoadingCategories = true;     // optional: to show loading state
 
-// @override
-// void initState() {
-//   super.initState();
-//   _loadCategories();
-// }
-
-// Future<void> _loadCategories() async {
-//   await _rentService.seedRentItems();
-//   final allItems = await _rentService.getAllItems();
-//   setState(() {
-//     uniqueCategories = allItems
-//         .map((item) => item.category)
-//         .toSet()
-//         .toList();
-//   });
-// }
 
   String? selectedCategory;
   String? selectedRentalUnit;
@@ -103,8 +90,69 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   // Max 10 images (null = empty slot)
   final List<XFile?> images = List.generate(10, (_) => null);
   bool _isPickingImage = false;
+  List<String> existingImageUrls = [];
+
 
   // final RentService _rentService = RentService();
+
+@override
+void initState() {
+  super.initState();
+   _loadCategoriesFromFirestore();
+
+
+  // If editing an existing equipment, pre-fill the fields
+  if (widget.existingEquipment != null) {
+    final eq = widget.existingEquipment!;
+    
+
+    _equipmentNameController.text = eq.name ?? '';
+    _equipmentDescriptionController.text = eq.description ?? '';
+    _equipmentPriceController.text = eq.price?.toString() ?? '';
+    _attachmentsController.text = eq.attachments ?? '';
+    _defectsController.text = eq.defects ?? '';
+    _landSizeMinController.text = eq.landSizeMin ?? '';
+    _landSizeMaxController.text = eq.landSizeMax ?? '';
+    _maxCropHeightController.text = eq.maxCropHeight ?? '';
+
+    selectedCategory = eq.category;
+    selectedBrand = eq.brand;
+    selectedYear = eq.yearModel;
+    selectedPower = eq.power;
+    selectedFuel = eq.fuelType;
+    selectedCondition = eq.condition;
+    selectedRentalUnit = eq.rentalUnit;
+
+    operatorIncluded = eq.operatorIncluded;
+    landSizeRequirement = eq.landSizeRequirement;
+    maxCropHeightRequirement = eq.maxCropHeightRequirement;
+
+    availableFrom = eq.availableFrom;
+    availableUntil = eq.availableUntil;
+
+    // Load images if any
+    final List<String> existingImageUrls = eq.imageUrls ?? [];
+    for (int i = 0; i < existingImageUrls.length && i < images.length; i++) {
+      images[i] = XFile(existingImageUrls[i]); // mark as existing
+    }
+  }
+}
+
+Future<void> _loadCategoriesFromFirestore() async {
+  final firestoreService = FirestoreService();
+  try {
+    final categories = await firestoreService.getUniqueEquipmentCategories();
+    setState(() {
+      uniqueCategories = categories;
+      isLoadingCategories = false;
+    });
+  } catch (e) {
+    setState(() {
+      isLoadingCategories = false;
+    });
+    print('Failed to load categories: $e');
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -137,53 +185,141 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                   ),
                 ),
         
-                //IMAGE PICKER
-                const SizedBox(height: 10,),
+                // //IMAGE PICKER
+                // const SizedBox(height: 10,),
+                // SizedBox(
+                //   height: 100, // height of the row
+                //   child: ListView.builder(
+                //     scrollDirection: Axis.horizontal,
+                //     itemCount: images.length,
+                //     itemBuilder: (context, index) {
+                //       final image = images[index];
+                //       return Padding(
+                //         padding: const EdgeInsets.only(right: 8, left: 8),
+                //         child: GestureDetector(
+                //           onTap: () => pickImage(index),
+                //           child: Container(
+                //             width: 90, // 👈 FIXED SIZE
+                //             height: 90, // 👈 FIXED SIZE
+                //             decoration: BoxDecoration(
+                //               border: Border.all(color: lightColorScheme.primary),
+                //               borderRadius: BorderRadius.circular(8),
+                //               color: lightColorScheme.primary.withOpacity(0.2),
+                //             ),
+                //             child: image == null
+                //                 ? const Center(
+                //                     child: Icon(
+                //                       Icons.add,
+                //                       size: 32,
+                //                       color: Colors.white,
+                //                     ),
+                //                   )
+                //                 : ClipRRect(
+                //                     borderRadius: BorderRadius.circular(8),
+                //                     child: kIsWeb
+                //                         ? Image.network(
+                //                             image.path,
+                //                             fit: BoxFit.cover,
+                //                           )
+                //                         : Image.file(
+                //                             File(image.path),
+                //                             fit: BoxFit.cover,
+                //                           ),
+                //                   ),
+                //           ),
+                //         ),
+                //       );
+                //     },
+                //   ),
+                // ),
+
+                const SizedBox(height: 10),
                 SizedBox(
-                  height: 100, // height of the row
+                  height: 100,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: images.length,
                     itemBuilder: (context, index) {
-                      final image = images[index];
+                      final XFile? image = images[index];
+
                       return Padding(
-                        padding: const EdgeInsets.only(right: 8, left: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: GestureDetector(
                           onTap: () => pickImage(index),
                           child: Container(
-                            width: 90, // 👈 FIXED SIZE
-                            height: 90, // 👈 FIXED SIZE
+                            width: 90,
+                            height: 90,
                             decoration: BoxDecoration(
                               border: Border.all(color: lightColorScheme.primary),
                               borderRadius: BorderRadius.circular(8),
                               color: lightColorScheme.primary.withOpacity(0.2),
                             ),
-                            child: image == null
-                                ? const Center(
-                                    child: Icon(
-                                      Icons.add,
-                                      size: 32,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : ClipRRect(
+                            child: Stack(
+                              children: [
+                                // IMAGE OR EMPTY SLOT
+                                Positioned.fill(
+                                  child: ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: kIsWeb
-                                        ? Image.network(
-                                            image.path,
-                                            fit: BoxFit.cover,
-                                          )
-                                        : Image.file(
-                                            File(image.path),
-                                            fit: BoxFit.cover,
+                                    child: Builder(
+                                      builder: (_) {
+                                        if (image != null && !image.path.startsWith('http')) {
+                                          return kIsWeb
+                                              ? Image.network(image.path, fit: BoxFit.cover)
+                                              : Image.file(File(image.path), fit: BoxFit.cover);
+                                        }
+
+                                        if (image != null && image.path.startsWith('http')) {
+                                          return Image.network(image.path, fit: BoxFit.cover);
+                                        }
+
+                                        return const Center(
+                                          child: Icon(
+                                            Icons.add,
+                                            size: 32,
+                                            color: Colors.white,
                                           ),
+                                        );
+                                      },
+                                    ),
                                   ),
+                                ),
+
+                                // REMOVE BUTTON
+                                if (image != null)
+                                  Positioned(
+                                    top: 2,
+                                    right: 2,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          images[index] = null;
+                                        });
+                                      },
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          size: 18,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       );
                     },
+
                   ),
                 ),
+
+
+                
 
                 if (showImageError)
                 const Padding(
@@ -209,7 +345,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       ),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
-                        initialValue: selectedCategory,
+                        value: selectedCategory,
                         isExpanded: true,
                         dropdownColor: lightColorScheme.onPrimary,
                         decoration: InputDecoration(
@@ -227,31 +363,34 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                             borderSide: BorderSide(color: lightColorScheme.primary, width: 2),
                           ),
                           prefixIcon: selectedCategory != null
-                            ?IconButton(
-                              icon: Icon(Icons.close),
-                              onPressed: (){
+                              ? IconButton(
+                                  icon: Icon(Icons.close),
+                                  onPressed: () {
+                                    setState(() {
+                                      selectedCategory = null;
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                        items: isLoadingCategories
+                            ? [] // show empty while loading
+                            : uniqueCategories.map((String category) {
+                                return DropdownMenuItem<String>(
+                                  value: category,
+                                  child: Text(category),
+                                );
+                              }).toList(),
+                        onChanged: isLoadingCategories
+                            ? null
+                            : (String? value) {
                                 setState(() {
-                                  selectedCategory = null;
+                                  selectedCategory = value;
                                 });
                               },
-                            )
-                            :null
-                        ), 
-                        items: uniqueCategories.map((String category) {
-                          return DropdownMenuItem<String>(
-                            value: category,
-                            child: Text(category),
-                            
-                          );
-                        }).toList(),
-                        onChanged: (String? value) {
-                          setState(() {
-                            selectedCategory = value;
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Please select a category' : null,
+                        validator: (value) => value == null ? 'Please select a category' : null,
                       ),
+
         
                       const SizedBox(height: 16),
         
@@ -310,84 +449,84 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       const SizedBox(height: 10),
         
                      // BRAND & YEAR
-Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Brand / Model', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedBrand,
-            options: brandOptions,
-            hint: 'Select Brand',
-            onChanged: (value) => setState(() => selectedBrand = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Year Model', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedYear,
-            options: yearOptions,
-            hint: 'Select Year',
-            onChanged: (value) => setState(() => selectedYear = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-  ],
-),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Brand / Model', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: uniqueCategories.contains(selectedBrand) ? selectedBrand : null,
+                                  options: brandOptions,
+                                  hint: 'Select Brand',
+                                  onChanged: (value) => setState(() => selectedBrand = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Year Model', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: selectedYear,
+                                  options: yearOptions,
+                                  hint: 'Select Year',
+                                  onChanged: (value) => setState(() => selectedYear = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
 
-const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-// POWER & FUEL
-Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Power / Capacity', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedPower,
-            options: powerOptions,
-            hint: 'Select Power',
-            onChanged: (value) => setState(() => selectedPower = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Fuel Type', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          CustomDropdownFormField(
-            value: selectedFuel,
-            options: fuelOptions,
-            hint: 'Select Fuel Type',
-            onChanged: (value) => setState(() => selectedFuel = value),
-            // validator: (value) => value == null ? 'Required' : null,
-          ),
-        ],
-      ),
-    ),
-  ],
-),
+                      // POWER & FUEL
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Power / Capacity', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: selectedPower,
+                                  options: powerOptions,
+                                  hint: 'Select Power',
+                                  onChanged: (value) => setState(() => selectedPower = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Fuel Type', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                CustomDropdownFormField(
+                                  value: selectedFuel,
+                                  options: fuelOptions,
+                                  hint: 'Select Fuel Type',
+                                  onChanged: (value) => setState(() => selectedFuel = value),
+                                  // validator: (value) => value == null ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
 
                       
                       /// CONDI 
@@ -730,6 +869,7 @@ Row(
         
 
                       const SizedBox(height: 16),
+                     
                       //DATE PRICKER
                       const Text(
                         'Availability',
@@ -1013,56 +1153,51 @@ Row(
     }
   }
 
-  Future<void> _onSavePressed() async {
-    final isFormValid = _formKey.currentState!.validate();
+Future<void> _onSavePressed() async {
+  final isFormValid = _formKey.currentState!.validate();
+  bool hasImage = images.any((img) => img != null);
 
-    bool hasImage = images.any((img) => img != null);
+  setState(() {
+    showLandSizeError = landSizeRequirement == null;
+    showCropHeightError = maxCropHeightRequirement == null;
+    showImageError = !hasImage;
+    showAvailabilityError = availableFrom == null || availableUntil == null;
+  });
 
-    setState(() {
-      showLandSizeError = landSizeRequirement == null;
-      showCropHeightError = maxCropHeightRequirement == null;
-      showImageError = !hasImage;
-      showAvailabilityError = availableFrom == null || availableUntil == null;
-    });
+  if (!isFormValid ||
+      landSizeRequirement == null ||
+      maxCropHeightRequirement == null ||
+      !hasImage ||
+      availableFrom == null ||
+      availableUntil == null) {
+    return;
+  }
 
-    if (!isFormValid ||
-        landSizeRequirement == null ||
-        maxCropHeightRequirement == null ||
-        !hasImage ||
-        availableFrom == null ||
-        availableUntil == null) {
-      return;
+  // Show loading dialog
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
+
+  try {
+    final authService = AuthService();
+    final firestoreService = FirestoreService();
+    final currentUser = authService.currentUser;
+
+    if (currentUser == null) {
+      throw Exception('You must be logged in to create a listing');
     }
 
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    // Get user data for owner name
+    final userData = await authService.getUserData(currentUser.uid);
+    final ownerName = userData?['firstName'] != null && userData?['lastName'] != null
+        ? '${userData!['firstName']} ${userData['lastName']}'
+        : currentUser.email?.split('@')[0] ?? 'Unknown';
 
-    try {
-      final authService = AuthService();
-      final firestoreService = FirestoreService();
-      final currentUser = authService.currentUser;
-
-      if (currentUser == null) {
-        throw Exception('You must be logged in to create a listing');
-      }
-
-      // Get user data for owner name
-      final userData = await authService.getUserData(currentUser.uid);
-      final ownerName = userData?['firstName'] != null && userData?['lastName'] != null
-          ? '${userData!['firstName']} ${userData['lastName']}'
-          : currentUser.email?.split('@')[0] ?? 'Unknown';
-
-      final List<String> requirementsList = [];
-
-    print('MIN: ${_landSizeMinController.text}');
-    print('MAX: ${_landSizeMaxController.text}');
-    print('CROP: ${_maxCropHeightController.text}');
+    final List<String> requirementsList = [];
 
     if (landSizeRequirement == true) {
       requirementsList.add(
@@ -1081,232 +1216,162 @@ Row(
       );
     }
 
-
     if (requirementsList.isEmpty) {
       requirementsList.add('No specific requirements');
     }
-      // Upload images to Cloudinary
-      final cloudinaryService = CloudinaryService();
-      final selectedImages = images.where((img) => img != null).map((img) => img!).toList();
 
-      List<String> imageUrls = [];
+    // // Upload images to Cloudinary
+    final cloudinaryService = CloudinaryService();
+    // final selectedImages = images.where((img) => img != null).map((img) => img!).toList();
 
-      if (selectedImages.isNotEmpty) {
-        try {
-          // Upload all images to Cloudinary
-          imageUrls = await cloudinaryService.uploadMultipleImages(
-            selectedImages,
-            onProgress: (current, total) {
-              print('Uploading image $current of $total');
-            },
-          );
+    // List<String> imageUrls = [];
 
-          print('Successfully uploaded ${imageUrls.length} images to Cloudinary');
-        } catch (e) {
-          // If Cloudinary upload fails, throw error
-          throw Exception('Failed to upload images: $e');
-        }
-      }
+    // if (selectedImages.isNotEmpty) {
+    //   try {
+    //     imageUrls = await cloudinaryService.uploadMultipleImages(
+    //       selectedImages,
+    //       onProgress: (current, total) {
+    //         print('Uploading image $current of $total');
+    //       },
+    //     );
+    //     print('Successfully uploaded ${imageUrls.length} images to Cloudinary');
+    //   } catch (e) {
+    //     throw Exception('Failed to upload images: $e');
+    //   }
+    // }
 
-      // Create Equipment object
-      final equipment = Equipment(
-        name: _equipmentNameController.text.trim(),
-        description: _equipmentDescriptionController.text.trim(),
-        category: selectedCategory,
-        brand: selectedBrand, // ✅ use dropdown value
-        yearModel: selectedYear, // ✅ use dropdown value
-        power: selectedPower ?? 'N/A', // ✅ use dropdown value
-        condition: selectedCondition ?? 'Good',
-        attachments: _attachmentsController.text.trim().isEmpty
-            ? null
-            : _attachmentsController.text.trim(),
-        operatorIncluded: operatorIncluded ?? false,
-        availableFrom: availableFrom,
-        availableUntil: availableUntil,
-        requirements: requirementsList,
-        reviews: [],
-        price: double.parse(_equipmentPriceController.text.trim()),
-        rentalUnit: selectedRentalUnit ?? 'Per Day',
-        ownerId: currentUser.uid,
-        ownerName: ownerName,
-        imageUrls: imageUrls,
-        fuelType: selectedFuel,
-        defects: selectedCondition == 'Needs Maintenance'
-            ? _defectsController.text.trim()
-            : null,
-        isAvailable: true, 
-        landSizeRequirement: landSizeRequirement ?? false,
-        maxCropHeightRequirement: maxCropHeightRequirement ?? false,
-        landSizeMin:  _landSizeMinController.text,
-        landSizeMax:  _landSizeMaxController.text,
-        maxCropHeight: _maxCropHeightController.text.trim().isEmpty
-            ? null
-            : _maxCropHeightController.text.trim(),
+    // Separate old images (already URLs) and new images (local files)
+final List<XFile> newImages = images
+    .where((img) => img != null && !img!.path.startsWith('http'))
+    .map((img) => img!)
+    .toList();
 
-        
+final List<String> existingImageUrls = images
+    .where((img) => img != null && img!.path.startsWith('http'))
+    .map((img) => img!.path)
+    .toList();
 
+// Upload only NEW images
+List<String> uploadedUrls = [];
+if (newImages.isNotEmpty) {
+  try {
+    uploadedUrls = await cloudinaryService.uploadMultipleImages(
+      newImages,
+      onProgress: (current, total) {
+        print('Uploading image $current of $total');
+      },
+    );
+    print('Successfully uploaded ${uploadedUrls.length} images to Cloudinary');
+  } catch (e) {
+    throw Exception('Failed to upload images: $e');
+  }
+}
+
+// Combine existing URLs + newly uploaded URLs
+final List<String> imageUrls = [
+  ...existingImageUrls,
+  ...uploadedUrls,
+];
+
+// Determine if the equipment should be marked as available
+final rentRequestService = RentRequestService(); // 🔹 use your local service
+
+// Compute availability normally
+bool computedAvailability = availableFrom != null &&
+    availableUntil != null &&
+    DateTime.now().isAfter(availableFrom!) &&
+    DateTime.now().isBefore(availableUntil!);
+
+// 🔹 OVERRIDE availability if there's an approved request for this equipment
+if (widget.existingEquipment != null) {
+  final hasApprovedRequest = (await rentRequestService.getAllRequests())
+      .any((r) =>
+          r.itemId == widget.existingEquipment!.id &&
+          r.status == RentRequestStatus.approved);
+
+  if (hasApprovedRequest) {
+    computedAvailability = false;
+  }
+}
+
+// Create Equipment object
+final equipment = Equipment(
+  name: _equipmentNameController.text.trim(),
+  description: _equipmentDescriptionController.text.trim(),
+  category: selectedCategory,
+  brand: selectedBrand,
+  yearModel: selectedYear,
+  power: selectedPower ?? 'N/A',
+  condition: selectedCondition ?? 'Good',
+  attachments: _attachmentsController.text.trim().isEmpty
+      ? null
+      : _attachmentsController.text.trim(),
+  operatorIncluded: operatorIncluded ?? false,
+  availableFrom: availableFrom,
+  availableUntil: availableUntil,
+  requirements: requirementsList,
+  reviews: [],
+  price: double.parse(_equipmentPriceController.text.trim()),
+  rentalUnit: selectedRentalUnit ?? 'Per Day',
+  ownerId: currentUser.uid,
+  ownerName: ownerName,
+  imageUrls: imageUrls,
+  fuelType: selectedFuel,
+  defects: selectedCondition == 'Needs Maintenance'
+      ? _defectsController.text.trim()
+      : null,
+  // <-- UPDATED LOGIC HERE
+  isAvailable: computedAvailability,
+  landSizeRequirement: landSizeRequirement ?? false,
+  maxCropHeightRequirement: maxCropHeightRequirement ?? false,
+  landSizeMin: _landSizeMinController.text,
+  landSizeMax: _landSizeMaxController.text,
+  maxCropHeight: _maxCropHeightController.text.trim().isEmpty
+      ? null
+      : _maxCropHeightController.text.trim(),
+);
+
+    // ✅ NEW PART: check if updating or creating new
+    if (widget.existingEquipment != null) {
+      // Update existing equipment
+      await firestoreService.updateEquipment(
+        widget.existingEquipment!.id!, // make sure your Equipment model has `id`
+        equipment.toMap(),
+      );
+    } else {
+      // Add new equipment
+      await firestoreService.addEquipment(equipment.toMap());
+    }
+
+    // Close loading dialog
+    if (mounted) Navigator.pop(context);
+
+    // Show success message
+    if (mounted) {
+      showConfirmSnackbar(
+        context: context,
+        title: 'Success!',
+        message: widget.existingEquipment != null
+            ? 'Equipment updated successfully!'
+            : 'Equipment listed successfully!',
       );
 
-      // Save to Firestore
-      await firestoreService.addEquipment(equipment.toMap());
+     Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) Navigator.pop(context, equipment); // pass the updated equipment
+    });
 
-      // Close loading dialog
-      if (mounted) Navigator.pop(context);
+    }
+  } catch (e) {
+    if (mounted) Navigator.pop(context);
 
-      // Show success message
-      if (mounted) {
-        showConfirmSnackbar(
-          context: context,
-          title: 'Success!',
-          message: 'Equipment listed successfully!',
-        );
-
-        // Navigate back after short delay
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) Navigator.pop(context);
-        });
-      }
-    } catch (e) {
-      // Close loading dialog
-      if (mounted) Navigator.pop(context);
-
-      // Show error message
-      if (mounted) {
-        showErrorSnackbar(
-          context: context,
-          title: 'Error',
-          message: e.toString(),
-        );
-      }
+    if (mounted) {
+      showErrorSnackbar(
+        context: context,
+        title: 'Error',
+        message: e.toString(),
+      );
     }
   }
-
-//   void _onSavePressed() async {
-//   final isFormValid = _formKey.currentState!.validate();
-
-//   bool hasImage = images.any((img) => img != null);
-
-//   setState(() {
-//     showLandSizeError = landSizeRequired == null;
-//     showCropHeightError = cropHeightRequired == null;
-//     showImageError = !hasImage;
-//     showAvailabilityError = availableFrom == null || availableUntil == null;
-//   });
-
-//   if (!isFormValid ||
-//       landSizeRequired == null ||
-//       cropHeightRequired == null ||
-//       !hasImage ||
-//       availableFrom == null ||
-//       availableUntil == null) {
-//     // Show error message
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: const Text('Please fill in all required fields'),
-//         backgroundColor: Colors.red,
-//         behavior: SnackBarBehavior.floating,
-//       ),
-//     );
-//     return;
-//   }
-
-//   try {
-//     // Generate unique ID (in real app, this would come from database)
-//     final String newId = DateTime.now().millisecondsSinceEpoch.toString();
-
-//     // Collect image paths (convert XFile to asset-style paths or file paths)
-//     final List<String> imageUrls = images
-//         .where((img) => img != null)
-//         .map((img) => img!.path)
-//         .toList();
-
-//     // Format dates
-//     final String formattedFrom = "${availableFrom!.month.toString().padLeft(2, '0')}/${availableFrom!.day.toString().padLeft(2, '0')}/${availableFrom!.year}";
-//     final String formattedTo = "${availableUntil!.month.toString().padLeft(2, '0')}/${availableUntil!.day.toString().padLeft(2, '0')}/${availableUntil!.year}";
-
-//     // Parse land size values if applicable
-//     int? minLandSize;
-//     int? maxLandSize;
-//     if (landSizeRequired == true) {
-//       minLandSize = int.tryParse(_minLandSizeController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-//       maxLandSize = int.tryParse(_maxLandSizeController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-//     }
-
-//     // Parse crop height if applicable
-//     double? maxCropHeightValue;
-//     if (cropHeightRequired == true) {
-//       maxCropHeightValue = double.tryParse(_cropHeightController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-//     }
-
-//     // Create new RentItem
-//     final RentItem newItem = RentItem(
-//       id: newId,
-//       title: _equipmentNameController.text.trim(),
-//       imageUrls: imageUrls,
-//       category: selectedCategory!,
-//       price: _equipmentPriceController.text.trim(),
-//       rentRate: selectedRentalUnit!.toLowerCase().replaceAll('per ', ''),
-//       availableFrom: formattedFrom,
-//       availableTo: formattedTo,
-//       brand: _equipmentBrandController.text.trim().isNotEmpty 
-//           ? _equipmentBrandController.text.trim() 
-//           : null,
-//       yearModel: _yearController.text.trim().isNotEmpty 
-//           ? _yearController.text.trim() 
-//           : null,
-//       power: _powerController.text.trim().isNotEmpty 
-//           ? _powerController.text.trim() 
-//           : null,
-//       fuelType: _fuelController.text.trim().isNotEmpty 
-//           ? _fuelController.text.trim() 
-//           : null,
-//       condition: selectedCondition,
-//       defects: selectedCondition == 'Needs Maintenance' && _defectsController.text.trim().isNotEmpty
-//           ? _defectsController.text.trim()
-//           : null,
-//       attachments: _attachmentsController.text.trim().isNotEmpty 
-//           ? _attachmentsController.text.trim() 
-//           : null,
-//       operatorIncluded: operatorIncluded,
-//       landSizeRequirement: landSizeRequired ?? false,
-//       landSizeMin: minLandSize,
-//       landSizeMax: maxLandSize,
-//       maxCropHeightRequirement: cropHeightRequired ?? false,
-//       maxCropHeight: maxCropHeightValue,
-//       description: _equipmentDescriptionController.text.trim(),
-//     );
-
-//     // Save to service
-//     await _rentService.addRentItem(newItem);
-
-//     // Show success message
-//     if (mounted) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: const Text('Equipment listing created successfully!'),
-//           backgroundColor: Colors.green,
-//           behavior: SnackBarBehavior.floating,
-//         ),
-//       );
-
-//       // Navigate back to previous screen
-//       Navigator.pop(context);
-//     }
-
-//   } catch (e) {
-//     // Show error message
-//     if (mounted) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text('Error saving equipment: $e'),
-//           backgroundColor: Colors.red,
-//           behavior: SnackBarBehavior.floating,
-//         ),
-//       );
-//     }
-//     debugPrint('Error saving equipment: $e');
-//   }
-// }
-
+}
 
 }

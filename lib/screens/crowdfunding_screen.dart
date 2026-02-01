@@ -5,6 +5,7 @@ import 'package:bukidbayan_app/screens/campaign_detail_screen.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/campaign_card.dart' hide formatPeso;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
 
@@ -18,6 +19,7 @@ class CrowdfundingScreen extends StatefulWidget {
 }
 
 class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final CrowdfundingService service = CrowdfundingService();
   final TextEditingController searchController = TextEditingController();
 
@@ -75,11 +77,16 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
     return filtered;
   }
 
+  Future<void> logout() async {
+  await _auth.signOut();
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(),
-      drawer: CustomDrawer(),
+      drawer: CustomDrawer(onLogout: logout,),
       body: FutureBuilder<List<Campaign>>(
         future: _future,
         builder: (context, snapshot) {

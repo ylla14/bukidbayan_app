@@ -1,22 +1,29 @@
 import 'dart:io';
 
+import 'package:bukidbayan_app/blocs/request_bloc.dart';
+import 'package:bukidbayan_app/blocs/request_event.dart';
+import 'package:bukidbayan_app/blocs/request_state.dart';
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
+import 'package:bukidbayan_app/widgets/date_picker_field.dart';
+import 'package:bukidbayan_app/widgets/requirement_upload_tile.dart';
+import 'package:bukidbayan_app/widgets/step_header.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-// import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_expandable.dart';
-import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
 
 class RequestRentForm extends StatefulWidget {
-  final RentItem item;
+  final Equipment item;
   const RequestRentForm({super.key, required this.item});
 
   @override
@@ -24,12 +31,18 @@ class RequestRentForm extends StatefulWidget {
 }
 
 class _RequestRentFormState extends State<RequestRentForm> {
-  DateTime? startDateTime;
-  DateTime? returnDateTime;
+  DateTime? startDate;
+  DateTime? returnDate;
+
+   DateTime? availableFrom;
+  DateTime? availableUntil;
+  bool showAvailabilityError = false;
+
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final RentRequestService _requestService = RentRequestService();
+  
 
 
   final ImagePicker _picker = ImagePicker();
@@ -37,7 +50,8 @@ class _RequestRentFormState extends State<RequestRentForm> {
   XFile? cropHeightProof;
 
   bool get isScheduleComplete =>
-      startDateTime != null && returnDateTime != null;
+      startDate != null && returnDate != null;
+
 
   bool get isStep2Complete =>
       nameController.text.isNotEmpty &&
@@ -83,66 +97,137 @@ class _RequestRentFormState extends State<RequestRentForm> {
 
             /// STEP 1 — DATE & TIME
             const CustomDivider(),
-            _stepHeader(
-              'Step 1: Iskedyul ng Pag-upa',
-              'Piliin ang petsa at oras ng pickup at return. '
+            StepHeader(
+              title: 'Step 1: Iskedyul ng Pag-upa',
+              subtitle: 'Piliin ang petsa at oras ng pickup at return. '
               'Ang return ay dapat hindi bababa sa 1 oras mula sa pickup.',
             ),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _dateButton(
-                    label: 'Start / Pickup',
-                    value: startDateTime,
-                    onTap: () => _openDateTimePicker(
-                      context,
-                      initial: startDateTime,
-                      onConfirm: (date) {
-                        setState(() {
-                          startDateTime = date;
-                          returnDateTime = null;
-                        });
-                      },
-                    ),
-                  ),
+          //  Row(
+          //   children: [
+          //     Expanded(
+          //       child: DatePickerField(
+          //         label: 'Start / Pickup Date',
+          //         value: startDate,
+          //         onTap: () => _openDatePicker(
+          //           context,
+          //           initial: startDate,
+          //           availabilityFrom: widget.item.availableFrom!,
+          //           availabilityTo: widget.item.availableTo!,
+          //           onConfirm: (date) {
+          //             setState(() {
+          //               startDate = date;
+          //               returnDate = null;
+          //             });
+          //           },
+          //         ),
+          //       ),
+          //     ),
+          //     const SizedBox(width: 12),
+          //     Expanded(
+          //       child: DatePickerField(
+          //         label: 'Return Date',
+          //         value: returnDate,
+          //         onTap: startDate == null
+          //             ? null
+          //             : () => _openDatePicker(
+          //                   context,
+          //                   initial: returnDate ?? startDate,
+          //                   availabilityFrom: widget.item.availableFrom!,
+          //                   availabilityTo: widget.item.availableTo!,
+          //                   onConfirm: (date) {
+          //                     if (date.isBefore(startDate!)) {
+          //                       showErrorSnackbar(
+          //                         context: context,
+          //                         title: 'Invalid date',
+          //                         message:
+          //                             'Return date must be after pickup date',
+          //                       );
+          //                       return;
+          //                     }
+          //                     setState(() => returnDate = date);
+          //                   },
+          //                 ),
+          //       ),
+          //     ),
+          //   ],
+          // ),
+
+          Row(
+            children: [
+              Expanded(
+                child: DatePickerField(
+                  label: 'Start / Pickup Date',
+                  value: startDate,
+                  onTap: () async {
+                    final DateTime now = DateTime.now();
+                    final DateTime initial = startDate ?? widget.item.availableFrom!;
+                    final DateTime first = widget.item.availableFrom!;
+                    final DateTime last = widget.item.availableUntil!;
+
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: initial,
+                      firstDate: first,
+                      lastDate: last,
+                    );
+
+                    if (picked != null) {
+                      setState(() {
+                        startDate = picked;
+                        returnDate = null; // auto-clear return
+                      });
+                    }
+                  },
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _dateButton(
-                    label: 'Return Date',
-                    value: returnDateTime,
-                    onTap: startDateTime == null
-                        ? null
-                        : () => _openDateTimePicker(
-                              context,
-                              initial: returnDateTime ?? startDateTime,
-                              onConfirm: (date) {
-                                if (date.isBefore(
-                                  startDateTime!.add(const Duration(hours: 1)),
-                                )) {
-                                  showErrorSnackbar(
-                                    context: context,
-                                    title: 'Error',
-                                    message:
-                                        'Return time must be at least 1 hour after pickup',
-                                  );
-                                  return;
-                                }
-                                setState(() => returnDateTime = date);
-                              },
-                            ),
-                  ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DatePickerField(
+                  label: 'Return Date',
+                  value: returnDate,
+                  onTap: startDate == null
+                      ? null
+                      : () async {
+                          final DateTime initial = returnDate ?? startDate!;
+                          final DateTime first = startDate!;
+                          final DateTime last = widget.item.availableUntil!;
+
+                          final DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: initial,
+                            firstDate: first,
+                            lastDate: last,
+                          );
+
+                          if (picked != null) {
+                            if (picked.isBefore(startDate!)) {
+                              showErrorSnackbar(
+                                context: context,
+                                title: 'Invalid date',
+                                message: 'Return date must be after pickup date',
+                              );
+                              return;
+                            }
+                            setState(() {
+                              returnDate = picked;
+                            });
+                          }
+                        },
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+
+
+
 
             /// STEP 2 — USER INFO
             if (isScheduleComplete) ...[
               const CustomDivider(),
-              _stepHeader(
-                'Step 2: Impormasyon ng Umuupa',
-                'Ilagay ang buong pangalan at address.',
+              StepHeader(
+                title: 'Step 2: Impormasyon ng Umuupa',
+                subtitle: 'Ilagay ang buong pangalan at address.',
               ),
 
               CustomTextFormField(
@@ -160,13 +245,13 @@ class _RequestRentFormState extends State<RequestRentForm> {
             /// STEP 3 — REQUIREMENTS PROOF
             if (isScheduleComplete) ...[
               const CustomDivider(),
-              _stepHeader(
-                'Step 3: Patunay ng Requirements',
-                'Mag-upload ng larawan bilang patunay sa mga requirement.',
+              StepHeader(
+                title: 'Step 3: Patunay ng Requirements',
+                subtitle: 'Mag-upload ng larawan bilang patunay sa mga requirement.',
               ),
 
               if (widget.item.landSizeRequirement == true)
-                _requirementUploadTile(
+                RequirementUploadTile(
                   label: 'Patunay ng Laki ng Lupa',
                   file: landSizeProof,
                   onPick: () async {
@@ -182,7 +267,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
                 ),
 
               if (widget.item.maxCropHeightRequirement == true)
-                _requirementUploadTile(
+                RequirementUploadTile(
                   label: 'Patunay ng Taas ng Pananim',
                   file: cropHeightProof,
                   onPick: () async {
@@ -203,6 +288,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
             const SizedBox(height: 16),
 
             /// SUBMIT
+            if (isScheduleComplete) ...[
              Align(
               alignment: Alignment.center,
               child: OutlinedButton(
@@ -225,24 +311,60 @@ class _RequestRentFormState extends State<RequestRentForm> {
                   if (cropHeightProof != null) {
                     cropPath = await _requestService.saveFileLocally(cropHeightProof!);
                   }
+                  
+                  final currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
                   final request = RentRequest(
-                    itemId: widget.item.id,
+                    requestId: '',
+                    itemId: widget.item.id ?? 'Unknown',
+                    itemName: widget.item.name, // <-- added here
                     name: nameController.text,
                     address: addressController.text,
-                    start: startDateTime!,
-                    end: returnDateTime!,
+                    start: startDate!,
+                    end: returnDate!,
                     landSizeProofPath: landPath,
                     cropHeightProofPath: cropPath,
+                    status: RentRequestStatus.pending,
+                    renterId: currentUserId,
+                    ownerId: widget.item.ownerId
                   );
+
 
                   await _requestService.saveRequest(request);
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Request saved!')),
+                    const SnackBar(content: Text('Request sent!')),
                   );
 
-                  Navigator.pop(context);
+            
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider(
+                        create: (_) => RequestBloc()..add(LoadRequest(request.itemId)), // <-- pass the actual ID
+                        child: BlocBuilder<RequestBloc, RequestState>(
+                          builder: (context, state) {
+                            if (state is RequestLoaded) {
+                              return RequestSentPage(requestId: request.itemId); // <-- same ID
+                            } else if (state is RequestLoading) {
+                              return const Scaffold(
+                                body: Center(child: CircularProgressIndicator()),
+                              );
+                            } else if (state is RequestError) {
+                              return Scaffold(
+                                body: Center(child: Text('Error: ${state.message}')),
+                              );
+                            } else {
+                              return const Scaffold(
+                                body: Center(child: Text('Unknown state')),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+
                 },
                 child: Text(
                   'Submit',
@@ -254,183 +376,9 @@ class _RequestRentFormState extends State<RequestRentForm> {
               ),
             ),
           ],
+          ]
         )
       ),
     );
-  }
-
-  /// ---------- HELPERS ----------
-
-  Widget _stepHeader(String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 4),
-          Text(subtitle,
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-
-Widget _requirementUploadTile({
-  required String label,
-  required XFile? file,
-  required VoidCallback onPick,
-  required VoidCallback onRemove,
-}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-    child: OutlinedButton(
-      onPressed: file == null ? onPick : null, // disable tap when uploaded
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            file == null ? Icons.upload_file : Icons.check_circle,
-            color: file == null ? Colors.grey : Colors.green,
-          ),
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Text(
-              file == null ? label : 'Uploaded: ${file.name}',
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-
-          // REMOVE BUTTON (only when file exists)
-          if (file != null)
-            IconButton(
-              icon: const Icon(Icons.close),
-              color: Colors.redAccent,
-              tooltip: 'Remove upload',
-              onPressed: onRemove,
-            ),
-        ],
-      ),
-    ),
-  );
-}
-
-
-  Widget _dateButton({
-    required String label,
-    required DateTime? value,
-    VoidCallback? onTap,
-  }) {
-    final bool isDisabled = onTap == null;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isDisabled ? Colors.grey.shade200 : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color:
-                isDisabled ? Colors.grey.shade400 : lightColorScheme.primary,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: isDisabled ? Colors.grey : Colors.grey[700])),
-            const SizedBox(height: 4),
-            Text(
-              value == null ? 'Select date & time' : _formatDateTime(value),
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  void _openDateTimePicker(
-    BuildContext context, {
-    DateTime? initial,
-    required Function(DateTime) onConfirm,
-  }) {
-    DateTime tempDate = initial ?? DateTime.now();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TimePickerSpinner(
-                    time: tempDate,
-                    is24HourMode: false,
-                    onTimeChange: (time) {
-                      setModalState(() {
-                        tempDate = DateTime(
-                          tempDate.year,
-                          tempDate.month,
-                          tempDate.day,
-                          time.hour,
-                          time.minute,
-                        );
-                      });
-                    },
-                  ),
-                  CalendarDatePicker(
-                    initialDate: tempDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2030),
-                    onDateChanged: (date) {
-                      setModalState(() {
-                        tempDate = DateTime(
-                          date.year,
-                          date.month,
-                          date.day,
-                          tempDate.hour,
-                          tempDate.minute,
-                        );
-                      });
-                    },
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      onConfirm(tempDate);
-                    },
-                    child: const Text('Done'),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String _formatDateTime(DateTime date) {
-    return '${date.month}/${date.day}/${date.year} • '
-        '${date.hour % 12 == 0 ? 12 : date.hour % 12}:'
-        '${date.minute.toString().padLeft(2, '0')} '
-        '${date.hour >= 12 ? 'PM' : 'AM'}';
   }
 }

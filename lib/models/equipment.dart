@@ -155,7 +155,7 @@ class Equipment {
           ? data['fuelType']
           : null,
       yearModel: (data['yearModel'] as String?)?.isNotEmpty == true
-          ? data['brand']
+          ? data['yearModel']
           : null,
       condition: data['condition'] ?? '',
       attachments: data['attachments'],
@@ -183,10 +183,10 @@ class Equipment {
       maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true
           ? data['maxCropHeight']
           : null,
-
-
       operatorIncluded: data['operatorIncluded'] ?? false,
-      isAvailable: data['isAvailable'] ?? true,
+      isAvailable: data['isAvailable'] is bool
+          ? data['isAvailable']
+          : (data['isAvailable']?.toString().toLowerCase() == 'true'),
       availableFrom: data['availableFrom'] != null
           ? (data['availableFrom'] as Timestamp).toDate()
           : null,
@@ -212,6 +212,85 @@ class Equipment {
           : null,
     );
   }
+
+  factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
+  return Equipment(
+    id: docId,
+    name: data['name'] ?? '',
+    description: data['description'] ?? '',
+    category: (data['category'] as String?)?.isNotEmpty == true
+        ? data['category']
+        : null,
+    brand: (data['brand'] as String?)?.isNotEmpty == true
+        ? data['brand']
+        : null,
+    yearModel: (data['yearModel'] as String?)?.isNotEmpty == true
+        ? data['yearModel']
+        : null,
+    power: (data['power'] as String?)?.isNotEmpty == true
+        ? data['power']
+        : null,
+    condition: data['condition'] ?? '',
+    attachments: (data['attachments'] as String?)?.isNotEmpty == true
+        ? data['attachments']
+        : null,
+    fuelType: (data['fuelType'] as String?)?.isNotEmpty == true
+        ? data['fuelType']
+        : null,
+    defects: (data['defects'] as String?)?.isNotEmpty == true
+        ? data['defects']
+        : null,
+    price: (data['price'] ?? 0).toDouble(),
+    rentalUnit: data['rentalUnit'] ?? 'Per Day',
+    rentRate: data['rentRate'] ?? '',
+    requirements: data['requirements'] != null
+        ? List<String>.from(data['requirements'])
+        : [],
+    landSizeRequirement: data['landSizeRequirement'] is bool
+        ? data['landSizeRequirement']
+        : data['landSizeRequirement']?.toString().toLowerCase() == 'true',
+    maxCropHeightRequirement: data['maxCropHeightRequirement'] is bool
+        ? data['maxCropHeightRequirement']
+        : data['maxCropHeightRequirement']?.toString().toLowerCase() == 'true',
+    landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true
+        ? data['landSizeMin']
+        : null,
+    landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true
+        ? data['landSizeMax']
+        : null,
+    maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true
+        ? data['maxCropHeight']
+        : null,
+    operatorIncluded: data['operatorIncluded'] ?? false,
+    isAvailable: data['isAvailable'] is bool
+        ? data['isAvailable']
+        : (data['isAvailable']?.toString().toLowerCase() == 'true'),
+    availableFrom: data['availableFrom'] is Timestamp
+        ? (data['availableFrom'] as Timestamp).toDate()
+        : null,
+    availableUntil: data['availableUntil'] is Timestamp
+        ? (data['availableUntil'] as Timestamp).toDate()
+        : null,
+    ownerId: data['ownerId'] ?? '',
+    ownerName: data['ownerName'],
+    location: data['location'],
+    latitude: data['latitude']?.toDouble(),
+    longitude: data['longitude']?.toDouble(),
+    imageUrls: data['imageUrls'] != null
+        ? List<String>.from(data['imageUrls'])
+        : [],
+    reviews: data['reviews'] != null
+        ? List<String>.from(data['reviews'])
+        : [],
+    createdAt: data['createdAt'] is Timestamp
+        ? (data['createdAt'] as Timestamp).toDate()
+        : null,
+    updatedAt: data['updatedAt'] is Timestamp
+        ? (data['updatedAt'] as Timestamp).toDate()
+        : null,
+  );
+}
+
 
   // COPY WITH
   Equipment copyWith({

@@ -1,9 +1,9 @@
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:flutter/material.dart';
 // import 'package:bukidbayan_app/models/rentModel.dart';
-import 'package:bukidbayan_app/mock_data/rent_items.dart';
 
 class RentItemExpandable extends StatelessWidget {
-  final RentItem item;
+  final Equipment item;
   const RentItemExpandable({super.key, required this.item});
 
   @override
@@ -21,7 +21,7 @@ class RentItemExpandable extends StatelessWidget {
         child: SizedBox(
           width: 60,
           height: 60,
-          child: _buildImage(item.imageUrl.first),
+          child: _buildImage(item.imageUrls.first),
         ),
       ),
        title: Row(
@@ -35,13 +35,13 @@ class RentItemExpandable extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item.title,
+              item.name,
               style: const TextStyle(
                   fontWeight: FontWeight.w600, fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
-              item.category,
+              item.category ?? 'Unknown',
               style: const TextStyle(
                   fontSize: 13, color: Colors.black54),
             ),
@@ -63,8 +63,8 @@ class RentItemExpandable extends StatelessWidget {
         trailing: const Icon(Icons.expand_more),
         children: [
           const Divider(),
-          if (item.availableFrom != null && item.availableTo != null)
-            _detailRow('Availability', '${item.availableFrom} – ${item.availableTo}'),
+          if (item.availableFrom != null && item.availableUntil != null)
+            _detailRow('Availability', '${item.availableFrom} – ${item.availableUntil}'),
           if (item.brand != null) _detailRow('Brand', item.brand!),
           if (item.yearModel != null) _detailRow('Year Model', item.yearModel!),
           if (item.operatorIncluded != null)
