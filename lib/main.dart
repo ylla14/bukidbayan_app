@@ -15,6 +15,7 @@ void main() async {
   
   FirestoreService firestoreService = FirestoreService(); // create instance
   await firestoreService.validateAllEquipmentAvailability(); // call method
+  await firestoreService.seedEquipmentDropdownOptions(); // seed dropdown options if not yet in Firestore
   runApp(const MyApp());
 }
 

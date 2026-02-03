@@ -18,11 +18,8 @@ import 'package:bukidbayan_app/services/cloudinary_service.dart';
 const List<String> rentalUnit = <String>['Per Hour', 'Per Day', 'Per Week', 'Per Month'];
 const List<String> condition = <String>['Brand New', 'Excellent', 'Good', 'Fair', 'Needs Maintenance'];
 
-// Options for dropdowns
-final List<String> brandOptions = ['Mitsubishi', 'Kubota', 'John Deere', 'Honda', 'Stihl'];
+// Year options stay generated in code (already dynamic)
 final List<String> yearOptions = List.generate(20, (i) => (DateTime.now().year - i).toString());
-final List<String> powerOptions = ['10 HP', '20 HP', '24 HP', '32 HP', '34 HP', '50 HP', '75 HP'];
-final List<String> fuelOptions = ['Diesel', 'Gasoline', 'Electric', 'Hybrid', 'Oil'];
 
 
 
@@ -80,6 +77,11 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   List<String> uniqueCategories = []; // will fetch from Firestore
   bool isLoadingCategories = true;     // optional: to show loading state
 
+  List<String> brandOptions = [];
+  List<String> powerOptions = [];
+  List<String> fuelOptions = [];
+  bool isLoadingDropdowns = true;
+
 
   String? selectedCategory;
   String? selectedRentalUnit;
@@ -99,6 +101,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
 void initState() {
   super.initState();
    _loadCategoriesFromFirestore();
+   _loadDropdownOptionsFromFirestore();
 
 
   // If editing an existing equipment, pre-fill the fields
@@ -151,6 +154,24 @@ Future<void> _loadCategoriesFromFirestore() async {
       isLoadingCategories = false;
     });
     print('Failed to load categories: $e');
+  }
+}
+
+Future<void> _loadDropdownOptionsFromFirestore() async {
+  final firestoreService = FirestoreService();
+  try {
+    final options = await firestoreService.fetchEquipmentDropdownOptions();
+    setState(() {
+      brandOptions = options['brands'] ?? [];
+      powerOptions = options['powerOptions'] ?? [];
+      fuelOptions = options['fuelTypes'] ?? [];
+      isLoadingDropdowns = false;
+    });
+  } catch (e) {
+    setState(() {
+      isLoadingDropdowns = false;
+    });
+    print('Failed to load dropdown options: $e');
   }
 }
 
@@ -458,11 +479,12 @@ Future<void> _loadCategoriesFromFirestore() async {
                                 Text('Brand / Model', style: TextStyle(fontSize: 12)),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: uniqueCategories.contains(selectedBrand) ? selectedBrand : null,
-                                  options: brandOptions,
-                                  hint: 'Select Brand',
-                                  onChanged: (value) => setState(() => selectedBrand = value),
-                                  // validator: (value) => value == null ? 'Required' : null,
+                                  value: brandOptions.contains(selectedBrand) ? selectedBrand : null,
+                                  options: isLoadingDropdowns ? [] : brandOptions,
+                                  hint: isLoadingDropdowns ? 'Loading...' : 'Select Brand',
+                                  onChanged: isLoadingDropdowns
+                                      ? (_) {}
+                                      : (value) => setState(() => selectedBrand = value),
                                 ),
                               ],
                             ),
@@ -499,11 +521,12 @@ Future<void> _loadCategoriesFromFirestore() async {
                                 Text('Power / Capacity', style: TextStyle(fontSize: 12)),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: selectedPower,
-                                  options: powerOptions,
-                                  hint: 'Select Power',
-                                  onChanged: (value) => setState(() => selectedPower = value),
-                                  // validator: (value) => value == null ? 'Required' : null,
+                                  value: powerOptions.contains(selectedPower) ? selectedPower : null,
+                                  options: isLoadingDropdowns ? [] : powerOptions,
+                                  hint: isLoadingDropdowns ? 'Loading...' : 'Select Power',
+                                  onChanged: isLoadingDropdowns
+                                      ? (_) {}
+                                      : (value) => setState(() => selectedPower = value),
                                 ),
                               ],
                             ),
@@ -516,11 +539,12 @@ Future<void> _loadCategoriesFromFirestore() async {
                                 Text('Fuel Type', style: TextStyle(fontSize: 12)),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: selectedFuel,
-                                  options: fuelOptions,
-                                  hint: 'Select Fuel Type',
-                                  onChanged: (value) => setState(() => selectedFuel = value),
-                                  // validator: (value) => value == null ? 'Required' : null,
+                                  value: fuelOptions.contains(selectedFuel) ? selectedFuel : null,
+                                  options: isLoadingDropdowns ? [] : fuelOptions,
+                                  hint: isLoadingDropdowns ? 'Loading...' : 'Select Fuel Type',
+                                  onChanged: isLoadingDropdowns
+                                      ? (_) {}
+                                      : (value) => setState(() => selectedFuel = value),
                                 ),
                               ],
                             ),
