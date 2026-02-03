@@ -410,8 +410,8 @@ class FirestoreService {
 
   // DROPDOWN OPTIONS (fetched from Firestore for maintainability)
 
-  /// Fetch equipment dropdown options (brands, power, fuel) from Firestore.
-  /// Returns a map with keys: 'brands', 'powerOptions', 'fuelTypes'.
+  /// Fetch equipment dropdown options (brands, fuel) from Firestore.
+  /// Returns a map with keys: 'brands', 'fuelTypes'.
   Future<Map<String, List<String>>> fetchEquipmentDropdownOptions() async {
     try {
       final doc = await _firestore
@@ -420,18 +420,17 @@ class FirestoreService {
           .get();
 
       if (!doc.exists || doc.data() == null) {
-        return {'brands': [], 'powerOptions': [], 'fuelTypes': []};
+        return {'brands': [], 'fuelTypes': []};
       }
 
       final data = doc.data()!;
       return {
         'brands': List<String>.from(data['brands'] ?? []),
-        'powerOptions': List<String>.from(data['powerOptions'] ?? []),
         'fuelTypes': List<String>.from(data['fuelTypes'] ?? []),
       };
     } catch (e) {
       print('Error fetching dropdown options: $e');
-      return {'brands': [], 'powerOptions': [], 'fuelTypes': []};
+      return {'brands': [], 'fuelTypes': []};
     }
   }
 
@@ -444,7 +443,6 @@ class FirestoreService {
     if (!doc.exists) {
       await docRef.set({
         'brands': ['Mitsubishi', 'Kubota', 'John Deere', 'Honda', 'Stihl'],
-        'powerOptions': ['10 HP', '20 HP', '24 HP', '32 HP', '34 HP', '50 HP', '75 HP'],
         'fuelTypes': ['Diesel', 'Gasoline', 'Electric', 'Hybrid', 'Oil'],
       });
       print('Seeded equipment dropdown options in Firestore.');

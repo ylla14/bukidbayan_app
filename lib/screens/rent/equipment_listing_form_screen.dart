@@ -15,24 +15,42 @@ import 'package:bukidbayan_app/services/cloudinary_service.dart';
 
 // import 'package:bukidbayan_app/models/rentModel.dart';
 
-const List<String> rentalUnit = <String>['Per Hour', 'Per Day', 'Per Week', 'Per Month'];
-const List<String> condition = <String>['Brand New', 'Excellent', 'Good', 'Fair', 'Needs Maintenance'];
+const List<String> rentalUnit = <String>[
+  'Per Hour',
+  'Per Day',
+  'Per Week',
+  'Per Month',
+];
+const List<String> condition = <String>[
+  'Brand New',
+  'Excellent',
+  'Good',
+  'Fair',
+  'Needs Maintenance',
+];
 
-// Year options stay generated in code (already dynamic)
-final List<String> yearOptions = List.generate(20, (i) => (DateTime.now().year - i).toString());
-
-
+final List<String> yearOptions = List.generate(
+  20,
+  (i) => (DateTime.now().year - i).toString(),
+);
+const List<String> powerOptions = [
+  '10 HP',
+  '20 HP',
+  '24 HP',
+  '32 HP',
+  '34 HP',
+  '50 HP',
+  '75 HP',
+];
 
 class EquipmentListingScreen extends StatefulWidget {
   final Equipment? existingEquipment; // optional
-
 
   const EquipmentListingScreen({super.key, this.existingEquipment});
 
   @override
   State<EquipmentListingScreen> createState() => _EquipmentListingScreenState();
 }
-
 
 class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -75,18 +93,15 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   //   .toList();
 
   List<String> uniqueCategories = []; // will fetch from Firestore
-  bool isLoadingCategories = true;     // optional: to show loading state
+  bool isLoadingCategories = true; // optional: to show loading state
 
   List<String> brandOptions = [];
-  List<String> powerOptions = [];
   List<String> fuelOptions = [];
   bool isLoadingDropdowns = true;
-
 
   String? selectedCategory;
   String? selectedRentalUnit;
   String? selectedCondition;
-  
 
   final ImagePicker _picker = ImagePicker();
   // Max 10 images (null = empty slot)
@@ -94,86 +109,82 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   bool _isPickingImage = false;
   List<String> existingImageUrls = [];
 
-
   // final RentService _rentService = RentService();
 
-@override
-void initState() {
-  super.initState();
-   _loadCategoriesFromFirestore();
-   _loadDropdownOptionsFromFirestore();
+  @override
+  void initState() {
+    super.initState();
+    _loadCategoriesFromFirestore();
+    _loadDropdownOptionsFromFirestore();
 
+    // If editing an existing equipment, pre-fill the fields
+    if (widget.existingEquipment != null) {
+      final eq = widget.existingEquipment!;
 
-  // If editing an existing equipment, pre-fill the fields
-  if (widget.existingEquipment != null) {
-    final eq = widget.existingEquipment!;
-    
+      _equipmentNameController.text = eq.name ?? '';
+      _equipmentDescriptionController.text = eq.description ?? '';
+      _equipmentPriceController.text = eq.price?.toString() ?? '';
+      _attachmentsController.text = eq.attachments ?? '';
+      _defectsController.text = eq.defects ?? '';
+      _landSizeMinController.text = eq.landSizeMin ?? '';
+      _landSizeMaxController.text = eq.landSizeMax ?? '';
+      _maxCropHeightController.text = eq.maxCropHeight ?? '';
 
-    _equipmentNameController.text = eq.name ?? '';
-    _equipmentDescriptionController.text = eq.description ?? '';
-    _equipmentPriceController.text = eq.price?.toString() ?? '';
-    _attachmentsController.text = eq.attachments ?? '';
-    _defectsController.text = eq.defects ?? '';
-    _landSizeMinController.text = eq.landSizeMin ?? '';
-    _landSizeMaxController.text = eq.landSizeMax ?? '';
-    _maxCropHeightController.text = eq.maxCropHeight ?? '';
+      selectedCategory = eq.category;
+      selectedBrand = eq.brand;
+      selectedYear = eq.yearModel;
+      selectedPower = eq.power;
+      selectedFuel = eq.fuelType;
+      selectedCondition = eq.condition;
+      selectedRentalUnit = eq.rentalUnit;
 
-    selectedCategory = eq.category;
-    selectedBrand = eq.brand;
-    selectedYear = eq.yearModel;
-    selectedPower = eq.power;
-    selectedFuel = eq.fuelType;
-    selectedCondition = eq.condition;
-    selectedRentalUnit = eq.rentalUnit;
+      operatorIncluded = eq.operatorIncluded;
+      landSizeRequirement = eq.landSizeRequirement;
+      maxCropHeightRequirement = eq.maxCropHeightRequirement;
 
-    operatorIncluded = eq.operatorIncluded;
-    landSizeRequirement = eq.landSizeRequirement;
-    maxCropHeightRequirement = eq.maxCropHeightRequirement;
+      availableFrom = eq.availableFrom;
+      availableUntil = eq.availableUntil;
 
-    availableFrom = eq.availableFrom;
-    availableUntil = eq.availableUntil;
-
-    // Load images if any
-    final List<String> existingImageUrls = eq.imageUrls ?? [];
-    for (int i = 0; i < existingImageUrls.length && i < images.length; i++) {
-      images[i] = XFile(existingImageUrls[i]); // mark as existing
+      // Load images if any
+      final List<String> existingImageUrls = eq.imageUrls ?? [];
+      for (int i = 0; i < existingImageUrls.length && i < images.length; i++) {
+        images[i] = XFile(existingImageUrls[i]); // mark as existing
+      }
     }
   }
-}
 
-Future<void> _loadCategoriesFromFirestore() async {
-  final firestoreService = FirestoreService();
-  try {
-    final categories = await firestoreService.getUniqueEquipmentCategories();
-    setState(() {
-      uniqueCategories = categories;
-      isLoadingCategories = false;
-    });
-  } catch (e) {
-    setState(() {
-      isLoadingCategories = false;
-    });
-    print('Failed to load categories: $e');
+  Future<void> _loadCategoriesFromFirestore() async {
+    final firestoreService = FirestoreService();
+    try {
+      final categories = await firestoreService.getUniqueEquipmentCategories();
+      setState(() {
+        uniqueCategories = categories;
+        isLoadingCategories = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingCategories = false;
+      });
+      print('Failed to load categories: $e');
+    }
   }
-}
 
-Future<void> _loadDropdownOptionsFromFirestore() async {
-  final firestoreService = FirestoreService();
-  try {
-    final options = await firestoreService.fetchEquipmentDropdownOptions();
-    setState(() {
-      brandOptions = options['brands'] ?? [];
-      powerOptions = options['powerOptions'] ?? [];
-      fuelOptions = options['fuelTypes'] ?? [];
-      isLoadingDropdowns = false;
-    });
-  } catch (e) {
-    setState(() {
-      isLoadingDropdowns = false;
-    });
-    print('Failed to load dropdown options: $e');
+  Future<void> _loadDropdownOptionsFromFirestore() async {
+    final firestoreService = FirestoreService();
+    try {
+      final options = await firestoreService.fetchEquipmentDropdownOptions();
+      setState(() {
+        brandOptions = options['brands'] ?? [];
+        fuelOptions = options['fuelTypes'] ?? [];
+        isLoadingDropdowns = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingDropdowns = false;
+      });
+      print('Failed to load dropdown options: $e');
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +202,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
       ),
 
       body: Form(
-        key: _formKey, 
+        key: _formKey,
         child: SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.all(15),
@@ -202,10 +213,14 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                   padding: const EdgeInsets.all(8.0),
                   child: Text(
                     'Equipment Details',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: lightColorScheme.primary),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w500,
+                      color: lightColorScheme.primary,
+                    ),
                   ),
                 ),
-        
+
                 // //IMAGE PICKER
                 // const SizedBox(height: 10,),
                 // SizedBox(
@@ -253,7 +268,6 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                 //     },
                 //   ),
                 // ),
-
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 100,
@@ -271,7 +285,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                             width: 90,
                             height: 90,
                             decoration: BoxDecoration(
-                              border: Border.all(color: lightColorScheme.primary),
+                              border: Border.all(
+                                color: lightColorScheme.primary,
+                              ),
                               borderRadius: BorderRadius.circular(8),
                               color: lightColorScheme.primary.withOpacity(0.2),
                             ),
@@ -283,14 +299,25 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                                     borderRadius: BorderRadius.circular(8),
                                     child: Builder(
                                       builder: (_) {
-                                        if (image != null && !image.path.startsWith('http')) {
+                                        if (image != null &&
+                                            !image.path.startsWith('http')) {
                                           return kIsWeb
-                                              ? Image.network(image.path, fit: BoxFit.cover)
-                                              : Image.file(File(image.path), fit: BoxFit.cover);
+                                              ? Image.network(
+                                                  image.path,
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : Image.file(
+                                                  File(image.path),
+                                                  fit: BoxFit.cover,
+                                                );
                                         }
 
-                                        if (image != null && image.path.startsWith('http')) {
-                                          return Image.network(image.path, fit: BoxFit.cover);
+                                        if (image != null &&
+                                            image.path.startsWith('http')) {
+                                          return Image.network(
+                                            image.path,
+                                            fit: BoxFit.cover,
+                                          );
                                         }
 
                                         return const Center(
@@ -335,24 +362,20 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         ),
                       );
                     },
-
                   ),
                 ),
-
-
-                
 
                 if (showImageError)
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Please upload at least one image',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Please upload at least one image',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
                   ),
-                ),
 
                 const SizedBox(height: 15),
-               
+
                 //CATEGORY
                 Padding(
                   padding: const EdgeInsets.all(12.0),
@@ -377,11 +400,16 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: lightColorScheme.primary.withOpacity(0.3)),
+                            borderSide: BorderSide(
+                              color: lightColorScheme.primary.withOpacity(0.3),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: lightColorScheme.primary, width: 2),
+                            borderSide: BorderSide(
+                              color: lightColorScheme.primary,
+                              width: 2,
+                            ),
                           ),
                           prefixIcon: selectedCategory != null
                               ? IconButton(
@@ -409,12 +437,12 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                                   selectedCategory = value;
                                 });
                               },
-                        validator: (value) => value == null ? 'Please select a category' : null,
+                        validator: (value) =>
+                            value == null ? 'Please select a category' : null,
                       ),
 
-        
                       const SizedBox(height: 16),
-        
+
                       /// LISTING NAME
                       const Text(
                         'Listing Name',
@@ -431,9 +459,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                           return null;
                         },
                       ),
-        
+
                       const SizedBox(height: 16),
-        
+
                       /// DESCRIPTION
                       const Text(
                         'Description',
@@ -451,14 +479,12 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                           return null;
                         },
                       ),
-        
+
                       const Padding(
                         padding: EdgeInsets.all(5),
-                        child: Divider(
-                          thickness: 1,
-                        ),
+                        child: Divider(thickness: 1),
                       ),
-        
+
                       /// TECHNICAL SPECS
                       const Text(
                         'Technical Specifications',
@@ -468,23 +494,34 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         ),
                       ),
                       const SizedBox(height: 10),
-        
-                     // BRAND & YEAR
+
+                      // BRAND & YEAR
                       Row(
                         children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Brand / Model', style: TextStyle(fontSize: 12)),
+                                Text(
+                                  'Brand / Model',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: brandOptions.contains(selectedBrand) ? selectedBrand : null,
-                                  options: isLoadingDropdowns ? [] : brandOptions,
-                                  hint: isLoadingDropdowns ? 'Loading...' : 'Select Brand',
+                                  value: brandOptions.contains(selectedBrand)
+                                      ? selectedBrand
+                                      : null,
+                                  options: isLoadingDropdowns
+                                      ? []
+                                      : brandOptions,
+                                  hint: isLoadingDropdowns
+                                      ? 'Loading...'
+                                      : 'Select Brand',
                                   onChanged: isLoadingDropdowns
                                       ? (_) {}
-                                      : (value) => setState(() => selectedBrand = value),
+                                      : (value) => setState(
+                                          () => selectedBrand = value,
+                                        ),
                                 ),
                               ],
                             ),
@@ -494,13 +531,17 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Year Model', style: TextStyle(fontSize: 12)),
+                                Text(
+                                  'Year Model',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
                                   value: selectedYear,
                                   options: yearOptions,
                                   hint: 'Select Year',
-                                  onChanged: (value) => setState(() => selectedYear = value),
+                                  onChanged: (value) =>
+                                      setState(() => selectedYear = value),
                                   // validator: (value) => value == null ? 'Required' : null,
                                 ),
                               ],
@@ -518,15 +559,17 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Power / Capacity', style: TextStyle(fontSize: 12)),
+                                Text(
+                                  'Power / Capacity',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: powerOptions.contains(selectedPower) ? selectedPower : null,
-                                  options: isLoadingDropdowns ? [] : powerOptions,
-                                  hint: isLoadingDropdowns ? 'Loading...' : 'Select Power',
-                                  onChanged: isLoadingDropdowns
-                                      ? (_) {}
-                                      : (value) => setState(() => selectedPower = value),
+                                  value: selectedPower,
+                                  options: powerOptions,
+                                  hint: 'Select Power',
+                                  onChanged: (value) =>
+                                      setState(() => selectedPower = value),
                                 ),
                               ],
                             ),
@@ -536,15 +579,26 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Fuel Type', style: TextStyle(fontSize: 12)),
+                                Text(
+                                  'Fuel Type',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: fuelOptions.contains(selectedFuel) ? selectedFuel : null,
-                                  options: isLoadingDropdowns ? [] : fuelOptions,
-                                  hint: isLoadingDropdowns ? 'Loading...' : 'Select Fuel Type',
+                                  value: fuelOptions.contains(selectedFuel)
+                                      ? selectedFuel
+                                      : null,
+                                  options: isLoadingDropdowns
+                                      ? []
+                                      : fuelOptions,
+                                  hint: isLoadingDropdowns
+                                      ? 'Loading...'
+                                      : 'Select Fuel Type',
                                   onChanged: isLoadingDropdowns
                                       ? (_) {}
-                                      : (value) => setState(() => selectedFuel = value),
+                                      : (value) => setState(
+                                          () => selectedFuel = value,
+                                        ),
                                 ),
                               ],
                             ),
@@ -552,17 +606,16 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         ],
                       ),
 
-                      
-                      /// CONDI 
+                      /// CONDI
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Condition', style: TextStyle(fontSize: 12)),
                           SizedBox(height: 6),
+
                           // CustomTextFormField(
                           //   hint: 'e.g. Good / Excellent', controller: _equipmentBrandController
                           // ),
-                      
                           DropdownButtonFormField<String>(
                             value: selectedCondition,
                             isExpanded: true,
@@ -612,7 +665,8 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                             validator: (value) =>
                                 value == null ? 'Required' : null,
                           ),
-                          if (getConditionHelpText(selectedCondition) != null) ...[
+                          if (getConditionHelpText(selectedCondition) !=
+                              null) ...[
                             const SizedBox(height: 6),
                             Text(
                               getConditionHelpText(selectedCondition)!,
@@ -622,7 +676,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                               ),
                             ),
                           ],
-                          
+
                           if (selectedCondition == 'Needs Maintenance') ...[
                             const SizedBox(height: 6),
                             Text(
@@ -648,21 +702,25 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                           const SizedBox(height: 16),
                         ],
                       ),
-        
+
                       SizedBox(width: 12),
-        
+
                       //ATTACHEMENTS (UNSURE PA)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children:  [
-                          Text('Attachments Included', style: TextStyle(fontSize: 12)),
+                        children: [
+                          Text(
+                            'Attachments Included',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           SizedBox(height: 6),
                           CustomTextFormField(
-                            hint: 'e.g. Plow, Harrow', controller: _attachmentsController
+                            hint: 'e.g. Plow, Harrow',
+                            controller: _attachmentsController,
                           ),
                         ],
                       ),
-        
+
                       /// OPERATOR INCLUDED (YES / NO)
                       const SizedBox(height: 16),
                       const Text(
@@ -670,7 +728,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 8),
-        
+
                       ToggleButtons(
                         isSelected: [
                           operatorIncluded == true,
@@ -690,23 +748,16 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                           minHeight: 40,
                           minWidth: 80,
                         ),
-                        children: const [
-                          Text('Yes'),
-                          Text('No'),
-                        ],
+                        children: const [Text('Yes'), Text('No')],
                       ),
-        
+
                       const SizedBox(height: 10),
-        
+
                       const Padding(
                         padding: EdgeInsets.all(5),
-                        child: Divider(
-                          thickness: 1,
-                        ),
+                        child: Divider(thickness: 1),
                       ),
-        
-                      
-                      
+
                       //PRE REQS/REQUIREMENTS
                       const Text(
                         'Usage Requirements & Conditions',
@@ -719,14 +770,10 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                       Text(
                         'Pumili ng anumang kundisyon o kinakailangan upang magamit ang kagamitang ito. '
                         'Maaaring humingi ng karagdagang detalye o patunay mula sa umuupa.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       const SizedBox(height: 12),
-        
-        
+
                       /// LAND REQS
                       const SizedBox(height: 16),
                       const Text(
@@ -755,10 +802,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                           minHeight: 40,
                           minWidth: 80,
                         ),
-                        children: const [
-                          Text('Yes'),
-                          Text('No'),
-                        ],
+                        children: const [Text('Yes'), Text('No')],
                       ),
 
                       /// ERROR TEXT (only shows if not selected)
@@ -816,9 +860,6 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         ),
                       ],
 
-
-                      
-        
                       /// GRASS / CROP HEIGHT
                       const SizedBox(height: 16),
                       const Text(
@@ -826,7 +867,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 8),
-        
+
                       ToggleButtons(
                         isSelected: [
                           maxCropHeightRequirement == true,
@@ -847,10 +888,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                           minHeight: 40,
                           minWidth: 80,
                         ),
-                        children: const [
-                          Text('Yes'),
-                          Text('No'),
-                        ],
+                        children: const [Text('Yes'), Text('No')],
                       ),
 
                       /// ERROR TEXT (only shows if not selected)
@@ -858,16 +896,19 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         const Padding(
                           padding: EdgeInsets.only(top: 4),
                           child: Text(
-                      'Required',
-                      style: TextStyle(color: Colors.red, fontSize: 12),
+                            'Required',
+                            style: TextStyle(color: Colors.red, fontSize: 12),
                           ),
                         ),
-        
+
                       if (maxCropHeightRequirement == true) ...[
                         const SizedBox(height: 6),
                         Text(
                           'Ilagay ang pinapayagang taas ng damo o pananim:',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
                         ),
                         const SizedBox(height: 4),
                         CustomTextFormField(
@@ -880,20 +921,17 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                               return 'Required';
                             }
                             return null;
-                                },
+                          },
                         ),
                       ],
 
                       const Padding(
                         padding: EdgeInsets.all(5),
-                        child: Divider(
-                          thickness: 1,
-                        ),
+                        child: Divider(thickness: 1),
                       ),
-        
 
                       const SizedBox(height: 16),
-                     
+
                       //DATE PRICKER
                       const Text(
                         'Availability',
@@ -910,7 +948,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                                 availableFrom == null
                                     ? 'Available From'
                                     : 'From: ${availableFrom!.toLocal().toString().split(' ')[0]}',
-                                style: TextStyle(color: lightColorScheme.primary),
+                                style: TextStyle(
+                                  color: lightColorScheme.primary,
+                                ),
                               ),
                             ),
                           ),
@@ -924,7 +964,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                                 availableUntil == null
                                     ? 'Available Until'
                                     : 'Until: ${availableUntil!.toLocal().toString().split(' ')[0]}',
-                                style: TextStyle(color: lightColorScheme.primary),
+                                style: TextStyle(
+                                  color: lightColorScheme.primary,
+                                ),
                               ),
                             ),
                           ),
@@ -939,14 +981,12 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                             style: TextStyle(color: Colors.red, fontSize: 12),
                           ),
                         ),
-      
+
                       const SizedBox(height: 16),
 
                       const Padding(
                         padding: EdgeInsets.all(5),
-                        child: Divider(
-                          thickness: 1,
-                        ),
+                        child: Divider(thickness: 1),
                       ),
 
                       /// RENTAL RATE & PRICE
@@ -955,7 +995,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 6),
-        
+
                       Row(
                         children: [
                           /// RENTAL UNIT
@@ -981,7 +1021,8 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
                                       borderSide: BorderSide(
-                                        color: lightColorScheme.primary.withOpacity(0.3),
+                                        color: lightColorScheme.primary
+                                            .withOpacity(0.3),
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
@@ -1019,9 +1060,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                               ],
                             ),
                           ),
-        
+
                           const SizedBox(width: 12),
-        
+
                           /// PRICE
                           Expanded(
                             flex: 1,
@@ -1038,7 +1079,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                                   hint: '₱',
                                   keyboardType: TextInputType.number,
                                   validator: (value) {
-                                    if (value == null || value.isEmpty || value == '0') {
+                                    if (value == null ||
+                                        value.isEmpty ||
+                                        value == '0') {
                                       return 'Invalid';
                                     }
                                     return null;
@@ -1052,10 +1095,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
                     ],
                   ),
                 ),
-        
-        
+
                 const SizedBox(height: 15),
-        
+
                 Row(
                   children: [
                     Expanded(
@@ -1095,10 +1137,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
     );
   }
 
-
   //FUNCTIONS AND STUFF
 
-    String? getConditionHelpText(String? condition) {
+  String? getConditionHelpText(String? condition) {
     switch (condition) {
       case 'Brand New':
         return 'Never used equipment with zero operating hours.';
@@ -1114,14 +1155,15 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
         return null;
     }
   }
-    
 
   Future<void> pickImage(int tappedIndex) async {
     if (_isPickingImage) return;
     _isPickingImage = true;
 
     try {
-      final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+      );
 
       if (picked != null) {
         setState(() {
@@ -1145,13 +1187,9 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
   Future<void> _pickDate({required bool isStart}) async {
     final DateTime now = DateTime.now();
 
-    final DateTime initial = isStart
-        ? now
-        : (availableFrom ?? now);
+    final DateTime initial = isStart ? now : (availableFrom ?? now);
 
-    final DateTime first = isStart
-        ? now
-        : (availableFrom ?? now);
+    final DateTime first = isStart ? now : (availableFrom ?? now);
 
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -1166,8 +1204,7 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
           availableFrom = picked;
 
           // Auto-clear "until" if it becomes invalid
-          if (availableUntil != null &&
-              availableUntil!.isBefore(picked)) {
+          if (availableUntil != null && availableUntil!.isBefore(picked)) {
             availableUntil = null;
           }
         } else {
@@ -1177,225 +1214,228 @@ Future<void> _loadDropdownOptionsFromFirestore() async {
     }
   }
 
-Future<void> _onSavePressed() async {
-  final isFormValid = _formKey.currentState!.validate();
-  bool hasImage = images.any((img) => img != null);
+  Future<void> _onSavePressed() async {
+    final isFormValid = _formKey.currentState!.validate();
+    bool hasImage = images.any((img) => img != null);
 
-  setState(() {
-    showLandSizeError = landSizeRequirement == null;
-    showCropHeightError = maxCropHeightRequirement == null;
-    showImageError = !hasImage;
-    showAvailabilityError = availableFrom == null || availableUntil == null;
-  });
-
-  if (!isFormValid ||
-      landSizeRequirement == null ||
-      maxCropHeightRequirement == null ||
-      !hasImage ||
-      availableFrom == null ||
-      availableUntil == null) {
-    return;
-  }
-
-  // Show loading dialog
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const Center(
-      child: CircularProgressIndicator(),
-    ),
-  );
-
-  try {
-    final authService = AuthService();
-    final firestoreService = FirestoreService();
-    final currentUser = authService.currentUser;
-
-    if (currentUser == null) {
-      throw Exception('You must be logged in to create a listing');
-    }
-
-    // Get user data for owner name
-    final userData = await authService.getUserData(currentUser.uid);
-    final ownerName = userData?['firstName'] != null && userData?['lastName'] != null
-        ? '${userData!['firstName']} ${userData['lastName']}'
-        : currentUser.email?.split('@')[0] ?? 'Unknown';
-
-    final List<String> requirementsList = [];
-
-    if (landSizeRequirement == true) {
-      requirementsList.add(
-        _landSizeMinController.text.isNotEmpty &&
-        _landSizeMaxController.text.isNotEmpty
-            ? '${_landSizeMinController.text} – ${_landSizeMaxController.text}'
-            : 'Land size requirement',
-      );
-    }
-
-    if (maxCropHeightRequirement == true) {
-      requirementsList.add(
-        _maxCropHeightController.text.isNotEmpty
-            ? '${_maxCropHeightController.text}'
-            : 'Max crop height required',
-      );
-    }
-
-    if (requirementsList.isEmpty) {
-      requirementsList.add('No specific requirements');
-    }
-
-    // // Upload images to Cloudinary
-    final cloudinaryService = CloudinaryService();
-    // final selectedImages = images.where((img) => img != null).map((img) => img!).toList();
-
-    // List<String> imageUrls = [];
-
-    // if (selectedImages.isNotEmpty) {
-    //   try {
-    //     imageUrls = await cloudinaryService.uploadMultipleImages(
-    //       selectedImages,
-    //       onProgress: (current, total) {
-    //         print('Uploading image $current of $total');
-    //       },
-    //     );
-    //     print('Successfully uploaded ${imageUrls.length} images to Cloudinary');
-    //   } catch (e) {
-    //     throw Exception('Failed to upload images: $e');
-    //   }
-    // }
-
-    // Separate old images (already URLs) and new images (local files)
-final List<XFile> newImages = images
-    .where((img) => img != null && !img!.path.startsWith('http'))
-    .map((img) => img!)
-    .toList();
-
-final List<String> existingImageUrls = images
-    .where((img) => img != null && img!.path.startsWith('http'))
-    .map((img) => img!.path)
-    .toList();
-
-// Upload only NEW images
-List<String> uploadedUrls = [];
-if (newImages.isNotEmpty) {
-  try {
-    uploadedUrls = await cloudinaryService.uploadMultipleImages(
-      newImages,
-      onProgress: (current, total) {
-        print('Uploading image $current of $total');
-      },
-    );
-    print('Successfully uploaded ${uploadedUrls.length} images to Cloudinary');
-  } catch (e) {
-    throw Exception('Failed to upload images: $e');
-  }
-}
-
-// Combine existing URLs + newly uploaded URLs
-final List<String> imageUrls = [
-  ...existingImageUrls,
-  ...uploadedUrls,
-];
-
-// Determine if the equipment should be marked as available
-final rentRequestService = RentRequestService(); // 🔹 use your local service
-
-// Compute availability normally
-bool computedAvailability = availableFrom != null &&
-    availableUntil != null &&
-    DateTime.now().isAfter(availableFrom!) &&
-    DateTime.now().isBefore(availableUntil!);
-
-// 🔹 OVERRIDE availability if there's an approved request for this equipment
-if (widget.existingEquipment != null) {
-  final hasApprovedRequest = (await rentRequestService.getAllRequests())
-      .any((r) =>
-          r.itemId == widget.existingEquipment!.id &&
-          r.status == RentRequestStatus.approved);
-
-  if (hasApprovedRequest) {
-    computedAvailability = false;
-  }
-}
-
-// Create Equipment object
-final equipment = Equipment(
-  name: _equipmentNameController.text.trim(),
-  description: _equipmentDescriptionController.text.trim(),
-  category: selectedCategory,
-  brand: selectedBrand,
-  yearModel: selectedYear,
-  power: selectedPower ?? 'N/A',
-  condition: selectedCondition ?? 'Good',
-  attachments: _attachmentsController.text.trim().isEmpty
-      ? null
-      : _attachmentsController.text.trim(),
-  operatorIncluded: operatorIncluded ?? false,
-  availableFrom: availableFrom,
-  availableUntil: availableUntil,
-  requirements: requirementsList,
-  reviews: [],
-  price: double.parse(_equipmentPriceController.text.trim()),
-  rentalUnit: selectedRentalUnit ?? 'Per Day',
-  ownerId: currentUser.uid,
-  ownerName: ownerName,
-  imageUrls: imageUrls,
-  fuelType: selectedFuel,
-  defects: selectedCondition == 'Needs Maintenance'
-      ? _defectsController.text.trim()
-      : null,
-  // <-- UPDATED LOGIC HERE
-  isAvailable: computedAvailability,
-  landSizeRequirement: landSizeRequirement ?? false,
-  maxCropHeightRequirement: maxCropHeightRequirement ?? false,
-  landSizeMin: _landSizeMinController.text,
-  landSizeMax: _landSizeMaxController.text,
-  maxCropHeight: _maxCropHeightController.text.trim().isEmpty
-      ? null
-      : _maxCropHeightController.text.trim(),
-);
-
-    // ✅ NEW PART: check if updating or creating new
-    if (widget.existingEquipment != null) {
-      // Update existing equipment
-      await firestoreService.updateEquipment(
-        widget.existingEquipment!.id!, // make sure your Equipment model has `id`
-        equipment.toMap(),
-      );
-    } else {
-      // Add new equipment
-      await firestoreService.addEquipment(equipment.toMap());
-    }
-
-    // Close loading dialog
-    if (mounted) Navigator.pop(context);
-
-    // Show success message
-    if (mounted) {
-      showConfirmSnackbar(
-        context: context,
-        title: 'Success!',
-        message: widget.existingEquipment != null
-            ? 'Equipment updated successfully!'
-            : 'Equipment listed successfully!',
-      );
-
-     Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) Navigator.pop(context, equipment); // pass the updated equipment
+    setState(() {
+      showLandSizeError = landSizeRequirement == null;
+      showCropHeightError = maxCropHeightRequirement == null;
+      showImageError = !hasImage;
+      showAvailabilityError = availableFrom == null || availableUntil == null;
     });
 
+    if (!isFormValid ||
+        landSizeRequirement == null ||
+        maxCropHeightRequirement == null ||
+        !hasImage ||
+        availableFrom == null ||
+        availableUntil == null) {
+      return;
     }
-  } catch (e) {
-    if (mounted) Navigator.pop(context);
 
-    if (mounted) {
-      showErrorSnackbar(
-        context: context,
-        title: 'Error',
-        message: e.toString(),
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final authService = AuthService();
+      final firestoreService = FirestoreService();
+      final currentUser = authService.currentUser;
+
+      if (currentUser == null) {
+        throw Exception('You must be logged in to create a listing');
+      }
+
+      // Get user data for owner name
+      final userData = await authService.getUserData(currentUser.uid);
+      final ownerName =
+          userData?['firstName'] != null && userData?['lastName'] != null
+          ? '${userData!['firstName']} ${userData['lastName']}'
+          : currentUser.email?.split('@')[0] ?? 'Unknown';
+
+      final List<String> requirementsList = [];
+
+      if (landSizeRequirement == true) {
+        requirementsList.add(
+          _landSizeMinController.text.isNotEmpty &&
+                  _landSizeMaxController.text.isNotEmpty
+              ? '${_landSizeMinController.text} – ${_landSizeMaxController.text}'
+              : 'Land size requirement',
+        );
+      }
+
+      if (maxCropHeightRequirement == true) {
+        requirementsList.add(
+          _maxCropHeightController.text.isNotEmpty
+              ? '${_maxCropHeightController.text}'
+              : 'Max crop height required',
+        );
+      }
+
+      if (requirementsList.isEmpty) {
+        requirementsList.add('No specific requirements');
+      }
+
+      // // Upload images to Cloudinary
+      final cloudinaryService = CloudinaryService();
+      // final selectedImages = images.where((img) => img != null).map((img) => img!).toList();
+
+      // List<String> imageUrls = [];
+
+      // if (selectedImages.isNotEmpty) {
+      //   try {
+      //     imageUrls = await cloudinaryService.uploadMultipleImages(
+      //       selectedImages,
+      //       onProgress: (current, total) {
+      //         print('Uploading image $current of $total');
+      //       },
+      //     );
+      //     print('Successfully uploaded ${imageUrls.length} images to Cloudinary');
+      //   } catch (e) {
+      //     throw Exception('Failed to upload images: $e');
+      //   }
+      // }
+
+      // Separate old images (already URLs) and new images (local files)
+      final List<XFile> newImages = images
+          .where((img) => img != null && !img!.path.startsWith('http'))
+          .map((img) => img!)
+          .toList();
+
+      final List<String> existingImageUrls = images
+          .where((img) => img != null && img!.path.startsWith('http'))
+          .map((img) => img!.path)
+          .toList();
+
+      // Upload only NEW images
+      List<String> uploadedUrls = [];
+      if (newImages.isNotEmpty) {
+        try {
+          uploadedUrls = await cloudinaryService.uploadMultipleImages(
+            newImages,
+            onProgress: (current, total) {
+              print('Uploading image $current of $total');
+            },
+          );
+          print(
+            'Successfully uploaded ${uploadedUrls.length} images to Cloudinary',
+          );
+        } catch (e) {
+          throw Exception('Failed to upload images: $e');
+        }
+      }
+
+      // Combine existing URLs + newly uploaded URLs
+      final List<String> imageUrls = [...existingImageUrls, ...uploadedUrls];
+
+      // Determine if the equipment should be marked as available
+      final rentRequestService =
+          RentRequestService(); // 🔹 use your local service
+
+      // Compute availability normally
+      bool computedAvailability =
+          availableFrom != null &&
+          availableUntil != null &&
+          DateTime.now().isAfter(availableFrom!) &&
+          DateTime.now().isBefore(availableUntil!);
+
+      // 🔹 OVERRIDE availability if there's an approved request for this equipment
+      if (widget.existingEquipment != null) {
+        final hasApprovedRequest = (await rentRequestService.getAllRequests())
+            .any(
+              (r) =>
+                  r.itemId == widget.existingEquipment!.id &&
+                  r.status == RentRequestStatus.approved,
+            );
+
+        if (hasApprovedRequest) {
+          computedAvailability = false;
+        }
+      }
+
+      // Create Equipment object
+      final equipment = Equipment(
+        name: _equipmentNameController.text.trim(),
+        description: _equipmentDescriptionController.text.trim(),
+        category: selectedCategory,
+        brand: selectedBrand,
+        yearModel: selectedYear,
+        power: selectedPower ?? 'N/A',
+        condition: selectedCondition ?? 'Good',
+        attachments: _attachmentsController.text.trim().isEmpty
+            ? null
+            : _attachmentsController.text.trim(),
+        operatorIncluded: operatorIncluded ?? false,
+        availableFrom: availableFrom,
+        availableUntil: availableUntil,
+        requirements: requirementsList,
+        reviews: [],
+        price: double.parse(_equipmentPriceController.text.trim()),
+        rentalUnit: selectedRentalUnit ?? 'Per Day',
+        ownerId: currentUser.uid,
+        ownerName: ownerName,
+        imageUrls: imageUrls,
+        fuelType: selectedFuel,
+        defects: selectedCondition == 'Needs Maintenance'
+            ? _defectsController.text.trim()
+            : null,
+        // <-- UPDATED LOGIC HERE
+        isAvailable: computedAvailability,
+        landSizeRequirement: landSizeRequirement ?? false,
+        maxCropHeightRequirement: maxCropHeightRequirement ?? false,
+        landSizeMin: _landSizeMinController.text,
+        landSizeMax: _landSizeMaxController.text,
+        maxCropHeight: _maxCropHeightController.text.trim().isEmpty
+            ? null
+            : _maxCropHeightController.text.trim(),
       );
+
+      // ✅ NEW PART: check if updating or creating new
+      if (widget.existingEquipment != null) {
+        // Update existing equipment
+        await firestoreService.updateEquipment(
+          widget
+              .existingEquipment!
+              .id!, // make sure your Equipment model has `id`
+          equipment.toMap(),
+        );
+      } else {
+        // Add new equipment
+        await firestoreService.addEquipment(equipment.toMap());
+      }
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Show success message
+      if (mounted) {
+        showConfirmSnackbar(
+          context: context,
+          title: 'Success!',
+          message: widget.existingEquipment != null
+              ? 'Equipment updated successfully!'
+              : 'Equipment listed successfully!',
+        );
+
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted)
+            Navigator.pop(context, equipment); // pass the updated equipment
+        });
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        showErrorSnackbar(
+          context: context,
+          title: 'Error',
+          message: e.toString(),
+        );
+      }
     }
   }
-}
-
 }
