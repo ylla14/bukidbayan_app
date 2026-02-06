@@ -1,4 +1,3 @@
-import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_dropdown_form_field.dart';
@@ -1344,13 +1343,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
           DateTime.now().isBefore(availableUntil!);
 
       // 🔹 OVERRIDE availability if there's an approved request for this equipment
-      if (widget.existingEquipment != null) {
-        final hasApprovedRequest = (await rentRequestService.getAllRequests())
-            .any(
-              (r) =>
-                  r.itemId == widget.existingEquipment!.id &&
-                  r.status == RentRequestStatus.approved,
-            );
+      if (widget.existingEquipment != null && widget.existingEquipment!.id != null) {
+        final hasApprovedRequest = await rentRequestService
+            .hasActiveApprovedRequest(widget.existingEquipment!.id!);
 
         if (hasApprovedRequest) {
           computedAvailability = false;

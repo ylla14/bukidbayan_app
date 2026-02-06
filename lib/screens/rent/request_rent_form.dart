@@ -21,7 +21,6 @@ import 'package:bukidbayan_app/components/rent/rent_item_expandable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
-
 class RequestRentForm extends StatefulWidget {
   final Equipment item;
   const RequestRentForm({super.key, required this.item});
@@ -34,28 +33,32 @@ class _RequestRentFormState extends State<RequestRentForm> {
   DateTime? startDate;
   DateTime? returnDate;
 
-   DateTime? availableFrom;
+  DateTime? availableFrom;
   DateTime? availableUntil;
   bool showAvailabilityError = false;
-
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final RentRequestService _requestService = RentRequestService();
-  
 
+  bool get hasLandSizeRequirement =>
+      widget.item.landSizeRequirement &&
+      (widget.item.landSizeMin != null || widget.item.landSizeMax != null);
+
+  bool get hasCropHeightRequirement =>
+      widget.item.maxCropHeightRequirement && widget.item.maxCropHeight != null;
+
+  bool get hasAnyRequirement =>
+      hasLandSizeRequirement || hasCropHeightRequirement;
 
   final ImagePicker _picker = ImagePicker();
   XFile? landSizeProof;
   XFile? cropHeightProof;
 
-  bool get isScheduleComplete =>
-      startDate != null && returnDate != null;
-
+  bool get isScheduleComplete => startDate != null && returnDate != null;
 
   bool get isStep2Complete =>
-      nameController.text.isNotEmpty &&
-      addressController.text.isNotEmpty;
+      nameController.text.isNotEmpty && addressController.text.isNotEmpty;
 
   @override
   void dispose() {
@@ -99,128 +102,130 @@ class _RequestRentFormState extends State<RequestRentForm> {
             const CustomDivider(),
             StepHeader(
               title: 'Step 1: Iskedyul ng Pag-upa',
-              subtitle: 'Piliin ang petsa at oras ng pickup at return. '
-              'Ang return ay dapat hindi bababa sa 1 oras mula sa pickup.',
+              subtitle:
+                  'Piliin ang petsa at oras ng pickup at return. '
+                  'Ang return ay dapat hindi bababa sa 1 oras mula sa pickup.',
             ),
 
-          //  Row(
-          //   children: [
-          //     Expanded(
-          //       child: DatePickerField(
-          //         label: 'Start / Pickup Date',
-          //         value: startDate,
-          //         onTap: () => _openDatePicker(
-          //           context,
-          //           initial: startDate,
-          //           availabilityFrom: widget.item.availableFrom!,
-          //           availabilityTo: widget.item.availableTo!,
-          //           onConfirm: (date) {
-          //             setState(() {
-          //               startDate = date;
-          //               returnDate = null;
-          //             });
-          //           },
-          //         ),
-          //       ),
-          //     ),
-          //     const SizedBox(width: 12),
-          //     Expanded(
-          //       child: DatePickerField(
-          //         label: 'Return Date',
-          //         value: returnDate,
-          //         onTap: startDate == null
-          //             ? null
-          //             : () => _openDatePicker(
-          //                   context,
-          //                   initial: returnDate ?? startDate,
-          //                   availabilityFrom: widget.item.availableFrom!,
-          //                   availabilityTo: widget.item.availableTo!,
-          //                   onConfirm: (date) {
-          //                     if (date.isBefore(startDate!)) {
-          //                       showErrorSnackbar(
-          //                         context: context,
-          //                         title: 'Invalid date',
-          //                         message:
-          //                             'Return date must be after pickup date',
-          //                       );
-          //                       return;
-          //                     }
-          //                     setState(() => returnDate = date);
-          //                   },
-          //                 ),
-          //       ),
-          //     ),
-          //   ],
-          // ),
+            //  Row(
+            //   children: [
+            //     Expanded(
+            //       child: DatePickerField(
+            //         label: 'Start / Pickup Date',
+            //         value: startDate,
+            //         onTap: () => _openDatePicker(
+            //           context,
+            //           initial: startDate,
+            //           availabilityFrom: widget.item.availableFrom!,
+            //           availabilityTo: widget.item.availableTo!,
+            //           onConfirm: (date) {
+            //             setState(() {
+            //               startDate = date;
+            //               returnDate = null;
+            //             });
+            //           },
+            //         ),
+            //       ),
+            //     ),
+            //     const SizedBox(width: 12),
+            //     Expanded(
+            //       child: DatePickerField(
+            //         label: 'Return Date',
+            //         value: returnDate,
+            //         onTap: startDate == null
+            //             ? null
+            //             : () => _openDatePicker(
+            //                   context,
+            //                   initial: returnDate ?? startDate,
+            //                   availabilityFrom: widget.item.availableFrom!,
+            //                   availabilityTo: widget.item.availableTo!,
+            //                   onConfirm: (date) {
+            //                     if (date.isBefore(startDate!)) {
+            //                       showErrorSnackbar(
+            //                         context: context,
+            //                         title: 'Invalid date',
+            //                         message:
+            //                             'Return date must be after pickup date',
+            //                       );
+            //                       return;
+            //                     }
+            //                     setState(() => returnDate = date);
+            //                   },
+            //                 ),
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            Row(
+              children: [
+                Expanded(
+                  child: DatePickerField(
+                    label: 'Start / Pickup Date',
+                    value: startDate,
+                    onTap: () async {
+                      final DateTime now = DateTime.now();
+                      // Earliest selectable date is today or availableFrom, whichever is later
+                      final DateTime earliest =
+                          widget.item.availableFrom!.isAfter(now)
+                          ? widget.item.availableFrom!
+                          : now;
+                      final DateTime last = widget.item.availableUntil!;
+                      final DateTime initial = startDate ?? earliest;
 
-          Row(
-            children: [
-              Expanded(
-                child: DatePickerField(
-                  label: 'Start / Pickup Date',
-                  value: startDate,
-                  onTap: () async {
-                    final DateTime now = DateTime.now();
-                    final DateTime initial = startDate ?? widget.item.availableFrom!;
-                    final DateTime first = widget.item.availableFrom!;
-                    final DateTime last = widget.item.availableUntil!;
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: initial,
+                        firstDate: earliest,
+                        lastDate: last,
+                      );
 
-                    final DateTime? picked = await showDatePicker(
-                      context: context,
-                      initialDate: initial,
-                      firstDate: first,
-                      lastDate: last,
-                    );
-
-                    if (picked != null) {
-                      setState(() {
-                        startDate = picked;
-                        returnDate = null; // auto-clear return
-                      });
-                    }
-                  },
+                      if (picked != null) {
+                        setState(() {
+                          startDate = picked;
+                          returnDate = null; // auto-clear return
+                        });
+                      }
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DatePickerField(
-                  label: 'Return Date',
-                  value: returnDate,
-                  onTap: startDate == null
-                      ? null
-                      : () async {
-                          final DateTime initial = returnDate ?? startDate!;
-                          final DateTime first = startDate!;
-                          final DateTime last = widget.item.availableUntil!;
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DatePickerField(
+                    label: 'Return Date',
+                    value: returnDate,
+                    onTap: startDate == null
+                        ? null
+                        : () async {
+                            final DateTime initial = returnDate ?? startDate!;
+                            final DateTime first = startDate!;
+                            final DateTime last = widget.item.availableUntil!;
 
-                          final DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate: initial,
-                            firstDate: first,
-                            lastDate: last,
-                          );
+                            final DateTime? picked = await showDatePicker(
+                              context: context,
+                              initialDate: initial,
+                              firstDate: first,
+                              lastDate: last,
+                            );
 
-                          if (picked != null) {
-                            if (picked.isBefore(startDate!)) {
-                              showErrorSnackbar(
-                                context: context,
-                                title: 'Invalid date',
-                                message: 'Return date must be after pickup date',
-                              );
-                              return;
+                            if (picked != null) {
+                              if (picked.isBefore(startDate!)) {
+                                showErrorSnackbar(
+                                  context: context,
+                                  title: 'Invalid date',
+                                  message:
+                                      'Return date must be after pickup date',
+                                );
+                                return;
+                              }
+                              setState(() {
+                                returnDate = picked;
+                              });
                             }
-                            setState(() {
-                              returnDate = picked;
-                            });
-                          }
-                        },
+                          },
+                  ),
                 ),
-              ),
-            ],
-          ),
-
-
-
+              ],
+            ),
 
             /// STEP 2 — USER INFO
             if (isScheduleComplete) ...[
@@ -243,11 +248,12 @@ class _RequestRentFormState extends State<RequestRentForm> {
             ],
 
             /// STEP 3 — REQUIREMENTS PROOF
-            if (isScheduleComplete) ...[
+            if (isScheduleComplete && hasAnyRequirement) ...[
               const CustomDivider(),
               StepHeader(
                 title: 'Step 3: Patunay ng Requirements',
-                subtitle: 'Mag-upload ng larawan bilang patunay sa mga requirement.',
+                subtitle:
+                    'Mag-upload ng larawan bilang patunay sa mga requirement.',
               ),
 
               if (widget.item.landSizeRequirement == true)
@@ -255,8 +261,9 @@ class _RequestRentFormState extends State<RequestRentForm> {
                   label: 'Patunay ng Laki ng Lupa',
                   file: landSizeProof,
                   onPick: () async {
-                    final image =
-                        await _picker.pickImage(source: ImageSource.camera);
+                    final image = await _picker.pickImage(
+                      source: ImageSource.camera,
+                    );
                     if (image != null) {
                       setState(() => landSizeProof = image);
                     }
@@ -271,8 +278,9 @@ class _RequestRentFormState extends State<RequestRentForm> {
                   label: 'Patunay ng Taas ng Pananim',
                   file: cropHeightProof,
                   onPick: () async {
-                    final image =
-                        await _picker.pickImage(source: ImageSource.camera);
+                    final image = await _picker.pickImage(
+                      source: ImageSource.camera,
+                    );
                     if (image != null) {
                       setState(() => cropHeightProof = image);
                     }
@@ -283,101 +291,108 @@ class _RequestRentFormState extends State<RequestRentForm> {
                 ),
             ],
 
-
-
             const SizedBox(height: 16),
 
             /// SUBMIT
             if (isScheduleComplete) ...[
-             Align(
-              alignment: Alignment.center,
-              child: OutlinedButton(
-                onPressed: () async {
-                  if (!isScheduleComplete || !isStep2Complete) {
-                    showErrorSnackbar(
-                      context: context,
-                      title: 'Incomplete',
-                      message: 'Please complete all required fields',
+              Align(
+                alignment: Alignment.center,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    if (!isScheduleComplete || !isStep2Complete) {
+                      showErrorSnackbar(
+                        context: context,
+                        title: 'Incomplete',
+                        message: 'Please complete all required fields',
+                      );
+                      return;
+                    }
+
+                    String? landPath;
+                    String? cropPath;
+
+                    if (landSizeProof != null) {
+                      landPath = await _requestService.saveFileLocally(
+                        landSizeProof!,
+                      );
+                    }
+                    if (cropHeightProof != null) {
+                      cropPath = await _requestService.saveFileLocally(
+                        cropHeightProof!,
+                      );
+                    }
+
+                    final currentUserId =
+                        FirebaseAuth.instance.currentUser!.uid;
+
+                    final request = RentRequest(
+                      requestId: '',
+                      itemId: widget.item.id ?? 'Unknown',
+                      itemName: widget.item.name, // <-- added here
+                      name: nameController.text,
+                      address: addressController.text,
+                      start: startDate!,
+                      end: returnDate!,
+                      landSizeProofPath: landPath,
+                      cropHeightProofPath: cropPath,
+                      status: RentRequestStatus.pending,
+                      renterId: currentUserId,
+                      ownerId: widget.item.ownerId,
                     );
-                    return;
-                  }
 
-                  String? landPath;
-                  String? cropPath;
+                    final newRequestId = await _requestService.saveRequest(
+                      request,
+                    );
 
-                  if (landSizeProof != null) {
-                    landPath = await _requestService.saveFileLocally(landSizeProof!);
-                  }
-                  if (cropHeightProof != null) {
-                    cropPath = await _requestService.saveFileLocally(cropHeightProof!);
-                  }
-                  
-                  final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Request sent!')),
+                    );
 
-                  final request = RentRequest(
-                    requestId: '',
-                    itemId: widget.item.id ?? 'Unknown',
-                    itemName: widget.item.name, // <-- added here
-                    name: nameController.text,
-                    address: addressController.text,
-                    start: startDate!,
-                    end: returnDate!,
-                    landSizeProofPath: landPath,
-                    cropHeightProofPath: cropPath,
-                    status: RentRequestStatus.pending,
-                    renterId: currentUserId,
-                    ownerId: widget.item.ownerId
-                  );
-
-
-                  await _requestService.saveRequest(request);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Request sent!')),
-                  );
-
-            
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BlocProvider(
-                        create: (_) => RequestBloc()..add(LoadRequest(request.itemId)), // <-- pass the actual ID
-                        child: BlocBuilder<RequestBloc, RequestState>(
-                          builder: (context, state) {
-                            if (state is RequestLoaded) {
-                              return RequestSentPage(requestId: request.itemId); // <-- same ID
-                            } else if (state is RequestLoading) {
-                              return const Scaffold(
-                                body: Center(child: CircularProgressIndicator()),
-                              );
-                            } else if (state is RequestError) {
-                              return Scaffold(
-                                body: Center(child: Text('Error: ${state.message}')),
-                              );
-                            } else {
-                              return const Scaffold(
-                                body: Center(child: Text('Unknown state')),
-                              );
-                            }
-                          },
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (_) =>
+                              RequestBloc()..add(LoadRequest(newRequestId)),
+                          child: BlocBuilder<RequestBloc, RequestState>(
+                            builder: (context, state) {
+                              if (state is RequestLoaded) {
+                                return RequestSentPage(requestId: newRequestId);
+                              } else if (state is RequestLoading) {
+                                return const Scaffold(
+                                  body: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              } else if (state is RequestError) {
+                                return Scaffold(
+                                  body: Center(
+                                    child: Text('Error: ${state.message}'),
+                                  ),
+                                );
+                              } else {
+                                return const Scaffold(
+                                  body: Center(child: Text('Unknown state')),
+                                );
+                              }
+                            },
+                          ),
                         ),
                       ),
+                    );
+                  },
+                  child: Text(
+                    'Submit',
+                    style: TextStyle(
+                      color: lightColorScheme.primary,
+                      fontSize: 16,
                     ),
-                  );
-
-                },
-                child: Text(
-                  'Submit',
-                  style: TextStyle(
-                    color: lightColorScheme.primary,
-                    fontSize: 16,
                   ),
                 ),
               ),
-            ),
+            ],
           ],
-          ]
-        )
+        ),
       ),
     );
   }

@@ -1,14 +1,9 @@
-import 'dart:io';
 import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
-import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
-import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_icon_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/services/rent_request_service.dart';
-import 'package:intl/intl.dart'; // For date formatting
 
 
 class HomeScreen extends StatefulWidget {
@@ -19,7 +14,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final RentRequestService _requestService = RentRequestService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<void> logout() async {
