@@ -21,24 +21,24 @@ class RentRequestService {
     return newFile.path;
   }
 
-  /// 🔹 CREATE / SAVE request
-Future<void> saveRequest(RentRequest request) async {
-  final requests = await getAllRequests();       // get latest persisted list
-  final mutable = List<RentRequest>.from(requests);
-  mutable.add(request);                          // add new request
-  await saveAllRequests(mutable);                // persist everything
-}
-
-
-  /// 🔹 READ ALL saved requests
-Future<List<RentRequest>> getAllRequests() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedRequests = prefs.getStringList('rentRequests') ?? [];
-    final requests = savedRequests
-        .map((e) => RentRequest.fromMap(jsonDecode(e)))
-        .toList();
-    return requests;
+    /// 🔹 CREATE / SAVE request
+  Future<void> saveRequest(RentRequest request) async {
+    final requests = await getAllRequests();       // get latest persisted list
+    final mutable = List<RentRequest>.from(requests);
+    mutable.add(request);                          // add new request
+    await saveAllRequests(mutable);                // persist everything
   }
+
+
+    /// 🔹 READ ALL saved requests
+  Future<List<RentRequest>> getAllRequests() async {
+      final prefs = await SharedPreferences.getInstance();
+      final savedRequests = prefs.getStringList('rentRequests') ?? [];
+      final requests = savedRequests
+          .map((e) => RentRequest.fromMap(jsonDecode(e)))
+          .toList();
+      return requests;
+    }
 
   /// 🔹 SAVE ALL requests (overwrite)
   Future<void> saveAllRequests(List<RentRequest> requests) async {

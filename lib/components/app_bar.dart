@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/screens/notification_screen.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -39,8 +40,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.notifications_outlined),
               iconSize: 35,
               onPressed: () {
-                // TODO: navigate to notifications screen
-              },
+                Navigator.push(context, MaterialPageRoute(builder: (e) => const NotificationScreen(),));              
+                },
             ),
 
         ],

@@ -212,20 +212,20 @@ class FirestoreService {
   }
 
 
-  bool calculateAvailability(Map<String, dynamic> data) {
-  final availableFrom = data['availableFrom'] as Timestamp?;
-  final availableUntil = data['availableUntil'] as Timestamp?;
+    bool calculateAvailability(Map<String, dynamic> data) {
+    final availableFrom = data['availableFrom'] as Timestamp?;
+    final availableUntil = data['availableUntil'] as Timestamp?;
 
-  if (availableFrom == null || availableUntil == null) {
-    return false; // no dates = unavailable
+    if (availableFrom == null || availableUntil == null) {
+      return false; // no dates = unavailable
+    }
+
+    final now = DateTime.now();
+    final from = availableFrom.toDate();
+    final until = availableUntil.toDate();
+
+    return now.isAfter(from) && now.isBefore(until);
   }
-
-  final now = DateTime.now();
-  final from = availableFrom.toDate();
-  final until = availableUntil.toDate();
-
-  return now.isAfter(from) && now.isBefore(until);
-}
 
 
 

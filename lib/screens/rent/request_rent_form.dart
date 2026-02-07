@@ -43,6 +43,16 @@ class _RequestRentFormState extends State<RequestRentForm> {
   final TextEditingController addressController = TextEditingController();
   final RentRequestService _requestService = RentRequestService();
   
+  bool get hasLandSizeRequirement =>
+      widget.item.landSizeRequirement &&
+      (widget.item.landSizeMin != null || widget.item.landSizeMax != null);
+
+  bool get hasCropHeightRequirement =>
+      widget.item.maxCropHeightRequirement &&
+      widget.item.maxCropHeight != null;
+
+  bool get hasAnyRequirement =>
+      hasLandSizeRequirement || hasCropHeightRequirement;
 
 
   final ImagePicker _picker = ImagePicker();
@@ -243,7 +253,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
             ],
 
             /// STEP 3 — REQUIREMENTS PROOF
-            if (isScheduleComplete) ...[
+            if (isScheduleComplete && hasAnyRequirement) ...[
               const CustomDivider(),
               StepHeader(
                 title: 'Step 3: Patunay ng Requirements',

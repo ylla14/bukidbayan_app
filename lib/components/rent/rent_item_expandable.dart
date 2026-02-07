@@ -25,40 +25,50 @@ class RentItemExpandable extends StatelessWidget {
         ),
       ),
        title: Row(
-  crossAxisAlignment: CrossAxisAlignment.center,
+  crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    // IMAGE + TITLE/CATEGORY STACKED
-    Row(
-      children: [
-        // TITLE + CATEGORY
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              item.name,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 16),
+    // LEFT SIDE: NAME + CATEGORY (WRAPS PROPERLY)
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
             ),
-            const SizedBox(height: 4),
-            Text(
-              item.category ?? 'Unknown',
-              style: const TextStyle(
-                  fontSize: 13, color: Colors.black54),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.category ?? 'Unknown',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black54,
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     ),
 
-    const Spacer(), // push the price to the far right
+    const SizedBox(width: 8),
 
-    // PRICE
+    // RIGHT SIDE: PRICE (FIXED WIDTH, NO OVERFLOW)
     Text(
       '₱${item.price} ${_getRateSuffix(item.rentalUnit)}',
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+      ),
+      textAlign: TextAlign.right,
     ),
   ],
 ),
+
 
         trailing: const Icon(Icons.expand_more),
         children: [

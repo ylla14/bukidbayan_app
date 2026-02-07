@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
+import 'package:bukidbayan_app/screens/notification_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
@@ -161,9 +162,22 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
             },
           ),
         ),
-        actions: const [
-          Icon(Icons.notifications_outlined, size: 30),
-          SizedBox(width: 8),
+       actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.notifications_outlined,
+              size: 30,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
         ],
       ),
 
@@ -480,92 +494,88 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                 }
 
                 // GRID
-                // GRID
-return GridView.builder(
-  physics: const NeverScrollableScrollPhysics(),
-  shrinkWrap: true,
-  itemCount: filteredEquipment.length,
-  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-    crossAxisCount: 2,
-    crossAxisSpacing: 8,
-    mainAxisSpacing: 8,
-    childAspectRatio: 0.8,
-  ),
-  itemBuilder: (context, index) {
-    final equipment = filteredEquipment[index];
+                  return GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: filteredEquipment.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 0.8,
+                    ),
+                    itemBuilder: (context, index) {
+                      final equipment = filteredEquipment[index];
 
-    // Listen to live updates for this equipment
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('equipment')
-          .doc(equipment.id)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          // Placeholder while loading
-          return RentItemCard(
-            title: equipment.name,
-            imageUrl: equipment.imageUrls.isNotEmpty
-                ? equipment.imageUrls[0]
-                : 'assets/images/rent1.jpg',
-            price: '₱${equipment.price.toStringAsFixed(0)}',
-            ownerName: 'Loading...',
-            isAvailable: false,
-            rentalUnit: equipment.rentalUnit,
-          );
-        }
+                      // Listen to live updates for this equipment
+                      return StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('equipment')
+                            .doc(equipment.id)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            // Placeholder while loading
+                            return RentItemCard(
+                              title: equipment.name,
+                              imageUrl: equipment.imageUrls.isNotEmpty
+                                  ? equipment.imageUrls[0]
+                                  : 'assets/images/rent1.jpg',
+                              price: '₱${equipment.price.toStringAsFixed(0)}',
+                              ownerName: 'Loading...',
+                              isAvailable: false,
+                              rentalUnit: equipment.rentalUnit,
+                            );
+                          }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                          final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
 
-        // ✅ Use the actual Firestore field
-        final isAvailableFirestore = data['isAvailable'] ?? true;
+                          // ✅ Use the actual Firestore field
+                          final isAvailableFirestore = data['isAvailable'] ?? true;
 
-        // Optional: include availableFrom/availableUntil date check
-        final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
-        final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
-        final now = DateTime.now();
-        final dateOk = availableFrom != null &&
-            availableUntil != null &&
-            now.isAfter(availableFrom) &&
-            now.isBefore(availableUntil);
+                          // Optional: include availableFrom/availableUntil date check
+                          final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
+                          final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
+                          final now = DateTime.now();
+                          final dateOk = availableFrom != null &&
+                              availableUntil != null &&
+                              now.isAfter(availableFrom) &&
+                              now.isBefore(availableUntil);
 
-        final finalAvailability = isAvailableFirestore && dateOk;
+                          final finalAvailability = isAvailableFirestore && dateOk;
 
-        return FutureBuilder<String?>(
-          future: _firestoreService.getUserNameById(equipment.ownerId),
-          builder: (context, ownerSnapshot) {
-            final ownerName = ownerSnapshot.data ?? 'Unknown Owner';
+                          return FutureBuilder<String?>(
+                            future: _firestoreService.getUserNameById(equipment.ownerId),
+                            builder: (context, ownerSnapshot) {
+                              final ownerName = ownerSnapshot.data ?? 'Unknown Owner';
 
-            return GestureDetector(
-              onTap: () {
-                final tempItem = equipment.copyWith(ownerName: ownerName);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductPage(item: tempItem),
-                  ),
-                );
-              },
-              child: RentItemCard(
-                title: equipment.name,
-                imageUrl: equipment.imageUrls.isNotEmpty
-                    ? equipment.imageUrls[0]
-                    : 'assets/images/rent1.jpg',
-                price: '₱${equipment.price.toStringAsFixed(0)}',
-                ownerName: ownerName,
-                rentalUnit: equipment.rentalUnit,
-                isAvailable: finalAvailability, // ✅ proper availability
-              ),
-            );
-          },
-        );
-      },
-    );
-  },
-);
-
-
-
+                              return GestureDetector(
+                                onTap: () {
+                                  final tempItem = equipment.copyWith(ownerName: ownerName);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ProductPage(item: tempItem),
+                                    ),
+                                  );
+                                },
+                                child: RentItemCard(
+                                  title: equipment.name,
+                                  imageUrl: equipment.imageUrls.isNotEmpty
+                                      ? equipment.imageUrls[0]
+                                      : 'assets/images/rent1.jpg',
+                                  price: '₱${equipment.price.toStringAsFixed(0)}',
+                                  ownerName: ownerName,
+                                  rentalUnit: equipment.rentalUnit,
+                                  isAvailable: finalAvailability, // ✅ proper availability
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
                 },
               ),
           ],
