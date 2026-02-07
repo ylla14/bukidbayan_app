@@ -6,12 +6,10 @@
 /// - Emits states such as [RequestLoading], [RequestLoaded], and [RequestError] to update the UI accordingly.
 
 import 'package:bukidbayan_app/services/firestore_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'request_event.dart';
 import 'request_state.dart';
 import '../../models/rent_request.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../services/rent_request_service.dart';
 
@@ -30,12 +28,7 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
   ) async {
     emit(RequestLoading());
     try {
-      final allRequests = await _requestService.getAllRequests();
-      final request = allRequests.firstWhere(
-        (r) => r.itemId == event.requestId,
-        orElse: () => throw Exception('Request not found'),
-      );
-
+      final request = await _requestService.getRequestById(event.requestId);
       emit(RequestLoaded(request));
     } catch (e) {
       emit(RequestError('Failed to load request: $e'));
@@ -52,7 +45,7 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
     try {
       // Persist and get the updated request
       final updated = await _requestService.updateRequestStatus(
-        requestId: current.requestId!,
+        requestId: current.requestId,
         status: event.status,
       );
       emit(RequestLoaded(updated));
@@ -62,10 +55,7 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       if (event.status == RentRequestStatus.approved) {
         await _firebaseFirestore.setAvailability(current.itemId, false);
       } else if (event.status == RentRequestStatus.completed) {
-        await FirebaseFirestore.instance
-            .collection('equipment')
-            .doc(current.itemId)
-            .update({'isAvailable': true});
+        await _firebaseFirestore.setAvailability(current.itemId, true);
       }
 
       // Emit the persisted version

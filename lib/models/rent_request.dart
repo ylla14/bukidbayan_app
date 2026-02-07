@@ -45,8 +45,8 @@ class RentRequest {
       'itemName': itemName,
       'name': name,
       'address': address,
-      'start': start.toIso8601String(),
-      'end': end.toIso8601String(),
+      'start': Timestamp.fromDate(start),
+      'end': Timestamp.fromDate(end),
       'landSizeProofPath': landSizeProofPath,
       'cropHeightProofPath': cropHeightProofPath,
       'status': status.name,
@@ -65,8 +65,8 @@ class RentRequest {
       itemName: map['itemName'],
       name: map['name'],
       address: map['address'],
-      start: DateTime.parse(map['start']),
-      end: DateTime.parse(map['end']),
+      start: (map['start'] as Timestamp).toDate(),
+      end: (map['end'] as Timestamp).toDate(),
       landSizeProofPath: map['landSizeProofPath'],
       cropHeightProofPath: map['cropHeightProofPath'],
       status: RentRequestStatus.values.firstWhere(
@@ -76,25 +76,6 @@ class RentRequest {
       ownerId: map['ownerId'],
     );
   }
-
-  factory RentRequest.fromMap(Map<String, dynamic> map, {String? requestId}) {
-  return RentRequest(
-    requestId: requestId ?? '', // optional, maybe empty for local storage
-    itemId: map['itemId'],
-    itemName: map['itemName'],
-    name: map['name'],
-    address: map['address'],
-    start: DateTime.parse(map['start']),
-    end: DateTime.parse(map['end']),
-    landSizeProofPath: map['landSizeProofPath'],
-    cropHeightProofPath: map['cropHeightProofPath'],
-    status: RentRequestStatus.values.firstWhere(
-      (e) => e.name == (map['status'] ?? 'pending'),
-    ),
-    renterId: map['renterId'],
-    ownerId: map['ownerId'],
-  );
-}
 
 
   /// ✅ For updating fields safely

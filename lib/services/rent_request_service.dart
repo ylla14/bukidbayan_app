@@ -1,82 +1,88 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class RentRequestService {
-  final List<RentRequest> _requests = [];
+  final CollectionReference _collection =
+      FirebaseFirestore.instance.collection('rentRequests');
 
-  /// 🔹 Save image locally
+  /// Save image locally
   Future<String> saveFileLocally(XFile file) async {
     final dir = await getApplicationDocumentsDirectory();
-    print('📂 Saving file to directory: ${dir.path}');
-
     final path =
         '${dir.path}/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
     final newFile = await File(file.path).copy(path);
-
-    print('✅ File saved at: $path');
     return newFile.path;
   }
 
-    /// 🔹 CREATE / SAVE request
-  Future<void> saveRequest(RentRequest request) async {
-    final requests = await getAllRequests();       // get latest persisted list
-    final mutable = List<RentRequest>.from(requests);
-    mutable.add(request);                          // add new request
-    await saveAllRequests(mutable);                // persist everything
+  /// CREATE — returns the new Firestore document ID
+  Future<String> saveRequest(RentRequest request) async {
+    final docRef = await _collection.add({
+      ...request.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return docRef.id;
   }
 
-
-    /// 🔹 READ ALL saved requests
+  /// READ ALL (Future-based, for one-shot reads)
   Future<List<RentRequest>> getAllRequests() async {
-      final prefs = await SharedPreferences.getInstance();
-      final savedRequests = prefs.getStringList('rentRequests') ?? [];
-      final requests = savedRequests
-          .map((e) => RentRequest.fromMap(jsonDecode(e)))
-          .toList();
-      return requests;
-    }
-
-  /// 🔹 SAVE ALL requests (overwrite)
-  Future<void> saveAllRequests(List<RentRequest> requests) async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedRequests = requests.map((r) => jsonEncode(r.toMap())).toList();
-    await prefs.setStringList('rentRequests', savedRequests);
+    final snapshot = await _collection.get();
+    final list = snapshot.docs.map((doc) => RentRequest.fromDoc(doc)).toList();
+    list.sort((a, b) => b.start.compareTo(a.start));
+    return list;
   }
 
-Future<RentRequest> updateRequestStatus({
+  /// GET requests by renter (Stream for real-time updates)
+  Stream<List<RentRequest>> getRequestsByRenter(String renterId) {
+    return _collection
+        .where('renterId', isEqualTo: renterId)
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => RentRequest.fromDoc(doc)).toList();
+          list.sort((a, b) => b.start.compareTo(a.start));
+          return list;
+        });
+  }
+
+  /// GET requests by owner (Stream for real-time updates)
+  Stream<List<RentRequest>> getRequestsByOwner(String ownerId) {
+    return _collection
+        .where('ownerId', isEqualTo: ownerId)
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => RentRequest.fromDoc(doc)).toList();
+          list.sort((a, b) => b.start.compareTo(a.start));
+          return list;
+        });
+  }
+
+  /// GET single request by document ID
+  Future<RentRequest> getRequestById(String requestId) async {
+    final doc = await _collection.doc(requestId).get();
+    if (!doc.exists) throw Exception('Request not found');
+    return RentRequest.fromDoc(doc);
+  }
+
+  /// UPDATE request status
+  Future<RentRequest> updateRequestStatus({
     required String requestId,
     required RentRequestStatus status,
   }) async {
-    final requests = await getAllRequests(); // fresh list
-    final index = requests.indexWhere((r) => r.requestId == requestId);
-    if (index == -1) throw Exception('Request not found');
-
-    final updated = requests[index].copyWith(status: status);
-    final mutableRequests = List<RentRequest>.from(requests);
-    mutableRequests[index] = updated;
-
-    await saveAllRequests(mutableRequests); // persist
-
-    return updated; // return updated object
+    await _collection.doc(requestId).update({
+      'status': status.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    final doc = await _collection.doc(requestId).get();
+    return RentRequest.fromDoc(doc);
   }
 
-
-
-
-  /// 🔹 DELETE request by object reference
+  /// DELETE request
   Future<void> deleteRequest(RentRequest request) async {
-    _requests.remove(request);
+    await _collection.doc(request.requestId).delete();
 
-    // Delete from storage
-    final prefs = await SharedPreferences.getInstance();
-    final savedRequests = _requests.map((r) => jsonEncode(r.toMap())).toList();
-    await prefs.setStringList('rentRequests', savedRequests);
-
-    // Delete proof files if any
+    // Delete proof files locally
     if (request.landSizeProofPath != null) {
       final file = File(request.landSizeProofPath!);
       if (await file.exists()) await file.delete();
@@ -87,15 +93,12 @@ Future<RentRequest> updateRequestStatus({
     }
   }
 
-    //check for currently approved request
-  //   Future<bool> hasActiveApprovedRequest(String equipmentId) async {
-  //   final snapshot = await FirebaseFirestore.instance
-  //       .collection('rentRequests')
-  //       .where('itemId', isEqualTo: equipmentId)
-  //       .where('status', isEqualTo: 'approved')
-  //       .get();
-
-  //   return snapshot.docs.isNotEmpty;
-  // }
+  /// Check for currently approved request on an equipment item
+  Future<bool> hasActiveApprovedRequest(String equipmentId) async {
+    final snapshot = await _collection
+        .where('itemId', isEqualTo: equipmentId)
+        .where('status', isEqualTo: 'approved')
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
 }
-

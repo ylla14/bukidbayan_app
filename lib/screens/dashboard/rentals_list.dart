@@ -16,28 +16,24 @@
 /// In short, this screen acts as the *view controller* that determines
 /// which rental requests are visible to a renter vs. a lender, based on
 /// authentication context.
-/// 
+///
 /// try mo ivisit si user a a and fine motion for tractor 2 request
 
-
-
-import 'dart:io';
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
-import 'package:bukidbayan_app/components/app_bar.dart';
-import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart'; // For date formatting
+import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 enum RentalsListMode {
-  myRequests,       // Rentals I submitted
+  myRequests, // Rentals I submitted
   incomingRequests, // Rentals submitted for my equipment
 }
 
@@ -52,6 +48,7 @@ class RentalsList extends StatefulWidget {
 
 class _RentalsListState extends State<RentalsList> {
   final RentRequestService _requestService = RentRequestService();
+  final FirestoreService _firestoreService = FirestoreService();
   List<RentRequest> _requests = [];
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -92,7 +89,10 @@ class _RentalsListState extends State<RentalsList> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_title, style: TextStyle(color: lightColorScheme.onPrimary),),
+        title: Text(
+          _title,
+          style: TextStyle(color: lightColorScheme.onPrimary),
+        ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -120,21 +120,31 @@ class _RentalsListState extends State<RentalsList> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ExpansionTile(
-                  title: Text(request.itemName,
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  title: Text(
+                    request.itemName,
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   subtitle: Text('Item ID: ${request.itemId}'),
-                  childrenPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  childrenPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   children: [
                     ListTile(
                       dense: true,
                       title: Text('Address'),
                       subtitle: Text(request.address),
                     ),
-                    ListTile(
-                      dense: true,
-                      title: Text('Renter ID'),
-                      subtitle: Text(request.renterId),
+                    FutureBuilder<String?>(
+                      future: _firestoreService.getUserNameById(request.renterId),
+                      builder: (context, snapshot) {
+                        final name = snapshot.data ?? 'Loading...';
+                        return ListTile(
+                          dense: true,
+                          title: const Text('Renter'),
+                          subtitle: Text(name),
+                        );
+                      },
                     ),
                     ListTile(
                       dense: true,
@@ -162,7 +172,9 @@ class _RentalsListState extends State<RentalsList> {
                       ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 12),
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
                       child: Row(
                         children: [
                           // View Button
@@ -173,29 +185,34 @@ class _RentalsListState extends State<RentalsList> {
                                 MaterialPageRoute(
                                   builder: (_) => BlocProvider(
                                     create: (_) =>
-                                        RequestBloc()..add(LoadRequest(request.itemId)),
+                                        RequestBloc()
+                                          ..add(LoadRequest(request.requestId)),
                                     child: BlocBuilder<RequestBloc, RequestState>(
                                       builder: (context, state) {
                                         if (state is RequestLoaded) {
                                           return RequestSentPage(
-                                              requestId: request.itemId);
+                                            requestId: request.requestId,
+                                          );
                                         } else if (state is RequestLoading) {
                                           return const Scaffold(
                                             body: Center(
-                                                child:
-                                                    CircularProgressIndicator()),
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
                                           );
                                         } else if (state is RequestError) {
                                           return Scaffold(
                                             body: Center(
-                                                child: Text(
-                                                    'Error: ${state.message}')),
+                                              child: Text(
+                                                'Error: ${state.message}',
+                                              ),
+                                            ),
                                           );
                                         } else {
                                           return const Scaffold(
                                             body: Center(
-                                                child:
-                                                    Text('Unknown state')),
+                                              child: Text('Unknown state'),
+                                            ),
                                           );
                                         }
                                       },
@@ -221,7 +238,8 @@ class _RentalsListState extends State<RentalsList> {
                                 builder: (_) => AlertDialog(
                                   title: const Text('Confirm Delete'),
                                   content: const Text(
-                                      'Are you sure you want to delete this rental request?'),
+                                    'Are you sure you want to delete this rental request?',
+                                  ),
                                   actions: [
                                     TextButton(
                                       onPressed: () =>
@@ -241,30 +259,20 @@ class _RentalsListState extends State<RentalsList> {
                               );
 
                               if (confirm == true) {
-                                // Remove from list
+                                await _requestService.deleteRequest(request);
+
                                 setState(() {
-                                  _requests =
-                                      List<RentRequest>.from(_requests)
-                                        ..remove(request);
+                                  _requests = List<RentRequest>.from(_requests)
+                                    ..remove(request);
                                 });
 
-                                // Save updated list
-                                await _requestService.saveAllRequests(_requests);
-
-                                // Delete proof images if any
-                                if (request.landSizeProofPath != null) {
-                                  final file = File(request.landSizeProofPath!);
-                                  if (await file.exists()) await file.delete();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Request deleted!'),
+                                    ),
+                                  );
                                 }
-                                if (request.cropHeightProofPath != null) {
-                                  final file = File(request.cropHeightProofPath!);
-                                  if (await file.exists()) await file.delete();
-                                }
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Request deleted!')),
-                                );
                               }
                             },
                             style: OutlinedButton.styleFrom(

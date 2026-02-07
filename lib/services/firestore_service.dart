@@ -408,5 +408,44 @@ class FirestoreService {
     return results;
   }
 
-  
+  // DROPDOWN OPTIONS (fetched from Firestore for maintainability)
+
+  /// Fetch equipment dropdown options (brands, fuel) from Firestore.
+  /// Returns a map with keys: 'brands', 'fuelTypes'.
+  Future<Map<String, List<String>>> fetchEquipmentDropdownOptions() async {
+    try {
+      final doc = await _firestore
+          .collection('app_config')
+          .doc('equipment_options')
+          .get();
+
+      if (!doc.exists || doc.data() == null) {
+        return {'brands': [], 'fuelTypes': []};
+      }
+
+      final data = doc.data()!;
+      return {
+        'brands': List<String>.from(data['brands'] ?? []),
+        'fuelTypes': List<String>.from(data['fuelTypes'] ?? []),
+      };
+    } catch (e) {
+      print('Error fetching dropdown options: $e');
+      return {'brands': [], 'fuelTypes': []};
+    }
+  }
+
+  /// Seed the equipment dropdown options document if it doesn't already exist.
+  /// Safe to call on every app start — it's a no-op when the document exists.
+  Future<void> seedEquipmentDropdownOptions() async {
+    final docRef = _firestore.collection('app_config').doc('equipment_options');
+    final doc = await docRef.get();
+
+    if (!doc.exists) {
+      await docRef.set({
+        'brands': ['Mitsubishi', 'Kubota', 'John Deere', 'Honda', 'Stihl'],
+        'fuelTypes': ['Diesel', 'Gasoline', 'Electric', 'Hybrid', 'Oil'],
+      });
+      print('Seeded equipment dropdown options in Firestore.');
+    }
+  }
 }
