@@ -101,4 +101,55 @@ class RentRequestService {
         .get();
     return snapshot.docs.isNotEmpty;
   }
+  /// Stream a single request by its document ID (real-time updates)
+Stream<RentRequest> requestStream(String requestId) {
+  return _collection.doc(requestId).snapshots().map((doc) {
+    if (!doc.exists) throw Exception('Request not found');
+    return RentRequest.fromDoc(doc);
+  });
+}
+
+// Future<bool> hasDateConflict({
+//   required String equipmentId,
+//   required DateTime newStart,
+//   required DateTime newEnd,
+// }) async {
+//   final snapshot = await FirebaseFirestore.instance
+//       .collection('rentRequests')
+//       .where('itemId', isEqualTo: equipmentId)
+//       .where('status', whereIn: ['approved', 'inProgress'])
+//       .get();
+
+//   for (var doc in snapshot.docs) {
+//     final request = RentRequest.fromDoc(doc);
+
+//     final existingStart = request.start;
+//     final existingEnd = request.end;
+
+//     final overlaps =
+//         existingStart.isBefore(newEnd) &&
+//         existingEnd.isAfter(newStart);
+
+//     if (overlaps) {
+//       return true; // ❌ conflict found
+//     }
+//   }
+
+//   return false; // ✅ safe
+// }
+
+Future<List<RentRequest>> getApprovedRequests(String equipmentId) async {
+  final snapshot = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: equipmentId)
+      .where('status', whereIn: ['approved', 'inProgress'])
+      .get();
+
+  return snapshot.docs
+      .map((doc) => RentRequest.fromDoc(doc))
+      .toList();
+}
+
+
+
 }

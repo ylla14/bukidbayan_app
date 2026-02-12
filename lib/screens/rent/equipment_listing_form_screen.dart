@@ -388,7 +388,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       ),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
-                        value: selectedCategory,
+                        value: uniqueCategories.contains(selectedCategory) ? selectedCategory : null,
                         isExpanded: true,
                         dropdownColor: lightColorScheme.onPrimary,
                         decoration: InputDecoration(
@@ -421,23 +421,14 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                 )
                               : null,
                         ),
-                        items: isLoadingCategories
-                            ? [] // show empty while loading
-                            : uniqueCategories.map((String category) {
-                                return DropdownMenuItem<String>(
+                         items: isLoadingCategories
+                            ? []
+                            : uniqueCategories.map((category) => DropdownMenuItem(
                                   value: category,
                                   child: Text(category),
-                                );
-                              }).toList(),
-                        onChanged: isLoadingCategories
-                            ? null
-                            : (String? value) {
-                                setState(() {
-                                  selectedCategory = value;
-                                });
-                              },
-                        validator: (value) =>
-                            value == null ? 'Please select a category' : null,
+                                )).toList(),
+                        onChanged: isLoadingCategories ? null : (val) => setState(() => selectedCategory = val),
+                        validator: (value) => value == null ? 'Please select a category' : null,
                       ),
 
                       const SizedBox(height: 16),
@@ -507,12 +498,8 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: brandOptions.contains(selectedBrand)
-                                      ? selectedBrand
-                                      : null,
-                                  options: isLoadingDropdowns
-                                      ? []
-                                      : brandOptions,
+                                  value: brandOptions.contains(selectedBrand) ? selectedBrand : null,
+                                  options: isLoadingDropdowns ? [] : brandOptions,
                                   hint: isLoadingDropdowns
                                       ? 'Loading...'
                                       : 'Select Brand',
@@ -564,12 +551,12 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: selectedPower,
+                                  value: powerOptions.contains(selectedPower) ? selectedPower : null,
                                   options: powerOptions,
                                   hint: 'Select Power',
-                                  onChanged: (value) =>
-                                      setState(() => selectedPower = value),
+                                  onChanged: (value) => setState(() => selectedPower = value),
                                 ),
+
                               ],
                             ),
                           ),
@@ -584,12 +571,8 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 CustomDropdownFormField(
-                                  value: fuelOptions.contains(selectedFuel)
-                                      ? selectedFuel
-                                      : null,
-                                  options: isLoadingDropdowns
-                                      ? []
-                                      : fuelOptions,
+                                  value: fuelOptions.contains(selectedFuel) ? selectedFuel : null,
+                                  options: isLoadingDropdowns ? [] : fuelOptions,
                                   hint: isLoadingDropdowns
                                       ? 'Loading...'
                                       : 'Select Fuel Type',
@@ -1336,13 +1319,13 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
           RentRequestService(); // 🔹 use your local service
 
       // Compute availability normally
-      bool computedAvailability =
-          availableFrom != null &&
-          availableUntil != null &&
-          DateTime.now().isAfter(availableFrom!) &&
-          DateTime.now().isBefore(availableUntil!);
+      final now = DateTime.now();
 
-      // 🔹 OVERRIDE availability if there's an approved request for this equipment
+      bool computedAvailability = availableFrom != null &&
+          availableUntil != null &&
+          !now.isBefore(availableFrom!) && // now >= availableFrom
+          !now.isAfter(availableUntil!);   // now <= availableUntil
+
       if (widget.existingEquipment != null && widget.existingEquipment!.id != null) {
         final hasApprovedRequest = await rentRequestService
             .hasActiveApprovedRequest(widget.existingEquipment!.id!);

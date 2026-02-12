@@ -20,6 +20,7 @@ abstract class RequestEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+// Load a request by ID and start real-time updates
 class LoadRequest extends RequestEvent {
   final String requestId;
 
@@ -29,6 +30,7 @@ class LoadRequest extends RequestEvent {
   List<Object?> get props => [requestId];
 }
 
+// Update the request status (manual trigger from buttons)
 class RequestStatusUpdated extends RequestEvent {
   final String requestId;
   final RentRequestStatus status;
@@ -38,4 +40,5 @@ class RequestStatusUpdated extends RequestEvent {
   @override
   List<Object?> get props => [requestId, status];
 }
+
 

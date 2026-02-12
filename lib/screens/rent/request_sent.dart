@@ -4,11 +4,13 @@ import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/screens/rent/review_page.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:photo_view/photo_view.dart';
 
 class RequestSentPage extends StatelessWidget {
   final String requestId;
@@ -20,41 +22,46 @@ class RequestSentPage extends StatelessWidget {
       DateFormat('MMM dd, yyyy • hh:mm a').format(date);
 
   // Map status to step index
-  int _getCurrentStep(RentRequestStatus status) {
-    switch (status) {
-      case RentRequestStatus.pending:
-        return 0;
-      case RentRequestStatus.approved:
-        return 1;
-      case RentRequestStatus.inProgress:
-        return 2;
-      case RentRequestStatus.completed:
-        return 3;
-      case RentRequestStatus.declined:
-        return -1; // special case
-    }
+ int _getCurrentStep(RentRequestStatus status) {
+  switch (status) {
+    case RentRequestStatus.pending:
+      return 0;
+    case RentRequestStatus.approved:
+      return 1;
+    case RentRequestStatus.onTheWay:
+    case RentRequestStatus.inProgress:
+    case RentRequestStatus.returned:
+      return 2;
+    case RentRequestStatus.finished: // lender finished
+    case RentRequestStatus.completed: // renter left review
+      return 3; // final green step
+    case RentRequestStatus.declined:
+      return -1;
   }
-
-  Widget _detailRow(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        Expanded(child: Text(value)),
-      ],
-    ),
-  );
 }
 
-Widget _proofImage(String? path, String label) {
+
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+Widget _proofImage(String? path, String label, BuildContext context) {
   if (path == null || path.isEmpty) return const SizedBox.shrink();
 
   return Column(
@@ -63,19 +70,65 @@ Widget _proofImage(String? path, String label) {
       const SizedBox(height: 8),
       Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       const SizedBox(height: 6),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          File(path),
-          height: 120,
-          width: double.infinity,
-          fit: BoxFit.cover,
+      GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (_) => Dialog(
+              insetPadding: const EdgeInsets.all(10),
+              backgroundColor: Colors.transparent,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: PhotoView(
+                    imageProvider: FileImage(File(path)),
+                    backgroundDecoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.9),
+                    ),
+                    minScale: PhotoViewComputedScale.contained,
+                    maxScale: PhotoViewComputedScale.covered * 3,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            File(path),
+            height: 120,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     ],
   );
 }
 
+
+String _statusHeadline(RentRequestStatus status) {
+  switch (status) {
+    case RentRequestStatus.pending:
+      return 'Request Received';
+    case RentRequestStatus.approved:
+      return 'Request Approved';
+    case RentRequestStatus.onTheWay:
+      return 'Item Is On The Way';
+    case RentRequestStatus.inProgress:
+      return 'Rental In Progress';
+    case RentRequestStatus.returned:
+      return 'Item Returned';
+    case RentRequestStatus.finished: // lender marked finished
+      return 'Rental Finished';
+    case RentRequestStatus.completed: // renter left review
+      return 'Rental Completed';
+    case RentRequestStatus.declined:
+      return 'Request Declined';
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -117,9 +170,6 @@ Widget _proofImage(String? path, String label) {
 
             final showButtons = isOwner && request.status == RentRequestStatus.pending;
 
-
-
-
             print('Current user: ${currentUser?.uid}, Renter ID: ${request.renterId}, isRenter: $isRenter');
 
 
@@ -152,14 +202,54 @@ Widget _proofImage(String? path, String label) {
                     const SizedBox(height: 16),
 
                     Text(
-                      request.status == RentRequestStatus.declined
-                          ? 'Your request was declined.'
-                          : 'Your request is being processed!',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      _statusHeadline(request.status),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
 
                     const SizedBox(height: 24),
+
+                     /// 🔹 STEP PROGRESS
+                    if (request.status != RentRequestStatus.declined)
+                      /// 🔹 STATUS + PROGRESS (Grab-style)
+                      Column(
+                        children: [
+                         _grabStyleStepper(
+                          currentStep: currentStep,
+                          icons: const [
+                            Icons.receipt_long,
+                            Icons.sync,
+                            Icons.local_shipping,
+                            Icons.home_filled,
+                          ],
+                          status: request.status, 
+                        ),
+
+
+                          const SizedBox(height: 8),
+
+                          // Row(
+                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          //   children: const [
+                          //     Text('Requested', style: TextStyle(fontSize: 12)),
+                          //     Text(
+                          //       'Processing',
+                          //       style: TextStyle(fontSize: 12),
+                          //     ),
+                          //     Text(
+                          //       'In Progress',
+                          //       style: TextStyle(fontSize: 12),
+                          //     ),
+                          //     Text('Completed', style: TextStyle(fontSize: 12)),
+                          //   ],
+                          // ),
+                        ],
+                      ),
+
+                    const SizedBox(height: 16),
 
                     /// 🔹 DETAILS SECTION
                     Card(
@@ -193,51 +283,14 @@ Widget _proofImage(String? path, String label) {
                             _detailRow('Name', request.name),
                             _detailRow('Address', request.address),
 
-                            _proofImage(request.landSizeProofPath, 'Land Size Proof'),
-                            _proofImage(request.cropHeightProofPath, 'Crop Height Proof'),
+                            _proofImage(request.landSizeProofPath, 'Land Size Proof', context),
+                            _proofImage(request.cropHeightProofPath, 'Crop Height Proof', context),
                           ],
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 24),
-
-                    /// 🔹 STEP PROGRESS
-                    if (request.status != RentRequestStatus.declined)
-                      Column(
-                        children: List.generate(steps.length, (index) {
-                          final completed = index < currentStep;
-                          final inProgress = index == currentStep;
-
-                          return ListTile(
-                            leading: Icon(
-                              completed
-                                  ? Icons.check_circle
-                                  : inProgress
-                                      ? Icons.autorenew
-                                      : Icons.radio_button_unchecked,
-                              color: completed
-                                  ? Colors.green
-                                  : inProgress
-                                      ? Colors.orange
-                                      : Colors.grey,
-                            ),
-                            title: Text(
-                              steps[index],
-                              style: TextStyle(
-                                color: completed
-                                    ? Colors.green
-                                    : inProgress
-                                        ? Colors.orange
-                                        : Colors.grey,
-                                fontWeight: inProgress ? FontWeight.bold : null,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-
-                    const SizedBox(height: 16),
 
                     /// 🔹 OWNER ACTION BUTTONS
                     if (showButtons)
@@ -265,6 +318,140 @@ Widget _proofImage(String? path, String label) {
                         ],
                       ),
 
+                      if (isOwner && request.status == RentRequestStatus.approved)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<RequestBloc>().add(
+                                RequestStatusUpdated(request.requestId, RentRequestStatus.onTheWay),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                            child: const Text('On The Way'),
+                          ),
+                        ],
+                      ),
+
+                      if (isRenter && request.status == RentRequestStatus.onTheWay)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () {
+                                context.read<RequestBloc>().add(
+                                  RequestStatusUpdated(
+                                    request.requestId,
+                                    RentRequestStatus.inProgress,
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                              ),
+                              child: Text('Equipment Received', style: TextStyle(color: Colors.white),),
+                            ),
+                          ],
+                        ),
+
+                        if (isOwner && request.status == RentRequestStatus.onTheWay)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'Waiting for renter to confirm equipment receipt',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+
+                          if (isRenter && request.status == RentRequestStatus.inProgress)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    context.read<RequestBloc>().add(
+                                      RequestStatusUpdated(
+                                        request.requestId,
+                                        RentRequestStatus.returned,
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                                  child: const Text('Return Equipment'),
+                                ),
+                              ],
+                            ),
+                           
+                            if (isOwner && request.status == RentRequestStatus.returned)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      context.read<RequestBloc>().add(
+                                        RequestStatusUpdated(
+                                          request.requestId,
+                                          RentRequestStatus.finished,
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                    child: const Text('Confirm Return'),
+                                  ),
+                                ],
+                              ),
+
+                              /// 🔹 OWNER ACTION BUTTONS FOR COMPLETION
+                                if (isOwner && request.status == RentRequestStatus.finished)
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          context.read<RequestBloc>().add(
+                                            RequestStatusUpdated(
+                                              request.requestId,
+                                              RentRequestStatus.completed,
+                                            ),
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                        child: const Text('Confirm Completion'),
+                                      ),
+                                    ],
+                                  ),
+
+                                /// 🔹 RENTER ACTION BUTTON FOR REVIEW
+                                if (isRenter && request.status == RentRequestStatus.completed)
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          // Navigate to review page or open review dialog
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ReviewPage(
+                                                requestId: request.requestId,
+                                                lenderId: request.ownerId,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                                        child: const Text('Leave Review', style: TextStyle(color: Colors.white)),
+                                      ),
+                                    ],
+                                  ),
+
+
+
 
                     const SizedBox(height: 16),
 
@@ -287,4 +474,62 @@ Widget _proofImage(String? path, String label) {
       ),
     );
   }
+
+  Widget _grabStyleStepper({
+  required int currentStep,
+  required List<IconData> icons,
+  required RentRequestStatus status, // <- pass status
+}) {
+  return Row(
+    children: List.generate(icons.length * 2 - 1, (index) {
+      // ICON
+      if (index.isEven) {
+        final stepIndex = index ~/ 2;
+        final isCompleted = stepIndex < currentStep || status == RentRequestStatus.completed;
+        final isCurrent = stepIndex == currentStep && status != RentRequestStatus.completed;
+
+        Color color;
+        if (isCompleted) {
+          color = Colors.green;
+        } else if (isCurrent) {
+          color = Colors.orange;
+        } else {
+          color = Colors.grey;
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.15),
+          ),
+          child: Icon(
+            icons[stepIndex],
+            color: color,
+            size: 26,
+          ),
+        );
+      }
+
+      // LINE BETWEEN ICONS
+      else {
+        final lineIndex = (index - 1) ~/ 2;
+        final isActive = lineIndex < currentStep || status == RentRequestStatus.completed;
+
+        return Expanded(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            height: 4,
+            decoration: BoxDecoration(
+              color: isActive ? Colors.green : Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        );
+      }
+    }),
+  );
+}
+
+
 }

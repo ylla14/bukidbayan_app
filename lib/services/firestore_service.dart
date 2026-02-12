@@ -212,20 +212,20 @@ class FirestoreService {
   }
 
 
-    bool calculateAvailability(Map<String, dynamic> data) {
+  bool calculateAvailability(Map<String, dynamic> data) {
     final availableFrom = data['availableFrom'] as Timestamp?;
     final availableUntil = data['availableUntil'] as Timestamp?;
 
-    if (availableFrom == null || availableUntil == null) {
-      return false; // no dates = unavailable
-    }
+    if (availableUntil == null) return false; // no end date = unavailable
 
     final now = DateTime.now();
-    final from = availableFrom.toDate();
+    final from = availableFrom?.toDate();
     final until = availableUntil.toDate();
 
-    return now.isAfter(from) && now.isBefore(until);
-  }
+    // Available if the end date is in the future (can book now even if starts later)
+    return now.isBefore(until);
+  } 
+
 
 
 
@@ -237,31 +237,38 @@ class FirestoreService {
   }
 
   Future<void> validateEquipmentAvailability(String equipmentId) async {
-    final docRef = FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
-    final doc = await docRef.get();
+  final equipmentRef = FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
+  final equipmentDoc = await equipmentRef.get();
+  final data = equipmentDoc.data() as Map<String, dynamic>?;
+  if (data == null) return;
 
-    final data = doc.data() as Map<String, dynamic>?;
+  final availableUntil = data['availableUntil'] as Timestamp?;
+  bool isAvailable = false;
 
-    if (data == null) return;
+  final now = DateTime.now();
 
-    final availableFrom = data['availableFrom'];
-    final availableUntil = data['availableUntil'];
-
-    bool isAvailable;
-
-    if (availableFrom != null && availableUntil != null) {
-      final now = DateTime.now();
-      final from = (availableFrom as Timestamp).toDate();
-      final until = (availableUntil as Timestamp).toDate();
-      isAvailable = now.isAfter(from) && now.isBefore(until);
-    } else {
-      // Dates missing → mark as unavailable
-      isAvailable = false;
-    }
-
-    // Update Firestore
-    await docRef.update({'isAvailable': isAvailable});
+  // 1️⃣ Check date-based availability
+  if (availableUntil != null) {
+    final until = availableUntil.toDate();
+    isAvailable = now.isBefore(until);
   }
+
+  // 2️⃣ Check rent requests for this equipment
+  final rentRequestsSnapshot = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: equipmentId)
+      .where('status', whereIn: ['approved', 'inProgress'])
+      .get();
+
+  if (rentRequestsSnapshot.docs.isNotEmpty) {
+    // If there’s an active request, mark as unavailable
+    isAvailable = false;
+  }
+
+  // ✅ Update Firestore
+  await equipmentRef.update({'isAvailable': isAvailable});
+}
+
 
   Future<void> validateAllEquipmentAvailability() async {
     final snapshot = await FirebaseFirestore.instance.collection('equipment').get();

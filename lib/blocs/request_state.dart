@@ -19,8 +19,10 @@ abstract class RequestState extends Equatable {
   List<Object?> get props => [];
 }
 
+// Loading state while fetching the request
 class RequestLoading extends RequestState {}
 
+// Successfully loaded request
 class RequestLoaded extends RequestState {
   final RentRequest request;
 
@@ -30,6 +32,7 @@ class RequestLoaded extends RequestState {
   List<Object?> get props => [request];
 }
 
+// Error state
 class RequestError extends RequestState {
   final String message;
 
@@ -38,3 +41,4 @@ class RequestError extends RequestState {
   @override
   List<Object?> get props => [message];
 }
+

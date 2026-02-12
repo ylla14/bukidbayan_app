@@ -235,9 +235,33 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                     return const SizedBox();
                   }
 
+                  final currentUserId = _auth.currentUser?.uid;
+                  final now = DateTime.now();
+
                   final equipmentList = snapshot.data!.docs
-                      .map((doc) => Equipment.fromFirestore(doc))
+                      .map((doc) {
+                        final equipment = Equipment.fromFirestore(doc);
+                        final data = doc.data() as Map<String, dynamic>;
+
+                        final isAvailable = data['isAvailable'] ?? false;
+                        final availableUntil =
+                          (data['availableUntil'] as Timestamp?)?.toDate();
+
+                        final dateOk = availableUntil != null && now.isBefore(availableUntil);
+
+                        final isOwnedByUser = equipment.ownerId == currentUserId;
+
+                        if (!isOwnedByUser && isAvailable && dateOk) {
+                          return equipment;
+                        }
+                        return null;
+                      })
+                      .whereType<Equipment>() // removes nulls
                       .toList();
+
+                  if (equipmentList.isEmpty) {
+                    return const SizedBox();
+                  }
 
                   return EquipmentCarousel(
                     equipment: equipmentList,
@@ -245,6 +269,7 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                   );
                 },
               ),
+
 
 
             const SizedBox(height: 10),
@@ -528,34 +553,83 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                             );
                           }
 
-                          final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                          final data =
+                              snapshot.data!.data() as Map<String, dynamic>? ?? {};
 
-                          // ✅ Use the actual Firestore field
-                          final isAvailableFirestore = data['isAvailable'] ?? true;
+                          final isAvailableFirestore =
+                              data['isAvailable'] ?? false;
 
-                          // Optional: include availableFrom/availableUntil date check
-                          final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
-                          final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
-                          final now = DateTime.now();
-                          final dateOk = availableFrom != null &&
+                          final availableUntil =
+                              (data['availableUntil'] as Timestamp?)?.toDate();
+
+                          final finalAvailability =
+                              isAvailableFirestore &&
                               availableUntil != null &&
-                              now.isAfter(availableFrom) &&
-                              now.isBefore(availableUntil);
-
-                          final finalAvailability = isAvailableFirestore && dateOk;
+                              DateTime.now().isBefore(availableUntil);
 
                           return FutureBuilder<String?>(
-                            future: _firestoreService.getUserNameById(equipment.ownerId),
+                            future: _firestoreService
+                                .getUserNameById(equipment.ownerId),
                             builder: (context, ownerSnapshot) {
-                              final ownerName = ownerSnapshot.data ?? 'Unknown Owner';
+                              final ownerName =
+                                  ownerSnapshot.data ?? 'Unknown Owner';
 
+                              // 👇 UNAVAILABLE: greyed + no tap
+                             if (!finalAvailability) {
+                              return Opacity(
+                                opacity: 0.5,
+                                child: GestureDetector(
+                                  // 🔕 OPTIONAL UX: tap unavailable item
+                                  
+                                  onTap: () {
+                                    // Show SnackBar
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'This equipment is currently unavailable.',
+                                        ),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+
+                                    // Navigate to product page
+                                    final tempItem = equipment.copyWith(ownerName: ownerName);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ProductPage(item: tempItem),
+                                      ),
+                                    );
+                                  },
+                                  
+                                  // child: IgnorePointer(
+                                    // ⛔ Prevents navigation by default
+                                    child: RentItemCard(
+                                      title: equipment.name,
+                                      imageUrl: equipment.imageUrls.isNotEmpty
+                                          ? equipment.imageUrls[0]
+                                          : 'assets/images/rent1.jpg',
+                                      price: '₱${equipment.price.toStringAsFixed(0)}',
+                                      ownerName: ownerName,
+                                      rentalUnit: equipment.rentalUnit,
+                                      isAvailable: false,
+                                    ),
+                                  // ),
+                                ),
+                              );
+                            }
+
+
+                              // 👇 AVAILABLE: tappable
                               return GestureDetector(
                                 onTap: () {
-                                  final tempItem = equipment.copyWith(ownerName: ownerName);
+                                  final tempItem =
+                                      equipment.copyWith(ownerName: ownerName);
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => ProductPage(item: tempItem),
+                                      builder: (context) =>
+                                          ProductPage(item: tempItem),
                                     ),
                                   );
                                 },
@@ -564,18 +638,21 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                                   imageUrl: equipment.imageUrls.isNotEmpty
                                       ? equipment.imageUrls[0]
                                       : 'assets/images/rent1.jpg',
-                                  price: '₱${equipment.price.toStringAsFixed(0)}',
+                                  price:
+                                      '₱${equipment.price.toStringAsFixed(0)}',
                                   ownerName: ownerName,
                                   rentalUnit: equipment.rentalUnit,
-                                  isAvailable: finalAvailability, // ✅ proper availability
+                                  isAvailable: true,
                                 ),
                               );
                             },
                           );
                         },
                       );
+
                     },
                   );
+
                 },
               ),
           ],

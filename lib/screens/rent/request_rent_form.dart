@@ -40,18 +40,16 @@ class _RequestRentFormState extends State<RequestRentForm> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final RentRequestService _requestService = RentRequestService();
-  
+
   bool get hasLandSizeRequirement =>
       widget.item.landSizeRequirement &&
       (widget.item.landSizeMin != null || widget.item.landSizeMax != null);
 
   bool get hasCropHeightRequirement =>
-      widget.item.maxCropHeightRequirement &&
-      widget.item.maxCropHeight != null;
+      widget.item.maxCropHeightRequirement && widget.item.maxCropHeight != null;
 
   bool get hasAnyRequirement =>
       hasLandSizeRequirement || hasCropHeightRequirement;
-
 
   final ImagePicker _picker = ImagePicker();
   XFile? landSizeProof;
@@ -109,55 +107,6 @@ class _RequestRentFormState extends State<RequestRentForm> {
                   'Ang return ay dapat hindi bababa sa 1 oras mula sa pickup.',
             ),
 
-            //  Row(
-            //   children: [
-            //     Expanded(
-            //       child: DatePickerField(
-            //         label: 'Start / Pickup Date',
-            //         value: startDate,
-            //         onTap: () => _openDatePicker(
-            //           context,
-            //           initial: startDate,
-            //           availabilityFrom: widget.item.availableFrom!,
-            //           availabilityTo: widget.item.availableTo!,
-            //           onConfirm: (date) {
-            //             setState(() {
-            //               startDate = date;
-            //               returnDate = null;
-            //             });
-            //           },
-            //         ),
-            //       ),
-            //     ),
-            //     const SizedBox(width: 12),
-            //     Expanded(
-            //       child: DatePickerField(
-            //         label: 'Return Date',
-            //         value: returnDate,
-            //         onTap: startDate == null
-            //             ? null
-            //             : () => _openDatePicker(
-            //                   context,
-            //                   initial: returnDate ?? startDate,
-            //                   availabilityFrom: widget.item.availableFrom!,
-            //                   availabilityTo: widget.item.availableTo!,
-            //                   onConfirm: (date) {
-            //                     if (date.isBefore(startDate!)) {
-            //                       showErrorSnackbar(
-            //                         context: context,
-            //                         title: 'Invalid date',
-            //                         message:
-            //                             'Return date must be after pickup date',
-            //                       );
-            //                       return;
-            //                     }
-            //                     setState(() => returnDate = date);
-            //                   },
-            //                 ),
-            //       ),
-            //     ),
-            //   ],
-            // ),
             Row(
               children: [
                 Expanded(

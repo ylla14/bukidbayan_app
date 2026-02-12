@@ -1,12 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum RentRequestStatus {
-  pending,    // request sent, waiting for lender action
-  approved,   // lender approved the request
-  declined,   // lender rejected the request
-  inProgress, // equipment is currently being rented
-  completed,  // rental finished
+  pending,     // Request sent by renter; awaiting owner approval
+  approved,    // Owner approved request; item is being prepared
+  onTheWay,    // Item has been dispatched and is en route to renter
+  inProgress,  // Renter has received item; rental period is active
+  returned,    // Item has been physically returned (condition not yet finalized)
+  finished,
+  completed,   // Rental fully concluded and confirmed by both parties
+  declined,    // Owner rejected the rental request
 }
+
 
 class RentRequest {
   final String requestId; // 🔑 Firestore document ID
@@ -65,13 +69,15 @@ class RentRequest {
       itemName: map['itemName'],
       name: map['name'],
       address: map['address'],
-      start: (map['start'] as Timestamp).toDate(),
-      end: (map['end'] as Timestamp).toDate(),
+      start: (map['start'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      end: (map['end'] as Timestamp?)?.toDate() ?? DateTime.now().add(Duration(days: 1)),
       landSizeProofPath: map['landSizeProofPath'],
       cropHeightProofPath: map['cropHeightProofPath'],
       status: RentRequestStatus.values.firstWhere(
         (e) => e.name == (map['status'] ?? 'pending'),
+        orElse: () => RentRequestStatus.pending, // default if missing/invalid
       ),
+
       renterId: map['renterId'],
       ownerId: map['ownerId'],
     );
