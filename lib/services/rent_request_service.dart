@@ -109,7 +109,6 @@ Stream<RentRequest> requestStream(String requestId) {
   });
 }
 
-
 Future<List<RentRequest>> getApprovedRequests(String equipmentId) async {
   final snapshot = await FirebaseFirestore.instance
       .collection('rentRequests')

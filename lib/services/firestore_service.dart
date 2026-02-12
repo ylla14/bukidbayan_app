@@ -455,4 +455,139 @@ class FirestoreService {
       print('Seeded equipment dropdown options in Firestore.');
     }
   }
+
+  Future<void> migrateEquipmentToMultiPeriods() async {
+  try {
+    final equipmentSnapshot = await _firestore.collection('equipment').get();
+    
+    int migratedCount = 0;
+    int skippedCount = 0;
+    int errorCount = 0;
+
+    for (var doc in equipmentSnapshot.docs) {
+      try {
+        final data = doc.data();
+        
+        // Check if already migrated
+        if (data.containsKey('availabilityPeriods') && 
+            data['availabilityPeriods'] != null &&
+            (data['availabilityPeriods'] as List).isNotEmpty) {
+          print('✓ ${doc.id} already migrated');
+          skippedCount++;
+          continue;
+        }
+
+        // Get old single dates
+        final availableFrom = data['availableFrom'] as Timestamp?;
+        final availableUntil = data['availableUntil'] as Timestamp?;
+
+        List<Map<String, dynamic>> periods = [];
+
+        // Convert to new format if dates exist
+        if (availableFrom != null && availableUntil != null) {
+          periods.add({
+            'from': availableFrom,
+            'until': availableUntil,
+            'id': 'migrated_period_${DateTime.now().millisecondsSinceEpoch}',
+          });
+          
+          print('✓ Migrating ${doc.id}: ${availableFrom.toDate()} → ${availableUntil.toDate()}');
+        } else {
+          print('⚠ ${doc.id} has no dates, setting empty periods');
+        }
+
+        // 🔒 BACKUP: Keep old fields (don't delete them)
+        // Update the document with NEW fields while keeping OLD ones
+        await doc.reference.update({
+          'availabilityPeriods': periods,
+          // availableFrom and availableUntil are NOT deleted, just left as-is
+          'isAvailable': periods.isNotEmpty,
+          'updatedAt': FieldValue.serverTimestamp(),
+          '_migrated': true, // Flag to track migration
+          '_migratedAt': FieldValue.serverTimestamp(),
+        });
+
+        migratedCount++;
+        
+      } catch (e) {
+        print('❌ Error migrating ${doc.id}: $e');
+        errorCount++;
+      }
+    }
+
+    print('\n=== MIGRATION COMPLETE ===');
+    print('✓ Migrated: $migratedCount');
+    print('⊘ Skipped (already migrated): $skippedCount');
+    print('❌ Errors: $errorCount');
+    print('📝 Old fields (availableFrom/Until) preserved for rollback');
+    print('==========================\n');
+    
+  } catch (e) {
+    print('❌ Migration failed: $e');
+    throw Exception('Migration failed: $e');
+  }
+}
+
+/// ⏪ ROLLBACK: Restore old format, remove new format
+Future<void> rollbackEquipmentMigration() async {
+  try {
+    final equipmentSnapshot = await _firestore.collection('equipment').get();
+    
+    int rolledBackCount = 0;
+    int skippedCount = 0;
+    int errorCount = 0;
+
+    for (var doc in equipmentSnapshot.docs) {
+      try {
+        final data = doc.data();
+        
+        // Check if it was migrated
+        if (data['_migrated'] != true) {
+          print('⊘ ${doc.id} was not migrated, skipping');
+          skippedCount++;
+          continue;
+        }
+
+        // Restore old availability logic
+        final availableFrom = data['availableFrom'] as Timestamp?;
+        final availableUntil = data['availableUntil'] as Timestamp?;
+        
+        bool isAvailable = false;
+        if (availableUntil != null) {
+          final now = DateTime.now();
+          final until = availableUntil.toDate();
+          isAvailable = now.isBefore(until);
+        }
+
+        // Remove new fields, restore old isAvailable logic
+        await doc.reference.update({
+          'availabilityPeriods': FieldValue.delete(),
+          '_migrated': FieldValue.delete(),
+          '_migratedAt': FieldValue.delete(),
+          'isAvailable': isAvailable,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        print('✓ Rolled back ${doc.id}');
+        rolledBackCount++;
+        
+      } catch (e) {
+        print('❌ Error rolling back ${doc.id}: $e');
+        errorCount++;
+      }
+    }
+
+    print('\n=== ROLLBACK COMPLETE ===');
+    print('✓ Rolled back: $rolledBackCount');
+    print('⊘ Skipped (not migrated): $skippedCount');
+    print('❌ Errors: $errorCount');
+    print('📝 Original fields (availableFrom/Until) restored');
+    print('==========================\n');
+    
+  } catch (e) {
+    print('❌ Rollback failed: $e');
+    throw Exception('Rollback failed: $e');
+  }
+}
+
 }

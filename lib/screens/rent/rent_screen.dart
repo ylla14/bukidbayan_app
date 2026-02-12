@@ -172,7 +172,8 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const NotificationScreen(),
+                  // builder: (context) => const NotificationScreen(),
+                  builder: (context) => MigrationScreen(),
                 ),
               );
             },
