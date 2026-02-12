@@ -2,7 +2,7 @@ import 'package:bukidbayan_app/screens/crowdfunding_screen.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
-import 'package:bukidbayan_app/screens/profile_screen.dart';
+import 'package:bukidbayan_app/screens/profile/profile_screen.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 
 class BottomNav extends StatefulWidget {

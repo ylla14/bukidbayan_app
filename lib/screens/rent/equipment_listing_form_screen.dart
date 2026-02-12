@@ -17,8 +17,6 @@ import 'package:bukidbayan_app/services/cloudinary_service.dart';
 const List<String> rentalUnit = <String>[
   'Per Hour',
   'Per Day',
-  'Per Week',
-  'Per Month',
 ];
 const List<String> condition = <String>[
   'Brand New',

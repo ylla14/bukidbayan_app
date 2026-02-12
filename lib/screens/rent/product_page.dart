@@ -1,6 +1,6 @@
-import 'package:bukidbayan_app/components/rent/product_availability.dart';
-import 'package:bukidbayan_app/components/rent/product_image_carousel.dart';
-import 'package:bukidbayan_app/components/rent/product_specs.dart';
+import 'package:bukidbayan_app/components/rent/product_page/product_availability.dart';
+import 'package:bukidbayan_app/components/rent/product_page/product_image_carousel.dart';
+import 'package:bukidbayan_app/components/rent/product_page/product_specs.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/request_rent_form.dart';
