@@ -109,34 +109,6 @@ Stream<RentRequest> requestStream(String requestId) {
   });
 }
 
-// Future<bool> hasDateConflict({
-//   required String equipmentId,
-//   required DateTime newStart,
-//   required DateTime newEnd,
-// }) async {
-//   final snapshot = await FirebaseFirestore.instance
-//       .collection('rentRequests')
-//       .where('itemId', isEqualTo: equipmentId)
-//       .where('status', whereIn: ['approved', 'inProgress'])
-//       .get();
-
-//   for (var doc in snapshot.docs) {
-//     final request = RentRequest.fromDoc(doc);
-
-//     final existingStart = request.start;
-//     final existingEnd = request.end;
-
-//     final overlaps =
-//         existingStart.isBefore(newEnd) &&
-//         existingEnd.isAfter(newStart);
-
-//     if (overlaps) {
-//       return true; // ❌ conflict found
-//     }
-//   }
-
-//   return false; // ✅ safe
-// }
 
 Future<List<RentRequest>> getApprovedRequests(String equipmentId) async {
   final snapshot = await FirebaseFirestore.instance
