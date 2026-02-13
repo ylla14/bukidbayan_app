@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
+import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/notification_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
+import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/widgets/custom_icon_button.dart';
 import 'package:bukidbayan_app/components/rent/rent_screen/active_filters_chip.dart';
 import 'package:bukidbayan_app/components/rent/rent_screen/category_filter_bar.dart';
@@ -44,13 +48,107 @@ class _RentScreenState extends State<RentScreen> {
   late double maxPrice;
   late RangeValues priceRange;
 
+  Set<String> blockedCategories = {};
+
+  Timer? _availabilityTimer;
+
+
   @override
-  void initState() {
-    super.initState();
-    minPrice = 0;
-    maxPrice = 10000;
-    priceRange = RangeValues(minPrice, maxPrice);
+void initState() {
+  super.initState();
+  minPrice = 0;
+  maxPrice = 10000;
+  priceRange = RangeValues(minPrice, maxPrice);
+  
+  // ✅ Add this: Listen to rent request changes and update availability
+  _setupAvailabilityListener();
+  _loadBlockedCategories(); // NEW
+
+}
+
+StreamSubscription<QuerySnapshot>? _requestListener;
+
+void _setupAvailabilityListener() {
+  _requestListener = FirebaseFirestore.instance
+      .collection('rentRequests')
+      .snapshots()
+      .listen((snapshot) {
+    for (var change in snapshot.docChanges) {
+      if (change.type == DocumentChangeType.modified ||
+          change.type == DocumentChangeType.added) {
+        final data = change.doc.data();
+        if (data != null) {
+          final itemId = data['itemId'] as String?;
+          final status = data['status'] as String?;
+          final renterId = data['renterId'] as String?; // 👈 ADD THIS LINE
+          
+          // Only update for active statuses
+          if (itemId != null && 
+              (status == 'approved' || 
+               status == 'onTheWay' || 
+               status == 'inProgress' ||
+               status == 'completed' ||
+               status == 'finished' || 
+               status == 'declined')) {
+            print('🔔 Rent request changed, refreshing equipment: $itemId');
+            _firestoreService.validateEquipmentAvailabilityWithNotification(itemId);
+
+            // NEW: Refresh blocked categories if it's current user's request
+            if (renterId == _auth.currentUser?.uid) {
+              _loadBlockedCategories();
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+/// Load categories that user already has active requests for
+  Future<void> _loadBlockedCategories() async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return;
+    
+    final rentRequestService = RentRequestService();
+    
+    // Get all active requests for this user
+    final snapshot = await FirebaseFirestore.instance
+        .collection('rentRequests')
+        .where('renterId', isEqualTo: currentUserId)
+        .where('status', whereIn: ['approved', 'onTheWay', 'inProgress'])
+        .get();
+    
+    Set<String> categories = {};
+    
+    for (var doc in snapshot.docs) {
+      final request = RentRequest.fromDoc(doc);
+      
+      // Get equipment category
+      final equipmentDoc = await FirebaseFirestore.instance
+          .collection('equipment')
+          .doc(request.itemId)
+          .get();
+      
+      if (equipmentDoc.exists) {
+        final equipment = Equipment.fromFirestore(equipmentDoc);
+        if (equipment.category != null) {
+          categories.add(equipment.category!);
+        }
+      }
+    }
+    
+    if (mounted) {
+      setState(() {
+        blockedCategories = categories;
+      });
+    }
   }
+
+@override
+void dispose() {
+  _requestListener?.cancel();
+  super.dispose();
+}
 
 void applyFilters() {
   setState(() {
@@ -173,7 +271,7 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                 context,
                 MaterialPageRoute(
                   // builder: (context) => const NotificationScreen(),
-                  builder: (context) => MigrationScreen(),
+                  builder: (context) => NotificationScreen(),
                 ),
               );
             },
@@ -485,6 +583,15 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
 
                 // Apply your existing filters
                 final filteredEquipment = applyEquipmentFilters(equipmentNotOwnedByUser);
+                filteredEquipment.sort((a, b) {
+                  final isPendingA = a.category != null && blockedCategories.contains(a.category);
+                  final isPendingB = b.category != null && blockedCategories.contains(b.category);
+                  
+                  int priorityA = isPendingA ? 2 : (a.isAvailable ? 1 : 3);
+                  int priorityB = isPendingB ? 2 : (b.isAvailable ? 1 : 3);
+                  
+                  return priorityA.compareTo(priorityB);
+                });
 
                 if (filteredEquipment.isEmpty) {
                   return Center(
@@ -541,7 +648,6 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
-                            // Placeholder while loading
                             return RentItemCard(
                               title: equipment.name,
                               imageUrl: equipment.imageUrls.isNotEmpty
@@ -550,61 +656,43 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                               price: '₱${equipment.price.toStringAsFixed(0)}',
                               ownerName: 'Loading...',
                               isAvailable: false,
+                              isPending: false, // NEW
                               rentalUnit: equipment.rentalUnit,
                             );
                           }
 
-                          final data =
-                              snapshot.data!.data() as Map<String, dynamic>? ?? {};
-
-                          final isAvailableFirestore =
-                              data['isAvailable'] ?? false;
-
-                          final availableUntil =
-                              (data['availableUntil'] as Timestamp?)?.toDate();
-
-                          final finalAvailability =
-                              isAvailableFirestore &&
+                          final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                          final isAvailableFirestore = data['isAvailable'] ?? false;
+                          final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
+                          
+                          final finalAvailability = isAvailableFirestore &&
                               availableUntil != null &&
                               DateTime.now().isBefore(availableUntil);
 
+                          // NEW: Check if category is blocked
+                          final isPendingCategory = equipment.category != null &&
+                              blockedCategories.contains(equipment.category);
+
                           return FutureBuilder<String?>(
-                            future: _firestoreService
-                                .getUserNameById(equipment.ownerId),
+                            future: _firestoreService.getUserNameById(equipment.ownerId),
                             builder: (context, ownerSnapshot) {
-                              final ownerName =
-                                  ownerSnapshot.data ?? 'Unknown Owner';
+                              final ownerName = ownerSnapshot.data ?? 'Unknown Owner';
 
-                              // 👇 UNAVAILABLE: greyed + no tap
-                             if (!finalAvailability) {
-                              return Opacity(
-                                opacity: 0.5,
-                                child: GestureDetector(
-                                  // 🔕 OPTIONAL UX: tap unavailable item
-                                  
-                                  onTap: () {
-                                    // Show SnackBar
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'This equipment is currently unavailable.',
+                              // PENDING CATEGORY: orange + tap shows message
+                              if (isPendingCategory) {
+                                return Opacity(
+                                  opacity: 0.6,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'You already have an active request for a ${equipment.category}. Complete or cancel it first.',
+                                          ),
+                                          duration: const Duration(seconds: 3),
                                         ),
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
-
-                                    // Navigate to product page
-                                    final tempItem = equipment.copyWith(ownerName: ownerName);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => ProductPage(item: tempItem),
-                                      ),
-                                    );
-                                  },
-                                  
-                                  // child: IgnorePointer(
-                                    // ⛔ Prevents navigation by default
+                                      );
+                                    },
                                     child: RentItemCard(
                                       title: equipment.name,
                                       imageUrl: equipment.imageUrls.isNotEmpty
@@ -614,23 +702,58 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                                       ownerName: ownerName,
                                       rentalUnit: equipment.rentalUnit,
                                       isAvailable: false,
+                                      isPending: true, // NEW
                                     ),
-                                  // ),
-                                ),
-                              );
-                            }
+                                  ),
+                                );
+                              }
 
+                              // 🔴 UNAVAILABLE: greyed + tap shows message
+                              if (!finalAvailability) {
+                                return Opacity(
+                                  opacity: 0.5,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'This equipment is currently unavailable.',
+                                          ),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                      
+                                      final tempItem = equipment.copyWith(ownerName: ownerName);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ProductPage(item: tempItem),
+                                        ),
+                                      );
+                                    },
+                                    child: RentItemCard(
+                                      title: equipment.name,
+                                      imageUrl: equipment.imageUrls.isNotEmpty
+                                          ? equipment.imageUrls[0]
+                                          : 'assets/images/rent1.jpg',
+                                      price: '₱${equipment.price.toStringAsFixed(0)}',
+                                      ownerName: ownerName,
+                                      rentalUnit: equipment.rentalUnit,
+                                      isAvailable: false,
+                                      isPending: false,
+                                    ),
+                                  ),
+                                );
+                              }
 
-                              // 👇 AVAILABLE: tappable
+                              // 🟢 AVAILABLE: tappable
                               return GestureDetector(
                                 onTap: () {
-                                  final tempItem =
-                                      equipment.copyWith(ownerName: ownerName);
+                                  final tempItem = equipment.copyWith(ownerName: ownerName);
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          ProductPage(item: tempItem),
+                                      builder: (context) => ProductPage(item: tempItem),
                                     ),
                                   );
                                 },
@@ -639,11 +762,11 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                                   imageUrl: equipment.imageUrls.isNotEmpty
                                       ? equipment.imageUrls[0]
                                       : 'assets/images/rent1.jpg',
-                                  price:
-                                      '₱${equipment.price.toStringAsFixed(0)}',
+                                  price: '₱${equipment.price.toStringAsFixed(0)}',
                                   ownerName: ownerName,
                                   rentalUnit: equipment.rentalUnit,
                                   isAvailable: true,
+                                  isPending: false,
                                 ),
                               );
                             },

@@ -40,7 +40,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.notifications_outlined),
               iconSize: 35,
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (e) => MigrationScreen(),));              
+                Navigator.push(context, MaterialPageRoute(builder: (e) => NotificationScreen(),));              
                 },
             ),
 

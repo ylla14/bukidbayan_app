@@ -55,25 +55,25 @@ class _RentalsListState extends State<RentalsList> {
   @override
   void initState() {
     super.initState();
-    _loadRequests();
+    // _loadRequests();
   }
 
-  Future<void> _loadRequests() async {
-    final allRequests = await _requestService.getAllRequests();
-    final currentUserId = _auth.currentUser!.uid;
+  // Future<void> _loadRequests() async {
+  //   final allRequests = await _requestService.getAllRequests();
+  //   final currentUserId = _auth.currentUser!.uid;
 
-    setState(() {
-      if (widget.mode == RentalsListMode.myRequests) {
-        _requests = allRequests
-            .where((r) => r.renterId == currentUserId)
-            .toList();
-      } else {
-        _requests = allRequests
-            .where((r) => r.ownerId == currentUserId)
-            .toList();
-      }
-    });
-  }
+  //   setState(() {
+  //     if (widget.mode == RentalsListMode.myRequests) {
+  //       _requests = allRequests
+  //           .where((r) => r.renterId == currentUserId)
+  //           .toList();
+  //     } else {
+  //       _requests = allRequests
+  //           .where((r) => r.ownerId == currentUserId)
+  //           .toList();
+  //     }
+  //   });
+  // }
 
   String _formatDate(DateTime date) {
     return DateFormat('MMM dd, yyyy • hh:mm a').format(date);
@@ -85,13 +85,44 @@ class _RentalsListState extends State<RentalsList> {
         : 'Requests for My Equipment';
   }
 
+  Color _statusColor(RentRequestStatus status) {
+    switch (status) {
+      case RentRequestStatus.pending:
+        return Colors.orange;
+      case RentRequestStatus.approved:
+        return Colors.blue;
+      case RentRequestStatus.onTheWay:
+        return Colors.indigo;
+      case RentRequestStatus.inProgress:
+        return Colors.deepPurple;
+      case RentRequestStatus.returned:
+        return Colors.teal;
+      case RentRequestStatus.finished:
+      case RentRequestStatus.completed:
+        return Colors.green;
+      case RentRequestStatus.declined:
+        return Colors.red;
+    }
+  }
+
+  String _statusLabel(RentRequestStatus status) {
+    switch (status) {
+      case RentRequestStatus.onTheWay:
+        return "On The Way";
+      case RentRequestStatus.inProgress:
+        return "In Progress";
+      default:
+        return status.name[0].toUpperCase() + status.name.substring(1);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
           _title,
-          style: TextStyle(color: lightColorScheme.onPrimary),
+          style: TextStyle(color: lightColorScheme.onPrimary, fontSize: 16),
         ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -102,83 +133,193 @@ class _RentalsListState extends State<RentalsList> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_requests.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text('No rentals to display.'),
+      body: StreamBuilder<List<RentRequest>>(
+        stream: widget.mode == RentalsListMode.myRequests
+            ? _requestService.getRequestsByRenter(_auth.currentUser!.uid)
+            : _requestService.getRequestsByOwner(_auth.currentUser!.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          }
+
+          final requests = snapshot.data ?? [];
+
+          if (requests.isEmpty) {
+            return const Center(
+              child: Text(
+                'No rentals to display.',
+                style: TextStyle(fontSize: 16),
               ),
-            ..._requests.map((request) {
-              return Card(
-                elevation: 2,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ExpansionTile(
-                  title: Text(
-                    request.itemName,
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text('Item ID: ${request.itemId}'),
-                  childrenPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  children: [
-                    ListTile(
-                      dense: true,
-                      title: Text('Address'),
-                      subtitle: Text(request.address),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: requests.length,
+            itemBuilder: (context, index) {
+              final request = requests[index];
+              final statusColor = _statusColor(request.status);
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// 🔹 TOP ROW — ITEM + STATUS
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            request.itemName,
+                            style: const TextStyle(
+                              fontSize: 18, // was 16
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: Text(
+                            _statusLabel(request.status).toUpperCase(),
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13, // slightly bigger
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                     /// 🔹 SUBMITTED AT (NEW)
+                    if (request.createdAt != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.schedule, size: 16, color: Colors.grey),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Submitted: ${DateFormat('MMM dd, yyyy • hh:mm a').format(request.createdAt!)}",
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+
+                    /// 🔹 DATE RANGE
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            "${DateFormat('MMM dd, yyyy').format(request.start)} - ${DateFormat('MMM dd, yyyy').format(request.end)}",
+                            style: const TextStyle(
+                              fontSize: 15, // bigger
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87, // darker
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
                     FutureBuilder<String?>(
-                      future: _firestoreService.getUserNameById(request.renterId),
+                      future: widget.mode == RentalsListMode.incomingRequests
+                          ? _firestoreService.getUserNameById(request.renterId)
+                          : _firestoreService.getUserNameById(request.ownerId),
                       builder: (context, snapshot) {
-                        final name = snapshot.data ?? 'Loading...';
-                        return ListTile(
-                          dense: true,
-                          title: const Text('Renter'),
-                          subtitle: Text(name),
+                        final name = snapshot.data ?? "Loading name...";
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.person, size: 18, color: Colors.black87),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
-                    ListTile(
-                      dense: true,
-                      title: Text('Start'),
-                      subtitle: Text(_formatDate(request.start)),
+
+                    const SizedBox(height: 6),
+
+                    /// 🔹 ADDRESS
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            request.address,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    ListTile(
-                      dense: true,
-                      title: Text('End'),
-                      subtitle: Text(_formatDate(request.end)),
-                    ),
-                    if (request.landSizeProofPath != null)
-                      ListTile(
-                        dense: true,
-                        leading: Icon(Icons.check_circle, color: Colors.green),
-                        title: Text('Land Proof Uploaded'),
-                        subtitle: Text(request.landSizeProofPath!),
-                      ),
-                    if (request.cropHeightProofPath != null)
-                      ListTile(
-                        dense: true,
-                        leading: Icon(Icons.check_circle, color: Colors.green),
-                        title: Text('Crop Height Proof Uploaded'),
-                        subtitle: Text(request.cropHeightProofPath!),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          // View Button
-                          OutlinedButton(
+
+                    const SizedBox(height: 12),
+                    const Divider(),
+
+                    /// 🔹 BUTTONS
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
                             onPressed: () {
                               Navigator.push(
                                 context,
@@ -187,68 +328,40 @@ class _RentalsListState extends State<RentalsList> {
                                     create: (_) =>
                                         RequestBloc()
                                           ..add(LoadRequest(request.requestId)),
-                                    child: BlocBuilder<RequestBloc, RequestState>(
-                                      builder: (context, state) {
-                                        if (state is RequestLoaded) {
-                                          return RequestSentPage(
-                                            requestId: request.requestId,
-                                          );
-                                        } else if (state is RequestLoading) {
-                                          return const Scaffold(
-                                            body: Center(
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            ),
-                                          );
-                                        } else if (state is RequestError) {
-                                          return Scaffold(
-                                            body: Center(
-                                              child: Text(
-                                                'Error: ${state.message}',
-                                              ),
-                                            ),
-                                          );
-                                        } else {
-                                          return const Scaffold(
-                                            body: Center(
-                                              child: Text('Unknown state'),
-                                            ),
-                                          );
-                                        }
-                                      },
+                                    child: RequestSentPage(
+                                      requestId: request.requestId,
                                     ),
                                   ),
                                 ),
                               );
                             },
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: lightColorScheme.primary),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: lightColorScheme.onPrimary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                            child: Text(
-                              'View',
-                              style: TextStyle(color: lightColorScheme.primary),
-                            ),
+                            child: const Text("View"),
                           ),
-                          const SizedBox(width: 8),
-                          // Delete Button
-                          OutlinedButton(
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton(
                             onPressed: () async {
                               final confirm = await showDialog<bool>(
                                 context: context,
                                 builder: (_) => AlertDialog(
-                                  title: const Text('Confirm Delete'),
+                                  title: const Text('Delete Request'),
                                   content: const Text(
                                     'Are you sure you want to delete this rental request?',
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
+                                      onPressed: () => Navigator.pop(context, false),
                                       child: const Text('Cancel'),
                                     ),
                                     TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
+                                      onPressed: () => Navigator.pop(context, true),
                                       child: const Text(
                                         'Delete',
                                         style: TextStyle(color: Colors.red),
@@ -262,14 +375,13 @@ class _RentalsListState extends State<RentalsList> {
                                 await _requestService.deleteRequest(request);
 
                                 setState(() {
-                                  _requests = List<RentRequest>.from(_requests)
-                                    ..remove(request);
+                                  _requests.remove(request);
                                 });
 
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Request deleted!'),
+                                      content: Text('Request deleted'),
                                     ),
                                   );
                                 }
@@ -277,21 +389,24 @@ class _RentalsListState extends State<RentalsList> {
                             },
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                             child: const Text(
-                              'Delete',
+                              "Delete",
                               style: TextStyle(color: Colors.red),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               );
-            }).toList(),
-          ],
-        ),
+            },
+          );
+        },
       ),
     );
   }

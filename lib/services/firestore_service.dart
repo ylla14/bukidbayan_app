@@ -236,38 +236,38 @@ class FirestoreService {
         .update({'isAvailable': value});
   }
 
-  Future<void> validateEquipmentAvailability(String equipmentId) async {
-  final equipmentRef = FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
-  final equipmentDoc = await equipmentRef.get();
-  final data = equipmentDoc.data() as Map<String, dynamic>?;
-  if (data == null) return;
+//   Future<void> validateEquipmentAvailability(String equipmentId) async {
+//   final equipmentRef = FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
+//   final equipmentDoc = await equipmentRef.get();
+//   final data = equipmentDoc.data() as Map<String, dynamic>?;
+//   if (data == null) return;
 
-  final availableUntil = data['availableUntil'] as Timestamp?;
-  bool isAvailable = false;
+//   final availableUntil = data['availableUntil'] as Timestamp?;
+//   bool isAvailable = false;
 
-  final now = DateTime.now();
+//   final now = DateTime.now();
 
-  // 1️⃣ Check date-based availability
-  if (availableUntil != null) {
-    final until = availableUntil.toDate();
-    isAvailable = now.isBefore(until);
-  }
+//   // 1️⃣ Check date-based availability
+//   if (availableUntil != null) {
+//     final until = availableUntil.toDate();
+//     isAvailable = now.isBefore(until);
+//   }
 
-  // 2️⃣ Check rent requests for this equipment
-  final rentRequestsSnapshot = await FirebaseFirestore.instance
-      .collection('rentRequests')
-      .where('itemId', isEqualTo: equipmentId)
-      .where('status', whereIn: ['approved', 'inProgress'])
-      .get();
+//   // 2️⃣ Check rent requests for this equipment
+//   final rentRequestsSnapshot = await FirebaseFirestore.instance
+//       .collection('rentRequests')
+//       .where('itemId', isEqualTo: equipmentId)
+//       .where('status', whereIn: ['approved', 'inProgress'])
+//       .get();
 
-  if (rentRequestsSnapshot.docs.isNotEmpty) {
-    // If there’s an active request, mark as unavailable
-    isAvailable = false;
-  }
+//   if (rentRequestsSnapshot.docs.isNotEmpty) {
+//     // If there’s an active request, mark as unavailable
+//     isAvailable = false;
+//   }
 
-  // ✅ Update Firestore
-  await equipmentRef.update({'isAvailable': isAvailable});
-}
+//   // ✅ Update Firestore
+//   await equipmentRef.update({'isAvailable': isAvailable});
+// }
 
 
   Future<void> validateAllEquipmentAvailability() async {
@@ -277,6 +277,242 @@ class FirestoreService {
       await validateEquipmentAvailability(doc.id);
     }
   }
+
+  // Add this method to check for booking conflicts
+Future<bool> hasBookingConflict(
+  String equipmentId,
+  DateTime startDate,
+  DateTime endDate,
+) async {
+  try {
+    final snapshot = await _firestore
+        .collection('rentRequests')
+        .where('itemId', isEqualTo: equipmentId)
+        .where('status', whereIn: ['approved', 'onTheWay', 'inProgress'])
+        .get();
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final bookedStart = (data['start'] as Timestamp).toDate();
+      final bookedEnd = (data['end'] as Timestamp).toDate();
+
+      // Check if dates overlap
+      // Overlap occurs if: new start is before booked end AND new end is after booked start
+      if (startDate.isBefore(bookedEnd) && endDate.isAfter(bookedStart)) {
+        return true; // Conflict found
+      }
+    }
+
+    return false; // No conflicts
+  } catch (e) {
+    print('Error checking booking conflict: $e');
+    return true; // Assume conflict on error to be safe
+  }
+}
+
+// Get all booked date ranges for an equipment (useful for UI)
+Future<List<Map<String, DateTime>>> getBookedDateRanges(String equipmentId) async {
+  try {
+    final snapshot = await _firestore
+        .collection('rentRequests')
+        .where('itemId', isEqualTo: equipmentId)
+        .where('status', whereIn: ['approved', 'onTheWay', 'inProgress'])
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'start': (data['start'] as Timestamp).toDate(),
+        'end': (data['end'] as Timestamp).toDate(),
+      };
+    }).toList();
+  } catch (e) {
+    print('Error fetching booked dates: $e');
+    return [];
+  }
+}
+
+// Update the validateEquipmentAvailability to check current active bookings
+Future<void> validateEquipmentAvailability(String equipmentId) async {
+  final equipmentRef =
+      FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
+
+  final equipmentDoc = await equipmentRef.get();
+  final data = equipmentDoc.data() as Map<String, dynamic>?;
+  if (data == null) return;
+
+  final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
+  final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
+
+  if (availableFrom == null || availableUntil == null) {
+    await equipmentRef.update({'isAvailable': false});
+    return;
+  }
+
+  final now = DateTime.now();
+
+  // If already expired
+  if (now.isAfter(availableUntil)) {
+    await equipmentRef.update({'isAvailable': false});
+    return;
+  }
+
+  // 🔥 Get booked ranges
+  final bookedSnapshot = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: equipmentId)
+      .where('status', whereIn: ['approved', 'onTheWay', 'inProgress'])
+      .get();
+
+  List<Map<String, DateTime>> bookedRanges = bookedSnapshot.docs.map((doc) {
+    final d = doc.data();
+    return {
+      'start': (d['start'] as Timestamp).toDate(),
+      'end': (d['end'] as Timestamp).toDate(),
+    };
+  }).toList();
+
+  // 🔥 Check if ANY free day exists
+  DateTime current =
+      DateTime(availableFrom.year, availableFrom.month, availableFrom.day);
+
+  bool hasFreeDay = false;
+
+  while (!current.isAfter(availableUntil)) {
+    bool isBooked = false;
+
+    for (var range in bookedRanges) {
+      if (!current.isBefore(range['start']!) &&
+          !current.isAfter(range['end']!)) {
+        isBooked = true;
+        break;
+      }
+    }
+
+    if (!isBooked) {
+      hasFreeDay = true;
+      break;
+    }
+
+    current = current.add(const Duration(days: 1));
+  }
+
+  await equipmentRef.update({'isAvailable': hasFreeDay});
+}
+
+// Add this method to your FirestoreService
+
+/// Force refresh equipment availability and ensure stream updates
+Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) async {
+  print('🔄 Validating availability for equipment: $equipmentId');
+  
+  final equipmentRef =
+      FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
+
+  final equipmentDoc = await equipmentRef.get();
+  final data = equipmentDoc.data() as Map<String, dynamic>?;
+  if (data == null) {
+    print('❌ Equipment not found');
+    return;
+  }
+
+  final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
+  final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
+
+  if (availableFrom == null || availableUntil == null) {
+    print('⚠️ No availability dates, setting unavailable');
+    await equipmentRef.update({
+      'isAvailable': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return;
+  }
+
+  final now = DateTime.now();
+
+  // If already expired
+  if (now.isAfter(availableUntil)) {
+    print('⏰ Equipment expired');
+    await equipmentRef.update({
+      'isAvailable': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return;
+  }
+
+  // 🔥 Get booked ranges
+  print('🔍 Checking for existing bookings...');
+  final bookedSnapshot = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: equipmentId)
+      .where('status', whereIn: ['approved', 'onTheWay', 'inProgress'])
+      .get();
+
+  print('📊 Found ${bookedSnapshot.docs.length} active bookings');
+
+  List<Map<String, DateTime>> bookedRanges = bookedSnapshot.docs.map((doc) {
+    final d = doc.data();
+    final start = (d['start'] as Timestamp).toDate();
+    final end = (d['end'] as Timestamp).toDate();
+    print('   📅 Booking: ${start} → ${end}');
+    return {
+      'start': start,
+      'end': end,
+    };
+  }).toList();
+
+  // 🔥 Check if ANY free day exists
+  DateTime current =
+      DateTime(availableFrom.year, availableFrom.month, availableFrom.day);
+
+  bool hasFreeDay = false;
+  int checkedDays = 0;
+  int bookedDays = 0;
+
+  while (!current.isAfter(availableUntil)) {
+    checkedDays++;
+    bool isBooked = false;
+
+    for (var range in bookedRanges) {
+      final rangeStart = DateTime(
+        range['start']!.year,
+        range['start']!.month,
+        range['start']!.day,
+      );
+      final rangeEnd = DateTime(
+        range['end']!.year,
+        range['end']!.month,
+        range['end']!.day,
+      );
+
+      if (!current.isBefore(rangeStart) && !current.isAfter(rangeEnd)) {
+        isBooked = true;
+        bookedDays++;
+        break;
+      }
+    }
+
+    if (!isBooked) {
+      hasFreeDay = true;
+      print('✅ Found free day: $current');
+      break;
+    }
+
+    current = current.add(const Duration(days: 1));
+  }
+
+  print('📈 Stats: Checked $checkedDays days, $bookedDays booked, hasFreeDay: $hasFreeDay');
+
+  // Force update to trigger stream
+  await equipmentRef.update({
+    'isAvailable': hasFreeDay,
+    'updatedAt': FieldValue.serverTimestamp(),
+    '_lastValidated': FieldValue.serverTimestamp(), // Extra field to force update
+  });
+
+  print('✅ Updated isAvailable to: $hasFreeDay');
+}
+
 
 
   // Filter equipment by operator availability

@@ -1,221 +1,96 @@
-import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/screens/migration_page.dart';
+import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
-class MigrationScreen extends StatefulWidget {
-  @override
-  State<MigrationScreen> createState() => _MigrationScreenState();
-}
 
-class _MigrationScreenState extends State<MigrationScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  bool _isProcessing = false;
-  String _status = '';
+class NotificationScreen extends StatelessWidget {
+  const NotificationScreen({super.key});
 
-  Future<void> _runMigration() async {
-    setState(() {
-      _isProcessing = true;
-      _status = 'Starting migration...';
-    });
-
-    try {
-      await _firestoreService.migrateEquipmentToMultiPeriods();
-      
-      setState(() {
-        _status = '✅ Migration completed successfully!\n\nOld fields preserved for rollback.';
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Migration completed! Old data preserved for rollback.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 5),
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _status = '❌ Migration failed: $e';
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Migration failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
-    }
-  }
-
-  Future<void> _runRollback() async {
-    // Confirm with user
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Rollback'),
-        content: const Text(
-          'This will restore the old single-date format and remove the new multi-period format. Are you sure?'
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('ROLLBACK'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() {
-      _isProcessing = true;
-      _status = 'Rolling back migration...';
-    });
-
-    try {
-      await _firestoreService.rollbackEquipmentMigration();
-      
-      setState(() {
-        _status = '✅ Rollback completed successfully!\n\nOld format restored.';
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Rollback completed! Old format restored.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 5),
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _status = '❌ Rollback failed: $e';
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Rollback failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
-    }
-  }
+  // Sample notifications data
+  final List<Map<String, String>> notifications = const [
+    {
+      'title': 'New Message',
+      'subtitle': 'You received a new message from John',
+      'time': '2h ago',
+    },
+    {
+      'title': 'Equipment Ready',
+      'subtitle': 'Your rented equipment is ready',
+      'time': '4h ago',
+    },
+    {
+      'title': 'Payment Received',
+      'subtitle': 'We received your payment successfully',
+      'time': '1d ago',
+    },
+    {
+      'title': 'Update Available',
+      'subtitle': 'New app update is available',
+      'time': '2d ago',
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Database Migration'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Equipment Availability Migration',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+        title: Text('Notifications',style: TextStyle(color: lightColorScheme.onPrimary),),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [lightColorScheme.primary, lightColorScheme.secondary],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'This will convert equipment from single-date to multi-period availability.',
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '✅ Safe: Old data is preserved\n'
-              '✅ Reversible: Can rollback anytime\n'
-              '⚠️ One-time: Already migrated items skipped',
-              style: TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // MIGRATE BUTTON
-            ElevatedButton(
-              onPressed: _isProcessing ? null : _runMigration,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.green,
-              ),
-              child: _isProcessing
-                  ? const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Text('Processing...'),
-                      ],
-                    )
-                  : const Text(
-                      'RUN MIGRATION',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // ROLLBACK BUTTON
-            OutlinedButton(
-              onPressed: _isProcessing ? null : _runRollback,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: const BorderSide(color: Colors.red),
-              ),
-              child: const Text(
-                'ROLLBACK MIGRATION',
-                style: TextStyle(fontSize: 16, color: Colors.red),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            if (_status.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: SingleChildScrollView(
-                  child: Text(
-                    _status,
-                    style: const TextStyle(fontFamily: 'monospace'),
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
+        centerTitle: true,
       ),
+      body: notifications.isEmpty
+          ? const Center(
+              child: Text(
+                'No notifications yet!',
+                style: TextStyle(fontSize: 16),
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: notifications.length,
+              separatorBuilder: (context, index) => const Divider(),
+              itemBuilder: (context, index) {
+                final notif = notifications[index];
+                return ListTile(
+                  leading: const Icon(Icons.notifications, color: Colors.blue),
+                  title: Text(
+                    notif['title']!,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  subtitle: Text(notif['subtitle']!),
+                  trailing: Text(
+                    notif['time']!,
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  onTap: () {
+                    // Handle notification tap if needed
+                  },
+                );
+              },
+            ),
+
+            floatingActionButton: FloatingActionButton(
+              mini: true,
+              backgroundColor: lightColorScheme.primary,
+              child: const Icon(Icons.settings, size: 18),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MigrationScreen(), // change to your page
+                  ),
+                );
+              },
+            ),
     );
   }
 }
+
+

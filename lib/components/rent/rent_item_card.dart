@@ -8,6 +8,8 @@ class RentItemCard extends StatelessWidget {
   final String imageUrl;
   final String rentalUnit;
   final bool isAvailable;
+  final bool isPending; // 👈 ADD THIS
+
 
   const RentItemCard({
     super.key,
@@ -17,6 +19,8 @@ class RentItemCard extends StatelessWidget {
     this.ownerName,
     required this.rentalUnit,
     required this.isAvailable,
+    this.isPending = false, // 👈 ADD THIS with default value
+
 
   });
 
@@ -44,7 +48,10 @@ class RentItemCard extends StatelessWidget {
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: AvailabilityChip(isAvailable: isAvailable)
+                    child: AvailabilityChip( 
+                      isAvailable: isAvailable,
+                      isPending: isPending,)
+                    
                   ),
                 ],
               ),

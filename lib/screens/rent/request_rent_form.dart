@@ -387,7 +387,21 @@ class _RequestRentFormState extends State<RequestRentForm> {
   bool get isStep2Complete => nameController.text.isNotEmpty && addressController.text.isNotEmpty;
 
   @override
+  void initState() {
+    super.initState();
+
+    nameController.addListener(_onFieldChanged);
+    addressController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    setState(() {}); // rebuild to update isStep2Complete
+  }
+
+  @override
   void dispose() {
+    nameController.removeListener(_onFieldChanged);
+    addressController.removeListener(_onFieldChanged);
     nameController.dispose();
     addressController.dispose();
     super.dispose();

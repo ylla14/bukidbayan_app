@@ -25,6 +25,8 @@ class RentRequest {
   final RentRequestStatus status;
   final String renterId;
   final String ownerId;
+  final DateTime? createdAt;
+  
 
   RentRequest({
     required this.requestId,
@@ -39,6 +41,7 @@ class RentRequest {
     this.status = RentRequestStatus.pending,
     required this.renterId,
     required this.ownerId,
+    this.createdAt,
   });
 
   /// ✅ What gets stored in Firestore
@@ -77,9 +80,11 @@ class RentRequest {
         (e) => e.name == (map['status'] ?? 'pending'),
         orElse: () => RentRequestStatus.pending, // default if missing/invalid
       ),
-
       renterId: map['renterId'],
       ownerId: map['ownerId'],
+      createdAt: map['createdAt'] != null  // ← ADD THESE 3 LINES
+        ? (map['createdAt'] as Timestamp).toDate()
+        : null,
     );
   }
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -121,6 +122,48 @@ Future<List<RentRequest>> getApprovedRequests(String equipmentId) async {
       .toList();
 }
 
+/// Get approved/active requests for a specific user and category
+Future<List<RentRequest>> getActiveRequestsByCategory(
+  String renterId,
+  String category,
+) async {
+  final snapshot = await _collection
+      .where('renterId', isEqualTo: renterId)
+      .where('status', whereIn: ['approved', 'onTheWay', 'inProgress'])
+      .get();
+
+  final requests = snapshot.docs
+      .map((doc) => RentRequest.fromDoc(doc))
+      .toList();
+
+  // Filter by category by checking equipment
+  List<RentRequest> categoryRequests = [];
+  
+  for (var request in requests) {
+    final equipmentDoc = await FirebaseFirestore.instance
+        .collection('equipment')
+        .doc(request.itemId)
+        .get();
+    
+    if (equipmentDoc.exists) {
+      final equipment = Equipment.fromFirestore(equipmentDoc);
+      if (equipment.category == category) {
+        categoryRequests.add(request);
+      }
+    }
+  }
+  
+  return categoryRequests;
+}
+
+/// Check if user has active request in a category
+Future<bool> hasActiveRequestInCategory(
+  String renterId,
+  String category,
+) async {
+  final requests = await getActiveRequestsByCategory(renterId, category);
+  return requests.isNotEmpty;
+}
 
 
 }
