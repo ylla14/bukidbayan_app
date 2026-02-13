@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
-import 'package:bukidbayan_app/components/rent/rent_form/data_step.dart';
+import 'package:bukidbayan_app/components/rent/rent_form/date_step.dart';
 import 'package:bukidbayan_app/components/rent/rent_form/requirement_step.dart';
 import 'package:bukidbayan_app/components/rent/rent_form/submit_button.dart';
 import 'package:bukidbayan_app/components/rent/rent_form/user_info.dart';
