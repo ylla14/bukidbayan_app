@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
@@ -61,8 +59,8 @@ class RequestSentPage extends StatelessWidget {
     );
   }
 
-Widget _proofImage(String? path, String label, BuildContext context) {
-  if (path == null || path.isEmpty) return const SizedBox.shrink();
+Widget _proofImage(String? url, String label, BuildContext context) {
+  if (url == null || url.isEmpty) return const SizedBox.shrink();
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +80,7 @@ Widget _proofImage(String? path, String label, BuildContext context) {
                 child: SizedBox(
                   height: MediaQuery.of(context).size.height * 0.6,
                   child: PhotoView(
-                    imageProvider: FileImage(File(path)),
+                    imageProvider: NetworkImage(url),
                     backgroundDecoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.9),
                     ),
@@ -96,8 +94,8 @@ Widget _proofImage(String? path, String label, BuildContext context) {
         },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.file(
-            File(path),
+          child: Image.network(
+            url,
             height: 120,
             width: double.infinity,
             fit: BoxFit.cover,

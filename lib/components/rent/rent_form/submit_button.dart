@@ -4,6 +4,7 @@ import 'package:bukidbayan_app/blocs/request_state.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
+import 'package:bukidbayan_app/services/cloudinary_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -116,15 +117,16 @@ Future<void> _handleSubmit(BuildContext context) async {
         return;
       }
 
-      // Step 3: Upload proof files
+      // Step 3: Upload proof files to Cloudinary
       String? landPath;
       String? cropPath;
+      final cloudinary = CloudinaryService();
 
       if (widget.landSizeProof != null) {
-        landPath = await widget.requestService.saveFileLocally(widget.landSizeProof!);
+        landPath = await cloudinary.uploadImage(widget.landSizeProof!);
       }
       if (widget.cropHeightProof != null) {
-        cropPath = await widget.requestService.saveFileLocally(widget.cropHeightProof!);
+        cropPath = await cloudinary.uploadImage(widget.cropHeightProof!);
       }
 
       // Step 4: Create request object

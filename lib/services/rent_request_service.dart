@@ -1,22 +1,10 @@
-import 'dart:io';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 
 class RentRequestService {
   final CollectionReference _collection =
       FirebaseFirestore.instance.collection('rentRequests');
-
-  /// Save image locally
-  Future<String> saveFileLocally(XFile file) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final path =
-        '${dir.path}/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-    final newFile = await File(file.path).copy(path);
-    return newFile.path;
-  }
 
   /// CREATE — returns the new Firestore document ID
   Future<String> saveRequest(RentRequest request) async {
@@ -82,16 +70,6 @@ class RentRequestService {
   /// DELETE request
   Future<void> deleteRequest(RentRequest request) async {
     await _collection.doc(request.requestId).delete();
-
-    // Delete proof files locally
-    if (request.landSizeProofPath != null) {
-      final file = File(request.landSizeProofPath!);
-      if (await file.exists()) await file.delete();
-    }
-    if (request.cropHeightProofPath != null) {
-      final file = File(request.cropHeightProofPath!);
-      if (await file.exists()) await file.delete();
-    }
   }
 
   /// Check for currently approved request on an equipment item
