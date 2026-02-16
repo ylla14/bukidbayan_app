@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:bukidbayan_app/widgets/date_picker_field.dart';
@@ -181,26 +182,31 @@ class _DateStepState extends State<DateStep> {
         if (bookedRanges.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Card(
-              color: Colors.orange.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'May mga petsa na ng naka-book:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade900,
+            child: SizedBox(
+              width: double.infinity,
+              child: Card(
+                // color: Colors.orange.shade50,
+                color: lightColorScheme.surface,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'May mga petsa na ng naka-book:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          // color: Colors.orange.shade900,
+                          color: lightColorScheme.primary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...bookedRanges.map((range) => Text(
-                      '${_formatDate(range['start']!)} - ${_formatDate(range['end']!)}',
-                      style: TextStyle(color: Colors.orange.shade800),
-                    )),
-                  ],
+                      const SizedBox(height: 8),
+                      ...bookedRanges.map((range) => Text(
+                        '${_formatDate(range['start']!)} - ${_formatDate(range['end']!)}',
+                        style: TextStyle(color:lightColorScheme.primary,)//Colors.orange.shade800),
+                      )),
+                    ],
+                  ),
                 ),
               ),
             ),
