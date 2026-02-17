@@ -1,4 +1,4 @@
-import 'package:bukidbayan_app/components/dashboard/action_buttons_section.dart.dart';
+import 'package:bukidbayan_app/components/dashboard/action_buttons_section.dart';
 import 'package:bukidbayan_app/components/dashboard/greeting_section.dart';
 import 'package:bukidbayan_app/components/dashboard/map_section.dart';
 import 'package:bukidbayan_app/components/dashboard/summary_cards_section.dart';
@@ -40,7 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             ActionButtonsSection(),
             const SizedBox(height: 24),
-            MapSection(cabuyao: _cabuyao, mapController: _mapController),
+            MapSection(cabuyao: _cabuyao),
+            const SizedBox(height: 20),
             const SizedBox(height: 30),
             const CropsInSeasonSection(),
             const SizedBox(height: 24),

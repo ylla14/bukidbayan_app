@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/components/rent/product_page/product_image_carous
 import 'package:bukidbayan_app/components/rent/product_page/product_specs.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/review.dart';
+import 'package:bukidbayan_app/screens/rent/all_reviews_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/request_rent_form.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
@@ -265,13 +266,44 @@ class ProductPage extends StatelessWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                          child: Text(
-                            'Reviews (${reviews.length})',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
-                        ),
+                       Padding(
+  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(
+        'Reviews (${reviews.length})',
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      if (reviews.isNotEmpty)
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AllReviewsScreen(
+                  equipmentId: liveItem.id!,
+                  equipmentName: liveItem.name,
+                ),
+              ),
+            );
+          },
+          child: const Text(
+            'See all >',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.blue,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+    ],
+  ),
+),
+
                         if (reviews.isEmpty)
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
