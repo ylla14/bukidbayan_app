@@ -1,11 +1,15 @@
+import 'package:bukidbayan_app/models/review.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ReviewPage extends StatefulWidget {
   final String requestId;
   final String lenderId;
+  final String itemId;
 
-  const ReviewPage({super.key, required this.requestId, required this.lenderId});
+  const ReviewPage({super.key, required this.requestId, required this.lenderId, required this.itemId});
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -13,9 +17,11 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   double _rating = 0;
+  bool _isSubmitting = false;
   final TextEditingController _commentController = TextEditingController();
+  final FirestoreService _firestoreService = FirestoreService();
 
-  void _submitReview() {
+  Future<void> _submitReview() async {
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -27,27 +33,68 @@ class _ReviewPageState extends State<ReviewPage> {
       return;
     }
 
-    final review = {
-      'requestId': widget.requestId,
-      'lenderId': widget.lenderId,
-      'rating': _rating,
-      'comment': _commentController.text.trim(),
-      'timestamp': DateTime.now(),
-    };
+    setState(() => _isSubmitting = true);
 
-    // TODO: Replace with your Bloc/Event or Firestore submission
-    print('Review submitted: $review');
+    try {
+      final reviewerId = FirebaseAuth.instance.currentUser!.uid;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Review submitted successfully!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+      // Check for duplicate review
+      final alreadyReviewed = await _firestoreService.hasUserReviewedRequest(
+        widget.requestId,
+        reviewerId,
+      );
 
-    Navigator.pop(context);
+      if (alreadyReviewed) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('You have already reviewed this rental.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+
+      final review = Review(
+        reviewId: '',
+        requestId: widget.requestId,
+        itemId: widget.itemId,
+        reviewerId: reviewerId,
+        rating: _rating,
+        comment: _commentController.text.trim(),
+      );
+
+      await _firestoreService.submitReview(review);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Review submitted successfully!'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit review: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   String _getRatingText() {
@@ -285,7 +332,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   ],
                 ),
                 child: ElevatedButton(
-                  onPressed: _submitReview,
+                  onPressed: _isSubmitting ? null : _submitReview,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
@@ -293,21 +340,30 @@ class _ReviewPageState extends State<ReviewPage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Submit Review',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Submit Review',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                          ],
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                    ],
-                  ),
                 ),
               ),
 
