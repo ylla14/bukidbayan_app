@@ -438,6 +438,7 @@ String _statusHeadline(RentRequestStatus status) {
                                               builder: (context) => ReviewPage(
                                                 requestId: request.requestId,
                                                 lenderId: request.ownerId,
+                                                itemId: request.itemId,
                                               ),
                                             ),
                                           );

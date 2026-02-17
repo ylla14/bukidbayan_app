@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/models/equipment.dart';
+import 'package:bukidbayan_app/models/review.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math' show sin, cos, sqrt, atan2;
 
@@ -763,6 +764,57 @@ Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) a
     throw Exception('Migration failed: $e');
   }
 }
+
+// REVIEW METHODS
+
+  /// Submit a review to the 'reviews' collection
+  Future<String> submitReview(Review review) async {
+    try {
+      final docRef = await _firestore.collection('reviews').add({
+        ...review.toMap(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return docRef.id;
+    } catch (e) {
+      throw Exception('Error submitting review: $e');
+    }
+  }
+
+  /// Get all reviews for a specific equipment item
+  Future<List<Review>> getReviewsForEquipment(String itemId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('reviews')
+          .where('itemId', isEqualTo: itemId)
+          .get();
+
+      final reviews = snapshot.docs.map((doc) => Review.fromDoc(doc)).toList();
+      reviews.sort((a, b) {
+        final aTime = a.createdAt ?? DateTime(2000);
+        final bTime = b.createdAt ?? DateTime(2000);
+        return bTime.compareTo(aTime);
+      });
+      return reviews;
+    } catch (e) {
+      print('Error fetching reviews: $e');
+      return [];
+    }
+  }
+
+  /// Check if a user has already reviewed a specific request
+  Future<bool> hasUserReviewedRequest(String requestId, String reviewerId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('reviews')
+          .where('requestId', isEqualTo: requestId)
+          .where('reviewerId', isEqualTo: reviewerId)
+          .get();
+      return snapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking existing review: $e');
+      return false;
+    }
+  }
 
 /// ⏪ ROLLBACK: Restore old format, remove new format
 Future<void> rollbackEquipmentMigration() async {
