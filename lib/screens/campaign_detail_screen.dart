@@ -68,12 +68,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 const SizedBox(height: 8),
                 ...campaign.rewards.map((r) {
                   final isSelected = selected?.id == r.id;
+                  final discountDisplay = r.discountType == 'percent'
+                      ? '${r.discountValue.toStringAsFixed(0)}% off'
+                      : '₱${r.discountValue.toStringAsFixed(0)} off';
                   return Card(
                     elevation: 0,
                     color: isSelected ? lightColorScheme.secondary.withOpacity(0.35) : Colors.white,
                     child: ListTile(
                       title: Text('${r.title} (min ${formatPeso(r.minPledge)})'),
-                      subtitle: Text(r.description),
+                      subtitle: Text(discountDisplay),
                       trailing: isSelected ? const Icon(Icons.check_circle) : null,
                       onTap: () {
                         selected = r;
@@ -270,10 +273,14 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 6),
-                          Text(r.description),
+                          Text(
+                            r.discountType == 'percent'
+                                ? '${r.discountValue.toStringAsFixed(0)}% discount on rentals'
+                                : '₱${r.discountValue.toStringAsFixed(0)} discount on rentals',
+                          ),
                           const SizedBox(height: 10),
-                          Text('Estimated delivery: ${r.estimatedDelivery}'),
-                          Text('Shipping: ${r.shipping}'),
+                          Text('Valid for ${r.validityDays} days after purchase'),
+                          if (r.notes != null) ...[const SizedBox(height: 8), Text(r.notes!)],
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
