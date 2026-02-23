@@ -223,12 +223,16 @@ class _DateStepState extends State<DateStep> {
                     : () async {
                       print('📅 Opening start date picker');
                       final now = DateTime.now();
-                      final earliest = widget.item.availableFrom!.isAfter(now) 
-                          ? widget.item.availableFrom! 
-                          : now;
+                      final firestoreService = FirestoreService();
+                      final leadTimeDate = firestoreService.getEarliestBookingDate();
+                      final earliest = widget.item.availableFrom!.isAfter(leadTimeDate)
+                          ? widget.item.availableFrom!
+                          : leadTimeDate;
                       final last = widget.item.availableUntil!;
-                      final initial = widget.startDate ?? 
-                     _findFirstAvailableDate(earliest, last);
+                      final effectiveStart = widget.startDate != null && widget.startDate!.isBefore(earliest)
+                          ? earliest
+                          : widget.startDate;
+                      final initial = effectiveStart ?? _findFirstAvailableDate(earliest, last);
 
 
                       print('📅 Date range: $earliest → $last');

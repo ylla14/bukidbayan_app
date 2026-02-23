@@ -51,6 +51,7 @@ class _RentScreenState extends State<RentScreen> {
   Set<String> blockedCategories = {};
 
   Timer? _availabilityTimer;
+  DateTimeRange? dateFilter;
 
 
   @override
@@ -187,24 +188,53 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
         operatorFilter == null ||
         equipment.operatorIncluded == operatorFilter;
 
+    // DATE FILTER: equipment must have at least 1 free day in the selected window
+    // We can only check this client-side using the equipment's availableFrom/Until
+    // The actual booked-day check happens via the stream per-card, but here we
+    // quickly exclude equipment whose availability window doesn't even overlap.
+    final matchesDate = dateFilter == null || _equipmentOverlapsDateFilter(equipment);
+
     return matchesSearch &&
         matchesCategory &&
         matchesPrice &&
-        matchesOperator;
+        matchesOperator &&
+        matchesDate;
   }).toList();
 }
 
-  void clearFilters() {
-    setState(() {
-      searchQuery = '';
-      activeCategory = null;
-      isPriceFilterActive = false;
-      operatorFilter = null;
-      priceRange = RangeValues(minPrice, maxPrice);
-      _searchController.clear();
-    });
-  }
+bool _equipmentOverlapsDateFilter(Equipment equipment) {
+  if (dateFilter == null) return true;
 
+  final equipFrom = equipment.availableFrom;
+  final equipUntil = equipment.availableUntil;
+
+  // No dates = never available
+  if (equipFrom == null || equipUntil == null) return false;
+
+  final filterStart = DateTime(
+    dateFilter!.start.year, dateFilter!.start.month, dateFilter!.start.day,
+  );
+  final filterEnd = DateTime(
+    dateFilter!.end.year, dateFilter!.end.month, dateFilter!.end.day,
+  );
+  final eqFrom = DateTime(equipFrom.year, equipFrom.month, equipFrom.day);
+  final eqUntil = DateTime(equipUntil.year, equipUntil.month, equipUntil.day);
+
+  // Overlap = equipment window and filter window share at least one day
+  return !eqUntil.isBefore(filterStart) && !eqFrom.isAfter(filterEnd);
+}
+
+void clearFilters() {
+  setState(() {
+    searchQuery = '';
+    activeCategory = null;
+    isPriceFilterActive = false;
+    operatorFilter = null;
+    dateFilter = null;                                  // NEW
+    priceRange = RangeValues(minPrice, maxPrice);
+    _searchController.clear();
+  });
+}
   Future<void> logout() async {
     await _auth.signOut();
   }
@@ -381,38 +411,38 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // CATEGORY BUTTONS
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        CategoryFilterBar(
-                          activeCategory: activeCategory,
-                          onCategorySelected: (category) {
-                            setState(() {
-                              activeCategory =
-                                  activeCategory == category ? null : category;
-                            });
-                          },
-                        ),
+                  // SizedBox(
+                  //   height: 40,
+                  //   child: ListView(
+                  //     scrollDirection: Axis.horizontal,
+                  //     children: [
+                  //       CategoryFilterBar(
+                  //         activeCategory: activeCategory,
+                  //         onCategorySelected: (category) {
+                  //           setState(() {
+                  //             activeCategory =
+                  //                 activeCategory == category ? null : category;
+                  //           });
+                  //         },
+                  //       ),
 
-                        const SizedBox(width: 8),
+                  //       const SizedBox(width: 8),
 
-                        OperatorFilterButton(
-                          isActive: operatorFilter,
-                          onPressed: () {
-                            setState(() {
-                              if (operatorFilter == true) {
-                                operatorFilter = null;
-                              } else {
-                                operatorFilter = true;
-                              }
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                  //       OperatorFilterButton(
+                  //         isActive: operatorFilter,
+                  //         onPressed: () {
+                  //           setState(() {
+                  //             if (operatorFilter == true) {
+                  //               operatorFilter = null;
+                  //             } else {
+                  //               operatorFilter = true;
+                  //             }
+                  //           });
+                  //         },
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
 
 
                   const SizedBox(height: 8),
@@ -441,10 +471,16 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                                 initialRange: priceRange,
                                 minPrice: minPrice,
                                 maxPrice: maxPrice,
-                                onApply: (range, isActive) {
+                                activeCategory: activeCategory,
+                                operatorFilter: operatorFilter,
+                                dateFilter: dateFilter,                       // NEW
+                                onApply: (range, isActive, category, operator, dates) {  // NEW signature
                                   setState(() {
                                     priceRange = range;
                                     isPriceFilterActive = isActive;
+                                    activeCategory = category;
+                                    operatorFilter = operator;
+                                    dateFilter = dates;                       // NEW
                                   });
                                 },
                               );
@@ -494,6 +530,16 @@ List<Equipment> applyEquipmentFilters(List<Equipment> equipmentList) {
                                             RangeValues(minPrice, maxPrice);
                                       });
                                     },
+                                  ),
+                                ),
+
+                                if (dateFilter != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ActiveFiltersChip(
+                                    label:
+                                        '${dateFilter!.start.month}/${dateFilter!.start.day} – ${dateFilter!.end.month}/${dateFilter!.end.day}',
+                                    onClear: () => setState(() => dateFilter = null),
                                   ),
                                 ),
                             ],

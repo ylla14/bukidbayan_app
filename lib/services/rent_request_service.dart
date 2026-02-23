@@ -55,17 +55,25 @@ class RentRequestService {
   }
 
   /// UPDATE request status
-  Future<RentRequest> updateRequestStatus({
-    required String requestId,
-    required RentRequestStatus status,
-  }) async {
-    await _collection.doc(requestId).update({
-      'status': status.name,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    final doc = await _collection.doc(requestId).get();
-    return RentRequest.fromDoc(doc);
+Future<RentRequest> updateRequestStatus({
+  required String requestId,
+  required RentRequestStatus status,
+  String? declineReason, // ADD THIS
+}) async {
+  final updateData = <String, dynamic>{
+    'status': status.name,
+    'updatedAt': FieldValue.serverTimestamp(),
+  };
+
+  // Only save declineReason if it's provided
+  if (declineReason != null) {
+    updateData['declineReason'] = declineReason;
   }
+
+  await _collection.doc(requestId).update(updateData);
+  final doc = await _collection.doc(requestId).get();
+  return RentRequest.fromDoc(doc);
+}
 
   /// DELETE request
   Future<void> deleteRequest(RentRequest request) async {

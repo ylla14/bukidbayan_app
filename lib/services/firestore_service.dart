@@ -401,8 +401,6 @@ Future<void> validateEquipmentAvailability(String equipmentId) async {
   await equipmentRef.update({'isAvailable': hasFreeDay});
 }
 
-// Add this method to your FirestoreService
-
 /// Force refresh equipment availability and ensure stream updates
 Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) async {
   print('🔄 Validating availability for equipment: $equipmentId');
@@ -512,6 +510,29 @@ Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) a
   });
 
   print('✅ Updated isAvailable to: $hasFreeDay');
+}
+
+/// Returns the earliest selectable date based on lead time (2 working days from now).
+// DateTime getEarliestBookingDate({int leadWorkingDays = 2}) {
+//   DateTime date = DateTime.now();
+//   int daysAdded = 0;
+
+//   while (daysAdded < leadWorkingDays) {
+//     date = date.add(const Duration(days: 1));
+//     // Skip weekends (Saturday = 6, Sunday = 7)
+//     if (date.weekday != DateTime.saturday && date.weekday != DateTime.sunday) {
+//       daysAdded++;
+//     }
+//   }
+
+//   // Return normalized to midnight
+//   return DateTime(date.year, date.month, date.day);
+// }
+
+//ver that doesnt skip weekends
+DateTime getEarliestBookingDate() {
+  final date = DateTime.now().add(const Duration(days: 2));
+  return DateTime(date.year, date.month, date.day);
 }
 
 

@@ -52,7 +52,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
     final primary = Theme.of(context).colorScheme.primary;
     final isWet = currentSeason == "Wet Season";
 
-    final filteredCrops = selectedCategory == "All"
+    final filteredCrops = selectedCategory == "Current"
         ? allCrops
         : allCrops.where((c) => c.seasons.contains(selectedCategory)).toList();
 
@@ -96,7 +96,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: ["All", "Wet Season", "Dry Season", "Year Round"]
+          children: ["Current", "Wet Season", "Dry Season", "Year Round"]
               .map((c) => _buildCategoryButton(c, primary))
               .toList(),
         ),

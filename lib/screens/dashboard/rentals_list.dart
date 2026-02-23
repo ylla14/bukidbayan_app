@@ -94,6 +94,7 @@ class _RentalsListState extends State<RentalsList> {
       case RentRequestStatus.onTheWay:
         return Colors.indigo;
       case RentRequestStatus.inProgress:
+      case RentRequestStatus.retrieving:
         return Colors.deepPurple;
       case RentRequestStatus.returned:
         return Colors.teal;
