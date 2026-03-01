@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -11,12 +13,51 @@ class AuthService {
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  // Validate an address string via Nominatim (OpenStreetMap).
+  // Returns {'latitude': ..., 'longitude': ...} on success.
+  // Throws Exception if the address cannot be resolved.
+  Future<Map<String, double>> validateAndGeocodeAddress(String address) async {
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?format=json'
+        '&q=${Uri.encodeQueryComponent(address)}'
+        '&limit=1',
+      );
+      final response = await http.get(uri, headers: {
+        'Accept-Language': 'en',
+        'User-Agent': 'BukidbayanApp/1.0',
+      });
+
+      if (response.statusCode != 200) {
+        throw Exception('Could not validate address. Check your connection and try again.');
+      }
+
+      final List<dynamic> results = jsonDecode(response.body);
+      if (results.isEmpty) {
+        throw Exception('Address not found. Please enter a more specific address.');
+      }
+
+      final first = results.first as Map<String, dynamic>;
+      return {
+        'latitude':  double.parse(first['lat'] as String),
+        'longitude': double.parse(first['lon'] as String),
+      };
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Could not validate address. Check your connection and try again.');
+    }
+  }
+
   // Sign up with email and password
   Future<User?> signUp(
     String email,
     String password,
     String firstName,
     String lastName,
+    String address,
+    double latitude,
+    double longitude,
   ) async {
     try {
       // Create user in Firebase Auth
@@ -33,6 +74,9 @@ class AuthService {
           'email': email,
           'firstName': firstName,
           'lastName': lastName,
+          'address': address,
+          'latitude': latitude,
+          'longitude': longitude,
           'createdAt': FieldValue.serverTimestamp(),
         });
 

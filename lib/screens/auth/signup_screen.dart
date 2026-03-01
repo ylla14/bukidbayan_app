@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
+import 'package:bukidbayan_app/screens/location_picker_screen.dart';
 
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_scaffold.dart';
@@ -24,10 +25,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController addressController = TextEditingController();
 
   bool _isPasswordHidden = true;
   bool _isSigningUp = false;
 
+  // Coordinates set when the user picks a location from the map.
+  // If set and the address text hasn't changed since, we skip re-geocoding.
+  double? _pickedLat;
+  double? _pickedLng;
+  String? _pickedAddress;
+
+  Future<void> _openLocationPicker() async {
+    final result = await Navigator.push<LocationPickerResult>(
+      context,
+      MaterialPageRoute(builder: (_) => const LocationPickerScreen()),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        addressController.text = result.address;
+        _pickedLat     = result.latitude;
+        _pickedLng     = result.longitude;
+        _pickedAddress = result.address;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -35,6 +57,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     passwordController.dispose();
     firstNameController.dispose();
     lastNameController.dispose();
+    addressController.dispose();
     super.dispose();
   }
 
@@ -211,31 +234,94 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                 SizedBox(height: 25),
 
+                TextFormField(
+                  controller: addressController,
+                  onChanged: (_) {
+                    // If the user edits the address manually after picking
+                    // from the map, clear the stored coordinates so we
+                    // re-geocode the typed text on submit.
+                    if (_pickedAddress != null &&
+                        addressController.text != _pickedAddress) {
+                      _pickedLat = null;
+                      _pickedLng = null;
+                      _pickedAddress = null;
+                    }
+                  },
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your address or pick from the map';
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    label: const Text('Address'),
+                    hintText: 'Type or pick on map',
+                    hintStyle: const TextStyle(color: Colors.black26),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 4.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.map_outlined, color: Colors.black45),
+                        tooltip: 'Pick location on map',
+                        onPressed: _openLocationPicker,
+                      ),
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.black12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.black12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 25),
+
                 SignButton(
                   buttonText: _isSigningUp ? 'Signing Up' : 'Sign Up',
                   onPressed: _isSigningUp
                   ? null
-                  :() async {
+                  : () async {
                       if (_formSignInKey.currentState!.validate()) {
-
                         setState(() => _isSigningUp = true);
 
                         try {
-                          await authService.signUp(emailController.text, passwordController.text, firstNameController.text, lastNameController.text);
+                          final address = addressController.text.trim();
+
+                          // Use map-picked coordinates directly if available,
+                          // otherwise geocode the typed address via Nominatim.
+                          double lat, lng;
+                          if (_pickedLat != null && address == _pickedAddress) {
+                            lat = _pickedLat!;
+                            lng = _pickedLng!;
+                          } else {
+                            final coords = await authService.validateAndGeocodeAddress(address);
+                            lat = coords['latitude']!;
+                            lng = coords['longitude']!;
+                          }
+
+                          await authService.signUp(
+                            emailController.text,
+                            passwordController.text,
+                            firstNameController.text,
+                            lastNameController.text,
+                            address,
+                            lat,
+                            lng,
+                          );
+
                           if (!mounted) return;
                           showConfirmSnackbar(context: context, title: 'Success', message: 'Account Created Successfully!');
-                          // Navigate to sign in screen after successful signup
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(builder: (e) => const SignInScreen()),
                           );
-                         } catch (e){
-                          if (mounted) {
-                              setState(() => _isSigningUp = false);
-                            }
+                        } catch (e) {
+                          if (!mounted) return;
+                          setState(() => _isSigningUp = false);
                           showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
-                         }
-
+                        }
                       }
                     },
                   ),

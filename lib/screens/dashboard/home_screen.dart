@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const LatLng _cabuyao = LatLng(14.2470, 121.1367);
+  static const LatLng _cabuyao = LatLng(14.2470, 121.1367); // Cabuyao, Laguna
   GoogleMapController? _mapController;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 

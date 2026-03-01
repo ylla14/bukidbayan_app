@@ -5,6 +5,8 @@ import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:bukidbayan_app/screens/location_picker_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 // Must match the options in signup_screen.dart
 const List<Map<String, dynamic>> _locationTypes = [
@@ -190,6 +192,131 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Address editor (map picker + geocodes on save) ───────────────────────
+  void _showAddressEditDialog() {
+    final controller = TextEditingController(text: _userData?['address'] ?? '');
+    bool isSaving = false;
+
+    // Coordinates from the map picker (null if user typed manually).
+    double? pickedLat;
+    double? pickedLng;
+    String? pickedAddress;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> openPicker() async {
+            // Build initial position from existing user data (if any).
+            final existingLat = _userData?['latitude'] as num?;
+            final existingLng = _userData?['longitude'] as num?;
+            final initial = (existingLat != null && existingLng != null)
+                ? LatLng(existingLat.toDouble(), existingLng.toDouble())
+                : null;
+
+            final result = await Navigator.push<LocationPickerResult>(
+              dialogContext,
+              MaterialPageRoute(
+                builder: (_) => LocationPickerScreen(initialPosition: initial),
+              ),
+            );
+
+            if (result != null && dialogContext.mounted) {
+              setDialogState(() {
+                controller.text = result.address;
+                pickedLat     = result.latitude;
+                pickedLng     = result.longitude;
+                pickedAddress = result.address;
+              });
+            }
+          }
+
+          Future<void> save() async {
+            final address = controller.text.trim();
+            if (address.isEmpty) return;
+            setDialogState(() => isSaving = true);
+            try {
+              double lat, lng;
+              if (pickedLat != null && address == pickedAddress) {
+                lat = pickedLat!;
+                lng = pickedLng!;
+              } else {
+                final coords = await _authService.validateAndGeocodeAddress(address);
+                lat = coords['latitude']!;
+                lng = coords['longitude']!;
+              }
+
+              final user = _auth.currentUser;
+              if (user != null) {
+                await _authService.updateUserData(user.uid, {
+                  'address':   address,
+                  'latitude':  lat,
+                  'longitude': lng,
+                });
+                await _loadUserData();
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Address updated successfully')),
+                  );
+                }
+              }
+            } catch (e) {
+              setDialogState(() => isSaving = false);
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                );
+              }
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Edit Address'),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.streetAddress,
+              onChanged: (_) {
+                // User typed manually — clear picker coordinates.
+                if (pickedAddress != null &&
+                    controller.text != pickedAddress) {
+                  pickedLat     = null;
+                  pickedLng     = null;
+                  pickedAddress = null;
+                }
+              },
+              decoration: InputDecoration(
+                labelText: 'Address',
+                hintText: 'Type or pick on map',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pick location on map',
+                  onPressed: openPicker,
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving ? null : save,
+                child: isSaving
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -427,10 +554,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.home_work_rounded,
               label: 'Address',
               value: address,
-              onEdit: () => _showEditDialog(
-                'address', 'Address', _userData?['address'] ?? '',
-                keyboardType: TextInputType.streetAddress,
-              ),
+              onEdit: _showAddressEditDialog,
             ),
 
             if (lat != null && lng != null)
