@@ -35,6 +35,7 @@ class RequestSentPage extends StatelessWidget {
     case RentRequestStatus.completed: // renter left review
       return 3; // final green step
     case RentRequestStatus.declined:
+    case RentRequestStatus.canceled:
       return -1;
   }
 }
@@ -128,6 +129,9 @@ String _statusHeadline(RentRequestStatus status) {
       return 'Rental Completed';
     case RentRequestStatus.declined:
       return 'Request Declined';
+    case RentRequestStatus.canceled:
+      return 'Request Cancelled';
+
   }
 }
 
@@ -198,10 +202,10 @@ String _statusHeadline(RentRequestStatus status) {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Icon(
-                      request.status == RentRequestStatus.declined
+                      request.status == RentRequestStatus.declined || request.status == RentRequestStatus.canceled
                           ? Icons.cancel
                           : Icons.check_circle_outline,
-                      color: request.status == RentRequestStatus.declined
+                      color: request.status == RentRequestStatus.declined || request.status == RentRequestStatus.canceled
                           ? Colors.red
                           : lightColorScheme.primary,
                       size: 80,
@@ -220,7 +224,7 @@ String _statusHeadline(RentRequestStatus status) {
                     const SizedBox(height: 24),
 
                      /// 🔹 STEP PROGRESS
-                    if (request.status != RentRequestStatus.declined)
+                    if (request.status != RentRequestStatus.declined && request.status != RentRequestStatus.canceled)
                       /// 🔹 STATUS + PROGRESS (Grab-style)
                       Column(
                         children: [
@@ -368,6 +372,36 @@ String _statusHeadline(RentRequestStatus status) {
                           ),
                         ],
                       ),
+
+                      // ── RENTER: cancel (pending or within 24h of approval) ──
+if (isRenter && _canRenterCancel(request))
+  Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: OutlinedButton.icon(
+      onPressed: () => _showCancelDialog(context, request.requestId, isRenter: true),
+      icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+      label: const Text('Cancel Request', style: TextStyle(color: Colors.red)),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Colors.red),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
+  ),
+
+// ── OWNER: cancel (pending or approved, up until onTheWay) ──
+if (isOwner && _canOwnerCancel(request))
+  Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: OutlinedButton.icon(
+      onPressed: () => _showCancelDialog(context, request.requestId, isRenter: false),
+      icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+      label: const Text('Cancel Request', style: TextStyle(color: Colors.red)),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Colors.red),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
+  ),
 
                       if (isRenter && request.status == RentRequestStatus.onTheWay)
                         Row(
@@ -996,6 +1030,58 @@ void _showEquipmentConditionDialog(BuildContext context, String requestId) {
       );
     },
   );
+}
+
+void _showCancelDialog(BuildContext context, String requestId, {required bool isRenter}) {
+  final requestBloc = context.read<RequestBloc>();
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Cancel Request', style: TextStyle(fontWeight: FontWeight.bold)),
+      content: Text(
+        isRenter
+            ? 'Are you sure you want to cancel this rental request? This cannot be undone.'
+            : 'Are you sure you want to cancel this request? The renter will be notified.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Go Back'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(dialogContext);
+            requestBloc.add(
+              RequestStatusUpdated(requestId, RentRequestStatus.canceled),
+            );
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text('Yes, Cancel', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
+bool _canRenterCancel(RentRequest request) {
+  if (request.status == RentRequestStatus.pending) return true;
+  if (request.status == RentRequestStatus.approved) {
+    // Allow cancel within 24 hours of approval — use createdAt as proxy if no approvedAt field
+    // OR just allow while approved and not yet onTheWay
+    final approvedAt = request.createdAt; // ideally you'd store approvedAt separately
+    if (approvedAt != null) {
+      return DateTime.now().difference(approvedAt).inHours < 24;
+    }
+    return true; // fallback: allow if no timestamp
+  }
+  return false;
+}
+
+bool _canOwnerCancel(RentRequest request) {
+  return request.status == RentRequestStatus.pending ||
+         request.status == RentRequestStatus.approved;
 }
 
 }

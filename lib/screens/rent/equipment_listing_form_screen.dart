@@ -1313,23 +1313,31 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       final List<String> imageUrls = [...existingImageUrls, ...uploadedUrls];
 
       // Determine if the equipment should be marked as available
-      final rentRequestService =
-          RentRequestService(); // 🔹 use your local service
+     // Determine status
+      final rentRequestService = RentRequestService();
 
-      // Compute availability normally
       final now = DateTime.now();
 
-      bool computedAvailability = availableFrom != null &&
+      bool withinAvailabilityWindow = availableFrom != null &&
           availableUntil != null &&
-          !now.isBefore(availableFrom!) && // now >= availableFrom
-          !now.isAfter(availableUntil!);   // now <= availableUntil
+          !now.isBefore(availableFrom!) &&
+          !now.isAfter(availableUntil!);
+
+      EquipmentStatus computedStatus = withinAvailabilityWindow 
+          ? EquipmentStatus.available 
+          : EquipmentStatus.unavailable;
 
       if (widget.existingEquipment != null && widget.existingEquipment!.id != null) {
+        // Preserve maintenance status if already set
+        if (widget.existingEquipment!.status == EquipmentStatus.underMaintenance) {
+          computedStatus = EquipmentStatus.underMaintenance;
+        }
+
         final hasApprovedRequest = await rentRequestService
             .hasActiveApprovedRequest(widget.existingEquipment!.id!);
 
         if (hasApprovedRequest) {
-          computedAvailability = false;
+          computedStatus = EquipmentStatus.unavailable;
         }
       }
 
@@ -1360,7 +1368,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
             ? _defectsController.text.trim()
             : null,
         // <-- UPDATED LOGIC HERE
-        isAvailable: computedAvailability,
+        status: computedStatus,
         landSizeRequirement: landSizeRequirement ?? false,
         maxCropHeightRequirement: maxCropHeightRequirement ?? false,
         landSizeMin: _landSizeMinController.text,
@@ -1368,6 +1376,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         maxCropHeight: _maxCropHeightController.text.trim().isEmpty
             ? null
             : _maxCropHeightController.text.trim(),
+        rentRate: '', // or whatever value you want
       );
 
       // ✅ NEW PART: check if updating or creating new

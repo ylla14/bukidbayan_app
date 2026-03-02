@@ -401,6 +401,15 @@ class ProductPage extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold),
                     ),
+                    if (liveItem.category?.toLowerCase() == 'harvester')
+                      Text(
+                        '+ 12% of Crop Harvest',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: lightColorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(width: 30),

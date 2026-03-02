@@ -46,32 +46,123 @@ class _SubmitButtonState extends State<SubmitButton> {
   bool _isSubmitting = false;
 
   @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.center,
-      child: OutlinedButton(
-        onPressed: _isSubmitting ? null : () => _handleSubmit(context),
-        child: _isSubmitting
-            ? SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    lightColorScheme.primary,
+  @override
+Widget build(BuildContext context) {
+  String _getRateSuffix(String rentRate) {
+    switch (rentRate.toLowerCase()) {
+      case 'per day': return '/day';
+      case 'per hour': return '/hour';
+      case 'per week': return '/week';
+      case 'per month': return '/month';
+      default: return '';
+    }
+  }
+
+  final isHarvester = widget.item.category?.toLowerCase() == 'harvester';
+
+  return Column(
+    children: [
+      // Price Summary Card
+      Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          border: Border.all(color: Colors.green.shade200),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Price Summary',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Rental Rate',
+                  style: TextStyle(fontSize: 15, color: Colors.black54),
+                ),
+                Text(
+                  '₱${widget.item.price} ${_getRateSuffix(widget.item.rentalUnit)}',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-              )
-            : Text(
-                'Submit',
-                style: TextStyle(
-                  color: lightColorScheme.primary,
-                  fontSize: 16,
-                ),
+              ],
+            ),
+            if (isHarvester) ...[
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Additional Fee',
+                    style: TextStyle(fontSize: 15, color: Colors.black54),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      border: Border.all(color: Colors.orange.shade300),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '+ 12% of Crop Harvest',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.deepOrange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ],
+          ],
+        ),
       ),
-    );
-  }
+
+      // Submit Button
+      Align(
+        alignment: Alignment.center,
+        child: OutlinedButton(
+          onPressed: _isSubmitting ? null : () => _handleSubmit(context),
+          child: _isSubmitting
+              ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      lightColorScheme.primary,
+                    ),
+                  ),
+                )
+              : Text(
+                  'Submit',
+                  style: TextStyle(
+                    color: lightColorScheme.primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+        ),
+      ),
+    ],
+  );
+}
 
   // In submit_button.dart - Line 59
 Future<void> _handleSubmit(BuildContext context) async {

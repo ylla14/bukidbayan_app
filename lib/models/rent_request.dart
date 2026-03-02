@@ -10,6 +10,7 @@ enum RentRequestStatus {
   finished,
   completed,
   declined,
+  canceled
 }
 
 

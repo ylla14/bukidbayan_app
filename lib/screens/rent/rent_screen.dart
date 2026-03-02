@@ -372,7 +372,7 @@ void clearFilters() {
                         final equipment = Equipment.fromFirestore(doc);
                         final data = doc.data() as Map<String, dynamic>;
 
-                        final isAvailable = data['isAvailable'] ?? false;
+                        final status = EquipmentStatus.fromString(data['status'] as String?);
                         final availableUntil =
                           (data['availableUntil'] as Timestamp?)?.toDate();
 
@@ -380,7 +380,7 @@ void clearFilters() {
 
                         final isOwnedByUser = equipment.ownerId == currentUserId;
 
-                        if (!isOwnedByUser && isAvailable && dateOk) {
+                        if (!isOwnedByUser && status == EquipmentStatus.available && dateOk){
                           return equipment;
                         }
                         return null;
@@ -708,12 +708,12 @@ void clearFilters() {
                           }
 
                           final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
-                          final isAvailableFirestore = data['isAvailable'] ?? false;
+                          final status = EquipmentStatus.fromString(data['status'] as String?);
                           final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
                           
-                          final finalAvailability = isAvailableFirestore &&
-                              availableUntil != null &&
-                              DateTime.now().isBefore(availableUntil);
+                          final finalAvailability = status == EquipmentStatus.available &&
+                            availableUntil != null &&
+                            DateTime.now().isBefore(availableUntil);
 
                           // NEW: Check if category is blocked
                           final isPendingCategory = equipment.category != null &&

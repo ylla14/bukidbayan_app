@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RentRequestService {
@@ -58,21 +59,30 @@ class RentRequestService {
 Future<RentRequest> updateRequestStatus({
   required String requestId,
   required RentRequestStatus status,
-  String? declineReason, // ADD THIS
+  String? declineReason,
 }) async {
   final updateData = <String, dynamic>{
     'status': status.name,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 
-  // Only save declineReason if it's provided
   if (declineReason != null) {
     updateData['declineReason'] = declineReason;
   }
 
   await _collection.doc(requestId).update(updateData);
   final doc = await _collection.doc(requestId).get();
-  return RentRequest.fromDoc(doc);
+  final updatedRequest = RentRequest.fromDoc(doc);
+
+  // ✅ If canceled or declined, free up the equipment dates
+  if (status == RentRequestStatus.canceled || status == RentRequestStatus.declined) {
+    final itemId = (doc.data() as Map<String, dynamic>)['itemId'] as String?;
+    if (itemId != null) {
+      await FirestoreService().validateEquipmentAvailabilityWithNotification(itemId);
+    }
+  }
+
+  return updatedRequest;
 }
 
   /// DELETE request
