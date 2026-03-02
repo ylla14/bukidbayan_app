@@ -75,6 +75,45 @@ service cloud.firestore {
                     && resource.data.status == 'pending';
     }
 
+    // rentRequests collection rules
+    match /rentRequests/{requestId} {
+      // Any authenticated user can read all requests (needed for global weather check)
+      allow read: if isAuthenticated();
+
+      // Only the renter can create a request
+      allow create: if isAuthenticated()
+                    && request.resource.data.renterId == request.auth.uid;
+
+      // Renter or owner can update any field;
+      // any authenticated user may update ONLY weather-flag fields
+      // (required so any client's app open can run the global weather check)
+      allow update: if isAuthenticated() && (
+        resource.data.renterId == request.auth.uid
+        || resource.data.ownerId == request.auth.uid
+        || request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['weatherFlag', 'weatherFlagDates', 'weatherFlagUpdatedAt'])
+      );
+
+      // Only renter can delete a pending request
+      allow delete: if isAuthenticated()
+                    && resource.data.renterId == request.auth.uid
+                    && resource.data.status == 'pending';
+    }
+
+    // Per-user in-app notifications
+    match /notifications/{userId}/items/{notifId} {
+      // Only the notification owner can read, mark-as-read, or delete
+      allow read, update, delete: if isOwner(userId);
+
+      // Any authenticated user can write notifications (weather alerts need this)
+      allow create: if isAuthenticated();
+    }
+
+    // Shared weather forecast cache (written by whichever client runs the check first)
+    match /system/weatherCache {
+      allow read, write: if isAuthenticated();
+    }
+
     // Users collection rules
     match /users/{userId} {
       // Users can read their own profile

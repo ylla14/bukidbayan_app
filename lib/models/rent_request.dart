@@ -29,7 +29,10 @@ class RentRequest {
   final DateTime? createdAt;
   final String? declineReason;
 
-  
+  // Weather flagging — set by WeatherService when severe weather overlaps
+  // this booking's dates. Any authenticated user may write these fields.
+  final bool weatherFlag;
+  final List<DateTime> weatherFlagDates;
 
   RentRequest({
     required this.requestId,
@@ -46,7 +49,8 @@ class RentRequest {
     required this.ownerId,
     this.createdAt,
     this.declineReason,
-
+    this.weatherFlag = false,
+    this.weatherFlagDates = const [],
   });
 
   /// ✅ What gets stored in Firestore
@@ -93,7 +97,10 @@ class RentRequest {
         ? (map['createdAt'] as Timestamp).toDate()
         : null,
       declineReason: map['declineReason'],
-
+      weatherFlag: (map['weatherFlag'] as bool?) ?? false,
+      weatherFlagDates: ((map['weatherFlagDates'] as List<dynamic>?) ?? [])
+          .map((t) => (t as Timestamp).toDate())
+          .toList(),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/services/weather_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
@@ -29,6 +30,7 @@ class DateStep extends StatefulWidget {
 
 class _DateStepState extends State<DateStep> {
   List<Map<String, DateTime>> bookedRanges = [];
+  List<DateTime> _badWeatherDays = [];
   bool isLoadingDates = true;
 
   @override
@@ -36,6 +38,25 @@ class _DateStepState extends State<DateStep> {
     super.initState();
     print('🔄 DateStep initialized for equipment: ${widget.item.id}');
     _loadBookedDates();
+    _loadWeatherDays();
+  }
+
+  Future<void> _loadWeatherDays() async {
+    try {
+      final forecast = await WeatherService().getOrFetchForecast();
+      final bad = forecast
+          .where((d) => d.isBadWeather)
+          .map((d) => DateTime(d.date.year, d.date.month, d.date.day))
+          .toList();
+      if (mounted) setState(() => _badWeatherDays = bad);
+    } catch (_) {
+      // Weather check is best-effort; silently ignore failures
+    }
+  }
+
+  bool _isDateBadWeather(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    return _badWeatherDays.any((bad) => bad.isAtSameMomentAs(d));
   }
 
   Future<void> _loadBookedDates() async {
@@ -185,7 +206,6 @@ class _DateStepState extends State<DateStep> {
             child: SizedBox(
               width: double.infinity,
               child: Card(
-                // color: Colors.orange.shade50,
                 color: lightColorScheme.surface,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -196,15 +216,59 @@ class _DateStepState extends State<DateStep> {
                         'May mga petsa na ng naka-book:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          // color: Colors.orange.shade900,
                           color: lightColorScheme.primary,
                         ),
                       ),
                       const SizedBox(height: 8),
                       ...bookedRanges.map((range) => Text(
                         '${_formatDate(range['start']!)} - ${_formatDate(range['end']!)}',
-                        style: TextStyle(color:lightColorScheme.primary,)//Colors.orange.shade800),
+                        style: TextStyle(color: lightColorScheme.primary),
                       )),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Show bad-weather dates warning
+        if (_badWeatherDays.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: Card(
+                color: Colors.amber.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              size: 16, color: Colors.amber.shade900),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Severe weather expected:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ..._badWeatherDays.map((d) => Text(
+                            _formatDate(d),
+                            style: TextStyle(color: Colors.amber.shade800),
+                          )),
+                      const SizedBox(height: 4),
+                      Text(
+                        'These dates are blocked for booking.',
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.amber.shade700),
+                      ),
                     ],
                   ),
                 ),
@@ -243,7 +307,7 @@ class _DateStepState extends State<DateStep> {
                         firstDate: earliest,
                         lastDate: last,
                         selectableDayPredicate: (date) {
-                          return !_isDateBooked(date);
+                          return !_isDateBooked(date) && !_isDateBadWeather(date);
                         },
                       );
 
@@ -275,7 +339,7 @@ class _DateStepState extends State<DateStep> {
                           firstDate: first,
                           lastDate: last,
                           selectableDayPredicate: (date) {
-                            return !_isDateBooked(date);
+                            return !_isDateBooked(date) && !_isDateBadWeather(date);
                           },
                         );
 
