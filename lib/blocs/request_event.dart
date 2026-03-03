@@ -34,11 +34,12 @@ class LoadRequest extends RequestEvent {
 class RequestStatusUpdated extends RequestEvent {
   final String requestId;
   final RentRequestStatus status;
+  final String? declineReason; 
 
-  const RequestStatusUpdated(this.requestId, this.status);
+  RequestStatusUpdated(this.requestId, this.status, {this.declineReason});
 
   @override
-  List<Object?> get props => [requestId, status];
+  List<Object?> get props => [requestId, status, declineReason];
 }
 
 

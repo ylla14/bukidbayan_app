@@ -236,8 +236,7 @@ class ProductPage extends StatelessWidget {
                     children: [
                       if (liveItem.landSizeRequirement)
                         _requirementChip(
-                          (liveItem.landSizeMin != null &&
-                                  liveItem.landSizeMax != null)
+                          (liveItem.landSizeMin != null && liveItem.landSizeMax != null)
                               ? 'Land size requirement: ${liveItem.landSizeMin} – ${liveItem.landSizeMax} sqm'
                               : 'Land size requirement',
                         ),
@@ -247,8 +246,17 @@ class ProductPage extends StatelessWidget {
                               ? 'Max crop height: ${liveItem.maxCropHeight} cm'
                               : 'Max crop height required',
                         ),
+                      if (liveItem.minimumVolumeRequired && liveItem.minimumVolumeKg != null)
+                        _requirementChip(
+                          liveItem.minimumVolumeUnit == 'cavans'
+                              ? 'Min volume: ${(liveItem.minimumVolumeKg! / 50).toStringAsFixed(0)} cavans'
+                                  '${liveItem.batchingAllowed ? ' (batching available)' : ''}'
+                              : 'Min volume: ${liveItem.minimumVolumeKg!.toStringAsFixed(0)} kg'
+                                  '${liveItem.batchingAllowed ? ' (batching available)' : ''}',
+                        ),
                       if (!liveItem.landSizeRequirement &&
-                          !liveItem.maxCropHeightRequirement)
+                          !liveItem.maxCropHeightRequirement &&
+                          !liveItem.minimumVolumeRequired)
                         _requirementChip('No specific requirements'),
                     ],
                   ),
@@ -267,42 +275,42 @@ class ProductPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                        Padding(
-  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-  child: Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(
-        'Reviews (${reviews.length})',
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      if (reviews.isNotEmpty)
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AllReviewsScreen(
-                  equipmentId: liveItem.id!,
-                  equipmentName: liveItem.name,
-                ),
-              ),
-            );
-          },
-          child: const Text(
-            'See all >',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.blue,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-    ],
-  ),
-),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Reviews (${reviews.length})',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (reviews.isNotEmpty)
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => AllReviewsScreen(
+                                          equipmentId: liveItem.id!,
+                                          equipmentName: liveItem.name,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    'See all >',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
 
                         if (reviews.isEmpty)
                           const Padding(
@@ -401,6 +409,15 @@ class ProductPage extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold),
                     ),
+                    if (liveItem.category?.toLowerCase() == 'harvester')
+                      Text(
+                        '+ 12% of Crop Harvest',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: lightColorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(width: 30),

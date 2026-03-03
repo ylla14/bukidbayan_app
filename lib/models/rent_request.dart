@@ -1,14 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum RentRequestStatus {
-  pending,     // Request sent by renter; awaiting owner approval
-  approved,    // Owner approved request; item is being prepared
-  onTheWay,    // Item has been dispatched and is en route to renter
-  inProgress,  // Renter has received item; rental period is active
-  returned,    // Item has been physically returned (condition not yet finalized)
+  pending,
+  approved,
+  onTheWay,
+  inProgress,
+  retrieving,  // 👈 NEW
+  returned,
   finished,
-  completed,   // Rental fully concluded and confirmed by both parties
-  declined,    // Owner rejected the rental request
+  completed,
+  declined,
+  canceled
 }
 
 
@@ -26,6 +28,9 @@ class RentRequest {
   final String renterId;
   final String ownerId;
   final DateTime? createdAt;
+  final String? declineReason;
+  final double? volumeSubmitted; // NEW
+
   
 
   RentRequest({
@@ -42,6 +47,9 @@ class RentRequest {
     required this.renterId,
     required this.ownerId,
     this.createdAt,
+    this.declineReason,
+    this.volumeSubmitted,
+
   });
 
   /// ✅ What gets stored in Firestore
@@ -59,6 +67,9 @@ class RentRequest {
       'status': status.name,
       'renterId': renterId,
       'ownerId': ownerId,
+      'declineReason': declineReason,
+      'volumeSubmitted': volumeSubmitted,
+
     };
   }
 
@@ -85,6 +96,9 @@ class RentRequest {
       createdAt: map['createdAt'] != null  // ← ADD THESE 3 LINES
         ? (map['createdAt'] as Timestamp).toDate()
         : null,
+      declineReason: map['declineReason'],
+      volumeSubmitted: (map['volumeSubmitted'] as num?)?.toDouble(),
+
     );
   }
 
@@ -103,6 +117,10 @@ class RentRequest {
     RentRequestStatus? status,
     String? renterId,
     String? ownerId,
+    String? declineReason,
+    double? volumeSubmitted,
+
+
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -117,6 +135,9 @@ class RentRequest {
       status: status ?? this.status,
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,
+      declineReason: declineReason ?? this.declineReason,
+      volumeSubmitted: volumeSubmitted ?? this.volumeSubmitted,
+
     );
   }
 }

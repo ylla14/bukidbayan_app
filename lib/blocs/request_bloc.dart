@@ -152,6 +152,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       final updated = await _requestService.updateRequestStatus(
         requestId: current.requestId,
         status: event.status,
+        declineReason: event.declineReason, // ADD THIS
+
       );
 
       print('✅ Request status updated, now validating equipment availability');
