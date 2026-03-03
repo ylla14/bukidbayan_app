@@ -5,13 +5,13 @@ enum RentRequestStatus {
   approved,
   onTheWay,
   inProgress,
-  retrieving,  // 👈 NEW
+  retrieving, // 👈 NEW
   returned,
   finished,
   completed,
   declined,
+  canceled,
 }
-
 
 class RentRequest {
   final String requestId; // 🔑 Firestore document ID
@@ -28,6 +28,7 @@ class RentRequest {
   final String ownerId;
   final DateTime? createdAt;
   final String? declineReason;
+  final double? volumeSubmitted; // NEW
 
   // Weather flagging — set by WeatherService when severe weather overlaps
   // this booking's dates. Any authenticated user may write these fields.
@@ -51,6 +52,7 @@ class RentRequest {
     this.declineReason,
     this.weatherFlag = false,
     this.weatherFlagDates = const [],
+    this.volumeSubmitted = null,
   });
 
   /// ✅ What gets stored in Firestore
@@ -69,7 +71,7 @@ class RentRequest {
       'renterId': renterId,
       'ownerId': ownerId,
       'declineReason': declineReason,
-
+      'volumeSubmitted': volumeSubmitted,
     };
   }
 
@@ -84,7 +86,9 @@ class RentRequest {
       name: map['name'],
       address: map['address'],
       start: (map['start'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      end: (map['end'] as Timestamp?)?.toDate() ?? DateTime.now().add(Duration(days: 1)),
+      end:
+          (map['end'] as Timestamp?)?.toDate() ??
+          DateTime.now().add(Duration(days: 1)),
       landSizeProofPath: map['landSizeProofPath'],
       cropHeightProofPath: map['cropHeightProofPath'],
       status: RentRequestStatus.values.firstWhere(
@@ -93,17 +97,19 @@ class RentRequest {
       ),
       renterId: map['renterId'],
       ownerId: map['ownerId'],
-      createdAt: map['createdAt'] != null  // ← ADD THESE 3 LINES
-        ? (map['createdAt'] as Timestamp).toDate()
-        : null,
+      createdAt:
+          map['createdAt'] !=
+              null // ← ADD THESE 3 LINES
+          ? (map['createdAt'] as Timestamp).toDate()
+          : null,
       declineReason: map['declineReason'],
       weatherFlag: (map['weatherFlag'] as bool?) ?? false,
       weatherFlagDates: ((map['weatherFlagDates'] as List<dynamic>?) ?? [])
           .map((t) => (t as Timestamp).toDate())
           .toList(),
+      volumeSubmitted: (map['volumeSubmitted'] as num?)?.toDouble(),
     );
   }
-
 
   /// ✅ For updating fields safely
   RentRequest copyWith({
@@ -120,7 +126,7 @@ class RentRequest {
     String? renterId,
     String? ownerId,
     String? declineReason,
-
+    double? volumeSubmitted,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -136,6 +142,7 @@ class RentRequest {
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,
       declineReason: declineReason ?? this.declineReason,
+      volumeSubmitted: volumeSubmitted ?? this.volumeSubmitted,
     );
   }
 }

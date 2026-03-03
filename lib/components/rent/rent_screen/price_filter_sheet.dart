@@ -31,7 +31,7 @@ class _PriceFilterSheetState extends State<PriceFilterSheet> {
   bool? _operatorFilter;
   DateTimeRange? _dateFilter;
 
-  final List<String> _categories = ['Hand Tool', 'Tractor', 'Machine', 'Harvester'];
+  final List<String> _categories = ['Hand Tool', 'Tractor', 'Machine', 'Harvester', 'Rice Mill'];
 
   @override
   void initState() {

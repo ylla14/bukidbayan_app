@@ -102,6 +102,7 @@ class _RentalsListState extends State<RentalsList> {
       case RentRequestStatus.completed:
         return Colors.green;
       case RentRequestStatus.declined:
+      case RentRequestStatus.canceled:
         return Colors.red;
     }
   }
@@ -373,6 +374,9 @@ class _RentalsListState extends State<RentalsList> {
                               );
 
                               if (confirm == true) {
+                                // ✅ Free up equipment dates before deleting
+                                await FirestoreService().validateEquipmentAvailabilityWithNotification(request.itemId);
+                                
                                 await _requestService.deleteRequest(request);
 
                                 setState(() {
@@ -381,9 +385,7 @@ class _RentalsListState extends State<RentalsList> {
 
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Request deleted'),
-                                    ),
+                                    const SnackBar(content: Text('Request deleted')),
                                   );
                                 }
                               }

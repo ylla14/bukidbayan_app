@@ -187,30 +187,23 @@ class FirestoreService {
   }
 
   /// Get unique equipment categories from Firestore
-  Future<List<String>> getUniqueEquipmentCategories() async {
-    try {
-      final snapshot = await _firestore.collection('equipment').get();
+Future<List<String>> getUniqueEquipmentCategories() async {
+  try {
+    final doc = await _firestore
+        .collection('categories')
+        .doc('equipment_categories')
+        .get();
 
-      // Map all documents to their category
-      final categories = snapshot.docs
-          .map((doc) {
-            final data = doc.data();
-            final category = data['category'] as String?;
-            return category;
-          })
-          .where((category) => category != null && category.isNotEmpty)
-          .cast<String>()
-          .toList();
-
-      // Convert to a set to remove duplicates, then back to a list
-      final uniqueCategories = categories.toSet().toList();
-
-      return uniqueCategories;
-    } catch (e) {
-      print('Error fetching unique categories: $e');
+    if (!doc.exists || doc.data() == null) {
       return [];
     }
+
+    return List<String>.from(doc.data()!['categories'] ?? []);
+  } catch (e) {
+    print('Error fetching categories: $e');
+    return [];
   }
+}
 
 
   bool calculateAvailability(Map<String, dynamic> data) {
@@ -333,7 +326,38 @@ Future<List<Map<String, DateTime>>> getBookedDateRanges(String equipmentId) asyn
   }
 }
 
-// Update the validateEquipmentAvailability to check current active bookings
+bool _areAllDatesBooked(
+  DateTime availableFrom,
+  DateTime availableUntil,
+  List<Map<String, DateTime>> bookedRanges,
+) {
+  final earliestBookable = getEarliestBookingDate();
+  final checkFrom = earliestBookable.isAfter(availableFrom) ? earliestBookable : availableFrom;
+  DateTime current = DateTime(checkFrom.year, checkFrom.month, checkFrom.day);
+
+  while (!current.isAfter(availableUntil)) {
+    bool isBooked = false;
+
+    for (var range in bookedRanges) {
+      final rangeStart = DateTime(range['start']!.year, range['start']!.month, range['start']!.day);
+      final rangeEnd = DateTime(range['end']!.year, range['end']!.month, range['end']!.day);
+
+      // Same logic as DateStep._isDateBooked
+      if ((current.isAfter(rangeStart) || current.isAtSameMomentAs(rangeStart)) &&
+          (current.isBefore(rangeEnd) || current.isAtSameMomentAs(rangeEnd))) {
+        isBooked = true;
+        break;
+      }
+    }
+
+    if (!isBooked) return false; // found a free day
+
+    current = current.add(const Duration(days: 1));
+  }
+
+  return true; // all days booked
+}
+
 Future<void> validateEquipmentAvailability(String equipmentId) async {
   final equipmentRef =
       FirebaseFirestore.instance.collection('equipment').doc(equipmentId);
@@ -342,23 +366,32 @@ Future<void> validateEquipmentAvailability(String equipmentId) async {
   final data = equipmentDoc.data() as Map<String, dynamic>?;
   if (data == null) return;
 
+  final status = data['status'] as String?;
+  if (status == 'under_maintenance') {
+    return;
+  }
+
   final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
   final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
 
   if (availableFrom == null || availableUntil == null) {
-    await equipmentRef.update({'isAvailable': false});
+    await equipmentRef.update({
+      'isAvailable': false,
+      'status': EquipmentStatus.unavailable.toValue(),
+    });
     return;
   }
 
   final now = DateTime.now();
 
-  // If already expired
   if (now.isAfter(availableUntil)) {
-    await equipmentRef.update({'isAvailable': false});
+    await equipmentRef.update({
+      'isAvailable': false,
+      'status': EquipmentStatus.unavailable.toValue(),
+    });
     return;
   }
 
-  // 🔥 Get booked ranges
   final bookedSnapshot = await FirebaseFirestore.instance
       .collection('rentRequests')
       .where('itemId', isEqualTo: equipmentId)
@@ -373,32 +406,18 @@ Future<void> validateEquipmentAvailability(String equipmentId) async {
     };
   }).toList();
 
-  // 🔥 Check if ANY free day exists
-  DateTime current =
-      DateTime(availableFrom.year, availableFrom.month, availableFrom.day);
+  final earliestBookable = getEarliestBookingDate();
+  final checkFrom = earliestBookable.isAfter(availableFrom) ? earliestBookable : availableFrom;
+  DateTime current = DateTime(checkFrom.year, checkFrom.month, checkFrom.day);
 
-  bool hasFreeDay = false;
+  final hasFreeDay = !_areAllDatesBooked(availableFrom, availableUntil, bookedRanges);
 
-  while (!current.isAfter(availableUntil)) {
-    bool isBooked = false;
-
-    for (var range in bookedRanges) {
-      if (!current.isBefore(range['start']!) &&
-          !current.isAfter(range['end']!)) {
-        isBooked = true;
-        break;
-      }
-    }
-
-    if (!isBooked) {
-      hasFreeDay = true;
-      break;
-    }
-
-    current = current.add(const Duration(days: 1));
-  }
-
-  await equipmentRef.update({'isAvailable': hasFreeDay});
+  await equipmentRef.update({
+    'isAvailable': hasFreeDay,
+    'status': hasFreeDay
+        ? EquipmentStatus.available.toValue()
+        : EquipmentStatus.unavailable.toValue(),
+  });
 }
 
 /// Force refresh equipment availability and ensure stream updates
@@ -415,6 +434,12 @@ Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) a
     return;
   }
 
+  final status = data['status'] as String?;
+  if (status == 'under_maintenance') { //removed 'unavailable' check
+    print('🔒 Equipment is under maintenance, skipping validation');
+    return;
+  }
+
   final availableFrom = (data['availableFrom'] as Timestamp?)?.toDate();
   final availableUntil = (data['availableUntil'] as Timestamp?)?.toDate();
 
@@ -422,6 +447,7 @@ Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) a
     print('⚠️ No availability dates, setting unavailable');
     await equipmentRef.update({
       'isAvailable': false,
+      'status': EquipmentStatus.unavailable.toValue(), 
       'updatedAt': FieldValue.serverTimestamp(),
     });
     return;
@@ -429,17 +455,16 @@ Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) a
 
   final now = DateTime.now();
 
-  // If already expired
   if (now.isAfter(availableUntil)) {
     print('⏰ Equipment expired');
     await equipmentRef.update({
       'isAvailable': false,
+      'status': EquipmentStatus.unavailable.toValue(), 
       'updatedAt': FieldValue.serverTimestamp(),
     });
     return;
   }
 
-  // 🔥 Get booked ranges
   print('🔍 Checking for existing bookings...');
   final bookedSnapshot = await FirebaseFirestore.instance
       .collection('rentRequests')
@@ -453,63 +478,25 @@ Future<void> validateEquipmentAvailabilityWithNotification(String equipmentId) a
     final d = doc.data();
     final start = (d['start'] as Timestamp).toDate();
     final end = (d['end'] as Timestamp).toDate();
-    print('   📅 Booking: ${start} → ${end}');
-    return {
-      'start': start,
-      'end': end,
-    };
+    print('   📅 Booking: $start → $end');
+    return {'start': start, 'end': end};
   }).toList();
 
-  // 🔥 Check if ANY free day exists
-  DateTime current =
-      DateTime(availableFrom.year, availableFrom.month, availableFrom.day);
+  // Use the same _areAllDatesBooked helper
+  final hasFreeDay = !_areAllDatesBooked(availableFrom, availableUntil, bookedRanges);
 
-  bool hasFreeDay = false;
-  int checkedDays = 0;
-  int bookedDays = 0;
+  print('✅ hasFreeDay: $hasFreeDay');
 
-  while (!current.isAfter(availableUntil)) {
-    checkedDays++;
-    bool isBooked = false;
-
-    for (var range in bookedRanges) {
-      final rangeStart = DateTime(
-        range['start']!.year,
-        range['start']!.month,
-        range['start']!.day,
-      );
-      final rangeEnd = DateTime(
-        range['end']!.year,
-        range['end']!.month,
-        range['end']!.day,
-      );
-
-      if (!current.isBefore(rangeStart) && !current.isAfter(rangeEnd)) {
-        isBooked = true;
-        bookedDays++;
-        break;
-      }
-    }
-
-    if (!isBooked) {
-      hasFreeDay = true;
-      print('✅ Found free day: $current');
-      break;
-    }
-
-    current = current.add(const Duration(days: 1));
-  }
-
-  print('📈 Stats: Checked $checkedDays days, $bookedDays booked, hasFreeDay: $hasFreeDay');
-
-  // Force update to trigger stream
   await equipmentRef.update({
     'isAvailable': hasFreeDay,
+    'status': hasFreeDay 
+        ? EquipmentStatus.available.toValue()
+        : EquipmentStatus.unavailable.toValue(),
     'updatedAt': FieldValue.serverTimestamp(),
-    '_lastValidated': FieldValue.serverTimestamp(), // Extra field to force update
+    '_lastValidated': FieldValue.serverTimestamp(),
   });
 
-  print('✅ Updated isAvailable to: $hasFreeDay');
+  print('✅ Updated isAvailable: $hasFreeDay, status: ${hasFreeDay ? 'available' : 'unavailable'}');
 }
 
 /// Returns the earliest selectable date based on lead time (2 working days from now).
