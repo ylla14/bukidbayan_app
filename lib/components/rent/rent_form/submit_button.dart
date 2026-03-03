@@ -24,6 +24,8 @@ class SubmitButton extends StatefulWidget {
   final XFile? cropHeightProof;
   final Equipment item;
   final RentRequestService requestService;
+  final TextEditingController? volumeController;
+
 
   const SubmitButton({
     super.key,
@@ -36,6 +38,7 @@ class SubmitButton extends StatefulWidget {
     this.cropHeightProof,
     required this.item,
     required this.requestService,
+    this.volumeController,
   });
 
   @override
@@ -176,6 +179,51 @@ Future<void> _handleSubmit(BuildContext context) async {
     return;
   }
 
+// Step 1.2: Minimum volume validation (Rice Mill)
+if (widget.item.minimumVolumeRequired && widget.item.minimumVolumeKg != null) {
+  final entered = double.tryParse(widget.volumeController?.text ?? '') ?? 0;
+  final minInUnit = widget.item.minimumVolumeUnit == 'cavans'
+      ? widget.item.minimumVolumeKg! / 50
+      : widget.item.minimumVolumeKg!;
+
+  if (entered < minInUnit) {
+    if (widget.item.batchingAllowed) {
+      // Show warning dialog, not hard block
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Hindi Sapat ang Dami'),
+          content: Text(
+            'Ang iyong dami (${entered.toStringAsFixed(0)} ${widget.item.minimumVolumeUnit}) '
+            'ay mas mababa sa minimum na ${minInUnit.toStringAsFixed(0)} ${widget.item.minimumVolumeUnit}. '
+            'Iminumungkahi ng may-ari na mag-batch kasama ang ibang magsasaka. '
+            'Gusto mo pa ring i-submit?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Submit Anyway'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return; // user cancelled
+    } else {
+      // Hard block
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi Sapat ang Dami',
+        message: 'Minimum ay ${minInUnit.toStringAsFixed(0)} ${widget.item.minimumVolumeUnit}.',
+      );
+      return;
+    }
+  }
+}
+
   // Step 1.5: Check if equipment has availability dates
   if (widget.item.availableFrom == null || widget.item.availableUntil == null) {
     showErrorSnackbar(
@@ -236,6 +284,8 @@ Future<void> _handleSubmit(BuildContext context) async {
         status: RentRequestStatus.pending,
         renterId: currentUserId,
         ownerId: widget.item.ownerId,
+        volumeSubmitted: double.tryParse(widget.volumeController?.text ?? ''), // NEW
+
       );
 
       // Step 5: Save request to Firestore

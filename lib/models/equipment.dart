@@ -73,6 +73,15 @@ class Equipment {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  final bool minimumVolumeRequired;
+  final double? minimumVolumeKg;       // stored in kg internally
+  final double? minimumVolumeCavans;   // convenience getter (1 cavan ≈ 50 kg)
+  final String minimumVolumeUnit;      // 'kg' or 'cavans'
+  final bool batchingAllowed;          // if true, suggest batching for small loads
+
+  double? get minimumVolumeInCavans =>
+    minimumVolumeKg != null ? minimumVolumeKg! / 50.0 : null;
+
   Equipment({
     this.id,
     required this.name,
@@ -107,6 +116,11 @@ class Equipment {
     this.reviews = const [],
     this.createdAt,
     this.updatedAt,
+    this.minimumVolumeRequired = false,
+    this.minimumVolumeKg,
+    this.minimumVolumeUnit = 'cavans',
+    this.batchingAllowed = true,
+    this.minimumVolumeCavans,
   });
 
   Map<String, dynamic> toMap() {
@@ -143,6 +157,10 @@ class Equipment {
       'reviews': reviews,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : FieldValue.serverTimestamp(),
+      'minimumVolumeRequired': minimumVolumeRequired,
+      'minimumVolumeKg': minimumVolumeKg,
+      'minimumVolumeUnit': minimumVolumeUnit,
+      'batchingAllowed': batchingAllowed,
     };
   }
 
@@ -200,6 +218,10 @@ class Equipment {
       reviews: data['reviews'] != null ? List<String>.from(data['reviews']) : [],
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
       updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : null,
+      minimumVolumeRequired: data['minimumVolumeRequired'] ?? false,
+      minimumVolumeKg: data['minimumVolumeKg']?.toDouble(),
+      minimumVolumeUnit: data['minimumVolumeUnit'] ?? 'cavans',
+      batchingAllowed: data['batchingAllowed'] ?? true,
     );
   }
 
@@ -253,6 +275,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       reviews: data['reviews'] != null ? List<String>.from(data['reviews']) : [],
       createdAt: data['createdAt'] is Timestamp ? (data['createdAt'] as Timestamp).toDate() : null,
       updatedAt: data['updatedAt'] is Timestamp ? (data['updatedAt'] as Timestamp).toDate() : null,
+      minimumVolumeRequired: data['minimumVolumeRequired'] ?? false,
+      minimumVolumeKg: data['minimumVolumeKg']?.toDouble(),
+      minimumVolumeUnit: data['minimumVolumeUnit'] ?? 'cavans',
+      batchingAllowed: data['batchingAllowed'] ?? true,
     );
   }
 
@@ -289,6 +315,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     List<String>? reviews,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? minimumVolumeRequired,
+    double? minimumVolumeKg,
+    String? minimumVolumeUnit,
+    bool? batchingAllowed,
   }) {
     return Equipment(
       id: id,
@@ -324,6 +354,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       reviews: reviews ?? this.reviews,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      minimumVolumeRequired: minimumVolumeRequired ?? this.minimumVolumeRequired,
+      minimumVolumeKg: minimumVolumeKg ?? this.minimumVolumeKg,
+      minimumVolumeUnit: minimumVolumeUnit ?? this.minimumVolumeUnit,
+      batchingAllowed: batchingAllowed ?? this.batchingAllowed,
     );
   }
 }

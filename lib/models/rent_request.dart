@@ -29,6 +29,7 @@ class RentRequest {
   final String ownerId;
   final DateTime? createdAt;
   final String? declineReason;
+  final double? volumeSubmitted; // NEW
 
   
 
@@ -47,6 +48,7 @@ class RentRequest {
     required this.ownerId,
     this.createdAt,
     this.declineReason,
+    this.volumeSubmitted,
 
   });
 
@@ -66,6 +68,7 @@ class RentRequest {
       'renterId': renterId,
       'ownerId': ownerId,
       'declineReason': declineReason,
+      'volumeSubmitted': volumeSubmitted,
 
     };
   }
@@ -94,6 +97,7 @@ class RentRequest {
         ? (map['createdAt'] as Timestamp).toDate()
         : null,
       declineReason: map['declineReason'],
+      volumeSubmitted: (map['volumeSubmitted'] as num?)?.toDouble(),
 
     );
   }
@@ -114,6 +118,8 @@ class RentRequest {
     String? renterId,
     String? ownerId,
     String? declineReason,
+    double? volumeSubmitted,
+
 
   }) {
     return RentRequest(
@@ -130,6 +136,8 @@ class RentRequest {
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,
       declineReason: declineReason ?? this.declineReason,
+      volumeSubmitted: volumeSubmitted ?? this.volumeSubmitted,
+
     );
   }
 }

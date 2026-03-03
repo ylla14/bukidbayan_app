@@ -65,6 +65,8 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   final _landSizeMinController = TextEditingController();
   final _landSizeMaxController = TextEditingController();
   final _maxCropHeightController = TextEditingController();
+  final _minimumVolumeController = TextEditingController();
+
 
   String? selectedBrand;
   String? selectedYear;
@@ -82,6 +84,8 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   DateTime? availableFrom;
   DateTime? availableUntil;
   bool showAvailabilityError = false;
+  bool get _isRiceMill =>
+    selectedCategory?.toLowerCase().contains('rice mill') == true;
 
   // List<RentItem> itemCategories = items;
   // final List<String> uniqueCategories = items
@@ -108,6 +112,11 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
 
   // final RentService _rentService = RentService();
 
+  bool? minimumVolumeRequired;
+  bool showMinVolumeError = false;
+  String selectedMinVolumeUnit = 'cavans'; // or 'kg'
+  bool batchingAllowed = true;
+
   @override
   void initState() {
     super.initState();
@@ -126,6 +135,11 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       _landSizeMinController.text = eq.landSizeMin ?? '';
       _landSizeMaxController.text = eq.landSizeMax ?? '';
       _maxCropHeightController.text = eq.maxCropHeight ?? '';
+      _minimumVolumeController.text = eq.minimumVolumeKg != null
+    ? (eq.minimumVolumeUnit == 'cavans'
+        ? (eq.minimumVolumeKg! / 50).toStringAsFixed(0)
+        : eq.minimumVolumeKg!.toStringAsFixed(0))
+    : '';
 
       selectedCategory = eq.category;
       selectedBrand = eq.brand;
@@ -134,10 +148,14 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       selectedFuel = eq.fuelType;
       selectedCondition = eq.condition;
       selectedRentalUnit = eq.rentalUnit;
+      selectedMinVolumeUnit = eq.minimumVolumeUnit;
+      batchingAllowed = eq.batchingAllowed;
+
 
       operatorIncluded = eq.operatorIncluded;
       landSizeRequirement = eq.landSizeRequirement;
       maxCropHeightRequirement = eq.maxCropHeightRequirement;
+      minimumVolumeRequired = eq.minimumVolumeRequired;
 
       availableFrom = eq.availableFrom;
       availableUntil = eq.availableUntil;
@@ -150,21 +168,22 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
     }
   }
 
-  Future<void> _loadCategoriesFromFirestore() async {
-    final firestoreService = FirestoreService();
-    try {
-      final categories = await firestoreService.getUniqueEquipmentCategories();
-      setState(() {
-        uniqueCategories = categories;
-        isLoadingCategories = false;
-      });
-    } catch (e) {
-      setState(() {
-        isLoadingCategories = false;
-      });
-      print('Failed to load categories: $e');
-    }
+Future<void> _loadCategoriesFromFirestore() async {
+  final firestoreService = FirestoreService();
+  try {
+    final categories = await firestoreService.getUniqueEquipmentCategories();
+    print('Loaded categories: $categories'); // ADD THIS
+    setState(() {
+      uniqueCategories = categories;
+      isLoadingCategories = false;
+    });
+  } catch (e) {
+    setState(() {
+      isLoadingCategories = false;
+    });
+    print('Failed to load categories: $e');
   }
+}
 
   Future<void> _loadDropdownOptionsFromFirestore() async {
     final firestoreService = FirestoreService();
@@ -217,54 +236,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                     ),
                   ),
                 ),
-
-                // //IMAGE PICKER
-                // const SizedBox(height: 10,),
-                // SizedBox(
-                //   height: 100, // height of the row
-                //   child: ListView.builder(
-                //     scrollDirection: Axis.horizontal,
-                //     itemCount: images.length,
-                //     itemBuilder: (context, index) {
-                //       final image = images[index];
-                //       return Padding(
-                //         padding: const EdgeInsets.only(right: 8, left: 8),
-                //         child: GestureDetector(
-                //           onTap: () => pickImage(index),
-                //           child: Container(
-                //             width: 90, // 👈 FIXED SIZE
-                //             height: 90, // 👈 FIXED SIZE
-                //             decoration: BoxDecoration(
-                //               border: Border.all(color: lightColorScheme.primary),
-                //               borderRadius: BorderRadius.circular(8),
-                //               color: lightColorScheme.primary.withOpacity(0.2),
-                //             ),
-                //             child: image == null
-                //                 ? const Center(
-                //                     child: Icon(
-                //                       Icons.add,
-                //                       size: 32,
-                //                       color: Colors.white,
-                //                     ),
-                //                   )
-                //                 : ClipRRect(
-                //                     borderRadius: BorderRadius.circular(8),
-                //                     child: kIsWeb
-                //                         ? Image.network(
-                //                             image.path,
-                //                             fit: BoxFit.cover,
-                //                           )
-                //                         : Image.file(
-                //                             File(image.path),
-                //                             fit: BoxFit.cover,
-                //                           ),
-                //                   ),
-                //           ),
-                //         ),
-                //       );
-                //     },
-                //   ),
-                // ),
+                
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 100,
@@ -425,7 +397,18 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                   value: category,
                                   child: Text(category),
                                 )).toList(),
-                        onChanged: isLoadingCategories ? null : (val) => setState(() => selectedCategory = val),
+                        onChanged: isLoadingCategories ? null : (val) {
+                          setState(() {
+                            selectedCategory = val;
+                            // Reset min volume if switching away from Rice Mill
+                            if (val?.toLowerCase().contains('rice mill') != true) {
+                              minimumVolumeRequired = null;
+                              batchingAllowed = true;
+                              _minimumVolumeController.clear();
+                              showMinVolumeError = false;
+                            }
+                          });
+                        },
                         validator: (value) => value == null ? 'Please select a category' : null,
                       ),
 
@@ -905,6 +888,157 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                         ),
                       ],
 
+                      /// MINIMUM VOLUME REQUIREMENT
+                      if (selectedCategory?.toLowerCase().contains('rice mill') == true) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Minimum Volume Requirement',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'For milling equipment (e.g. Rice Mill), a minimum load is required to cover startup costs.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+
+                      ToggleButtons(
+                        isSelected: [
+                          minimumVolumeRequired == true,
+                          minimumVolumeRequired == false,
+                        ],
+                        onPressed: (index) {
+                          setState(() {
+                            minimumVolumeRequired = index == 0;
+                            showMinVolumeError = false;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        selectedBorderColor: lightColorScheme.primary,
+                        selectedColor: Colors.white,
+                        fillColor: lightColorScheme.primary,
+                        color: lightColorScheme.primary,
+                        constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
+                        children: const [Text('Yes'), Text('No')],
+                      ),
+
+                      if (showMinVolumeError)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Required',
+                            style: TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ),
+                      ],
+
+                      if (minimumVolumeRequired == true && selectedCategory?.toLowerCase().contains('rice mill') == true) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Unit toggle (kg / cavans)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Unit', style: TextStyle(fontSize: 12)),
+                                const SizedBox(height: 6),
+                                ToggleButtons(
+                                  isSelected: [
+                                    selectedMinVolumeUnit == 'cavans',
+                                    selectedMinVolumeUnit == 'kg',
+                                  ],
+                                  onPressed: (index) {
+                                    final newUnit = index == 0 ? 'cavans' : 'kg';
+                                    // Convert existing value on unit switch
+                                    final raw = double.tryParse(_minimumVolumeController.text);
+                                    if (raw != null) {
+                                      _minimumVolumeController.text = newUnit == 'cavans'
+                                          ? (raw / 50).toStringAsFixed(1)   // kg → cavans
+                                          : (raw * 50).toStringAsFixed(0);  // cavans → kg
+                                    }
+                                    setState(() => selectedMinVolumeUnit = newUnit);
+                                  },
+                                  borderRadius: BorderRadius.circular(10),
+                                  selectedBorderColor: lightColorScheme.primary,
+                                  selectedColor: Colors.white,
+                                  fillColor: lightColorScheme.primary,
+                                  color: lightColorScheme.primary,
+                                  constraints: const BoxConstraints(minHeight: 40, minWidth: 70),
+                                  children: const [Text('Cavans'), Text('kg')],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 12),
+                            // Value input
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Minimum Volume (${selectedMinVolumeUnit})',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  CustomTextFormField(
+                                    controller: _minimumVolumeController,
+                                    keyboardType: TextInputType.number,
+                                    hint: selectedMinVolumeUnit == 'cavans'
+                                        ? 'e.g. 5 cavans'
+                                        : 'e.g. 250 kg',
+                                    validator: (value) {
+                                      if (minimumVolumeRequired != true) return null;
+                                      if (value == null || value.isEmpty) return 'Required';
+                                      final num = double.tryParse(value);
+                                      if (num == null || num <= 0) return 'Enter a valid number';
+                                      if (selectedMinVolumeUnit == 'cavans' && num < 5) {
+                                        return 'Minimum is 5 cavans (250 kg)';
+                                      }
+                                      if (selectedMinVolumeUnit == 'kg' && num < 250) {
+                                        return 'Minimum is 250 kg (5 cavans)';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  if (minimumVolumeRequired == true &&
+                                      _minimumVolumeController.text.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Builder(builder: (_) {
+                                      final val = double.tryParse(_minimumVolumeController.text);
+                                      if (val == null) return const SizedBox.shrink();
+                                      final kg = selectedMinVolumeUnit == 'cavans' ? val * 50 : val;
+                                      final cavans = selectedMinVolumeUnit == 'kg' ? val / 50 : val;
+                                      return Text(
+                                        '≈ ${cavans.toStringAsFixed(1)} cavans / ${kg.toStringAsFixed(0)} kg',
+                                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                      );
+                                    }),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // Batching suggestion toggle
+                       Row(
+                          children: [
+                            Checkbox(
+                              value: batchingAllowed,
+                              activeColor: lightColorScheme.primary,
+                              onChanged: (val) => setState(() => batchingAllowed = val ?? true),
+                            ),
+                            Expanded(
+                              child: Text(
+                                'Suggest "batching" to renters who don\'t meet the minimum volume',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      
+
                       const Padding(
                         padding: EdgeInsets.all(5),
                         child: Divider(thickness: 1),
@@ -1203,11 +1337,13 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       showCropHeightError = maxCropHeightRequirement == null;
       showImageError = !hasImage;
       showAvailabilityError = availableFrom == null || availableUntil == null;
+      showMinVolumeError = _isRiceMill && minimumVolumeRequired == null;
     });
 
     if (!isFormValid ||
         landSizeRequirement == null ||
         maxCropHeightRequirement == null ||
+        (_isRiceMill && minimumVolumeRequired == null) ||
         !hasImage ||
         availableFrom == null ||
         availableUntil == null) {
@@ -1377,6 +1513,14 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
             ? null
             : _maxCropHeightController.text.trim(),
         rentRate: '', // or whatever value you want
+        minimumVolumeRequired: minimumVolumeRequired ?? false,
+        minimumVolumeKg: (minimumVolumeRequired == true)
+            ? (selectedMinVolumeUnit == 'cavans'
+                ? (double.tryParse(_minimumVolumeController.text) ?? 0) * 50
+                : double.tryParse(_minimumVolumeController.text))
+            : null,
+        minimumVolumeUnit: selectedMinVolumeUnit,
+        batchingAllowed: batchingAllowed,
       );
 
       // ✅ NEW PART: check if updating or creating new

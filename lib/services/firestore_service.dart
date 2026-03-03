@@ -187,30 +187,23 @@ class FirestoreService {
   }
 
   /// Get unique equipment categories from Firestore
-  Future<List<String>> getUniqueEquipmentCategories() async {
-    try {
-      final snapshot = await _firestore.collection('equipment').get();
+Future<List<String>> getUniqueEquipmentCategories() async {
+  try {
+    final doc = await _firestore
+        .collection('categories')
+        .doc('equipment_categories')
+        .get();
 
-      // Map all documents to their category
-      final categories = snapshot.docs
-          .map((doc) {
-            final data = doc.data();
-            final category = data['category'] as String?;
-            return category;
-          })
-          .where((category) => category != null && category.isNotEmpty)
-          .cast<String>()
-          .toList();
-
-      // Convert to a set to remove duplicates, then back to a list
-      final uniqueCategories = categories.toSet().toList();
-
-      return uniqueCategories;
-    } catch (e) {
-      print('Error fetching unique categories: $e');
+    if (!doc.exists || doc.data() == null) {
       return [];
     }
+
+    return List<String>.from(doc.data()!['categories'] ?? []);
+  } catch (e) {
+    print('Error fetching categories: $e');
+    return [];
   }
+}
 
 
   bool calculateAvailability(Map<String, dynamic> data) {

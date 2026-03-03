@@ -386,6 +386,9 @@ class _RequestRentFormState extends State<RequestRentForm> {
   bool get isScheduleComplete => startDate != null && returnDate != null;
   bool get isStep2Complete => nameController.text.isNotEmpty && addressController.text.isNotEmpty;
 
+  final _volumeController = TextEditingController();
+String? _volumeError;
+
   @override
   void initState() {
     super.initState();
@@ -464,6 +467,8 @@ class _RequestRentFormState extends State<RequestRentForm> {
                 onCropPick: (file) => setState(() => cropHeightProof = file),
                 onCropRemove: () => setState(() => cropHeightProof = null),
                 picker: _picker,
+                volumeController: _volumeController,
+                volumeError: _volumeError,
               ),
             ],
 
@@ -480,6 +485,8 @@ class _RequestRentFormState extends State<RequestRentForm> {
                 cropHeightProof: cropHeightProof,
                 item: widget.item,
                 requestService: _requestService,
+                volumeController: _volumeController,
+
               ),
           ],
         ),
