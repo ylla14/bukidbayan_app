@@ -77,6 +77,7 @@ class AuthService {
           'address': address,
           'latitude': latitude,
           'longitude': longitude,
+          'locationType': 'Home',
           'createdAt': FieldValue.serverTimestamp(),
         });
 

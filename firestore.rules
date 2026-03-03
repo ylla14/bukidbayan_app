@@ -125,9 +125,8 @@ service cloud.firestore {
                     && !request.resource.data.diff(resource.data).affectedKeys()
                       .hasAny(['createdAt']);
 
-      // User creation is handled by Cloud Functions or Auth triggers
-      // Disable direct creation from client
-      allow create: if false;
+      // Users create their own document during sign-up (signUp() calls .set())
+      allow create: if isOwner(userId);
 
       // Users cannot delete their own profile (use Cloud Functions)
       allow delete: if false;

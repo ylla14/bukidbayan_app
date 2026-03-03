@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
-class MapSection extends StatefulWidget {
+class MapSection extends StatelessWidget {
   final LatLng cabuyao;
 
   const MapSection({super.key, required this.cabuyao});
-
-  @override
-  State<MapSection> createState() => _MapSectionState();
-}
-
-class _MapSectionState extends State<MapSection> {
-  GoogleMapController? _mapController;
 
   @override
   Widget build(BuildContext context) {
@@ -57,19 +51,28 @@ class _MapSectionState extends State<MapSection> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
           clipBehavior: Clip.hardEdge,
-          child: GoogleMap(
-            initialCameraPosition: CameraPosition(target: widget.cabuyao, zoom: 13),
-            onMapCreated: (controller) => _mapController = controller,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            zoomControlsEnabled: false,
+          child: FlutterMap(
+            options: MapOptions(
+              initialCenter: cabuyao,
+              initialZoom: 13,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none,
+              ),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.bukidbayan.app',
+              ),
+            ],
           ),
         ),
       ],

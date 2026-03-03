@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bukidbayan_app/screens/location_picker_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 // Must match the options in signup_screen.dart
 const List<Map<String, dynamic>> _locationTypes = [

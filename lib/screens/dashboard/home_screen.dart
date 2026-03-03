@@ -4,7 +4,7 @@ import 'package:bukidbayan_app/components/dashboard/map_section.dart';
 import 'package:bukidbayan_app/components/dashboard/summary_cards_section.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
@@ -19,7 +19,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const LatLng _cabuyao = LatLng(14.2470, 121.1367); // Cabuyao, Laguna
-  GoogleMapController? _mapController;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<void> logout() async => await _auth.signOut();
