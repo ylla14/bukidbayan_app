@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/models/equipment.dart';
+import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
 import 'package:bukidbayan_app/widgets/requirement_upload_tile.dart';
 import 'package:bukidbayan_app/widgets/step_header.dart';
@@ -15,8 +16,9 @@ class RequirementStep extends StatelessWidget {
   final Function(XFile) onCropPick;
   final VoidCallback onCropRemove;
   final ImagePicker picker;
-
-  // NEW: for minimum volume
+  final bool keepDarak;
+  final VoidCallback onToggleDarak;
+  final double? estimatedTotal;
   final TextEditingController? volumeController;
   final String? volumeError;
 
@@ -32,6 +34,9 @@ class RequirementStep extends StatelessWidget {
     required this.picker,
     this.volumeController,
     this.volumeError,
+    this.estimatedTotal,
+    required this.keepDarak,
+    required this.onToggleDarak,
   });
 
   @override
@@ -68,7 +73,7 @@ class RequirementStep extends StatelessWidget {
             onRemove: onCropRemove,
           ),
 
-        // MINIMUM VOLUME (Rice Mill only)
+        // MINIMUM VOLUME + DARAK TOGGLE (Rice Mill only)
         if (isRiceMill && item.minimumVolumeRequired) ...[
           const SizedBox(height: 12),
           Padding(
@@ -76,9 +81,10 @@ class RequirementStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                // --- Volume Input ---
+                const Text(
                   'Dami ng Palay (Volume)',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -102,13 +108,154 @@ class RequirementStep extends StatelessWidget {
                     hintText: item.minimumVolumeUnit == 'cavans'
                         ? 'Ilagay ang dami (cavans)'
                         : 'Ilagay ang dami (kg)',
-                    suffixText: item.minimumVolumeUnit == 'cavans' ? 'cavans' : 'kg',
+                    suffixText: item.minimumVolumeUnit == 'cavans'
+                        ? 'cavans'
+                        : 'kg',
                     errorText: volumeError,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
+                // --- Darak Toggle ---
+                const Text(
+                  'Keep Byproduct (Darak)?',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Rice Only
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: keepDarak ? onToggleDarak : null,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: !keepDarak
+                                ? lightColorScheme.primary
+                                : Colors.grey.shade100,
+                            border: Border.all(
+                              color: !keepDarak
+                                  ? lightColorScheme.primary
+                                  : Colors.grey.shade300,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'Rice Only',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: !keepDarak
+                                      ? Colors.white
+                                      : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '₱${item.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: !keepDarak
+                                      ? Colors.white70
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Rice + Darak
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: keepDarak ? null : onToggleDarak,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: keepDarak
+                                ? lightColorScheme.primary
+                                : Colors.grey.shade100,
+                            border: Border.all(
+                              color: keepDarak
+                                  ? lightColorScheme.primary
+                                  : Colors.grey.shade300,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'Rice + Darak',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: keepDarak
+                                      ? Colors.white
+                                      : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '₱${item.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00'}/kg',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: keepDarak
+                                      ? Colors.white70
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // --- Estimated Total ---
+                if (estimatedTotal != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      border: Border.all(color: Colors.green.shade200),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Estimated Total',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '₱${estimatedTotal!.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          '${volumeController?.text ?? '0'} ${item.minimumVolumeUnit} × '
+                          '₱${keepDarak ? item.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00' : item.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

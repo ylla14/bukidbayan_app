@@ -404,20 +404,46 @@ class ProductPage extends StatelessWidget {
                       'Price',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    Text(
-                      '₱${liveItem.price} ${_getRateSuffix(liveItem.rentalUnit)}',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    if (liveItem.category?.toLowerCase() == 'harvester')
-                      Text(
-                        '+ 12% of Crop Harvest',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: lightColorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    if (liveItem.category?.toLowerCase().contains('rice mill') == true) ...[
+                      Row(
+                        children: [
+                          Text(
+                            '₱${liveItem.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const Text(
+                            ' · Rice Only',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
                       ),
+                      Row(
+                        children: [
+                          Text(
+                            '₱${liveItem.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00'}/kg',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const Text(
+                            ' · Rice + Darak',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Text(
+                        '₱${liveItem.price} ${_getRateSuffix(liveItem.rentalUnit)}',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      if (liveItem.category?.toLowerCase() == 'harvester')
+                        Text(
+                          '+ 12% of Crop Harvest',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: lightColorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
                 const SizedBox(width: 30),

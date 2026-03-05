@@ -81,6 +81,9 @@ class Equipment {
 
   double? get minimumVolumeInCavans =>
     minimumVolumeKg != null ? minimumVolumeKg! / 50.0 : null;
+  
+  final double? riceOnlyPricePerKg;
+  final double? ricePlusDarakPricePerKg;
 
   Equipment({
     this.id,
@@ -121,6 +124,8 @@ class Equipment {
     this.minimumVolumeUnit = 'cavans',
     this.batchingAllowed = true,
     this.minimumVolumeCavans,
+    this.riceOnlyPricePerKg,
+    this.ricePlusDarakPricePerKg,
   });
 
   Map<String, dynamic> toMap() {
@@ -161,6 +166,8 @@ class Equipment {
       'minimumVolumeKg': minimumVolumeKg,
       'minimumVolumeUnit': minimumVolumeUnit,
       'batchingAllowed': batchingAllowed,
+      'riceOnlyPricePerKg': riceOnlyPricePerKg,
+      'ricePlusDarakPricePerKg': ricePlusDarakPricePerKg,
     };
   }
 
@@ -222,6 +229,8 @@ class Equipment {
       minimumVolumeKg: data['minimumVolumeKg']?.toDouble(),
       minimumVolumeUnit: data['minimumVolumeUnit'] ?? 'cavans',
       batchingAllowed: data['batchingAllowed'] ?? true,
+      riceOnlyPricePerKg: (data['riceOnlyPricePerKg'] as num?)?.toDouble(),
+      ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
     );
   }
 
@@ -279,6 +288,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       minimumVolumeKg: data['minimumVolumeKg']?.toDouble(),
       minimumVolumeUnit: data['minimumVolumeUnit'] ?? 'cavans',
       batchingAllowed: data['batchingAllowed'] ?? true,
+      riceOnlyPricePerKg: (data['riceOnlyPricePerKg'] as num?)?.toDouble(),
+      ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
     );
   }
 
@@ -319,6 +330,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     double? minimumVolumeKg,
     String? minimumVolumeUnit,
     bool? batchingAllowed,
+    double? riceOnlyPricePerKg,
+    double? ricePlusDarakPricePerKg,
   }) {
     return Equipment(
       id: id,
@@ -358,6 +371,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       minimumVolumeKg: minimumVolumeKg ?? this.minimumVolumeKg,
       minimumVolumeUnit: minimumVolumeUnit ?? this.minimumVolumeUnit,
       batchingAllowed: batchingAllowed ?? this.batchingAllowed,
+      riceOnlyPricePerKg: riceOnlyPricePerKg ?? this.riceOnlyPricePerKg,
+      ricePlusDarakPricePerKg: ricePlusDarakPricePerKg ?? this.ricePlusDarakPricePerKg,
     );
   }
 }

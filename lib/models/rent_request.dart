@@ -29,11 +29,16 @@ class RentRequest {
   final DateTime? createdAt;
   final String? declineReason;
   final double? volumeSubmitted; // NEW
+  final double? agreedPrice;      // the price per unit at time of booking
+final String? agreedRentalUnit; // 'Per Day', 'Per Hour', 'Per kg', etc.
 
   // Weather flagging — set by WeatherService when severe weather overlaps
   // this booking's dates. Any authenticated user may write these fields.
   final bool weatherFlag;
   final List<DateTime> weatherFlagDates;
+
+  final bool? keepDarak;
+final double? estimatedMillingFee;
 
   RentRequest({
     required this.requestId,
@@ -53,6 +58,11 @@ class RentRequest {
     this.weatherFlag = false,
     this.weatherFlagDates = const [],
     this.volumeSubmitted = null,
+    this.keepDarak,
+    this.estimatedMillingFee,
+    this.agreedPrice,
+this.agreedRentalUnit,
+    
   });
 
   /// ✅ What gets stored in Firestore
@@ -72,6 +82,10 @@ class RentRequest {
       'ownerId': ownerId,
       'declineReason': declineReason,
       'volumeSubmitted': volumeSubmitted,
+      'keepDarak': keepDarak,
+      'estimatedMillingFee': estimatedMillingFee,
+      'agreedPrice': agreedPrice,
+'agreedRentalUnit': agreedRentalUnit,
     };
   }
 
@@ -108,6 +122,10 @@ class RentRequest {
           .map((t) => (t as Timestamp).toDate())
           .toList(),
       volumeSubmitted: (map['volumeSubmitted'] as num?)?.toDouble(),
+      keepDarak: map['keepDarak'] as bool?,
+      estimatedMillingFee: (map['estimatedMillingFee'] as num?)?.toDouble(),
+      agreedPrice: (map['agreedPrice'] as num?)?.toDouble(),
+agreedRentalUnit: map['agreedRentalUnit'] as String?,
     );
   }
 
@@ -127,6 +145,10 @@ class RentRequest {
     String? ownerId,
     String? declineReason,
     double? volumeSubmitted,
+    bool? keepDarak,
+    double? estimatedMillingFee,
+    double? agreedPrice,
+String? agreedRentalUnit,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -143,6 +165,10 @@ class RentRequest {
       ownerId: ownerId ?? this.ownerId,
       declineReason: declineReason ?? this.declineReason,
       volumeSubmitted: volumeSubmitted ?? this.volumeSubmitted,
+      keepDarak: keepDarak ?? this.keepDarak,
+      estimatedMillingFee: estimatedMillingFee ?? this.estimatedMillingFee,
+      agreedPrice: agreedPrice ?? this.agreedPrice,
+agreedRentalUnit: agreedRentalUnit ?? this.agreedRentalUnit,
     );
   }
 }
