@@ -66,6 +66,8 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   final _landSizeMaxController = TextEditingController();
   final _maxCropHeightController = TextEditingController();
   final _minimumVolumeController = TextEditingController();
+  final _riceOnlyPriceController = TextEditingController();
+final _ricePlusDarakPriceController = TextEditingController();
 
 
   String? selectedBrand;
@@ -140,6 +142,10 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         ? (eq.minimumVolumeKg! / 50).toStringAsFixed(0)
         : eq.minimumVolumeKg!.toStringAsFixed(0))
     : '';
+    _riceOnlyPriceController.text = 
+    eq.riceOnlyPricePerKg?.toString() ?? '2.0';
+    _ricePlusDarakPriceController.text = 
+    eq.ricePlusDarakPricePerKg?.toString() ?? '3.0';
 
       selectedCategory = eq.category;
       selectedBrand = eq.brand;
@@ -888,156 +894,119 @@ Future<void> _loadCategoriesFromFirestore() async {
                         ),
                       ],
 
-                      /// MINIMUM VOLUME REQUIREMENT
-                      if (selectedCategory?.toLowerCase().contains('rice mill') == true) ...[
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Minimum Volume Requirement',
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'For milling equipment (e.g. Rice Mill), a minimum load is required to cover startup costs.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 8),
-
-                      ToggleButtons(
-                        isSelected: [
-                          minimumVolumeRequired == true,
-                          minimumVolumeRequired == false,
-                        ],
-                        onPressed: (index) {
-                          setState(() {
-                            minimumVolumeRequired = index == 0;
-                            showMinVolumeError = false;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(20),
-                        selectedBorderColor: lightColorScheme.primary,
-                        selectedColor: Colors.white,
-                        fillColor: lightColorScheme.primary,
-                        color: lightColorScheme.primary,
-                        constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
-                        children: const [Text('Yes'), Text('No')],
-                      ),
-
-                      if (showMinVolumeError)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Required',
-                            style: TextStyle(color: Colors.red, fontSize: 12),
-                          ),
-                        ),
-                      ],
-
-                      if (minimumVolumeRequired == true && selectedCategory?.toLowerCase().contains('rice mill') == true) ...[
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Unit toggle (kg / cavans)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Unit', style: TextStyle(fontSize: 12)),
-                                const SizedBox(height: 6),
-                                ToggleButtons(
-                                  isSelected: [
-                                    selectedMinVolumeUnit == 'cavans',
-                                    selectedMinVolumeUnit == 'kg',
-                                  ],
-                                  onPressed: (index) {
-                                    final newUnit = index == 0 ? 'cavans' : 'kg';
-                                    // Convert existing value on unit switch
-                                    final raw = double.tryParse(_minimumVolumeController.text);
-                                    if (raw != null) {
-                                      _minimumVolumeController.text = newUnit == 'cavans'
-                                          ? (raw / 50).toStringAsFixed(1)   // kg → cavans
-                                          : (raw * 50).toStringAsFixed(0);  // cavans → kg
-                                    }
-                                    setState(() => selectedMinVolumeUnit = newUnit);
-                                  },
-                                  borderRadius: BorderRadius.circular(10),
-                                  selectedBorderColor: lightColorScheme.primary,
-                                  selectedColor: Colors.white,
-                                  fillColor: lightColorScheme.primary,
-                                  color: lightColorScheme.primary,
-                                  constraints: const BoxConstraints(minHeight: 40, minWidth: 70),
-                                  children: const [Text('Cavans'), Text('kg')],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            // Value input
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Minimum Volume (${selectedMinVolumeUnit})',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  CustomTextFormField(
-                                    controller: _minimumVolumeController,
-                                    keyboardType: TextInputType.number,
-                                    hint: selectedMinVolumeUnit == 'cavans'
-                                        ? 'e.g. 5 cavans'
-                                        : 'e.g. 250 kg',
-                                    validator: (value) {
-                                      if (minimumVolumeRequired != true) return null;
-                                      if (value == null || value.isEmpty) return 'Required';
-                                      final num = double.tryParse(value);
-                                      if (num == null || num <= 0) return 'Enter a valid number';
-                                      if (selectedMinVolumeUnit == 'cavans' && num < 5) {
-                                        return 'Minimum is 5 cavans (250 kg)';
-                                      }
-                                      if (selectedMinVolumeUnit == 'kg' && num < 250) {
-                                        return 'Minimum is 250 kg (5 cavans)';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  if (minimumVolumeRequired == true &&
-                                      _minimumVolumeController.text.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Builder(builder: (_) {
-                                      final val = double.tryParse(_minimumVolumeController.text);
-                                      if (val == null) return const SizedBox.shrink();
-                                      final kg = selectedMinVolumeUnit == 'cavans' ? val * 50 : val;
-                                      final cavans = selectedMinVolumeUnit == 'kg' ? val / 50 : val;
-                                      return Text(
-                                        '≈ ${cavans.toStringAsFixed(1)} cavans / ${kg.toStringAsFixed(0)} kg',
-                                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                                      );
-                                    }),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        // Batching suggestion toggle
-                       Row(
-                          children: [
-                            Checkbox(
-                              value: batchingAllowed,
-                              activeColor: lightColorScheme.primary,
-                              onChanged: (val) => setState(() => batchingAllowed = val ?? true),
-                            ),
-                            Expanded(
-                              child: Text(
-                                'Suggest "batching" to renters who don\'t meet the minimum volume',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      
+                     /// MINIMUM VOLUME REQUIREMENT (Rice Mill — always required)
+if (_isRiceMill) ...[
+  const SizedBox(height: 16),
+  const Text(
+    'Minimum Volume Requirement',
+    style: TextStyle(fontWeight: FontWeight.w500),
+  ),
+  const SizedBox(height: 4),
+  Text(
+    'Rice Mill requires a minimum load to cover startup costs.',
+    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+  ),
+  const SizedBox(height: 10),
+  Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Unit toggle (kg / cavans)
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Unit', style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 6),
+          ToggleButtons(
+            isSelected: [
+              selectedMinVolumeUnit == 'cavans',
+              selectedMinVolumeUnit == 'kg',
+            ],
+            onPressed: (index) {
+              final newUnit = index == 0 ? 'cavans' : 'kg';
+              final raw = double.tryParse(_minimumVolumeController.text);
+              if (raw != null) {
+                _minimumVolumeController.text = newUnit == 'cavans'
+                    ? (raw / 50).toStringAsFixed(1)
+                    : (raw * 50).toStringAsFixed(0);
+              }
+              setState(() => selectedMinVolumeUnit = newUnit);
+            },
+            borderRadius: BorderRadius.circular(10),
+            selectedBorderColor: lightColorScheme.primary,
+            selectedColor: Colors.white,
+            fillColor: lightColorScheme.primary,
+            color: lightColorScheme.primary,
+            constraints: const BoxConstraints(minHeight: 40, minWidth: 70),
+            children: const [Text('Cavans'), Text('kg')],
+          ),
+        ],
+      ),
+      const SizedBox(width: 12),
+      // Value input
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Minimum Volume ($selectedMinVolumeUnit)',
+              style: const TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 6),
+            CustomTextFormField(
+              controller: _minimumVolumeController,
+              keyboardType: TextInputType.number,
+              hint: selectedMinVolumeUnit == 'cavans'
+                  ? 'e.g. 5 cavans'
+                  : 'e.g. 250 kg',
+              validator: (value) {
+                if (!_isRiceMill) return null;
+                if (value == null || value.isEmpty) return 'Required';
+                final num = double.tryParse(value);
+                if (num == null || num <= 0) return 'Enter a valid number';
+                if (selectedMinVolumeUnit == 'cavans' && num < 5) {
+                  return 'Minimum is 5 cavans (250 kg)';
+                }
+                if (selectedMinVolumeUnit == 'kg' && num < 250) {
+                  return 'Minimum is 250 kg (5 cavans)';
+                }
+                return null;
+              },
+            ),
+            if (_minimumVolumeController.text.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Builder(builder: (_) {
+                final val = double.tryParse(_minimumVolumeController.text);
+                if (val == null) return const SizedBox.shrink();
+                final kg = selectedMinVolumeUnit == 'cavans' ? val * 50 : val;
+                final cavans = selectedMinVolumeUnit == 'kg' ? val / 50 : val;
+                return Text(
+                  '≈ ${cavans.toStringAsFixed(1)} cavans / ${kg.toStringAsFixed(0)} kg',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    ],
+  ),
+  const SizedBox(height: 6),
+  Row(
+    children: [
+      Checkbox(
+        value: batchingAllowed,
+        activeColor: lightColorScheme.primary,
+        onChanged: (val) => setState(() => batchingAllowed = val ?? true),
+      ),
+      Expanded(
+        child: Text(
+          'Suggest "batching" to renters who don\'t meet the minimum volume',
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+        ),
+      ),
+    ],
+  ),
+],
 
                       const Padding(
                         padding: EdgeInsets.all(5),
@@ -1104,110 +1073,158 @@ Future<void> _loadCategoriesFromFirestore() async {
                       ),
 
                       /// RENTAL RATE & PRICE
+                      /// RENTAL PRICING
                       const Text(
                         'Rental Pricing',
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 6),
 
-                      Row(
-                        children: [
-                          /// RENTAL UNIT
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Rate Type',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                const SizedBox(height: 6),
-                                DropdownButtonFormField<String>(
-                                  value: selectedRentalUnit,
-                                  isExpanded: true,
-                                  dropdownColor: lightColorScheme.onPrimary,
-                                  decoration: InputDecoration(
-                                    hintText: 'Select Rental Rate',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      borderSide: BorderSide(
-                                        color: lightColorScheme.primary
-                                            .withOpacity(0.3),
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      borderSide: BorderSide(
-                                        color: lightColorScheme.primary,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    prefixIcon: selectedRentalUnit != null
-                                        ? IconButton(
-                                            icon: const Icon(Icons.close),
-                                            onPressed: () {
-                                              setState(() {
-                                                selectedRentalUnit = null;
-                                              });
-                                            },
-                                          )
-                                        : null,
+                      if (_isRiceMill) ...[
+                        // Rice Mill tiered pricing
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            border: Border.all(color: Colors.green.shade200),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.info_outline, 
+                                      size: 14, color: Colors.green.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Rice Mill uses per-kg tiered pricing',
+                                    style: TextStyle(
+                                        fontSize: 12, color: Colors.green.shade700),
                                   ),
-                                  items: rentalUnit.map((unit) {
-                                    return DropdownMenuItem(
-                                      value: unit,
-                                      child: Text(unit),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectedRentalUnit = value;
-                                    });
-                                  },
-                                  validator: (value) =>
-                                      value == null ? 'Required' : null,
-                                ),
-                              ],
-                            ),
-                          ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
 
-                          const SizedBox(width: 12),
+                              // Rice Only Price
+                              const Text('Rice Only Price (₱/kg)',
+                                  style: TextStyle(fontSize: 12)),
+                              const SizedBox(height: 4),
+                              CustomTextFormField(
+                                controller: _riceOnlyPriceController,
+                                hint: 'Default: ₱2.00/kg',
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'Required';
+                                  final v = double.tryParse(value);
+                                  if (v == null) return 'Invalid number';
+                                  if (v < 2.0) return 'Minimum is ₱2.00/kg';
+                                  if (v > 4.0) return 'Maximum is ₱4.00/kg';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              Text('Min ₱2.00 — Max ₱4.00 per kg',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey[600])),
 
-                          /// PRICE
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Price',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                const SizedBox(height: 6),
-                                CustomTextFormField(
-                                  controller: _equipmentPriceController,
-                                  hint: '₱',
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) {
-                                    if (value == null ||
-                                        value.isEmpty ||
-                                        value == '0') {
-                                      return 'Invalid';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ],
-                            ),
+                              const SizedBox(height: 12),
+
+                              // Rice + Darak Price
+                              const Text('Rice + Darak Price (₱/kg)',
+                                  style: TextStyle(fontSize: 12)),
+                              const SizedBox(height: 4),
+                              CustomTextFormField(
+                                controller: _ricePlusDarakPriceController,
+                                hint: 'Default: ₱3.00/kg',
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'Required';
+                                  final v = double.tryParse(value);
+                                  if (v == null) return 'Invalid number';
+                                  if (v < 3.0) return 'Minimum is ₱3.00/kg';
+                                  if (v > 6.0) return 'Maximum is ₱6.00/kg';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              Text('Min ₱3.00 — Max ₱6.00 per kg',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ] else ...[
+                        // Normal pricing for non-Rice Mill
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Rate Type', style: TextStyle(fontSize: 12)),
+                                  const SizedBox(height: 6),
+                                  DropdownButtonFormField<String>(
+                                    value: selectedRentalUnit,
+                                    isExpanded: true,
+                                    dropdownColor: lightColorScheme.onPrimary,
+                                    decoration: InputDecoration(
+                                      hintText: 'Select Rental Rate',
+                                      border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(10)),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                            color: lightColorScheme.primary.withOpacity(0.3)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                            color: lightColorScheme.primary, width: 2),
+                                      ),
+                                      prefixIcon: selectedRentalUnit != null
+                                          ? IconButton(
+                                              icon: const Icon(Icons.close),
+                                              onPressed: () =>
+                                                  setState(() => selectedRentalUnit = null),
+                                            )
+                                          : null,
+                                    ),
+                                    items: rentalUnit.map((unit) {
+                                      return DropdownMenuItem(value: unit, child: Text(unit));
+                                    }).toList(),
+                                    onChanged: (value) =>
+                                        setState(() => selectedRentalUnit = value),
+                                    validator: (value) => value == null ? 'Required' : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 1,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Price', style: TextStyle(fontSize: 12)),
+                                  const SizedBox(height: 6),
+                                  CustomTextFormField(
+                                    controller: _equipmentPriceController,
+                                    hint: '₱',
+                                    keyboardType: TextInputType.number,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty || value == '0') {
+                                        return 'Invalid';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+],
+              ]),
                 ),
 
                 const SizedBox(height: 15),
@@ -1337,13 +1354,12 @@ Future<void> _loadCategoriesFromFirestore() async {
       showCropHeightError = maxCropHeightRequirement == null;
       showImageError = !hasImage;
       showAvailabilityError = availableFrom == null || availableUntil == null;
-      showMinVolumeError = _isRiceMill && minimumVolumeRequired == null;
+      // removed showMinVolumeError
     });
 
     if (!isFormValid ||
         landSizeRequirement == null ||
         maxCropHeightRequirement == null ||
-        (_isRiceMill && minimumVolumeRequired == null) ||
         !hasImage ||
         availableFrom == null ||
         availableUntil == null) {
@@ -1454,10 +1470,8 @@ Future<void> _loadCategoriesFromFirestore() async {
 
       final now = DateTime.now();
 
-      bool withinAvailabilityWindow = availableFrom != null &&
-          availableUntil != null &&
-          !now.isBefore(availableFrom!) &&
-          !now.isAfter(availableUntil!);
+      bool withinAvailabilityWindow = availableUntil != null &&
+        now.isBefore(availableUntil!);
 
       EquipmentStatus computedStatus = withinAvailabilityWindow 
           ? EquipmentStatus.available 
@@ -1494,8 +1508,8 @@ Future<void> _loadCategoriesFromFirestore() async {
         availableUntil: availableUntil,
         requirements: requirementsList,
         reviews: [],
-        price: double.parse(_equipmentPriceController.text.trim()),
-        rentalUnit: selectedRentalUnit ?? 'Per Day',
+        // price: double.parse(_equipmentPriceController.text.trim()),
+        // rentalUnit: selectedRentalUnit ?? 'Per Day',
         ownerId: currentUser.uid,
         ownerName: ownerName,
         imageUrls: imageUrls,
@@ -1513,15 +1527,25 @@ Future<void> _loadCategoriesFromFirestore() async {
             ? null
             : _maxCropHeightController.text.trim(),
         rentRate: '', // or whatever value you want
-        minimumVolumeRequired: minimumVolumeRequired ?? false,
-        minimumVolumeKg: (minimumVolumeRequired == true)
+        minimumVolumeRequired: _isRiceMill ? true : false,
+        minimumVolumeKg: _isRiceMill
             ? (selectedMinVolumeUnit == 'cavans'
                 ? (double.tryParse(_minimumVolumeController.text) ?? 0) * 50
                 : double.tryParse(_minimumVolumeController.text))
             : null,
         minimumVolumeUnit: selectedMinVolumeUnit,
         batchingAllowed: batchingAllowed,
-      );
+        price: _isRiceMill
+            ? (double.tryParse(_riceOnlyPriceController.text) ?? 2.0)
+            : double.parse(_equipmentPriceController.text.trim()),
+        rentalUnit: _isRiceMill ? 'Per kg' : (selectedRentalUnit ?? 'Per Day'),
+        riceOnlyPricePerKg: _isRiceMill
+            ? double.tryParse(_riceOnlyPriceController.text)
+            : null,
+        ricePlusDarakPricePerKg: _isRiceMill
+            ? double.tryParse(_ricePlusDarakPriceController.text)
+            : null,
+              );
 
       // ✅ NEW PART: check if updating or creating new
       if (widget.existingEquipment != null) {

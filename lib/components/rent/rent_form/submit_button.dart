@@ -25,6 +25,8 @@ class SubmitButton extends StatefulWidget {
   final Equipment item;
   final RentRequestService requestService;
   final TextEditingController? volumeController;
+  final bool keepDarak;
+  final double? estimatedMillingFee;
 
 
   const SubmitButton({
@@ -39,6 +41,8 @@ class SubmitButton extends StatefulWidget {
     required this.item,
     required this.requestService,
     this.volumeController,
+    required this.keepDarak,
+    required this.estimatedMillingFee
   });
 
   @override
@@ -62,6 +66,8 @@ Widget build(BuildContext context) {
   }
 
   final isHarvester = widget.item.category?.toLowerCase() == 'harvester';
+  final isRiceMill = widget.item.category?.toLowerCase().contains('rice mill') == true;
+
 
   return Column(
     children: [
@@ -86,52 +92,91 @@ Widget build(BuildContext context) {
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Rental Rate',
-                  style: TextStyle(fontSize: 15, color: Colors.black54),
-                ),
-                Text(
-                  '₱${widget.item.price} ${_getRateSuffix(widget.item.rentalUnit)}',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-            if (isHarvester) ...[
-              const SizedBox(height: 8),
-              const Divider(height: 1),
-              const SizedBox(height: 8),
+            if (isRiceMill) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Additional Fee',
-                    style: TextStyle(fontSize: 15, color: Colors.black54),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      border: Border.all(color: Colors.orange.shade300),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      '+ 12% of Crop Harvest',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.deepOrange,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  const Text('Pricing Type',
+                      style: TextStyle(fontSize: 15, color: Colors.black54)),
+                  Text(
+                    widget.keepDarak ? 'Rice + Darak' : 'Rice Only',
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
                   ),
                 ],
               ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Rate',
+                      style: TextStyle(fontSize: 15, color: Colors.black54)),
+                  Text(
+                    widget.keepDarak
+                        ? '₱${widget.item.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00'}/kg'
+                        : '₱${widget.item.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ],
+              ),
+              if (widget.estimatedMillingFee != null) ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Estimated Total',
+                        style: TextStyle(fontSize: 15, color: Colors.black54)),
+                    Text(
+                      '₱${widget.estimatedMillingFee!.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ],
+            ] else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Rental Rate',
+                      style: TextStyle(fontSize: 15, color: Colors.black54)),
+                  Text(
+                    '₱${widget.item.price} ${_getRateSuffix(widget.item.rentalUnit)}',
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ],
+              ),
+              if (isHarvester) ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Additional Fee',
+                        style: TextStyle(fontSize: 15, color: Colors.black54)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        border: Border.all(color: Colors.orange.shade300),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        '+ 12% of Crop Harvest',
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.deepOrange,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ],
         ),
@@ -271,7 +316,7 @@ if (widget.item.minimumVolumeRequired && widget.item.minimumVolumeKg != null) {
       // Step 4: Create request object
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-      final request = RentRequest(
+     final request = RentRequest(
         requestId: '',
         itemId: widget.item.id ?? 'Unknown',
         itemName: widget.item.name,
@@ -284,8 +329,11 @@ if (widget.item.minimumVolumeRequired && widget.item.minimumVolumeKg != null) {
         status: RentRequestStatus.pending,
         renterId: currentUserId,
         ownerId: widget.item.ownerId,
-        volumeSubmitted: double.tryParse(widget.volumeController?.text ?? ''), // NEW
-
+        volumeSubmitted: double.tryParse(widget.volumeController?.text ?? ''),
+        keepDarak: widget.keepDarak,           // NEW
+        estimatedMillingFee: widget.estimatedMillingFee, // NEW
+        agreedPrice: widget.item.price,
+        agreedRentalUnit: widget.item.rentalUnit,
       );
 
       // Step 5: Save request to Firestore

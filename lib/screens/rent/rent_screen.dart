@@ -239,18 +239,6 @@ void clearFilters() {
     await _auth.signOut();
   }
 
-  bool calculateAvailability(Equipment equipment) {
-  final from = equipment.availableFrom;
-  final until = equipment.availableUntil;
-
-  if (from == null || until == null) {
-    return false; // no dates = unavailable
-  }
-
-  final now = DateTime.now();
-  return now.isAfter(from) && now.isBefore(until);
-}
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

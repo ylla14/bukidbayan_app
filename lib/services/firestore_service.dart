@@ -171,13 +171,20 @@ class FirestoreService {
   }
 
 // Search equipment by availability (all items, available first)
+  // Stream<QuerySnapshot> getAvailableEquipment() {
+  //   return _firestore
+  //       .collection('equipment')
+  //       .orderBy('isAvailable', descending: true) // Available first
+  //       .orderBy('createdAt', descending: true)   // Most recent first
+  //       .snapshots();
+  // }
+
   Stream<QuerySnapshot> getAvailableEquipment() {
-    return _firestore
-        .collection('equipment')
-        .orderBy('isAvailable', descending: true) // Available first
-        .orderBy('createdAt', descending: true)   // Most recent first
-        .snapshots();
-  }
+  return _firestore
+      .collection('equipment')
+      .orderBy('createdAt', descending: true)
+      .snapshots();
+}
 
    /// ✅ New Cubit-friendly method
   Stream<List<Equipment>> getAvailableEquipmentStream() {
