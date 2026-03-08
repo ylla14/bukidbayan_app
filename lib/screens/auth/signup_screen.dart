@@ -1,4 +1,3 @@
-
 import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
@@ -61,302 +60,485 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  // Reusable border helper
+  OutlineInputBorder _border({Color color = Colors.black12, double width = 1.5, double radius = 14}) {
+    return OutlineInputBorder(
+      borderSide: BorderSide(color: color, width: width),
+      borderRadius: BorderRadius.circular(radius),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomScaffold(
       child: Center(
-        child: Padding(
-          // margin: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-          padding: EdgeInsets.fromLTRB(30.0, 0.0, 30.0, 20.0),
-          // decoration: BoxDecoration(
-          //   color: Colors.white,
-          //   borderRadius: BorderRadius.all(Radius.circular(20)),
-          // ),
+        child: SingleChildScrollView(
+          child: Padding(
+            // margin: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+            padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
+            // decoration: BoxDecoration(
+            //   color: Colors.white,
+            //   borderRadius: BorderRadius.all(Radius.circular(20)),
+            // ),
 
-          child: Form(
-            key: _formSignInKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Welcome!',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 30.0,
-                    color: lightColorScheme.primary,
-                  ),
-                ),
+            child: Form(
+              key: _formSignInKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
 
-                SizedBox(height: 40),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: firstNameController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter First Name';
-                          }
-                          return null;
-                        },
-                        decoration: InputDecoration(
-                          label: const Text('First Name'),
-                          hintText: 'Enter First Name',
-                          hintStyle: TextStyle(color: Colors.black26),
-
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.black12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.black12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
+                  // ── App Icon / Logo Area ──────────────────────────────────
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: lightColorScheme.primary.withOpacity(0.12),
+                      shape: BoxShape.circle,
                     ),
-                    SizedBox(width: 10), // space between fields
-                    Expanded(
-                      child: TextFormField(
-                        controller: lastNameController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please Enter Last Name';
-                          }
-                          return null;
-                        },
-                        decoration: InputDecoration(
-                          label: const Text('Last Name'),
-                          hintText: 'Enter Last Name',
-                          hintStyle: TextStyle(color: Colors.black26),
-
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.black12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.black12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 25),
-
-                TextFormField(
-                  controller: emailController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please Enter Email';
-                    }
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    label: const Text('Email'),
-                    hintText: 'Enter Email',
-                    hintStyle: TextStyle(color: Colors.black26),
-
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black12),
-                      borderRadius: BorderRadius.circular(10),
+                    child: Icon(
+                      Icons.person_add_alt_1_rounded,
+                      size: 44,
+                      color: lightColorScheme.primary,
                     ),
                   ),
-                ),
 
-                SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: passwordController,
-                      obscureText: _isPasswordHidden,
-                      obscuringCharacter: '*',
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please Enter Password!';
-                        }
-                        return null;
-                      },
-                    
-                      decoration: InputDecoration(
-                        label: const Text('Password'),
-                        hintText: 'Enter Password',
-                        hintStyle: TextStyle(color: Colors.black26),
+                  // ── Heading ───────────────────────────────────────────────
+                  Text(
+                    'Welcome!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 32.0,
+                      color: lightColorScheme.primary,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
 
-                        suffixIcon: Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: IconButton(
-                            icon: Icon(
-                              _isPasswordHidden ? Icons.visibility_off : Icons.visibility,
-                              color: Colors.black45,
+                  const SizedBox(height: 6),
+
+                  Text(
+                    'Create your account to get started',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 17.0,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+
+                  const SizedBox(height: 36),
+
+                  // ── First Name + Last Name ────────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'First Name',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
                             ),
-                            onPressed: () {
-                              setState(() {
-                                _isPasswordHidden = !_isPasswordHidden;
-                              });
-                            },
-                          ),
-                        ),
-                    
-                        border: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                    
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black12),
-                          borderRadius: BorderRadius.circular(10),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: firstNameController,
+                              style: const TextStyle(fontSize: 17),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Required';
+                                }
+                                return null;
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'First name',
+                                hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
+                                prefixIcon: Icon(
+                                  Icons.badge_outlined,
+                                  color: lightColorScheme.primary,
+                                  size: 22,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                border: _border(),
+                                enabledBorder: _border(),
+                                focusedBorder: _border(color: lightColorScheme.primary, width: 2),
+                                errorBorder: _border(color: Colors.redAccent),
+                                focusedErrorBorder: _border(color: Colors.redAccent, width: 2),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-
-                    Text(
-                      '• Minimum of 6 characters\n'
-                      '• Avoid common passwords (e.g. "123456", "password", birthdays, etc..)',
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Last Name',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: lastNameController,
+                              style: const TextStyle(fontSize: 17),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Required';
+                                }
+                                return null;
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Last name',
+                                hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
+                                prefixIcon: Icon(
+                                  Icons.badge_outlined,
+                                  color: lightColorScheme.primary,
+                                  size: 22,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                border: _border(),
+                                enabledBorder: _border(),
+                                focusedBorder: _border(color: lightColorScheme.primary, width: 2),
+                                errorBorder: _border(color: Colors.redAccent),
+                                focusedErrorBorder: _border(color: Colors.redAccent, width: 2),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                SizedBox(height: 25),
+                  const SizedBox(height: 22),
 
-                TextFormField(
-                  controller: addressController,
-                  onChanged: (_) {
-                    // If the user edits the address manually after picking
-                    // from the map, clear the stored coordinates so we
-                    // re-geocode the typed text on submit.
-                    if (_pickedAddress != null &&
-                        addressController.text != _pickedAddress) {
-                      _pickedLat = null;
-                      _pickedLng = null;
-                      _pickedAddress = null;
-                    }
-                  },
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your address or pick from the map';
-                    }
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    label: const Text('Address'),
-                    hintText: 'Type or pick on map',
-                    hintStyle: const TextStyle(color: Colors.black26),
-                    suffixIcon: Padding(
-                      padding: const EdgeInsets.only(right: 4.0),
-                      child: IconButton(
-                        icon: const Icon(Icons.map_outlined, color: Colors.black45),
-                        tooltip: 'Pick location on map',
-                        onPressed: _openLocationPicker,
+                  // ── Email Field ───────────────────────────────────────────
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Email Address',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
-                    ),
-                    border: OutlineInputBorder(
-                      borderSide: const BorderSide(color: Colors.black12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: Colors.black12),
-                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    style: const TextStyle(fontSize: 17),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Enter your email',
+                      hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
+                      prefixIcon: Icon(
+                        Icons.email_outlined,
+                        color: lightColorScheme.primary,
+                        size: 24,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: _border(),
+                      enabledBorder: _border(),
+                      focusedBorder: _border(color: lightColorScheme.primary, width: 2),
+                      errorBorder: _border(color: Colors.redAccent),
+                      focusedErrorBorder: _border(color: Colors.redAccent, width: 2),
+                    ),
+                  ),
 
-                SizedBox(height: 25),
+                  const SizedBox(height: 22),
 
-                SignButton(
-                  buttonText: _isSigningUp ? 'Signing Up' : 'Sign Up',
-                  onPressed: _isSigningUp
-                  ? null
-                  : () async {
-                      if (_formSignInKey.currentState!.validate()) {
-                        setState(() => _isSigningUp = true);
-
-                        try {
-                          final address = addressController.text.trim();
-
-                          // Use map-picked coordinates directly if available,
-                          // otherwise geocode the typed address via Nominatim.
-                          double lat, lng;
-                          if (_pickedLat != null && address == _pickedAddress) {
-                            lat = _pickedLat!;
-                            lng = _pickedLng!;
-                          } else {
-                            final coords = await authService.validateAndGeocodeAddress(address);
-                            lat = coords['latitude']!;
-                            lng = coords['longitude']!;
+                  // ── Password Field ────────────────────────────────────────
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Password',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: _isPasswordHidden,
+                        obscuringCharacter: '*',
+                        style: const TextStyle(fontSize: 17),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your password';
                           }
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Enter your password',
+                          hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
+                          prefixIcon: Icon(
+                            Icons.lock_outline_rounded,
+                            color: lightColorScheme.primary,
+                            size: 24,
+                          ),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: IconButton(
+                              iconSize: 26,
+                              icon: Icon(
+                                _isPasswordHidden
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: Colors.black45,
+                              ),
+                              tooltip: _isPasswordHidden ? 'Show password' : 'Hide password',
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordHidden = !_isPasswordHidden;
+                                });
+                              },
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: _border(),
+                          enabledBorder: _border(),
+                          focusedBorder: _border(color: lightColorScheme.primary, width: 2),
+                          errorBorder: _border(color: Colors.redAccent),
+                          focusedErrorBorder: _border(color: Colors.redAccent, width: 2),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.redAccent.withOpacity(0.25)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 18),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '• Minimum of 6 characters\n'
+                                '• Avoid common passwords (e.g. "123456", "password", birthdays, etc..)',
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
 
-                          await authService.signUp(
-                            emailController.text,
-                            passwordController.text,
-                            firstNameController.text,
-                            lastNameController.text,
-                            address,
-                            lat,
-                            lng,
-                          );
+                  const SizedBox(height: 22),
 
-                          if (!mounted) return;
-                          showConfirmSnackbar(context: context, title: 'Success', message: 'Account Created Successfully!');
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (e) => const SignInScreen()),
-                          );
-                        } catch (e) {
-                          if (!mounted) return;
-                          setState(() => _isSigningUp = false);
-                          showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
-                        }
+                  // ── Address Field ─────────────────────────────────────────
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Address',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: addressController,
+                    style: const TextStyle(fontSize: 17),
+                    onChanged: (_) {
+                      // If the user edits the address manually after picking
+                      // from the map, clear the stored coordinates so we
+                      // re-geocode the typed text on submit.
+                      if (_pickedAddress != null &&
+                          addressController.text != _pickedAddress) {
+                        _pickedLat = null;
+                        _pickedLng = null;
+                        _pickedAddress = null;
                       }
                     },
-                  ),
-
-                const SizedBox(height: 25.0),
-
-                // don't have an account
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Already have an account? ',
-                      style: TextStyle(color: Colors.black45),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (e) => const SignInScreen(),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your address or pick from the map';
+                      }
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Type address or pick on map',
+                      hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
+                      prefixIcon: Icon(
+                        Icons.location_on_outlined,
+                        color: lightColorScheme.primary,
+                        size: 24,
+                      ),
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.only(right: 6.0),
+                        child: IconButton(
+                          iconSize: 26,
+                          icon: Icon(
+                            Icons.map_outlined,
+                            color: lightColorScheme.primary,
                           ),
-                        );
-                      },
-                      child: Text(
-                        'Sign In',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: lightColorScheme.primary,
+                          tooltip: 'Pick location on map',
+                          onPressed: _openLocationPicker,
                         ),
                       ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: _border(),
+                      enabledBorder: _border(),
+                      focusedBorder: _border(color: lightColorScheme.primary, width: 2),
+                      errorBorder: _border(color: Colors.redAccent),
+                      focusedErrorBorder: _border(color: Colors.redAccent, width: 2),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20.0),
-              ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // ── Sign Up Button ────────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: SignButton(
+                      buttonText: _isSigningUp ? 'Signing Up...' : 'Sign Up',
+                      onPressed: _isSigningUp
+                          ? null
+                          : () async {
+                              if (_formSignInKey.currentState!.validate()) {
+                                setState(() => _isSigningUp = true);
+
+                                try {
+                                  final address = addressController.text.trim();
+
+                                  // Use map-picked coordinates directly if available,
+                                  // otherwise geocode the typed address via Nominatim.
+                                  double lat, lng;
+                                  if (_pickedLat != null && address == _pickedAddress) {
+                                    lat = _pickedLat!;
+                                    lng = _pickedLng!;
+                                  } else {
+                                    final coords = await authService.validateAndGeocodeAddress(address);
+                                    lat = coords['latitude']!;
+                                    lng = coords['longitude']!;
+                                  }
+
+                                  await authService.signUp(
+                                    emailController.text,
+                                    passwordController.text,
+                                    firstNameController.text,
+                                    lastNameController.text,
+                                    address,
+                                    lat,
+                                    lng,
+                                  );
+
+                                  if (!mounted) return;
+                                  showConfirmSnackbar(context: context, title: 'Success', message: 'Account Created Successfully!');
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (e) => const SignInScreen()),
+                                  );
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  setState(() => _isSigningUp = false);
+                                  showErrorSnackbar(context: context, title: 'Error', message: e.toString().replaceAll('Exception: ', ''));
+                                }
+                              }
+                            },
+                    ),
+                  ),
+
+                  const SizedBox(height: 28.0),
+
+                  // ── Divider ───────────────────────────────────────────────
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.black12, thickness: 1.2)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'Already registered?',
+                          style: TextStyle(color: Colors.black38, fontSize: 14),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.black12, thickness: 1.2)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20.0),
+
+                  // ── Sign In Link ──────────────────────────────────────────
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Already have an account? ',
+                        style: TextStyle(color: Colors.black54, fontSize: 16),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (e) => const SignInScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: lightColorScheme.primary,
+                            decoration: TextDecoration.underline,
+                            decorationColor: lightColorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24.0),
+                ],
+              ),
             ),
           ),
         ),
