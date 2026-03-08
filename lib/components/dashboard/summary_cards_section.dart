@@ -22,13 +22,17 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
   Future<void> _loadWeather() async {
     try {
       final forecast = await WeatherService().getOrFetchForecast();
+      if (forecast.isEmpty) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       final now = DateTime.now();
       final today = forecast.firstWhere(
         (d) =>
             d.date.year == now.year &&
             d.date.month == now.month &&
             d.date.day == now.day,
-        orElse: () => forecast.first,
+        orElse: () => forecast[0],
       );
       if (mounted) setState(() { _today = today; _loading = false; });
     } catch (_) {
