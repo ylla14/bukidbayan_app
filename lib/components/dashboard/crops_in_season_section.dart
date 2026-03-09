@@ -7,12 +7,14 @@ class CropItem {
   final List<String> seasons;
   final IconData icon;
   final Color color;
+  final String? imageUrl; // ADD THIS
 
   CropItem({
     required this.name,
     required this.seasons,
     required this.icon,
     required this.color,
+    this.imageUrl,
   });
 }
 
@@ -51,15 +53,16 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
       );
 
       final mapped = seasonalItems
-          .map(
-            (item) => CropItem(
-              name: item.name,
-              seasons: item.seasons,
-              icon: _iconForCrop(item.name),
-              color: _colorForCrop(item.name),
-            ),
-          )
-          .toList(growable: false);
+        .map(
+          (item) => CropItem(
+            name: item.name,
+            seasons: item.seasons,
+            icon: _iconForCrop(item.name),
+            color: _colorForCrop(item.name),
+            imageUrl: item.imageUrl, // ADD THIS
+          ),
+        )
+        .toList(growable: false);
 
       if (!mounted) return;
       setState(() {
@@ -154,22 +157,53 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                 ),
                 itemBuilder: (context, index) {
                   final crop = filteredCrops[index];
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: crop.color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: crop.color.withOpacity(0.4)),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Icon(crop.icon, size: 32, color: crop.color),
-                        const SizedBox(height: 8),
-                        Text(
-                          crop.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
+                        // Background image
+                        crop.imageUrl != null
+                            ? Image.network(
+                                crop.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(color: crop.color.withOpacity(0.1)),
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(color: crop.color.withOpacity(0.1));
+                                },
+                              )
+                            : Container(color: crop.color.withOpacity(0.1)),
+
+                        // Dark overlay so text is readable
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.6),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Crop name at the bottom
+                        Positioned(
+                          bottom: 10,
+                          left: 8,
+                          right: 8,
+                          child: Text(
+                            crop.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ],
                     ),
