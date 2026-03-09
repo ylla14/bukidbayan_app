@@ -28,7 +28,7 @@ class RentRequest {
   final String ownerId;
   final DateTime? createdAt;
   final String? declineReason;
-  final double? volumeSubmitted; // NEW
+  final double? volumeSubmitted; 
   final double? agreedPrice;      // the price per unit at time of booking
 final String? agreedRentalUnit; // 'Per Day', 'Per Hour', 'Per kg', etc.
 
