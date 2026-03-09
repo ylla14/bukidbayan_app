@@ -40,6 +40,11 @@ final String? agreedRentalUnit; // 'Per Day', 'Per Hour', 'Per kg', etc.
   final bool? keepDarak;
 final double? estimatedMillingFee;
 
+  // Farm location for this specific rent request.
+  final String? farmAddress;
+  final double? farmLatitude;
+  final double? farmLongitude;
+
   RentRequest({
     required this.requestId,
     required this.itemId,
@@ -62,7 +67,9 @@ final double? estimatedMillingFee;
     this.estimatedMillingFee,
     this.agreedPrice,
 this.agreedRentalUnit,
-    
+    this.farmAddress,
+    this.farmLatitude,
+    this.farmLongitude,
   });
 
   /// ✅ What gets stored in Firestore
@@ -86,6 +93,9 @@ this.agreedRentalUnit,
       'estimatedMillingFee': estimatedMillingFee,
       'agreedPrice': agreedPrice,
 'agreedRentalUnit': agreedRentalUnit,
+      'farmAddress': farmAddress,
+      'farmLatitude': farmLatitude,
+      'farmLongitude': farmLongitude,
     };
   }
 
@@ -126,6 +136,9 @@ this.agreedRentalUnit,
       estimatedMillingFee: (map['estimatedMillingFee'] as num?)?.toDouble(),
       agreedPrice: (map['agreedPrice'] as num?)?.toDouble(),
 agreedRentalUnit: map['agreedRentalUnit'] as String?,
+      farmAddress: map['farmAddress'] as String?,
+      farmLatitude: (map['farmLatitude'] as num?)?.toDouble(),
+      farmLongitude: (map['farmLongitude'] as num?)?.toDouble(),
     );
   }
 
@@ -148,7 +161,10 @@ agreedRentalUnit: map['agreedRentalUnit'] as String?,
     bool? keepDarak,
     double? estimatedMillingFee,
     double? agreedPrice,
-String? agreedRentalUnit,
+    String? agreedRentalUnit,
+    String? farmAddress,
+    double? farmLatitude,
+    double? farmLongitude,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -168,7 +184,10 @@ String? agreedRentalUnit,
       keepDarak: keepDarak ?? this.keepDarak,
       estimatedMillingFee: estimatedMillingFee ?? this.estimatedMillingFee,
       agreedPrice: agreedPrice ?? this.agreedPrice,
-agreedRentalUnit: agreedRentalUnit ?? this.agreedRentalUnit,
+      agreedRentalUnit: agreedRentalUnit ?? this.agreedRentalUnit,
+      farmAddress: farmAddress ?? this.farmAddress,
+      farmLatitude: farmLatitude ?? this.farmLatitude,
+      farmLongitude: farmLongitude ?? this.farmLongitude,
     );
   }
 }

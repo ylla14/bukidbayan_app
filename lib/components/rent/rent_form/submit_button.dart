@@ -27,7 +27,9 @@ class SubmitButton extends StatefulWidget {
   final TextEditingController? volumeController;
   final bool keepDarak;
   final double? estimatedMillingFee;
-
+  final String? farmAddress;
+  final double? farmLatitude;
+  final double? farmLongitude;
 
   const SubmitButton({
     super.key,
@@ -42,7 +44,10 @@ class SubmitButton extends StatefulWidget {
     required this.requestService,
     this.volumeController,
     required this.keepDarak,
-    required this.estimatedMillingFee
+    required this.estimatedMillingFee,
+    this.farmAddress,
+    this.farmLatitude,
+    this.farmLongitude,
   });
 
   @override
@@ -330,10 +335,13 @@ if (widget.item.minimumVolumeRequired && widget.item.minimumVolumeKg != null) {
         renterId: currentUserId,
         ownerId: widget.item.ownerId,
         volumeSubmitted: double.tryParse(widget.volumeController?.text ?? ''),
-        keepDarak: widget.keepDarak,           // NEW
-        estimatedMillingFee: widget.estimatedMillingFee, // NEW
+        keepDarak: widget.keepDarak,
+        estimatedMillingFee: widget.estimatedMillingFee,
         agreedPrice: widget.item.price,
         agreedRentalUnit: widget.item.rentalUnit,
+        farmAddress: widget.farmAddress,
+        farmLatitude: widget.farmLatitude,
+        farmLongitude: widget.farmLongitude,
       );
 
       // Step 5: Save request to Firestore

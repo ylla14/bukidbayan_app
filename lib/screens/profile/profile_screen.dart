@@ -1,5 +1,6 @@
 // profile_screen.dart
 import 'package:bukidbayan_app/components/customDrawer.dart';
+import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -321,6 +322,143 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ── Farm address editor ──────────────────────────────────────────────────
+  void _showFarmAddressEditDialog() {
+    final controller = TextEditingController(text: _userData?['farmAddress'] ?? '');
+    bool isSaving = false;
+
+    double? pickedLat;
+    double? pickedLng;
+    String? pickedAddress;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> openPicker() async {
+            final existingLat = _userData?['farmLatitude'] as num?;
+            final existingLng = _userData?['farmLongitude'] as num?;
+            final initial = (existingLat != null && existingLng != null)
+                ? LatLng(existingLat.toDouble(), existingLng.toDouble())
+                : null;
+
+            final result = await Navigator.push<LocationPickerResult>(
+              dialogContext,
+              MaterialPageRoute(
+                builder: (_) => LocationPickerScreen(initialPosition: initial),
+              ),
+            );
+
+            if (result != null && dialogContext.mounted) {
+              setDialogState(() {
+                controller.text = result.address;
+                pickedLat     = result.latitude;
+                pickedLng     = result.longitude;
+                pickedAddress = result.address;
+              });
+            }
+          }
+
+          Future<void> save() async {
+            final address = controller.text.trim();
+            if (address.isEmpty) return;
+            setDialogState(() => isSaving = true);
+            try {
+              double lat, lng;
+              if (pickedLat != null && address == pickedAddress) {
+                lat = pickedLat!;
+                lng = pickedLng!;
+              } else {
+                final coords = await _authService.validateAndGeocodeAddress(address);
+                lat = coords['latitude']!;
+                lng = coords['longitude']!;
+              }
+
+              // Re-register polygon with Agromonitoring
+              String? polygonId;
+              try {
+                final firstName = _userData?['firstName'] as String? ?? '';
+                final lastName  = _userData?['lastName']  as String? ?? '';
+                polygonId = await AgromonitoringService().createPolygon(
+                  lat, lng, '$firstName $lastName'.trim(),
+                );
+              } catch (e) {
+                // Non-fatal — continue without polygon update
+                debugPrint('⚠️ Agromonitoring polygon creation failed: $e');
+              }
+
+              final user = _auth.currentUser;
+              if (user != null) {
+                final updates = <String, dynamic>{
+                  'farmAddress':   address,
+                  'farmLatitude':  lat,
+                  'farmLongitude': lng,
+                };
+                if (polygonId != null) updates['farmPolygonId'] = polygonId;
+
+                await _authService.updateUserData(user.uid, updates);
+                await _loadUserData();
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Farm address updated successfully')),
+                  );
+                }
+              }
+            } catch (e) {
+              setDialogState(() => isSaving = false);
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                );
+              }
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Edit Farm Field Address'),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.streetAddress,
+              onChanged: (_) {
+                if (pickedAddress != null && controller.text != pickedAddress) {
+                  pickedLat     = null;
+                  pickedLng     = null;
+                  pickedAddress = null;
+                }
+              },
+              decoration: InputDecoration(
+                labelText: 'Farm Field Address',
+                hintText: 'Type or pick on map',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined),
+                  tooltip: 'Pick location on map',
+                  onPressed: openPicker,
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving ? null : save,
+                child: isSaving
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -367,6 +505,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildInfoCard(context, user),
                   const SizedBox(height: 24),
                   _buildLocationCard(context),
+                  const SizedBox(height: 24),
+                  _buildFarmCard(context),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -564,6 +704,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 value: '${(lat as num).toStringAsFixed(5)}, ${(lng as num).toStringAsFixed(5)}',
                 onEdit: null,
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Farm field card ──────────────────────────────────────────────────────
+  Widget _buildFarmCard(BuildContext context) {
+    final farmAddress  = _userData?['farmAddress']   as String?;
+    final lat          = _userData?['farmLatitude']  as num?;
+    final lng          = _userData?['farmLongitude'] as num?;
+    final polygonId    = _userData?['farmPolygonId'] as String?;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Farm Field',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(height: 24),
+
+            _buildInfoRow(
+              icon: Icons.grass_rounded,
+              label: 'Farm Field Address',
+              value: farmAddress?.isNotEmpty == true ? farmAddress! : 'Not set',
+              onEdit: _showFarmAddressEditDialog,
+            ),
+
+            if (lat != null && lng != null)
+              _buildInfoRow(
+                icon: Icons.my_location_rounded,
+                label: 'GPS Coordinates',
+                value: '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+                onEdit: null,
+              ),
+
+            _buildInfoRow(
+              icon: Icons.satellite_alt_rounded,
+              label: 'NDVI Monitoring',
+              value: polygonId != null ? 'Registered' : 'Not registered',
+              onEdit: null,
+            ),
           ],
         ),
       ),

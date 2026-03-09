@@ -23,6 +23,9 @@ class _RequestRentFormState extends State<RequestRentForm> {
   DateTime? returnDate;
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
+  final TextEditingController farmAddressController = TextEditingController();
+  double? _farmLat;
+  double? _farmLng;
 
   XFile? landSizeProof;
   XFile? cropHeightProof;
@@ -80,6 +83,7 @@ double? get _estimatedTotal {
     addressController.removeListener(_onFieldChanged);
     nameController.dispose();
     addressController.dispose();
+    farmAddressController.dispose();
     super.dispose();
   }
 
@@ -127,6 +131,13 @@ double? get _estimatedTotal {
               UserInfoStep(
                 nameController: nameController,
                 addressController: addressController,
+                farmAddressController: farmAddressController,
+                onFarmLocationPicked: (lat, lng) {
+                  setState(() {
+                    _farmLat = lat;
+                    _farmLng = lng;
+                  });
+                },
               ),
             ],
 
@@ -157,6 +168,11 @@ double? get _estimatedTotal {
                 returnDate: returnDate!,
                 name: nameController.text,
                 address: addressController.text,
+                farmAddress: farmAddressController.text.trim().isEmpty
+                    ? null
+                    : farmAddressController.text.trim(),
+                farmLatitude: _farmLat,
+                farmLongitude: _farmLng,
                 landSizeProof: landSizeProof,
                 cropHeightProof: cropHeightProof,
                 item: widget.item,
@@ -164,7 +180,6 @@ double? get _estimatedTotal {
                 volumeController: _volumeController,
                 keepDarak: _keepDarak,
                 estimatedMillingFee: _estimatedTotal,
-
               ),
           ],
         ),

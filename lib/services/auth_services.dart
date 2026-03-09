@@ -49,7 +49,8 @@ class AuthService {
     }
   }
 
-  // Sign up with email and password
+  // Sign up with email and password.
+  // Optionally accepts farm location fields (address, lat, lng, polygon ID from Agromonitoring).
   Future<User?> signUp(
     String email,
     String password,
@@ -57,8 +58,12 @@ class AuthService {
     String lastName,
     String address,
     double latitude,
-    double longitude,
-  ) async {
+    double longitude, {
+    String? farmAddress,
+    double? farmLatitude,
+    double? farmLongitude,
+    String? farmPolygonId,
+  }) async {
     try {
       // Create user in Firebase Auth
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
@@ -78,6 +83,10 @@ class AuthService {
           'latitude': latitude,
           'longitude': longitude,
           'locationType': 'Home',
+          if (farmAddress != null) 'farmAddress': farmAddress,
+          if (farmLatitude != null) 'farmLatitude': farmLatitude,
+          if (farmLongitude != null) 'farmLongitude': farmLongitude,
+          if (farmPolygonId != null) 'farmPolygonId': farmPolygonId,
           'createdAt': FieldValue.serverTimestamp(),
         });
 

@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
@@ -35,6 +36,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   double? _pickedLng;
   String? _pickedAddress;
 
+  // ── Farm field ──────────────────────────────────────────────────────────
+  bool _farmSameAsHome = true;
+  final TextEditingController _farmAddressController = TextEditingController();
+  double? _farmPickedLat;
+  double? _farmPickedLng;
+  String? _farmPickedAddress;
+
   Future<void> _openLocationPicker() async {
     final result = await Navigator.push<LocationPickerResult>(
       context,
@@ -50,6 +58,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  Future<void> _openFarmLocationPicker() async {
+    final result = await Navigator.push<LocationPickerResult>(
+      context,
+      MaterialPageRoute(builder: (_) => const LocationPickerScreen()),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _farmAddressController.text = result.address;
+        _farmPickedLat     = result.latitude;
+        _farmPickedLng     = result.longitude;
+        _farmPickedAddress = result.address;
+      });
+    }
+  }
+
   @override
   void dispose() {
     emailController.dispose();
@@ -57,6 +80,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     firstNameController.dispose();
     lastNameController.dispose();
     addressController.dispose();
+    _farmAddressController.dispose();
     super.dispose();
   }
 
@@ -431,6 +455,102 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // ── Farm Field Section ────────────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Checkbox(
+                          value: _farmSameAsHome,
+                          onChanged: (val) =>
+                              setState(() => _farmSameAsHome = val ?? true),
+                          activeColor: lightColorScheme.primary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Home address is the same as farm field address',
+                          style: TextStyle(fontSize: 14, color: Colors.black87),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  if (!_farmSameAsHome) ...[
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Farm Field Address',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _farmAddressController,
+                      style: const TextStyle(fontSize: 17),
+                      onChanged: (_) {
+                        if (_farmPickedAddress != null &&
+                            _farmAddressController.text != _farmPickedAddress) {
+                          _farmPickedLat = null;
+                          _farmPickedLng = null;
+                          _farmPickedAddress = null;
+                        }
+                      },
+                      validator: (value) {
+                        if (!_farmSameAsHome &&
+                            (value == null || value.trim().isEmpty)) {
+                          return 'Please enter your farm address or pick from the map';
+                        }
+                        return null;
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Type farm address or pick on map',
+                        hintStyle:
+                            const TextStyle(color: Colors.black38, fontSize: 16),
+                        prefixIcon: Icon(
+                          Icons.grass_rounded,
+                          color: lightColorScheme.primary,
+                          size: 24,
+                        ),
+                        suffixIcon: Padding(
+                          padding: const EdgeInsets.only(right: 6.0),
+                          child: IconButton(
+                            iconSize: 26,
+                            icon: Icon(
+                              Icons.map_outlined,
+                              color: lightColorScheme.primary,
+                            ),
+                            tooltip: 'Pick farm location on map',
+                            onPressed: _openFarmLocationPicker,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 18, horizontal: 16),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        border: _border(),
+                        enabledBorder: _border(),
+                        focusedBorder:
+                            _border(color: lightColorScheme.primary, width: 2),
+                        errorBorder: _border(color: Colors.redAccent),
+                        focusedErrorBorder:
+                            _border(color: Colors.redAccent, width: 2),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 32),
 
                   // ── Sign Up Button ────────────────────────────────────────
@@ -460,6 +580,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     lng = coords['longitude']!;
                                   }
 
+                                  // ── Resolve farm coordinates ──────────
+                                  double farmLat, farmLng;
+                                  String farmAddr;
+                                  if (_farmSameAsHome) {
+                                    farmLat  = lat;
+                                    farmLng  = lng;
+                                    farmAddr = address;
+                                  } else {
+                                    farmAddr = _farmAddressController.text.trim();
+                                    if (_farmPickedLat != null &&
+                                        farmAddr == _farmPickedAddress) {
+                                      farmLat = _farmPickedLat!;
+                                      farmLng = _farmPickedLng!;
+                                    } else {
+                                      final fc = await authService
+                                          .validateAndGeocodeAddress(farmAddr);
+                                      farmLat = fc['latitude']!;
+                                      farmLng = fc['longitude']!;
+                                    }
+                                  }
+
+                                  // ── Create Agromonitoring polygon ─────
+                                  String? farmPolygonId;
+                                  try {
+                                    farmPolygonId =
+                                        await AgromonitoringService()
+                                            .createPolygon(
+                                      farmLat,
+                                      farmLng,
+                                      '${firstNameController.text} ${lastNameController.text} Farm',
+                                    );
+                                  } catch (e) {
+                                    // Non-fatal — NDVI will be unavailable
+                                    // until the polygon is created later.
+                                    debugPrint('⚠️ Agromonitoring polygon creation failed: $e');
+                                  }
+
                                   await authService.signUp(
                                     emailController.text,
                                     passwordController.text,
@@ -468,6 +625,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     address,
                                     lat,
                                     lng,
+                                    farmAddress: farmAddr,
+                                    farmLatitude: farmLat,
+                                    farmLongitude: farmLng,
+                                    farmPolygonId: farmPolygonId,
                                   );
 
                                   if (!mounted) return;
