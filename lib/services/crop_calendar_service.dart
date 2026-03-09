@@ -6,11 +6,13 @@ class CropSeasonItem {
   final String name;
   final List<String> seasons;
   final List<String> regions;
+  final String? imageUrl; // ADD THIS
 
   const CropSeasonItem({
     required this.name,
     required this.seasons,
     required this.regions,
+    this.imageUrl,
   });
 }
 
@@ -153,16 +155,26 @@ class CropCalendarService {
     ];
 
     return const [
-      CropSeasonItem(name: 'Rice', seasons: ['Wet Season'], regions: regions),
-      CropSeasonItem(name: 'Corn', seasons: ['Dry Season'], regions: regions),
-      CropSeasonItem(name: 'Tomato', seasons: ['Year Round'], regions: regions),
-      CropSeasonItem(name: 'Eggplant', seasons: ['Wet Season'], regions: regions),
-      CropSeasonItem(name: 'Mung Bean', seasons: ['Dry Season'], regions: regions),
-      CropSeasonItem(name: 'Cassava', seasons: ['Year Round'], regions: regions),
-      CropSeasonItem(name: 'Banana', seasons: ['Year Round'], regions: regions),
-      CropSeasonItem(name: 'Sugarcane', seasons: ['Dry Season'], regions: regions),
-      CropSeasonItem(name: 'Coconut', seasons: ['Year Round'], regions: regions),
-      CropSeasonItem(name: 'Peanut', seasons: ['Dry Season'], regions: regions),
+      CropSeasonItem(name: 'Rice', seasons: ['Wet Season'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064316/rice_eix9px.jpg'),
+      CropSeasonItem(name: 'Corn', seasons: ['Dry Season'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064316/corn_d6al6c.jpg'),
+      CropSeasonItem(name: 'Tomato', seasons: ['Year Round'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064317/tomato_vycvfc.jpg'),
+      CropSeasonItem(name: 'Eggplant', seasons: ['Wet Season'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064315/eggplant_mnxhhf.jpg'),
+      CropSeasonItem(name: 'Mung Bean', seasons: ['Dry Season'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064317/mungbean_skpwcu.jpg'),
+      CropSeasonItem(name: 'Cassava', seasons: ['Year Round'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064315/cassava_ujjade.jpg'),
+      CropSeasonItem(name: 'Banana', seasons: ['Year Round'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064315/banana_m4uiy8.jpg'),
+      CropSeasonItem(name: 'Sugarcane', seasons: ['Dry Season'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064317/sugarcane_c3ucmj.jpg'),
+      CropSeasonItem(name: 'Coconut', seasons: ['Year Round'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064315/coconut_ewh9w7.jpg'),
+      CropSeasonItem(name: 'Peanut', seasons: ['Dry Season'], regions: regions,
+        imageUrl: 'https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064316/peanut_jok3iv.jpg'),
     ];
   }
 }

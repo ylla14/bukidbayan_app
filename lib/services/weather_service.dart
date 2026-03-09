@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 // ── Model ──────────────────────────────────────────────────────────────────
@@ -70,17 +71,20 @@ class WeatherDay {
 // ── Service ────────────────────────────────────────────────────────────────
 
 class WeatherService {
-  // Cabuyao, Laguna — matches the app's base of operations
-  static const double _lat = 14.2471;
-  static const double _lng = 121.1367;
+  // Fallback location when device location is unavailable.
+  static const double _fallbackLat = 14.2471;
+  static const double _fallbackLng = 121.1367;
 
   // Re-fetch at most once every 6 hours.
   static const Duration _cacheTtl = Duration(hours: 6);
 
   final _firestore = FirebaseFirestore.instance;
 
-  DocumentReference get _cacheDoc =>
-      _firestore.collection('system').doc('weatherCache');
+  DocumentReference _cacheDocFor(double lat, double lng) {
+    final latKey = lat.toStringAsFixed(2);
+    final lngKey = lng.toStringAsFixed(2);
+    return _firestore.collection('system').doc('weatherCache_${latKey}_$lngKey');
+  }
 
   CollectionReference get _requests =>
       _firestore.collection('rentRequests');
@@ -90,9 +94,9 @@ class WeatherService {
 
   // ── Cache helpers ────────────────────────────────────────────────────────
 
-  Future<bool> _cacheIsStale() async {
+  Future<bool> _cacheIsStale(DocumentReference cacheDoc) async {
     try {
-      final doc = await _cacheDoc.get();
+      final doc = await cacheDoc.get();
       if (!doc.exists) return true;
       final data = doc.data() as Map<String, dynamic>?;
       final lastChecked = (data?['lastChecked'] as Timestamp?)?.toDate();
@@ -103,9 +107,9 @@ class WeatherService {
     }
   }
 
-  Future<List<WeatherDay>?> _loadFromCache() async {
+  Future<List<WeatherDay>?> _loadFromCache(DocumentReference cacheDoc) async {
     try {
-      final doc = await _cacheDoc.get();
+      final doc = await cacheDoc.get();
       if (!doc.exists) return null;
       final data = doc.data() as Map<String, dynamic>?;
       final list = data?['forecast'] as List<dynamic>?;
@@ -118,20 +122,30 @@ class WeatherService {
     }
   }
 
-  Future<void> _saveToCache(List<WeatherDay> forecast) async {
-    await _cacheDoc.set({
+  Future<void> _saveToCache(
+    DocumentReference cacheDoc,
+    List<WeatherDay> forecast, {
+    required double lat,
+    required double lng,
+  }) async {
+    await cacheDoc.set({
       'lastChecked': FieldValue.serverTimestamp(),
+      'lat': lat,
+      'lng': lng,
       'forecast': forecast.map((d) => d.toMap()).toList(),
     });
   }
 
   // ── Open-Meteo fetch ─────────────────────────────────────────────────────
 
-  Future<List<WeatherDay>> _fetchFromApi() async {
+  Future<List<WeatherDay>> _fetchFromApi({
+    required double lat,
+    required double lng,
+  }) async {
     final uri = Uri.parse(
       'https://api.open-meteo.com/v1/forecast'
-      '?latitude=$_lat'
-      '&longitude=$_lng'
+      '?latitude=$lat'
+      '&longitude=$lng'
       '&daily=weather_code,precipitation_sum,wind_speed_10m_max'
       ',precipitation_probability_max,temperature_2m_max'
       '&timezone=Asia%2FManila'
@@ -172,16 +186,57 @@ class WeatherService {
 
   // ── Public API ───────────────────────────────────────────────────────────
 
+  Future<({double lat, double lng})> _resolveForecastCoordinates({
+    required bool requestPermission,
+  }) async {
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        return (lat: _fallbackLat, lng: _fallbackLng);
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied && requestPermission) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      final canUseLocation = permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+      if (!canUseLocation) {
+        return (lat: _fallbackLat, lng: _fallbackLng);
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+      );
+      return (lat: pos.latitude, lng: pos.longitude);
+    } catch (_) {
+      return (lat: _fallbackLat, lng: _fallbackLng);
+    }
+  }
+
   /// Returns the 7-day forecast, using Firestore cache when fresh (< 6 h old).
   /// Safe to call concurrently — whichever client runs first populates the
   /// cache and subsequent calls within the TTL window just read it.
-  Future<List<WeatherDay>> getOrFetchForecast() async {
-    if (!await _cacheIsStale()) {
-      final cached = await _loadFromCache();
+  Future<List<WeatherDay>> getOrFetchForecast({
+    bool requestLocationPermission = true,
+  }) async {
+    final coords = await _resolveForecastCoordinates(
+      requestPermission: requestLocationPermission,
+    );
+    final cacheDoc = _cacheDocFor(coords.lat, coords.lng);
+
+    if (!await _cacheIsStale(cacheDoc)) {
+      final cached = await _loadFromCache(cacheDoc);
       if (cached != null) return cached;
     }
-    final forecast = await _fetchFromApi();
-    await _saveToCache(forecast);
+    final forecast = await _fetchFromApi(lat: coords.lat, lng: coords.lng);
+    await _saveToCache(
+      cacheDoc,
+      forecast,
+      lat: coords.lat,
+      lng: coords.lng,
+    );
     return forecast;
   }
 
@@ -192,7 +247,10 @@ class WeatherService {
   /// so a weather API outage never breaks the rest of the app.
   Future<void> runWeatherCheck() async {
     try {
-      final forecast = await getOrFetchForecast();
+      // Avoid prompting permissions during app startup background checks.
+      final forecast = await getOrFetchForecast(
+        requestLocationPermission: false,
+      );
       await _flagAffectedRequests(forecast);
     } catch (_) {
       // Silently ignore — weather check is best-effort
@@ -328,14 +386,21 @@ class WeatherService {
         tempMaxC: 28.0,
       );
     });
-    await _saveToCache(forecast);
+    final coords = await _resolveForecastCoordinates(requestPermission: false);
+    await _saveToCache(
+      _cacheDocFor(coords.lat, coords.lng),
+      forecast,
+      lat: coords.lat,
+      lng: coords.lng,
+    );
     await _flagAffectedRequests(forecast);
   }
 
   /// Deletes the mock cache (so the next app open re-fetches real data from
   /// Open-Meteo) and clears all weather flags on active rentRequests.
   Future<void> clearTestWeather() async {
-    await _cacheDoc.delete();
+    final coords = await _resolveForecastCoordinates(requestPermission: false);
+    await _cacheDocFor(coords.lat, coords.lng).delete();
     // Pass an empty forecast → _flagAffectedRequests sees no bad days →
     // every active booking has its weatherFlag set back to false.
     await _flagAffectedRequests([]);

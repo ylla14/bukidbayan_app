@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:bukidbayan_app/services/crop_calendar_service.dart';
 
 class CropItem {
   final String name;
   final List<String> seasons;
   final IconData icon;
   final Color color;
+  final String? imageUrl; // ADD THIS
 
   CropItem({
     required this.name,
     required this.seasons,
     required this.icon,
     required this.color,
+    this.imageUrl,
   });
 }
 
@@ -23,20 +26,15 @@ class CropsInSeasonSection extends StatefulWidget {
 }
 
 class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
+  final CropCalendarService _cropCalendarService = CropCalendarService();
+
   late String selectedCategory;
   late String currentSeason;
   late String currentMonth;
+  bool _loading = true;
+  List<CropItem> allCrops = const [];
 
-  String detectSeason(int month) {
-    return (month >= 6 && month <= 11) ? "Wet Season" : "Dry Season";
-  }
-
-  final List<CropItem> allCrops = [
-    CropItem(name: "Rice", seasons: ["Wet Season"], icon: Icons.grass, color: Colors.green),
-    CropItem(name: "Corn", seasons: ["Dry Season"], icon: Icons.agriculture, color: Colors.orange),
-    CropItem(name: "Tomato", seasons: ["Wet Season", "Dry Season", "Year Round"], icon: Icons.eco, color: Colors.redAccent),
-    CropItem(name: "Eggplant", seasons: ["Wet Season"], icon: Icons.local_florist, color: Colors.purple),
-  ];
+  String detectSeason(int month) => _cropCalendarService.detectSeason(month);
 
   @override
   void initState() {
@@ -45,6 +43,36 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
     currentMonth = DateFormat('MMMM').format(now);
     currentSeason = detectSeason(now.month);
     selectedCategory = currentSeason;
+    _loadCrops();
+  }
+
+  Future<void> _loadCrops() async {
+    try {
+      final seasonalItems = await _cropCalendarService.getRegionalCrops(
+        region: 'philippines',
+      );
+
+      final mapped = seasonalItems
+        .map(
+          (item) => CropItem(
+            name: item.name,
+            seasons: item.seasons,
+            icon: _iconForCrop(item.name),
+            color: _colorForCrop(item.name),
+            imageUrl: item.imageUrl, // ADD THIS
+          ),
+        )
+        .toList(growable: false);
+
+      if (!mounted) return;
+      setState(() {
+        allCrops = mapped;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
   @override
@@ -52,8 +80,10 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
     final primary = Theme.of(context).colorScheme.primary;
     final isWet = currentSeason == "Wet Season";
 
-    final filteredCrops = selectedCategory == "Current"
+    final filteredCrops = selectedCategory == 'Current'
         ? allCrops
+            .where((c) => c.seasons.contains(currentSeason) || c.seasons.contains('Year Round'))
+            .toList(growable: false)
         : allCrops.where((c) => c.seasons.contains(selectedCategory)).toList();
 
     return Column(
@@ -103,7 +133,12 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
         const SizedBox(height: 20),
 
         // Crop grid
-        filteredCrops.isEmpty
+        _loading
+            ? const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            : filteredCrops.isEmpty
             ? const Center(
                 child: Padding(
                   padding: EdgeInsets.all(20),
@@ -122,22 +157,53 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                 ),
                 itemBuilder: (context, index) {
                   final crop = filteredCrops[index];
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: crop.color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: crop.color.withOpacity(0.4)),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Icon(crop.icon, size: 32, color: crop.color),
-                        const SizedBox(height: 8),
-                        Text(
-                          crop.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
+                        // Background image
+                        crop.imageUrl != null
+                            ? Image.network(
+                                crop.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(color: crop.color.withOpacity(0.1)),
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(color: crop.color.withOpacity(0.1));
+                                },
+                              )
+                            : Container(color: crop.color.withOpacity(0.1)),
+
+                        // Dark overlay so text is readable
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.6),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Crop name at the bottom
+                        Positioned(
+                          bottom: 10,
+                          left: 8,
+                          right: 8,
+                          child: Text(
+                            crop.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ],
                     ),
@@ -146,6 +212,30 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
               ),
       ],
     );
+  }
+
+  IconData _iconForCrop(String name) {
+    final normalized = name.toLowerCase();
+    if (normalized.contains('rice')) return Icons.grass;
+    if (normalized.contains('corn')) return Icons.agriculture;
+    if (normalized.contains('tomato')) return Icons.eco;
+    if (normalized.contains('eggplant')) return Icons.local_florist;
+    if (normalized.contains('coconut')) return Icons.park;
+    if (normalized.contains('banana')) return Icons.energy_savings_leaf;
+    return Icons.spa;
+  }
+
+  Color _colorForCrop(String name) {
+    const palette = <Color>[
+      Colors.green,
+      Colors.orange,
+      Colors.redAccent,
+      Colors.purple,
+      Colors.teal,
+      Colors.indigo,
+      Colors.brown,
+    ];
+    return palette[name.hashCode.abs() % palette.length];
   }
 
   Widget _buildCategoryButton(String category, Color primary) {
