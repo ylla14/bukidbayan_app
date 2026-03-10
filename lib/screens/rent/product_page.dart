@@ -9,6 +9,7 @@ import 'package:bukidbayan_app/screens/rent/request_rent_form.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
+import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -307,6 +308,16 @@ class ProductPage extends StatelessWidget {
       );
     }
 
+        /// Opens Google Maps (or falls back to a maps URL) for the equipment location.
+    void _openInMaps(double lat, double lng, String? label) {
+      // Replace with launchUrl() once url_launcher is in your pubspec.
+      showConfirmSnackbar(
+        context: context,
+        title: 'Equipment Location',
+        message: label ?? '$lat, $lng',
+      );
+    }
+
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('equipment')
@@ -452,6 +463,105 @@ class ProductPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+
+                CustomDivider(),
+                ProductSpecs(item: liveItem),
+                CustomDivider(),
+                ProductAvailability(item: liveItem),
+                CustomDivider(),
+
+                // ── Location ─────────────────────────────────────────────────
+                if (liveItem.location != null && liveItem.location!.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Location',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.location_on_rounded,
+                              size: 20,
+                              color: lightColorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                liveItem.location!,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                            // "Open in Maps" button — only shown if coords exist
+                            if (liveItem.latitude != null && liveItem.longitude != null)
+                              GestureDetector(
+                                onTap: () => _openInMaps(
+                                  liveItem.latitude!,
+                                  liveItem.longitude!,
+                                  liveItem.location,
+                                ),
+                                child: Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: lightColorScheme.primary.withOpacity(0.08),
+                                    border: Border.all(
+                                      color: lightColorScheme.primary.withOpacity(0.3),
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.map_outlined,
+                                        size: 14,
+                                        color: lightColorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Map',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: lightColorScheme.primary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        // Coordinates hint — subtle, shown only if available
+                        if (liveItem.latitude != null && liveItem.longitude != null) ...[
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 28),
+                            child: Text(
+                              '${liveItem.latitude!.toStringAsFixed(5)}, '
+                              '${liveItem.longitude!.toStringAsFixed(5)}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.black38,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
 
                 CustomDivider(),
                 ProductSpecs(item: liveItem),

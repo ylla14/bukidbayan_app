@@ -1,8 +1,12 @@
+import 'package:bukidbayan_app/components/rent/rent_form/address_step.dart';
 import 'package:bukidbayan_app/components/rent/rent_form/date_step.dart';
+import 'package:bukidbayan_app/components/rent/rent_form/delivery_method_step.dart';
 import 'package:bukidbayan_app/components/rent/rent_form/requirement_step.dart';
 import 'package:bukidbayan_app/components/rent/rent_form/submit_button.dart';
 import 'package:bukidbayan_app/components/rent/rent_form/user_info.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
+import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:flutter/material.dart';
 
@@ -40,30 +44,42 @@ class _RequestRentFormState extends State<RequestRentForm> {
   bool get hasCropHeightRequirement =>
       widget.item.maxCropHeightRequirement && widget.item.maxCropHeight != null;
 
-bool get isRiceMill =>
-    widget.item.category?.toLowerCase().contains('rice mill') == true;
+  bool get isRiceMill =>
+      widget.item.category?.toLowerCase().contains('rice mill') == true;
 
-bool get hasAnyRequirement =>
-    hasLandSizeRequirement || hasCropHeightRequirement || isRiceMill;
-    
+  bool get hasAnyRequirement =>
+      hasLandSizeRequirement || hasCropHeightRequirement || isRiceMill;
+
   bool get isScheduleComplete => startDate != null && returnDate != null;
-  bool get isStep2Complete => nameController.text.isNotEmpty && addressController.text.isNotEmpty;
+  bool get isStep2Complete =>
+      nameController.text.isNotEmpty &&
+      (_deliveryMethod == DeliveryMethod.pickup ||
+          addressController.text.isNotEmpty);
 
   final _volumeController = TextEditingController();
   String? _volumeError;
 
-bool _keepDarak = false;
+  bool _keepDarak = false;
 
-double? get _estimatedTotal {
-  final vol = double.tryParse(_volumeController.text);
-  if (vol == null) return null;
-  final price = _keepDarak
-      ? (widget.item.ricePlusDarakPricePerKg ?? 3.0)
-      : (widget.item.riceOnlyPricePerKg ?? 2.0);
-  // volume input is in cavans, convert to kg
-  final kg = widget.item.minimumVolumeUnit == 'cavans' ? vol * 50 : vol;
-  return kg * price;
-}
+  double? get _estimatedTotal {
+    final vol = double.tryParse(_volumeController.text);
+    if (vol == null) return null;
+    final price = _keepDarak
+        ? (widget.item.ricePlusDarakPricePerKg ?? 3.0)
+        : (widget.item.riceOnlyPricePerKg ?? 2.0);
+    // volume input is in cavans, convert to kg
+    final kg = widget.item.minimumVolumeUnit == 'cavans' ? vol * 50 : vol;
+    return kg * price;
+  }
+
+  String? _addressLat;
+  String? _addressLng;
+  String? _profileAddress;
+  double? _profileLat;
+  double? _profileLng;
+
+  // Add to _RequestRentFormState fields:
+  DeliveryMethod _deliveryMethod = DeliveryMethod.pickup;
 
   @override
   void initState() {
@@ -71,6 +87,29 @@ double? get _estimatedTotal {
 
     nameController.addListener(_onFieldChanged);
     addressController.addListener(_onFieldChanged);
+    _loadProfileAddress();
+  }
+
+  Future<void> _loadProfileAddress() async {
+    try {
+      final authService = AuthService();
+      final user = authService.currentUser;
+      if (user == null) return;
+      final data = await authService.getUserData(user.uid);
+      if (data != null && mounted) {
+        setState(() {
+          _profileAddress = data['address'] as String?;
+          _profileLat = (data['latitude'] as num?)?.toDouble();
+          _profileLng = (data['longitude'] as num?)?.toDouble();
+          // Seed addressController with profile address as default
+          if (_profileAddress != null && addressController.text.isEmpty) {
+            addressController.text = _profileAddress!;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load profile address: $e');
+    }
   }
 
   void _onFieldChanged() {
@@ -106,7 +145,14 @@ double? get _estimatedTotal {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
-            Text('Request Form', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: lightColorScheme.primary)),
+            Text(
+              'Request Form',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w500,
+                color: lightColorScheme.primary,
+              ),
+            ),
             const SizedBox(height: 10),
             RentItemExpandable(item: widget.item),
             const SizedBox(height: 16),
@@ -130,6 +176,25 @@ double? get _estimatedTotal {
             if (isScheduleComplete) ...[
               UserInfoStep(
                 nameController: nameController,
+                // addressController: addressController,
+              ),
+
+              DeliveryMethodStep(
+                selected: _deliveryMethod,
+                equipmentLocation: widget.item.location,
+                onChanged: (method) => setState(() {
+                  _deliveryMethod = method;
+                  // Clear address when switching back to pickup
+                  if (method == DeliveryMethod.pickup) {
+                    addressController.clear();
+                  }
+                }),
+              ),
+
+              AddressStep(
+                profileAddress: _profileAddress,
+                profileLat: _profileLat,
+                profileLng: _profileLng,
                 addressController: addressController,
                 farmAddressController: farmAddressController,
                 onFarmLocationPicked: (lat, lng) {
@@ -138,6 +203,10 @@ double? get _estimatedTotal {
                     _farmLng = lng;
                   });
                 },
+                onLatChanged: (v) =>
+                    setState(() => _addressLat = v?.toString()),
+                onLngChanged: (v) =>
+                    setState(() => _addressLng = v?.toString()),
               ),
             ],
 
@@ -180,6 +249,7 @@ double? get _estimatedTotal {
                 volumeController: _volumeController,
                 keepDarak: _keepDarak,
                 estimatedMillingFee: _estimatedTotal,
+                deliveryMethod: _deliveryMethod,
               ),
           ],
         ),

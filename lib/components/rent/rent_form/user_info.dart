@@ -92,6 +92,12 @@ class _UserInfoStepState extends State<UserInfoStep> {
       });
       widget.onFarmLocationPicked?.call(result.latitude, result.longitude);
     }
+      final name = userData != null
+          ? '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim()
+          : user.displayName ?? '';
+      widget.nameController.text = name;
+    }
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -106,7 +112,7 @@ class _UserInfoStepState extends State<UserInfoStep> {
         const CustomDivider(),
         const StepHeader(
           title: 'Step 2: Impormasyon ng Umuupa',
-          subtitle: 'Ilagay ang buong pangalan at address.',
+          subtitle: 'Ilagay ang iyong buong pangalan.',
         ),
         CustomTextFormField(
             controller: widget.nameController, hint: 'Buong Pangalan'),
