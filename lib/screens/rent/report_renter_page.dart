@@ -1,5 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:bukidbayan_app/services/cloudinary_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -32,7 +37,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
   final _detailsController = TextEditingController();
 
   String? _selectedReason;
-  final List<File> _evidenceImages = [];
+  final List<XFile> _evidenceImages = [];
   bool _isSubmitting = false;
 
   // ── reason options ──────────────────────────
@@ -77,7 +82,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
       maxWidth: 1080,
     );
     if (picked != null) {
-      setState(() => _evidenceImages.add(File(picked.path)));
+      setState(() => _evidenceImages.add(picked));
     }
   }
 
@@ -155,13 +160,36 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
 
     setState(() => _isSubmitting = true);
 
-    // TODO: wire up to backend / Firestore
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // 1. Upload evidence images to Cloudinary
+      List<String> evidenceUrls = [];
+      if (_evidenceImages.isNotEmpty) {
+        final cloudinary = CloudinaryService();
+        for (final xfile in _evidenceImages) {
+          final url = await cloudinary.uploadImage(xfile);
+          evidenceUrls.add(url);
+        }
+      }
 
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
+      // 2. Submit report and increment strike via StrikeService
+      final ownerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      await StrikeService().submitReport(
+        requestId: widget.requestId,
+        renterId: widget.renterId,
+        ownerId: ownerId,
+        reason: _selectedReason!,
+        details: _detailsController.text.trim(),
+        evidenceUrls: evidenceUrls,
+      );
 
-    _showSuccessDialog();
+      if (!mounted) return;
+      _showSuccessDialog();
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Hindi naisumite ang reklamo. Subukan muli.');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   void _showSuccessDialog() {
@@ -607,12 +635,22 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: Image.file(
-                _evidenceImages[index],
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-              ),
+              child: kIsWeb
+                  ? FutureBuilder<Uint8List>(
+                      future: _evidenceImages[index].readAsBytes(),
+                      builder: (_, snap) => snap.hasData
+                          ? Image.memory(snap.data!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover)
+                          : const Center(child: CircularProgressIndicator()),
+                    )
+                  : Image.file(
+                      File(_evidenceImages[index].path),
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
             ),
             Positioned(
               top: 6,

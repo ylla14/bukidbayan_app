@@ -7,6 +7,7 @@ import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -357,6 +358,26 @@ class _SubmitButtonState extends State<SubmitButton> {
     setState(() => _isSubmitting = true);
 
     try {
+      final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
+      // Block submission if the renter has 3+ strikes
+      final blockedUntil =
+          await StrikeService().blockedUntil(currentUserId);
+      if (blockedUntil != null) {
+        if (!mounted) return;
+        final unblockDate =
+            '${blockedUntil.day}/${blockedUntil.month}/${blockedUntil.year}';
+        showErrorSnackbar(
+          context: context,
+          title: 'Account Suspended',
+          message:
+              'Hindi ka maaaring mag-request ng kagamitan hanggang $unblockDate '
+              'dahil sa 3 strikes sa iyong account.',
+        );
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
       final firestoreService = FirestoreService();
       final hasConflict = await firestoreService.hasBookingConflict(
         widget.item.id!,
@@ -386,8 +407,6 @@ class _SubmitButtonState extends State<SubmitButton> {
       if (widget.cropHeightProof != null) {
         cropPath = await cloudinary.uploadImage(widget.cropHeightProof!);
       }
-
-      final currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
       final request = RentRequest(
         requestId: '',
