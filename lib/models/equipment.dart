@@ -85,6 +85,9 @@ class Equipment {
   final double? riceOnlyPricePerKg;
   final double? ricePlusDarakPricePerKg;
 
+    final DateTime? maintenanceStart;
+  final DateTime? maintenanceEnd;
+
   Equipment({
     this.id,
     required this.name,
@@ -126,6 +129,8 @@ class Equipment {
     this.minimumVolumeCavans,
     this.riceOnlyPricePerKg,
     this.ricePlusDarakPricePerKg,
+      this.maintenanceStart,
+  this.maintenanceEnd,
   });
 
   Map<String, dynamic> toMap() {
@@ -168,6 +173,8 @@ class Equipment {
       'batchingAllowed': batchingAllowed,
       'riceOnlyPricePerKg': riceOnlyPricePerKg,
       'ricePlusDarakPricePerKg': ricePlusDarakPricePerKg,
+        'maintenanceStart': maintenanceStart != null ? Timestamp.fromDate(maintenanceStart!) : null,
+  'maintenanceEnd': maintenanceEnd != null ? Timestamp.fromDate(maintenanceEnd!) : null,
     };
   }
 
@@ -231,6 +238,8 @@ class Equipment {
       batchingAllowed: data['batchingAllowed'] ?? true,
       riceOnlyPricePerKg: (data['riceOnlyPricePerKg'] as num?)?.toDouble(),
       ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
+      maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
+  maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
     );
   }
 
@@ -290,6 +299,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       batchingAllowed: data['batchingAllowed'] ?? true,
       riceOnlyPricePerKg: (data['riceOnlyPricePerKg'] as num?)?.toDouble(),
       ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
+      maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
+  maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
     );
   }
 
@@ -332,6 +343,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     bool? batchingAllowed,
     double? riceOnlyPricePerKg,
     double? ricePlusDarakPricePerKg,
+      DateTime? maintenanceStart,
+  DateTime? maintenanceEnd,
   }) {
     return Equipment(
       id: id,
@@ -373,6 +386,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       batchingAllowed: batchingAllowed ?? this.batchingAllowed,
       riceOnlyPricePerKg: riceOnlyPricePerKg ?? this.riceOnlyPricePerKg,
       ricePlusDarakPricePerKg: ricePlusDarakPricePerKg ?? this.ricePlusDarakPricePerKg,
+        maintenanceStart: maintenanceStart ?? this.maintenanceStart,
+  maintenanceEnd: maintenanceEnd ?? this.maintenanceEnd,
     );
   }
 }
