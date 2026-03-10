@@ -121,22 +121,77 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style:
                             const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
-                      onTap: () {
-                        if (!isRead) _markRead(doc.id);
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: Text(title),
-                            content: Text(body),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Close'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                     onTap: () async {
+  if (!isRead) _markRead(doc.id);
+  final canCancel = (data['canCancel'] as bool?) ?? false;
+  final requestId = data['requestId'] as String?;
+  await showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text(title),
+      content: Text(body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+        if (canCancel && requestId != null)
+          ElevatedButton.icon(
+            icon: const Icon(Icons.cancel_outlined, size: 16),
+            label: const Text('Cancel Booking'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Cancel Booking?'),
+                  content: const Text(
+                    'This will cancel your rescheduled booking. This cannot be undone.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Keep It'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Yes, Cancel'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await FirebaseFirestore.instance
+                    .collection('rentRequests')
+                    .doc(requestId)
+                    .update({
+                  'status': 'canceled',
+                  'declineReason': 'Cancelled by renter after maintenance reschedule.',
+                });
+                // Mark notification as no longer cancellable
+                await _notifCollection?.doc(doc.id).update({'canCancel': false});
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Booking cancelled.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+      ],
+    ),
+  );
+},
                     );
                   },
                 );
