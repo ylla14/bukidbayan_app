@@ -67,6 +67,8 @@ class _RentalsListState extends State<RentalsList> {
         return Colors.orange;
       case RentRequestStatus.approved:
         return Colors.blue;
+      case RentRequestStatus.readyForPickup: // ✅ NEW
+      case RentRequestStatus.pickedUp:       // ✅ NEW
       case RentRequestStatus.onTheWay:
         return Colors.indigo;
       case RentRequestStatus.inProgress:
@@ -89,6 +91,10 @@ class _RentalsListState extends State<RentalsList> {
         return "On The Way";
       case RentRequestStatus.inProgress:
         return "In Progress";
+      case RentRequestStatus.readyForPickup: // ✅ NEW
+        return 'Ready for Pick Up';
+      case RentRequestStatus.pickedUp:       // ✅ NEW
+        return 'Picked Up';
       default:
         return status.name[0].toUpperCase() + status.name.substring(1);
     }

@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum RentRequestStatus {
   pending,
   approved,
+  readyForPickup, // ✅ NEW — owner signals equipment is ready to collect
+  pickedUp,       // ✅ NEW — renter confirms they collected it
   onTheWay,
   inProgress,
   retrieving, // 👈 NEW
@@ -11,6 +13,11 @@ enum RentRequestStatus {
   completed,
   declined,
   canceled,
+}
+
+enum DeliveryMethod {
+  pickup,   // renter picks up from equipment location
+  delivery, // owner delivers to renter's address
 }
 
 class RentRequest {
@@ -39,6 +46,10 @@ final String? agreedRentalUnit; // 'Per Day', 'Per Hour', 'Per kg', etc.
 
   final bool? keepDarak;
 final double? estimatedMillingFee;
+final double? latitude;
+final double? longitude;
+final DeliveryMethod deliveryMethod;
+
 
   RentRequest({
     required this.requestId,
@@ -62,6 +73,10 @@ final double? estimatedMillingFee;
     this.estimatedMillingFee,
     this.agreedPrice,
 this.agreedRentalUnit,
+this.latitude,
+this.longitude,
+this.deliveryMethod = DeliveryMethod.pickup,
+
     
   });
 
@@ -86,6 +101,10 @@ this.agreedRentalUnit,
       'estimatedMillingFee': estimatedMillingFee,
       'agreedPrice': agreedPrice,
 'agreedRentalUnit': agreedRentalUnit,
+'latitude': latitude,
+'longitude': longitude,
+'deliveryMethod': deliveryMethod.name,
+
     };
   }
 
@@ -126,6 +145,12 @@ this.agreedRentalUnit,
       estimatedMillingFee: (map['estimatedMillingFee'] as num?)?.toDouble(),
       agreedPrice: (map['agreedPrice'] as num?)?.toDouble(),
 agreedRentalUnit: map['agreedRentalUnit'] as String?,
+latitude: (map['latitude'] as num?)?.toDouble(),
+longitude: (map['longitude'] as num?)?.toDouble(),
+deliveryMethod: DeliveryMethod.values.firstWhere(
+  (e) => e.name == (map['deliveryMethod'] ?? 'pickup'),
+  orElse: () => DeliveryMethod.pickup,
+),
     );
   }
 
@@ -149,6 +174,9 @@ agreedRentalUnit: map['agreedRentalUnit'] as String?,
     double? estimatedMillingFee,
     double? agreedPrice,
 String? agreedRentalUnit,
+double? latitude,
+double? longitude,
+DeliveryMethod? deliveryMethod,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -169,6 +197,10 @@ String? agreedRentalUnit,
       estimatedMillingFee: estimatedMillingFee ?? this.estimatedMillingFee,
       agreedPrice: agreedPrice ?? this.agreedPrice,
 agreedRentalUnit: agreedRentalUnit ?? this.agreedRentalUnit,
+latitude: latitude ?? this.latitude,
+longitude: longitude ?? this.longitude,
+deliveryMethod: deliveryMethod ?? this.deliveryMethod,
+
     );
   }
 }

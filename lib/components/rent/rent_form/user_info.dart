@@ -6,12 +6,10 @@ import 'package:flutter/material.dart';
 
 class UserInfoStep extends StatefulWidget {
   final TextEditingController nameController;
-  final TextEditingController addressController;
 
   const UserInfoStep({
     super.key,
     required this.nameController,
-    required this.addressController,
   });
 
   @override
@@ -31,16 +29,13 @@ class _UserInfoStepState extends State<UserInfoStep> {
   Future<void> _loadUserName() async {
     final user = _authService.currentUser;
     if (user != null) {
-      // Prefer Firestore stored name if available
       final userData = await _authService.getUserData(user.uid);
       final name = userData != null
           ? '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim()
           : user.displayName ?? '';
       widget.nameController.text = name;
     }
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -55,11 +50,9 @@ class _UserInfoStepState extends State<UserInfoStep> {
         const CustomDivider(),
         const StepHeader(
           title: 'Step 2: Impormasyon ng Umuupa',
-          subtitle: 'Ilagay ang buong pangalan at address.',
+          subtitle: 'Ilagay ang iyong buong pangalan.',
         ),
         CustomTextFormField(controller: widget.nameController, hint: 'Buong Pangalan'),
-        const SizedBox(height: 12),
-        CustomTextFormField(controller: widget.addressController, hint: 'Address', maxLines: 3),
       ],
     );
   }

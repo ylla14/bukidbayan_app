@@ -2,6 +2,7 @@ import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/screens/rent/report_renter_page.dart';
 import 'package:bukidbayan_app/screens/rent/review_page.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -23,24 +24,26 @@ class RequestSentPage extends StatelessWidget {
       DateFormat('MMM dd, yyyy').format(date);
 
   int _getCurrentStep(RentRequestStatus status) {
-    switch (status) {
-      case RentRequestStatus.pending:
-        return 0;
-      case RentRequestStatus.approved:
-        return 1;
-      case RentRequestStatus.onTheWay:
-      case RentRequestStatus.inProgress:
-      case RentRequestStatus.retrieving:
-      case RentRequestStatus.returned:
-        return 2;
-      case RentRequestStatus.finished:
-      case RentRequestStatus.completed:
-        return 3;
-      case RentRequestStatus.declined:
-      case RentRequestStatus.canceled:
-        return -1;
-    }
+  switch (status) {
+    case RentRequestStatus.pending:
+      return 0;
+    case RentRequestStatus.approved:
+      return 1;
+    case RentRequestStatus.readyForPickup: // ✅
+    case RentRequestStatus.pickedUp:       // ✅
+    case RentRequestStatus.onTheWay:
+    case RentRequestStatus.inProgress:
+    case RentRequestStatus.retrieving:
+    case RentRequestStatus.returned:
+      return 2;
+    case RentRequestStatus.finished:
+    case RentRequestStatus.completed:
+      return 3;
+    case RentRequestStatus.declined:
+    case RentRequestStatus.canceled:
+      return -1;
   }
+}
 
   Color _statusColor(RentRequestStatus status) {
     switch (status) {
@@ -48,6 +51,8 @@ class RequestSentPage extends StatelessWidget {
         return const Color(0xFFF59E0B);
       case RentRequestStatus.approved:
         return const Color(0xFF3B82F6);
+      case RentRequestStatus.readyForPickup: // ✅
+      case RentRequestStatus.pickedUp:       // ✅
       case RentRequestStatus.onTheWay:
       case RentRequestStatus.inProgress:
         return const Color(0xFF8B5CF6);
@@ -69,6 +74,10 @@ class RequestSentPage extends StatelessWidget {
         return Icons.hourglass_empty_rounded;
       case RentRequestStatus.approved:
         return Icons.check_circle_rounded;
+      case RentRequestStatus.readyForPickup: // ✅
+        return Icons.store_rounded;
+      case RentRequestStatus.pickedUp:       // ✅
+        return Icons.directions_walk_rounded;
       case RentRequestStatus.onTheWay:
         return Icons.local_shipping_rounded;
       case RentRequestStatus.inProgress:
@@ -94,6 +103,10 @@ class RequestSentPage extends StatelessWidget {
         return 'Request Received';
       case RentRequestStatus.approved:
         return 'Request Approved';
+      case RentRequestStatus.readyForPickup: // ✅
+        return 'Ready for Pick Up';
+      case RentRequestStatus.pickedUp:       // ✅
+        return 'Equipment Picked Up';
       case RentRequestStatus.onTheWay:
         return 'Item Is On The Way';
       case RentRequestStatus.inProgress:
@@ -119,6 +132,10 @@ class RequestSentPage extends StatelessWidget {
         return 'Waiting for owner to review your request';
       case RentRequestStatus.approved:
         return 'The owner has approved your rental request';
+      case RentRequestStatus.readyForPickup: // ✅
+        return 'The equipment is ready — head over to collect it';
+      case RentRequestStatus.pickedUp:       // ✅
+        return 'You have collected the equipment. Rental is now active';
       case RentRequestStatus.onTheWay:
         return 'The equipment is being delivered to you';
       case RentRequestStatus.inProgress:
@@ -733,6 +750,57 @@ class RequestSentPage extends StatelessWidget {
                               ),
                             ),
 
+                          // // Renter: notify on readyForPickup (info banner)
+                          //   if (isRenter && request.status == RentRequestStatus.readyForPickup)
+                          //     Container(
+                          //       margin: const EdgeInsets.only(bottom: 12),
+                          //       padding: const EdgeInsets.all(14),
+                          //       decoration: BoxDecoration(
+                          //         color: Colors.blue.shade50,
+                          //         borderRadius: BorderRadius.circular(16),
+                          //         border: Border.all(color: Colors.blue.shade200),
+                          //       ),
+                          //       child: Row(
+                          //         children: [
+                          //           Icon(Icons.store_rounded, color: Colors.blue.shade600, size: 22),
+                          //           const SizedBox(width: 10),
+                          //           const Expanded(
+                          //             child: Text(
+                          //               'The equipment is ready for pick up at the owner\'s location.',
+                          //               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          //             ),
+                          //           ),
+                          //         ],
+                          //       ),
+                          //     ),
+
+                          // Renter: just an info banner while waiting for owner confirmation
+                          if (isRenter && request.status == RentRequestStatus.readyForPickup)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.purple.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.access_time_rounded, color: Colors.purple.shade400, size: 22),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Waiting for the owner to confirm your pick up.',
+                                      style: TextStyle(
+                                          color: Colors.purple.shade700,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           // ── ACTION BUTTONS ──
                           const SizedBox(height: 4),
 
@@ -792,8 +860,83 @@ class RequestSentPage extends StatelessWidget {
                               ],
                             ),
 
-                          // Owner: On The Way
-                          if (isOwner && request.status == RentRequestStatus.approved)
+                          if (isOwner &&
+                              request.status == RentRequestStatus.approved &&
+                              request.deliveryMethod == DeliveryMethod.pickup)
+                             if (now.isBefore(request.start)) ...[
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.event_rounded, color: Colors.blue.shade600, size: 22),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Rental Not Started Yet',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.blue.shade700,
+                                                  fontSize: 13)),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'You can mark "On The Way" starting ${DateFormat('MMM dd, yyyy').format(request.start)}.',
+                                            style: TextStyle(color: Colors.blue.shade600, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ]  else ...[
+                              _actionButton(
+                                label: 'Mark as Ready for Pick Up',
+                                icon: Icons.store_rounded,
+                                color: const Color(0xFF0EA5E9),
+                                onPressed: () {
+                                  context.read<RequestBloc>().add(
+                                    RequestStatusUpdated(request.requestId, RentRequestStatus.readyForPickup),
+                                  );
+                                },
+                              ),
+                            ],
+
+                          // // Renter: Confirm Picked Up
+                          // if (isRenter && request.status == RentRequestStatus.readyForPickup)
+                          //   _actionButton(
+                          //     label: 'I\'ve Picked It Up',
+                          //     icon: Icons.directions_walk_rounded,
+                          //     color: const Color(0xFF8B5CF6),
+                          //     onPressed: () {
+                          //       context.read<RequestBloc>().add(
+                          //         RequestStatusUpdated(request.requestId, RentRequestStatus.inProgress),
+                          //       );
+                          //     },
+                          //   ),
+
+                          if (isOwner && request.status == RentRequestStatus.readyForPickup)
+                            _actionButton(
+                              label: 'Confirm Pick Up',
+                              icon: Icons.check_circle_rounded,
+                              color: const Color(0xFF8B5CF6),
+                              onPressed: () {
+                                context.read<RequestBloc>().add(
+                                  RequestStatusUpdated(request.requestId, RentRequestStatus.inProgress),
+                                );
+                              },
+                            ),
+
+                          // Owner: On The Way (delivery)
+                          if (isOwner && request.status == RentRequestStatus.approved && request.deliveryMethod == DeliveryMethod.delivery)
                             if (now.isBefore(request.start)) ...[
                               Container(
                                 margin: const EdgeInsets.only(bottom: 12),
@@ -980,6 +1123,28 @@ class RequestSentPage extends StatelessWidget {
                                       requestId: request.requestId,
                                       lenderId: request.ownerId,
                                       itemId: request.itemId,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                          // Owner: Report Renter
+                          if (isOwner &&
+                              request.status == RentRequestStatus.completed)
+                            _actionButton(
+                              label: 'Report Renter',
+                              icon: Icons.flag_rounded,
+                              color: lightColorScheme.error, // 
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ReportRenterPage(
+                                      requestId: request.requestId,
+                                      renterId: request.renterId,
+                                      renterName: request.name,   
+                                      itemName: request.itemName,
                                     ),
                                   ),
                                 );
@@ -1437,7 +1602,8 @@ class RequestSentPage extends StatelessWidget {
 
   bool _canRenterCancel(RentRequest request) {
     if (request.status == RentRequestStatus.pending) return true;
-    if (request.status == RentRequestStatus.approved) {
+    if (request.status == RentRequestStatus.approved ||
+        request.status == RentRequestStatus.readyForPickup) {
       final approvedAt = request.createdAt;
       if (approvedAt != null) {
         return DateTime.now().difference(approvedAt).inHours < 24;
@@ -1449,6 +1615,7 @@ class RequestSentPage extends StatelessWidget {
 
   bool _canOwnerCancel(RentRequest request) {
     return request.status == RentRequestStatus.pending ||
-        request.status == RentRequestStatus.approved;
+        request.status == RentRequestStatus.approved ||
+        request.status == RentRequestStatus.readyForPickup;
   }
 }
