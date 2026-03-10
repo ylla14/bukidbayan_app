@@ -49,6 +49,8 @@ class RentRequest {
   final double? latitude;
   final double? longitude;
   final DeliveryMethod deliveryMethod;
+  final String? farmAddress;
+  final double? farmLatitude;
   final double? farmLongitude;
 
   RentRequest({

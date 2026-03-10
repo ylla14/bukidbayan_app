@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 
 class UserInfoStep extends StatefulWidget {
   final TextEditingController nameController;
-  final TextEditingController addressController;
 
   /// Controller for the farm address field. The parent owns it so it can
   /// pass the value to SubmitButton.
@@ -21,7 +20,6 @@ class UserInfoStep extends StatefulWidget {
   const UserInfoStep({
     super.key,
     required this.nameController,
-    required this.addressController,
     required this.farmAddressController,
     this.onFarmLocationPicked,
   });
@@ -92,12 +90,6 @@ class _UserInfoStepState extends State<UserInfoStep> {
       });
       widget.onFarmLocationPicked?.call(result.latitude, result.longitude);
     }
-      final name = userData != null
-          ? '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim()
-          : user.displayName ?? '';
-      widget.nameController.text = name;
-    }
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -116,11 +108,6 @@ class _UserInfoStepState extends State<UserInfoStep> {
         ),
         CustomTextFormField(
             controller: widget.nameController, hint: 'Buong Pangalan'),
-        const SizedBox(height: 12),
-        CustomTextFormField(
-            controller: widget.addressController,
-            hint: 'Address',
-            maxLines: 3),
 
         const SizedBox(height: 20),
 

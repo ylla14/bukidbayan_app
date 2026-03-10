@@ -176,7 +176,13 @@ class _RequestRentFormState extends State<RequestRentForm> {
             if (isScheduleComplete) ...[
               UserInfoStep(
                 nameController: nameController,
-                // addressController: addressController,
+                farmAddressController: farmAddressController,
+                onFarmLocationPicked: (lat, lng) {
+                  setState(() {
+                    _farmLat = lat;
+                    _farmLng = lng;
+                  });
+                },
               ),
 
               DeliveryMethodStep(
@@ -196,13 +202,6 @@ class _RequestRentFormState extends State<RequestRentForm> {
                 profileLat: _profileLat,
                 profileLng: _profileLng,
                 addressController: addressController,
-                farmAddressController: farmAddressController,
-                onFarmLocationPicked: (lat, lng) {
-                  setState(() {
-                    _farmLat = lat;
-                    _farmLng = lng;
-                  });
-                },
                 onLatChanged: (v) =>
                     setState(() => _addressLat = v?.toString()),
                 onLngChanged: (v) =>
