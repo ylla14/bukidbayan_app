@@ -1,12 +1,14 @@
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/report_renter_page.dart';
 import 'package:bukidbayan_app/screens/rent/review_page.dart';
 import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -667,7 +669,7 @@ class RequestSentPage extends StatelessWidget {
                             ),
 
                           // ── OVERDUE WARNING ──
-                          if (isOverdue &&
+                          if (isRenter && isOverdue &&
                               request.status == RentRequestStatus.inProgress)
                             Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -686,6 +688,35 @@ class RequestSentPage extends StatelessWidget {
                                   Expanded(
                                     child: Text(
                                       'Return period has ended. Please return the equipment immediately.',
+                                      style: TextStyle(
+                                          color: Colors.orange.shade800,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            if (isOwner && isOverdue &&
+                              request.status == RentRequestStatus.inProgress)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border:
+                                    Border.all(color: Colors.orange.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded,
+                                      color: Colors.orange.shade600, size: 22),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Return period has ended. Please notify renter to return the equipment immediately',
                                       style: TextStyle(
                                           color: Colors.orange.shade800,
                                           fontSize: 13,
@@ -1058,7 +1089,7 @@ class RequestSentPage extends StatelessWidget {
                           // Owner: On My Way to Retrieve (overdue)
                           if (isOwner &&
                               request.status == RentRequestStatus.inProgress &&
-                              isOverdue)
+                              isOverdue && request.deliveryMethod != DeliveryMethod.pickup)
                             _actionButton(
                               label: 'On My Way to Retrieve',
                               icon: Icons.directions_car_rounded,
@@ -1092,7 +1123,7 @@ class RequestSentPage extends StatelessWidget {
                             _actionButton(
                               label: 'Confirm Return',
                               icon: Icons.task_alt_rounded,
-                              color: const Color(0xFF10B981),
+                              color: lightColorScheme.primary,
                               onPressed: () {
                                 context.read<RequestBloc>().add(
                                       RequestStatusUpdated(request.requestId,
@@ -1107,9 +1138,17 @@ class RequestSentPage extends StatelessWidget {
                             _actionButton(
                               label: 'Confirm Completion',
                               icon: Icons.verified_rounded,
-                              color: const Color(0xFF10B981),
-                              onPressed: () => _showEquipmentConditionDialog(
-                                  context, request.requestId),
+                              color: lightColorScheme.primary,
+                             onPressed: () async {
+                                final doc = await FirebaseFirestore.instance
+                                    .collection('equipment')
+                                    .doc(request.itemId)
+                                    .get();
+                                final equipment = Equipment.fromFirestore(doc);
+                                if (context.mounted) {
+                                  _showEquipmentConditionDialog(context, request.requestId, equipment);
+                                }
+                              },
                             ),
 
                           // Renter: Leave Review
@@ -1393,182 +1432,530 @@ class RequestSentPage extends StatelessWidget {
     );
   }
 
-  void _showEquipmentConditionDialog(BuildContext context, String requestId) {
-    bool? equipmentGood;
-    final commentController = TextEditingController();
-    final maintenanceDaysController = TextEditingController();
-    final requestBloc = context.read<RequestBloc>();
+void _showEquipmentConditionDialog(BuildContext context, String requestId, Equipment equipment) {
+  bool? equipmentGood;
+  final commentController = TextEditingController();
+  final maintenanceDaysController = TextEditingController();
+  final requestBloc = context.read<RequestBloc>();
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (_, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              title: const Text('Equipment Condition Report',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                        'Please fill out this form before completing the rental.',
-                        style: TextStyle(fontSize: 13, color: Colors.grey)),
-                    const SizedBox(height: 16),
-                    const Text('Is the equipment in good condition?',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => equipmentGood = true),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: equipmentGood == true
-                                    ? Colors.green
-                                    : Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: equipmentGood == true
-                                        ? Colors.green
-                                        : Colors.grey.shade400),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.check_circle,
-                                      color: equipmentGood == true
-                                          ? Colors.white
-                                          : Colors.grey,
-                                      size: 20),
-                                  const SizedBox(width: 6),
-                                  Text('Yes',
-                                      style: TextStyle(
-                                          color: equipmentGood == true
-                                              ? Colors.white
-                                              : Colors.grey.shade700,
-                                          fontWeight: FontWeight.bold)),
-                                ],
+  // Maintenance state
+  DateTime? maintenanceEndDate;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (_, setState) {
+          final durationDays = maintenanceEndDate != null
+              ? maintenanceEndDate!.difference(today).inDays + 1
+              : 0;
+          final isUnforeseen = durationDays > 7;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              'Equipment Condition Report',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Please fill out this form before completing the rental.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Is the equipment in good condition?',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Yes / No toggle ──────────────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() {
+                            equipmentGood = true;
+                            // Clear maintenance if they switch back to Yes
+                            maintenanceEndDate = null;
+                            maintenanceDaysController.clear();
+                          }),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: equipmentGood == true ? Colors.green : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: equipmentGood == true ? Colors.green : Colors.grey.shade400,
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => equipmentGood = false),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: equipmentGood == false
-                                    ? Colors.red
-                                    : Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: equipmentGood == false
-                                        ? Colors.red
-                                        : Colors.grey.shade400),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.cancel,
-                                      color: equipmentGood == false
-                                          ? Colors.white
-                                          : Colors.grey,
-                                      size: 20),
-                                  const SizedBox(width: 6),
-                                  Text('No',
-                                      style: TextStyle(
-                                          color: equipmentGood == false
-                                              ? Colors.white
-                                              : Colors.grey.shade700,
-                                          fontWeight: FontWeight.bold)),
-                                ],
-                              ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: equipmentGood == true ? Colors.white : Colors.grey,
+                                    size: 20),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Yes',
+                                  style: TextStyle(
+                                    color: equipmentGood == true ? Colors.white : Colors.grey.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    if (equipmentGood == false) ...[
-                      const SizedBox(height: 16),
-                      const Text('Describe the issue:',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: commentController,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText:
-                              'e.g. Broken blade, engine not starting...',
-                          hintStyle: const TextStyle(fontSize: 12),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.all(10),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                          'Estimated maintenance duration (days):',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: maintenanceDaysController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          hintText: 'e.g. 3',
-                          hintStyle: const TextStyle(fontSize: 12),
-                          suffixText: 'days',
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.all(10),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => equipmentGood = false),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: equipmentGood == false ? Colors.red : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: equipmentGood == false ? Colors.red : Colors.grey.shade400,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.cancel,
+                                    color: equipmentGood == false ? Colors.white : Colors.grey,
+                                    size: 20),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'No',
+                                  style: TextStyle(
+                                    color: equipmentGood == false ? Colors.white : Colors.grey.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ],
+                  ),
+
+                  // ── No branch ────────────────────────────────────
+                  if (equipmentGood == false) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Describe the issue:',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: commentController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Broken blade, engine not starting...',
+                        hintStyle: const TextStyle(fontSize: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.all(10),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Maintenance section ──────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: lightColorScheme.secondary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: lightColorScheme.secondary),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.build_outlined, color: lightColorScheme.primary, size: 16),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Schedule Maintenance',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          if (equipment.maintenanceStart != null || equipment.maintenanceEnd != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: lightColorScheme.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: lightColorScheme.outlineVariant),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: lightColorScheme.primary, size: 16),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      'Already in maintenance'
+                                      '${equipment.maintenanceStart != null ? ' from ${DateFormat('MMM d').format(equipment.maintenanceStart!)}' : ''}'
+                                      '${equipment.maintenanceEnd != null ? ' to ${DateFormat('MMM d, yyyy').format(equipment.maintenanceEnd!)}' : ''}.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: lightColorScheme.onSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else ...[
+                            _buildDateRow(
+                              label: 'Start',
+                              value: DateFormat('MMM d, yyyy').format(today),
+                              icon: Icons.today,
+                              color: lightColorScheme.primary,
+                              isFixed: true,
+                              onTap: null,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildDateRow(
+                              label: 'End',
+                              value: maintenanceEndDate != null
+                                  ? DateFormat('MMM d, yyyy').format(maintenanceEndDate!)
+                                  : 'Tap to select end date',
+                              icon: Icons.event,
+                              color: lightColorScheme.primary,
+                              isFixed: false,
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: dialogContext,
+                                  initialDate: today.add(const Duration(days: 1)),
+                                  firstDate: today.add(const Duration(days: 1)),
+                                  lastDate: today.add(const Duration(days: 365)),
+                                  helpText: 'Select maintenance end date',
+                                );
+                                if (picked != null) {
+                                  setState(() => maintenanceEndDate = DateTime(
+                                      picked.year, picked.month, picked.day, 23, 59, 59));
+                                }
+                              },
+                            ),
+                            if (maintenanceEndDate != null) ...[
+                              const SizedBox(height: 10),
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isUnforeseen
+                                      ? lightColorScheme.error.withOpacity(0.08)
+                                      : lightColorScheme.secondary.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isUnforeseen
+                                        ? lightColorScheme.error
+                                        : lightColorScheme.primary,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isUnforeseen ? Icons.warning_amber_rounded : Icons.info_outline,
+                                      color: isUnforeseen ? lightColorScheme.error : lightColorScheme.primary,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        isUnforeseen
+                                            ? '$durationDays days — Unforeseen. All bookings will be CANCELLED.'
+                                            : '$durationDays day${durationDays > 1 ? 's' : ''} — Bookings will be rescheduled.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: isUnforeseen
+                                              ? lightColorScheme.error
+                                              : lightColorScheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
                   ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: equipmentGood == null
+                    ? null
+                    : () async {
+                        Navigator.pop(dialogContext);
+
+                        // Complete the rental
+                        requestBloc.add(
+                            RequestStatusUpdated(requestId, RentRequestStatus.completed));
+
+                        // If No + maintenance end date selected → schedule it
+                        if (equipmentGood == false && maintenanceEndDate != null) {
+                          await _applyMaintenanceFromConditionReport(
+                            context: context,
+                            equipment: equipment,
+                            maintenanceEnd: maintenanceEndDate!,
+                            today: today,
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(backgroundColor: lightColorScheme.primary),
+                child: const Text(
+                  'Submit & Complete',
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    commentController.dispose();
-                    maintenanceDaysController.dispose();
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Cancel'),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+// ── Inline date row widget for the dialog ───────────────────────────────────
+Widget _buildDateRow({
+  required String label,
+  required String value,
+  required IconData icon,
+  required Color color,
+  required bool isFixed,
+  required VoidCallback? onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isFixed ? Colors.grey.shade50 : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isFixed ? Colors.grey.shade300 : color.withOpacity(0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey.shade500,
+                  fontWeight: FontWeight.w500,
                 ),
-                ElevatedButton(
-                  onPressed: equipmentGood == null
-                      ? null
-                      : () {
-                          Navigator.pop(dialogContext);
-                          requestBloc.add(RequestStatusUpdated(
-                              requestId, RentRequestStatus.completed));
-                        },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green),
-                  child: const Text('Submit & Complete',
-                      style: TextStyle(color: Colors.white)),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isFixed ? Colors.grey.shade600 : Colors.black87,
                 ),
-              ],
-            );
-          },
+              ),
+            ],
+          ),
+          if (!isFixed) ...[
+            const Spacer(),
+            Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 16),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Applies maintenance after condition report (same logic as _scheduleMaintenance) ─
+Future<void> _applyMaintenanceFromConditionReport({
+  required BuildContext context,
+  required Equipment equipment,
+  required DateTime maintenanceEnd,
+  required DateTime today,
+}) async {
+  final durationDays = maintenanceEnd.difference(today).inDays + 1;
+  final isUnforeseen = durationDays > 7;
+  final firstDayAfter = maintenanceEnd.add(const Duration(days: 1));
+
+  try {
+    final db = FirebaseFirestore.instance;
+
+    // Update equipment status
+    await db.collection('equipment').doc(equipment.id).update({
+      'status': EquipmentStatus.underMaintenance.toValue(),
+      'isAvailable': false,
+      'maintenanceStart': Timestamp.fromDate(today),
+      'maintenanceEnd': Timestamp.fromDate(maintenanceEnd),
+    });
+
+    const activeStatuses = ['pending', 'approved', 'readyForPickup'];
+
+    final bookingsSnap = await db
+        .collection('rentRequests')
+        .where('itemId', isEqualTo: equipment.id)
+        .where('status', whereIn: activeStatuses)
+        .get();
+
+    final batch = db.batch();
+    final List<Future<void>> notifFutures = [];
+
+    for (final doc in bookingsSnap.docs) {
+      final request = RentRequest.fromDoc(doc);
+
+      final bookingStart = DateTime(request.start.year, request.start.month, request.start.day);
+      final bookingEnd = DateTime(request.end.year, request.end.month, request.end.day);
+      final maintenanceEndDay = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+
+      final overlaps =
+          bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
+          bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+
+      if (!overlaps) continue;
+
+      if (isUnforeseen) {
+        batch.update(doc.reference, {
+          'status': RentRequestStatus.canceled.name,
+          'declineReason':
+              'Equipment under unforeseen maintenance from ${DateFormat('MMM d').format(today)} '
+              'to ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. We apologize for the inconvenience.',
+        });
+        notifFutures.add(_sendNotification(
+          userId: request.renterId,
+          title: '🔧 Booking Cancelled — Maintenance',
+          body: 'Your booking for "${equipment.name}" '
+              '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
+              'was cancelled due to unforeseen maintenance ($durationDays days).',
+          type: 'maintenance_cancel',
+          extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
+        ));
+      } else {
+        final bookingDuration = request.end.difference(request.start);
+        final newStart = DateTime(
+          firstDayAfter.year, firstDayAfter.month, firstDayAfter.day,
+          request.start.hour, request.start.minute,
         );
-      },
-    );
+        final newEnd = newStart.add(bookingDuration);
+
+        final exceedsAvailability = equipment.availableUntil != null &&
+            newEnd.isAfter(equipment.availableUntil!);
+
+        if (exceedsAvailability) {
+          batch.update(doc.reference, {
+            'status': RentRequestStatus.canceled.name,
+            'declineReason':
+                'Booking could not be rescheduled after maintenance — new dates exceed availability window.',
+          });
+          notifFutures.add(_sendNotification(
+            userId: request.renterId,
+            title: '🔧 Booking Cancelled — Outside Availability',
+            body: 'Your booking for "${equipment.name}" could not be rescheduled after maintenance '
+                'because the new dates exceed the equipment\'s availability window.',
+            type: 'maintenance_cancel',
+            extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
+          ));
+        } else {
+          batch.update(doc.reference, {
+            'start': Timestamp.fromDate(newStart),
+            'end': Timestamp.fromDate(newEnd),
+            'maintenanceRescheduled': true,
+          });
+          notifFutures.add(_sendNotification(
+            userId: request.renterId,
+            title: '📅 Booking Rescheduled — Maintenance',
+            body: 'Your booking for "${equipment.name}" was moved to '
+                '${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
+                'due to maintenance. You may cancel if the new date doesn\'t work for you.',
+            type: 'maintenance_reschedule',
+            extra: {
+              'requestId': request.requestId,
+              'equipmentId': equipment.id,
+              'canCancel': true,
+              'newStart': Timestamp.fromDate(newStart),
+              'newEnd': Timestamp.fromDate(newEnd),
+            },
+          ));
+        }
+      }
+    }
+
+    await batch.commit();
+    await Future.wait(notifFutures);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isUnforeseen
+                ? '⚠️ Maintenance set. Affected bookings cancelled.'
+                : '✅ Maintenance scheduled. Bookings rescheduled.',
+          ),
+          backgroundColor: isUnforeseen ? Colors.red : Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maintenance error: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
+}
+
+// --------------- HELPER: send in-app notification ---------------
+Future<void> _sendNotification({
+  required String userId,
+  required String title,
+  required String body,
+  required String type,
+  Map<String, dynamic> extra = const {},
+}) async {
+  await FirebaseFirestore.instance
+      .collection('notifications')
+      .doc(userId)
+      .collection('items')
+      .add({
+    'title': title,
+    'body': body,
+    'type': type,
+    'read': false,
+    'createdAt': FieldValue.serverTimestamp(),
+    ...extra,
+  });
+}
 
   void _showCancelDialog(BuildContext context, String requestId,
       {required bool isRenter}) {

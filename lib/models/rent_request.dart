@@ -3,11 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum RentRequestStatus {
   pending,
   approved,
-  readyForPickup, // ✅ NEW — owner signals equipment is ready to collect
-  pickedUp, // ✅ NEW — renter confirms they collected it
+  readyForPickup, // NEW — owner signals equipment is ready to collect
+  pickedUp, // NEW — renter confirms they collected it
   onTheWay,
   inProgress,
-  retrieving, // 👈 NEW
+  retrieving, // NEW
   returned,
   finished,
   completed,
@@ -21,7 +21,7 @@ enum DeliveryMethod {
 }
 
 class RentRequest {
-  final String requestId; // 🔑 Firestore document ID
+  final String requestId; // Firestore document ID
   final String itemId;
   final String itemName;
   final String name;

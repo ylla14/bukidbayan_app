@@ -127,7 +127,6 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   bool?  minimumVolumeRequired;
   bool   showMinVolumeError     = false;
   String selectedMinVolumeUnit  = 'cavans';
-  bool   batchingAllowed        = true;
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -165,7 +164,6 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       selectedCondition   = eq.condition;
       selectedRentalUnit  = eq.rentalUnit;
       selectedMinVolumeUnit = eq.minimumVolumeUnit;
-      batchingAllowed     = eq.batchingAllowed;
 
       operatorIncluded          = eq.operatorIncluded;
       landSizeRequirement       = eq.landSizeRequirement;
@@ -460,7 +458,6 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                   selectedCategory = val;
                                   if (val?.toLowerCase().contains('rice mill') != true) {
                                     minimumVolumeRequired = null;
-                                    batchingAllowed = true;
                                     _minimumVolumeController.clear();
                                     showMinVolumeError = false;
                                   }
@@ -1009,23 +1006,6 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: batchingAllowed,
-                              activeColor: lightColorScheme.primary,
-                              onChanged: (v) =>
-                                  setState(() => batchingAllowed = v ?? true),
-                            ),
-                            Expanded(
-                              child: Text(
-                                "Suggest \"batching\" to renters who don't meet the minimum volume",
-                                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
 
                       const Padding(padding: EdgeInsets.all(5), child: Divider(thickness: 1)),
@@ -1447,7 +1427,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                 : double.tryParse(_minimumVolumeController.text))
             : null,
         minimumVolumeUnit:      selectedMinVolumeUnit,
-        batchingAllowed:        batchingAllowed,
+        batchingAllowed:        false,
         price: _isRiceMill
             ? (double.tryParse(_riceOnlyPriceController.text) ?? 2.0)
             : double.parse(_equipmentPriceController.text.trim()),
