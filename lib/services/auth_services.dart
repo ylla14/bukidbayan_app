@@ -7,11 +7,31 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  static const String _shadowEmailDomain = '@phone.bukidbayan.app';
+
   // Get current user
   User? get currentUser => _auth.currentUser;
 
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  // ── Identifier validation & helpers ──────────────────────────────────────
+
+  /// Returns true if [input] is a valid login identifier:
+  ///   • exactly 11 digits (phone, e.g. 09123456789), OR
+  ///   • a valid email (alphanumeric @ letters-only-domain . 2+ char TLD)
+  static bool isValidIdentifier(String input) {
+    final trimmed = input.trim();
+    if (RegExp(r'^\d{11}$').hasMatch(trimmed)) return true;
+    if (RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z]+\.[a-zA-Z]{2,}$').hasMatch(trimmed)) return true;
+    return false;
+  }
+
+  bool _isPhoneNumber(String input) =>
+      RegExp(r'^\d{11}$').hasMatch(input.trim());
+
+  String _toShadowEmail(String phone) =>
+      '${phone.trim()}$_shadowEmailDomain';
 
   // Validate an address string via Nominatim (OpenStreetMap).
   // Returns {'latitude': ..., 'longitude': ...} on success.
@@ -49,10 +69,11 @@ class AuthService {
     }
   }
 
-  // Sign up with email and password.
+  // Sign up with a phone number (new users only).
+  // The phone number is converted to a shadow email internally for Firebase Auth.
   // Optionally accepts farm location fields (address, lat, lng, polygon ID from Agromonitoring).
   Future<User?> signUp(
-    String email,
+    String phoneNumber,
     String password,
     String firstName,
     String lastName,
@@ -64,10 +85,11 @@ class AuthService {
     double? farmLongitude,
     String? farmPolygonId,
   }) async {
+    final shadowEmail = _toShadowEmail(phoneNumber);
     try {
-      // Create user in Firebase Auth
+      // Create user in Firebase Auth using the shadow email
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
+        email: shadowEmail,
         password: password,
       );
 
@@ -76,7 +98,9 @@ class AuthService {
       if (user != null) {
         // Store additional user data in Firestore
         await _firestore.collection('users').doc(user.uid).set({
-          'email': email,
+          'email': shadowEmail,
+          'phoneNumber': phoneNumber.trim(),
+          'isPhoneUser': true,
           'firstName': firstName,
           'lastName': lastName,
           'address': address,
@@ -99,7 +123,7 @@ class AuthService {
       if (e.code == 'weak-password') {
         throw Exception('The password provided is too weak.');
       } else if (e.code == 'email-already-in-use') {
-        throw Exception('An account already exists for that email.');
+        throw Exception('That phone number is already registered.');
       } else {
         throw Exception(e.message ?? 'An error occurred during sign up.');
       }
@@ -108,25 +132,59 @@ class AuthService {
     }
   }
 
-  // Login with email and password
-  Future<User?> login(String email, String password) async {
+  // Login with either an email address or an 11-digit phone number.
+  // If a phone number is provided, Firestore is queried first to resolve
+  // the associated email (real or shadow) before authenticating.
+  Future<User?> login(String identifier, String password) async {
+    String emailToUse = identifier.trim();
+
+    if (_isPhoneNumber(identifier)) {
+      final query = await _firestore
+          .collection('users')
+          .where('phoneNumber', isEqualTo: identifier.trim())
+          .limit(1)
+          .get();
+      if (query.docs.isEmpty) {
+        throw Exception('No account found for that phone number.');
+      }
+      emailToUse = query.docs.first['email'] as String;
+    }
+
     try {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
+        email: emailToUse,
         password: password,
       );
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         throw Exception('No user found for that email.');
-      } else if (e.code == 'wrong-password') {
+      } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
         throw Exception('Wrong password provided.');
       } else {
         throw Exception(e.message ?? 'An error occurred during login.');
       }
     } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('An error occurred: $e');
     }
+  }
+
+  // Register a phone number for an existing email-based user.
+  // Validates uniqueness before saving.
+  Future<void> registerPhone(String uid, String phoneNumber) async {
+    final phone = phoneNumber.trim();
+    final existing = await _firestore
+        .collection('users')
+        .where('phoneNumber', isEqualTo: phone)
+        .limit(1)
+        .get();
+    if (existing.docs.isNotEmpty && existing.docs.first.id != uid) {
+      throw Exception('That phone number is already registered to another account.');
+    }
+    await _firestore.collection('users').doc(uid).update({
+      'phoneNumber': phone,
+    });
   }
 
   // Logout

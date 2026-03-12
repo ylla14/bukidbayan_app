@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
 import 'package:bukidbayan_app/screens/location_picker_screen.dart';
@@ -21,7 +22,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool rememberPassword = true;
   final AuthService authService = AuthService();
 
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
@@ -75,7 +76,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
-    emailController.dispose();
+    phoneController.dispose();
     passwordController.dispose();
     firstNameController.dispose();
     lastNameController.dispose();
@@ -251,11 +252,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                   const SizedBox(height: 22),
 
-                  // ── Email Field ───────────────────────────────────────────
+                  // ── Phone Number Field ────────────────────────────────────
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Email Address',
+                      'Phone Number',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -265,20 +266,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     style: const TextStyle(fontSize: 17),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return 'Please enter your phone number';
+                      }
+                      if (!RegExp(r'^\d{11}$').hasMatch(value)) {
+                        return 'Enter a valid 11-digit PH number (e.g. 09123456789)';
                       }
                       return null;
                     },
                     decoration: InputDecoration(
-                      hintText: 'Enter your email',
+                      hintText: '09XX XXX XXXX',
                       hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
                       prefixIcon: Icon(
-                        Icons.email_outlined,
+                        Icons.phone_outlined,
                         color: lightColorScheme.primary,
                         size: 24,
                       ),
@@ -618,7 +623,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   }
 
                                   await authService.signUp(
-                                    emailController.text,
+                                    phoneController.text,
                                     passwordController.text,
                                     firstNameController.text,
                                     lastNameController.text,

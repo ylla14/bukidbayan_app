@@ -1,9 +1,9 @@
 import 'package:bukidbayan_app/components/bottom_nav.dart';
 import 'package:bukidbayan_app/widgets/sign_button.dart';
 import 'package:flutter/material.dart';
-import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
 
 import 'package:bukidbayan_app/screens/auth/signup_screen.dart';
+import 'package:bukidbayan_app/screens/auth/phone_registration_prompt.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_scaffold.dart';
@@ -19,7 +19,7 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final _formSignInKey = GlobalKey<FormState>();
   final AuthService authService = AuthService();
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController identifierController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool rememberPassword = true;
   bool _isPasswordHidden = true;
@@ -81,11 +81,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 36),
 
-                  // ── Email Field ───────────────────────────────────────────
+                  // ── Identifier Field (email or phone) ─────────────────────
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Email Address',
+                      'Email or Phone Number',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -95,20 +95,23 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: identifierController,
+                    keyboardType: TextInputType.text,
                     style: const TextStyle(fontSize: 17),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return 'Please enter your email or phone number';
+                      }
+                      if (!AuthService.isValidIdentifier(value)) {
+                        return 'Enter a valid email or 11-digit phone number';
                       }
                       return null;
                     },
                     decoration: InputDecoration(
-                      hintText: 'Enter your email',
+                      hintText: 'Email or 09XX XXX XXXX',
                       hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
                       prefixIcon: Icon(
-                        Icons.email_outlined,
+                        Icons.contact_phone_outlined,
                         color: lightColorScheme.primary,
                         size: 24,
                       ),
@@ -338,14 +341,30 @@ class _SignInScreenState extends State<SignInScreen> {
                               setState(() => _isSigningIn = true);
 
                               try {
-                                var user = await authService.login(
-                                  emailController.text,
+                                final user = await authService.login(
+                                  identifierController.text,
                                   passwordController.text,
                                 );
 
                                 if (!mounted) return;
 
                                 if (user != null) {
+                                  // For existing email-based users: prompt to
+                                  // register a phone number if they don't have one.
+                                  final userData = await authService.getUserData(user.uid);
+                                  final hasPhone = (userData?['phoneNumber'] as String?)?.isNotEmpty == true;
+                                  final isPhoneUser = userData?['isPhoneUser'] == true;
+
+                                  if (!mounted) return;
+                                  if (!hasPhone && !isPhoneUser) {
+                                    await showPhoneRegistrationPrompt(
+                                      context,
+                                      user.uid,
+                                      authService,
+                                    );
+                                  }
+
+                                  if (!mounted) return;
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(builder: (_) => BottomNav()),
