@@ -25,7 +25,7 @@ class DeliveryMethodStep extends StatelessWidget {
       children: [
         const CustomDivider(),
         const StepHeader(
-          title: 'Step 2: Paraan ng Pagkuha',
+          title: 'Step 3: Paraan ng Pagkuha',
           subtitle: 'Piliin kung kukuha ka mismo o ipapadala.',
         ),
         const SizedBox(height: 4),

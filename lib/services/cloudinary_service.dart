@@ -6,63 +6,73 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 
 class CloudinaryService {
-  // Cloudinary Configuration
   static const String CLOUD_NAME = 'ddgxxpdt9';
-
   static const String UPLOAD_PRESET = 'bukidbayan_upload';
+  static const String _BASE_URL =
+      'https://api.cloudinary.com/v1_1/$CLOUD_NAME';
 
-  // Cloudinary upload URL
-  static const String UPLOAD_URL =
-      'https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload';
+  // ── Detect video by extension ──────────────────────────────
+  static bool _isVideo(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    return ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v'].contains(ext);
+  }
 
-  /// Upload a single image to Cloudinary
-  /// Returns the secure URL of the uploaded image
-  Future<String> uploadImage(XFile imageFile) async {
+  // ── Correct MIME type per extension ───────────────────────
+  static String _mimeType(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'mp4':  return 'video/mp4';
+      case 'mov':  return 'video/quicktime';
+      case 'avi':  return 'video/x-msvideo';
+      case 'mkv':  return 'video/x-matroska';
+      case 'webm': return 'video/webm';
+      case 'm4v':  return 'video/x-m4v';
+      case 'png':  return 'image/png';
+      case 'gif':  return 'image/gif';
+      case 'webp': return 'image/webp';
+      default:     return 'image/jpeg';
+    }
+  }
+
+  /// Upload a single image OR video to Cloudinary.
+  /// Automatically routes to /image/upload or /video/upload.
+  /// Returns the secure URL.
+  Future<String> uploadImage(XFile file) async {
+    final isVideo = _isVideo(file.name);
+    // ── Key fix: use /video/upload for videos, /image/upload for images ──
+    final uploadUrl = '$_BASE_URL/${isVideo ? 'video' : 'image'}/upload';
+
     try {
-      // Read image bytes
-      final Uint8List imageBytes;
+      final Uint8List fileBytes;
       if (kIsWeb) {
-        imageBytes = await imageFile.readAsBytes();
+        fileBytes = await file.readAsBytes();
       } else {
-        imageBytes = await File(imageFile.path).readAsBytes();
+        fileBytes = await File(file.path).readAsBytes();
       }
 
-      // Convert to base64 for upload
-      final base64Image = base64Encode(imageBytes);
-      final imageData = 'data:image/jpeg;base64,$base64Image';
-
-      // Create multipart request
-      final request = http.MultipartRequest('POST', Uri.parse(UPLOAD_URL));
-
-      // Add upload preset
+      final request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
       request.fields['upload_preset'] = UPLOAD_PRESET;
+      request.fields['tags'] = 'bukidbayan,equipment';
+      request.fields['folder'] = 'bukidbayan/equipment';
 
-      // Add the image file
+      // ── Correct MIME so Cloudinary doesn't reject the file ──
+      final mime = _mimeType(file.name).split('/');
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
-          imageBytes,
-          filename: imageFile.name,
+          fileBytes,
+          filename: file.name,
+          contentType: http.MediaType(mime[0], mime[1]),
         ),
       );
 
-      // Add tags for better organization
-      request.fields['tags'] = 'bukidbayan,equipment';
-
-      // Add folder organization
-      request.fields['folder'] = 'bukidbayan/equipment';
-
-      // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-
-        // Return the secure URL
         final secureUrl = responseData['secure_url'] as String;
-
-        print('Image uploaded successfully: $secureUrl');
+        print('✅ Cloudinary ${isVideo ? 'video' : 'image'} uploaded: $secureUrl');
         return secureUrl;
       } else {
         throw Exception(
@@ -70,56 +80,33 @@ class CloudinaryService {
         );
       }
     } catch (e) {
-      throw Exception('Failed to upload image: $e');
+      throw Exception('Failed to upload ${isVideo ? 'video' : 'image'}: $e');
     }
   }
 
-  /// Upload multiple images to Cloudinary
-  /// Returns a list of secure URLs
-  /// Shows upload progress through optional callback
+  /// Upload multiple files (mix of images and videos).
   Future<List<String>> uploadMultipleImages(
-    List<XFile> imageFiles, {
+    List<XFile> files, {
     Function(int current, int total)? onProgress,
   }) async {
     final List<String> uploadedUrls = [];
-
-    for (int i = 0; i < imageFiles.length; i++) {
+    for (int i = 0; i < files.length; i++) {
+      if (onProgress != null) onProgress(i + 1, files.length);
       try {
-        // Notify progress
-        if (onProgress != null) {
-          onProgress(i + 1, imageFiles.length);
-        }
-
-        final url = await uploadImage(imageFiles[i]);
+        final url = await uploadImage(files[i]);
         uploadedUrls.add(url);
-
-        print('Uploaded ${i + 1}/${imageFiles.length}: ${imageFiles[i].name}');
+        print('Uploaded ${i + 1}/${files.length}: ${files[i].name}');
       } catch (e) {
-        print('Error uploading image ${imageFiles[i].name}: $e');
-        // Continue with other images even if one fails
+        print('Error uploading ${files[i].name}: $e');
       }
     }
-
     return uploadedUrls;
   }
 
-  /// Delete an image from Cloudinary
-  /// Note: Deletion requires authentication, so this would need
-  /// to be implemented server-side or with API keys
-  /// For now, unused images can be managed from Cloudinary console
   Future<void> deleteImage(String imageUrl) async {
-    // Extract public_id from URL
-    // This requires API key and secret (server-side operation)
-    // For free tier, you can manually delete from Cloudinary console
-
-    print('Delete image from Cloudinary console: $imageUrl');
-
-    // TODO: Implement server-side deletion with Cloud Functions
-    // or use Cloudinary's Admin API with proper authentication
+    print('Delete from Cloudinary console: $imageUrl');
   }
 
-  /// Get optimized image URL with transformations
-  /// Cloudinary allows on-the-fly image transformations
   String getOptimizedImageUrl(
     String originalUrl, {
     int? width,
@@ -127,45 +114,22 @@ class CloudinaryService {
     String? quality = 'auto',
     String? format = 'auto',
   }) {
-    // Extract upload path from URL
     final uploadIndex = originalUrl.indexOf('/upload/');
     if (uploadIndex == -1) return originalUrl;
-
-    // Build transformation string
     final transformations = <String>[];
-
     if (width != null) transformations.add('w_$width');
     if (height != null) transformations.add('h_$height');
     if (quality != null) transformations.add('q_$quality');
     if (format != null) transformations.add('f_$format');
-
     final transformString = transformations.join(',');
-
-    // Insert transformations into URL
     final beforeUpload = originalUrl.substring(0, uploadIndex + 8);
     final afterUpload = originalUrl.substring(uploadIndex + 8);
-
     return '$beforeUpload$transformString/$afterUpload';
   }
 
-  /// Get thumbnail URL (smaller size for lists/grids)
-  String getThumbnailUrl(String originalUrl) {
-    return getOptimizedImageUrl(
-      originalUrl,
-      width: 400,
-      height: 300,
-      quality: 'auto',
-      format: 'auto',
-    );
-  }
+  String getThumbnailUrl(String originalUrl) => getOptimizedImageUrl(
+      originalUrl, width: 400, height: 300, quality: 'auto', format: 'auto');
 
-  /// Get full-size optimized URL (for detail views)
-  String getFullSizeUrl(String originalUrl) {
-    return getOptimizedImageUrl(
-      originalUrl,
-      width: 1200,
-      quality: 'auto',
-      format: 'auto',
-    );
-  }
+  String getFullSizeUrl(String originalUrl) => getOptimizedImageUrl(
+      originalUrl, width: 1200, quality: 'auto', format: 'auto');
 }

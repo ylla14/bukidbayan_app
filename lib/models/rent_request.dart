@@ -3,11 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum RentRequestStatus {
   pending,
   approved,
-  readyForPickup, // NEW — owner signals equipment is ready to collect
-  pickedUp, // NEW — renter confirms they collected it
+  readyForPickup,
+  pickedUp,
   onTheWay,
   inProgress,
-  retrieving, // NEW
+  retrieving,
   returned,
   finished,
   completed,
@@ -16,31 +16,32 @@ enum RentRequestStatus {
 }
 
 enum DeliveryMethod {
-  pickup, // renter picks up from equipment location
-  delivery, // owner delivers to renter's address
+  pickup,
+  delivery,
 }
 
 class RentRequest {
-  final String requestId; // Firestore document ID
+  final String requestId;
   final String itemId;
   final String itemName;
   final String name;
   final String address;
   final DateTime start;
   final DateTime end;
-  final String? landSizeProofPath;
-  final String? cropHeightProofPath;
+
+  // ── Changed: lists of URLs instead of single nullable String ──
+  final List<String> landSizeProofPaths;
+  final List<String> cropHeightProofPaths;
+
   final RentRequestStatus status;
   final String renterId;
   final String ownerId;
   final DateTime? createdAt;
   final String? declineReason;
   final double? volumeSubmitted;
-  final double? agreedPrice; // the price per unit at time of booking
-  final String? agreedRentalUnit; // 'Per Day', 'Per Hour', 'Per kg', etc.
+  final double? agreedPrice;
+  final String? agreedRentalUnit;
 
-  // Weather flagging — set by WeatherService when severe weather overlaps
-  // this booking's dates. Any authenticated user may write these fields.
   final bool weatherFlag;
   final List<DateTime> weatherFlagDates;
 
@@ -61,8 +62,8 @@ class RentRequest {
     required this.address,
     required this.start,
     required this.end,
-    this.landSizeProofPath,
-    this.cropHeightProofPath,
+    this.landSizeProofPaths = const [],
+    this.cropHeightProofPaths = const [],
     this.status = RentRequestStatus.pending,
     required this.renterId,
     required this.ownerId,
@@ -70,7 +71,7 @@ class RentRequest {
     this.declineReason,
     this.weatherFlag = false,
     this.weatherFlagDates = const [],
-    this.volumeSubmitted = null,
+    this.volumeSubmitted,
     this.keepDarak,
     this.estimatedMillingFee,
     this.agreedPrice,
@@ -83,8 +84,6 @@ class RentRequest {
     this.farmLongitude,
   });
 
-  /// ✅ What gets stored in Firestore
-  /// (requestId is NOT stored — Firestore already has it)
   Map<String, dynamic> toMap() {
     return {
       'itemId': itemId,
@@ -93,8 +92,9 @@ class RentRequest {
       'address': address,
       'start': Timestamp.fromDate(start),
       'end': Timestamp.fromDate(end),
-      'landSizeProofPath': landSizeProofPath,
-      'cropHeightProofPath': cropHeightProofPath,
+      // ── Lists stored as Firestore arrays ──────────────────
+      'landSizeProofPaths': landSizeProofPaths,
+      'cropHeightProofPaths': cropHeightProofPaths,
       'status': status.name,
       'renterId': renterId,
       'ownerId': ownerId,
@@ -113,31 +113,41 @@ class RentRequest {
     };
   }
 
-  /// ✅ Build model FROM Firestore document
   factory RentRequest.fromDoc(DocumentSnapshot doc) {
     final map = doc.data() as Map<String, dynamic>;
 
+    // ── Helper: read either a List<String> (new) or a single
+    //    nullable String (old docs) so old records don't break ──
+    List<String> _toStringList(dynamic value) {
+      if (value == null) return [];
+      if (value is List) return value.map((e) => e.toString()).toList();
+      if (value is String && value.isNotEmpty) return [value];
+      return [];
+    }
+
     return RentRequest(
-      requestId: doc.id, // 🔑 THIS IS THE REQUEST ID
+      requestId: doc.id,
       itemId: map['itemId'],
       itemName: map['itemName'],
       name: map['name'],
       address: map['address'],
       start: (map['start'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      end:
-          (map['end'] as Timestamp?)?.toDate() ??
-          DateTime.now().add(Duration(days: 1)),
-      landSizeProofPath: map['landSizeProofPath'],
-      cropHeightProofPath: map['cropHeightProofPath'],
+      end: (map['end'] as Timestamp?)?.toDate() ??
+          DateTime.now().add(const Duration(days: 1)),
+      // ── Backwards-compatible reads ─────────────────────────
+      landSizeProofPaths: _toStringList(
+        map['landSizeProofPaths'] ?? map['landSizeProofPath'],
+      ),
+      cropHeightProofPaths: _toStringList(
+        map['cropHeightProofPaths'] ?? map['cropHeightProofPath'],
+      ),
       status: RentRequestStatus.values.firstWhere(
         (e) => e.name == (map['status'] ?? 'pending'),
-        orElse: () => RentRequestStatus.pending, // default if missing/invalid
+        orElse: () => RentRequestStatus.pending,
       ),
       renterId: map['renterId'],
       ownerId: map['ownerId'],
-      createdAt:
-          map['createdAt'] !=
-              null // ← ADD THESE 3 LINES
+      createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : null,
       declineReason: map['declineReason'],
@@ -162,7 +172,6 @@ class RentRequest {
     );
   }
 
-  /// ✅ For updating fields safely
   RentRequest copyWith({
     String? requestId,
     String? itemId,
@@ -171,8 +180,8 @@ class RentRequest {
     String? address,
     DateTime? start,
     DateTime? end,
-    String? landSizeProofPath,
-    String? cropHeightProofPath,
+    List<String>? landSizeProofPaths,
+    List<String>? cropHeightProofPaths,
     RentRequestStatus? status,
     String? renterId,
     String? ownerId,
@@ -197,8 +206,8 @@ class RentRequest {
       address: address ?? this.address,
       start: start ?? this.start,
       end: end ?? this.end,
-      landSizeProofPath: landSizeProofPath ?? this.landSizeProofPath,
-      cropHeightProofPath: cropHeightProofPath ?? this.cropHeightProofPath,
+      landSizeProofPaths: landSizeProofPaths ?? this.landSizeProofPaths,
+      cropHeightProofPaths: cropHeightProofPaths ?? this.cropHeightProofPaths,
       status: status ?? this.status,
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,
@@ -211,7 +220,6 @@ class RentRequest {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       deliveryMethod: deliveryMethod ?? this.deliveryMethod,
-
       farmAddress: farmAddress ?? this.farmAddress,
       farmLatitude: farmLatitude ?? this.farmLatitude,
       farmLongitude: farmLongitude ?? this.farmLongitude,

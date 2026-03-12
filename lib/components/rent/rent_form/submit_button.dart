@@ -21,8 +21,11 @@ class SubmitButton extends StatefulWidget {
   final DateTime returnDate;
   final String name;
   final String address;
-  final XFile? landSizeProof;
-  final XFile? cropHeightProof;
+
+  // ── Now lists ──────────────────────────────────────────────
+  final List<XFile> landSizeProofs;
+  final List<XFile> cropHeightProofs;
+
   final Equipment item;
   final RentRequestService requestService;
   final TextEditingController? volumeController;
@@ -31,7 +34,7 @@ class SubmitButton extends StatefulWidget {
   final String? farmAddress;
   final double? farmLatitude;
   final double? farmLongitude;
-  final DeliveryMethod deliveryMethod; // ✅ NEW
+  final DeliveryMethod deliveryMethod;
 
   const SubmitButton({
     super.key,
@@ -40,8 +43,8 @@ class SubmitButton extends StatefulWidget {
     required this.returnDate,
     required this.name,
     required this.address,
-    this.landSizeProof,
-    this.cropHeightProof,
+    this.landSizeProofs = const [],
+    this.cropHeightProofs = const [],
     required this.item,
     required this.requestService,
     this.volumeController,
@@ -50,7 +53,7 @@ class SubmitButton extends StatefulWidget {
     this.farmAddress,
     this.farmLatitude,
     this.farmLongitude,
-    required this.deliveryMethod, // ✅ NEW
+    required this.deliveryMethod,
   });
 
   @override
@@ -83,7 +86,7 @@ class _SubmitButtonState extends State<SubmitButton> {
 
     return Column(
       children: [
-        // ── Price Summary Card ──────────────────────────────────────────
+        // ── Price Summary Card ──────────────────────────────
         Container(
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           padding: const EdgeInsets.all(16),
@@ -109,17 +112,14 @@ class _SubmitButtonState extends State<SubmitButton> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Pricing Type',
-                      style: TextStyle(fontSize: 15, color: Colors.black54),
-                    ),
+                    const Text('Pricing Type',
+                        style: TextStyle(fontSize: 15, color: Colors.black54)),
                     Text(
                       widget.keepDarak ? 'Rice + Darak' : 'Rice Only',
                       style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87),
                     ),
                   ],
                 ),
@@ -127,19 +127,16 @@ class _SubmitButtonState extends State<SubmitButton> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Rate',
-                      style: TextStyle(fontSize: 15, color: Colors.black54),
-                    ),
+                    const Text('Rate',
+                        style: TextStyle(fontSize: 15, color: Colors.black54)),
                     Text(
                       widget.keepDarak
                           ? '₱${widget.item.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00'}/kg'
                           : '₱${widget.item.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
                       style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87),
                     ),
                   ],
                 ),
@@ -150,17 +147,15 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Estimated Total',
-                        style: TextStyle(fontSize: 15, color: Colors.black54),
-                      ),
+                      const Text('Estimated Total',
+                          style:
+                              TextStyle(fontSize: 15, color: Colors.black54)),
                       Text(
                         '₱${widget.estimatedMillingFee!.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87),
                       ),
                     ],
                   ),
@@ -169,17 +164,14 @@ class _SubmitButtonState extends State<SubmitButton> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Rental Rate',
-                      style: TextStyle(fontSize: 15, color: Colors.black54),
-                    ),
+                    const Text('Rental Rate',
+                        style: TextStyle(fontSize: 15, color: Colors.black54)),
                     Text(
                       '₱${widget.item.price} ${_getRateSuffix(widget.item.rentalUnit)}',
                       style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87),
                     ),
                   ],
                 ),
@@ -190,15 +182,12 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Additional Fee',
-                        style: TextStyle(fontSize: 15, color: Colors.black54),
-                      ),
+                      const Text('Additional Fee',
+                          style:
+                              TextStyle(fontSize: 15, color: Colors.black54)),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade50,
                           border: Border.all(color: Colors.orange.shade300),
@@ -207,10 +196,9 @@ class _SubmitButtonState extends State<SubmitButton> {
                         child: const Text(
                           '+ 12% of Crop Harvest',
                           style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.deepOrange,
-                            fontWeight: FontWeight.w600,
-                          ),
+                              fontSize: 14,
+                              color: Colors.deepOrange,
+                              fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -218,17 +206,15 @@ class _SubmitButtonState extends State<SubmitButton> {
                 ],
               ],
 
-              // ── Delivery method summary line ────────────────────────
+              // Delivery method
               const SizedBox(height: 8),
               const Divider(height: 1),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Method',
-                    style: TextStyle(fontSize: 15, color: Colors.black54),
-                  ),
+                  const Text('Method',
+                      style: TextStyle(fontSize: 15, color: Colors.black54)),
                   Row(
                     children: [
                       Icon(
@@ -244,10 +230,9 @@ class _SubmitButtonState extends State<SubmitButton> {
                             ? 'Pick Up'
                             : 'Delivery',
                         style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87),
                       ),
                     ],
                   ),
@@ -257,7 +242,7 @@ class _SubmitButtonState extends State<SubmitButton> {
           ),
         ),
 
-        // ── Submit button ───────────────────────────────────────────────
+        // ── Submit button ───────────────────────────────────
         Align(
           alignment: Alignment.center,
           child: OutlinedButton(
@@ -269,8 +254,7 @@ class _SubmitButtonState extends State<SubmitButton> {
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        lightColorScheme.primary,
-                      ),
+                          lightColorScheme.primary),
                     ),
                   )
                 : Text(
@@ -289,8 +273,7 @@ class _SubmitButtonState extends State<SubmitButton> {
 
   Future<void> _handleSubmit(BuildContext context) async {
     final isRiceMill =
-        widget.item.category?.toLowerCase().contains('rice mill') ==
-        true; // add this
+        widget.item.category?.toLowerCase().contains('rice mill') == true;
 
     if (!widget.isStep2Complete) {
       showErrorSnackbar(
@@ -397,16 +380,17 @@ class _SubmitButtonState extends State<SubmitButton> {
         return;
       }
 
-      String? landPath;
-      String? cropPath;
       final cloudinary = CloudinaryService();
 
-      if (widget.landSizeProof != null) {
-        landPath = await cloudinary.uploadImage(widget.landSizeProof!);
-      }
-      if (widget.cropHeightProof != null) {
-        cropPath = await cloudinary.uploadImage(widget.cropHeightProof!);
-      }
+      // ── Upload all land-size proof files in parallel ───────
+      final landPaths = await Future.wait(
+        widget.landSizeProofs.map((f) => cloudinary.uploadImage(f)),
+      );
+
+      // ── Upload all crop-height proof files in parallel ─────
+      final cropPaths = await Future.wait(
+        widget.cropHeightProofs.map((f) => cloudinary.uploadImage(f)),
+      );
 
       final request = RentRequest(
         requestId: '',
@@ -416,21 +400,22 @@ class _SubmitButtonState extends State<SubmitButton> {
         address: widget.address,
         start: widget.startDate,
         end: widget.returnDate,
-        landSizeProofPath: landPath,
-        cropHeightProofPath: cropPath,
+        landSizeProofPaths: landPaths,   // ← list
+        cropHeightProofPaths: cropPaths, // ← list
         status: RentRequestStatus.pending,
         renterId: currentUserId,
         ownerId: widget.item.ownerId,
-        volumeSubmitted: double.tryParse(widget.volumeController?.text ?? ''),
+        volumeSubmitted:
+            double.tryParse(widget.volumeController?.text ?? ''),
         keepDarak: widget.keepDarak,
         estimatedMillingFee: widget.estimatedMillingFee,
         agreedPrice: isRiceMill
             ? (widget.keepDarak
-                  ? widget.item.ricePlusDarakPricePerKg ?? 3.0
-                  : widget.item.riceOnlyPricePerKg ?? 2.0)
+                ? widget.item.ricePlusDarakPricePerKg ?? 3.0
+                : widget.item.riceOnlyPricePerKg ?? 2.0)
             : widget.item.price,
         agreedRentalUnit: widget.item.rentalUnit,
-        deliveryMethod: widget.deliveryMethod, // ✅ NEW
+        deliveryMethod: widget.deliveryMethod,
         farmAddress: widget.farmAddress,
         farmLatitude: widget.farmLatitude,
         farmLongitude: widget.farmLongitude,
@@ -445,9 +430,8 @@ class _SubmitButtonState extends State<SubmitButton> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Request sent!')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Request sent!')));
 
       Navigator.pushReplacement(
         context,
