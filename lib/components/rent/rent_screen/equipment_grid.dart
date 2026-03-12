@@ -117,6 +117,12 @@ class EquipmentGrid extends StatelessWidget {
       ownerName: ownerName,
       rentalUnit: equipment.rentalUnit,
       ownerId: equipment.ownerId,
+      minimumVolumeRequired: equipment.minimumVolumeRequired,
+      minimumVolumeKg: equipment.minimumVolumeKg,
+      minimumVolumeUnit: equipment.minimumVolumeUnit,
+      batchingAllowed: equipment.batchingAllowed,
+      riceOnlyPricePerKg: equipment.riceOnlyPricePerKg,        // ADD
+      ricePlusDarakPricePerKg: equipment.ricePlusDarakPricePerKg, // ADD
     );
 
     Navigator.push(

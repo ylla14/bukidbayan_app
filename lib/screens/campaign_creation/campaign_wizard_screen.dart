@@ -5,6 +5,7 @@ import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
 import 'package:bukidbayan_app/widgets/reward_tier_form.dart';
 import 'package:bukidbayan_app/widgets/step_progress_indicator.dart';
+import 'package:bukidbayan_app/screens/campaign_creation/campaign_wizard_form_logic.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -24,9 +25,12 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
   int _currentStep = 0;
   bool _isLoading = false;
   late Campaign _draft;
+  final CampaignWizardFormLogic _formLogic = CampaignWizardFormLogic();
 
   // Form controllers - Step 1
   late TextEditingController _titleController;
+  late TextEditingController _imagePathController;
+  late bool _isAssetImage;
   String? _selectedCategory;
 
   // Form controllers - Step 2
@@ -75,6 +79,12 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     'Other',
   ];
 
+  final List<String> _assetImageOptions = const [
+    'assets/images/farmBg.jpg',
+    'assets/images/bg1.png',
+    'assets/images/loopyBg.jpg',
+  ];
+
   final List<String> _equipmentTypes = [
     'Pump',
     'Sprayer',
@@ -107,10 +117,11 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         title: '',
         creatorName:
             FirebaseAuth.instance.currentUser?.displayName ?? 'Anonymous',
+        creatorEmail: FirebaseAuth.instance.currentUser?.email,
         shortBlurb: '',
         description: '',
         isAssetImage: true,
-        image: '',
+        image: 'assets/images/farmBg.jpg',
         category: 'Irrigation',
         goalAmount: 0,
         pledgedAmount: 0,
@@ -125,6 +136,8 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
 
   void _initializeControllers() {
     _titleController = TextEditingController(text: _draft.title);
+    _imagePathController = TextEditingController(text: _draft.image);
+    _isAssetImage = _draft.isAssetImage;
     // Validate category exists in options, default to first option if not
     _selectedCategory = _categoryOptions.contains(_draft.category)
         ? _draft.category
@@ -170,6 +183,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _imagePathController.dispose();
     _shortBlurbController.dispose();
     _fullStoryController.dispose();
     _specKeyController.dispose();
@@ -254,295 +268,58 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
   }
 
   void _updateDraftFromCurrentStep() {
-    switch (_currentStep) {
-      case 0: // Step 1: Basics
-        _draft = Campaign(
-          id: _draft.id,
-          title: _titleController.text,
-          creatorName: _draft.creatorName,
-          shortBlurb: _draft.shortBlurb,
-          description: _draft.description,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _selectedCategory ?? 'Irrigation',
-          goalAmount: _draft.goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _draft.endDate,
-          createdAt: _draft.createdAt,
-          rewards: _draft.rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _draft.equipmentType,
-          specs: _draft.specs,
-          includedItems: _draft.includedItems,
-          chosenVariant: _draft.chosenVariant,
-          variantNotes: _draft.variantNotes,
-          productionTimeline: _draft.productionTimeline,
-          shippingCoverage: _draft.shippingCoverage,
-          shippingCostHandling: _draft.shippingCostHandling,
-          shippingNotes: _draft.shippingNotes,
-          warranty: _draft.warranty,
-          spareParts: _draft.spareParts,
-          risks: _draft.risks,
-          safetyNotes: _draft.safetyNotes,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-      case 1: // Step 2: Story
-        _draft = Campaign(
-          id: _draft.id,
-          title: _draft.title,
-          creatorName: _draft.creatorName,
-          shortBlurb: _shortBlurbController.text,
-          description: _fullStoryController.text,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _draft.category,
-          goalAmount: _draft.goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _draft.endDate,
-          createdAt: _draft.createdAt,
-          rewards: _draft.rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _draft.equipmentType,
-          specs: _draft.specs,
-          includedItems: _draft.includedItems,
-          chosenVariant: _draft.chosenVariant,
-          variantNotes: _draft.variantNotes,
-          productionTimeline: _draft.productionTimeline,
-          shippingCoverage: _draft.shippingCoverage,
-          shippingCostHandling: _draft.shippingCostHandling,
-          shippingNotes: _draft.shippingNotes,
-          warranty: _draft.warranty,
-          spareParts: _draft.spareParts,
-          risks: _draft.risks,
-          safetyNotes: _draft.safetyNotes,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-      case 2: // Step 3: Specs
-        _draft = Campaign(
-          id: _draft.id,
-          title: _draft.title,
-          creatorName: _draft.creatorName,
-          shortBlurb: _draft.shortBlurb,
-          description: _draft.description,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _draft.category,
-          goalAmount: _draft.goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _draft.endDate,
-          createdAt: _draft.createdAt,
-          rewards: _draft.rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _selectedEquipmentType,
-          specs: Map.fromEntries(_specs),
-          includedItems: _draft.includedItems,
-          chosenVariant: _draft.chosenVariant,
-          variantNotes: _draft.variantNotes,
-          productionTimeline: _draft.productionTimeline,
-          shippingCoverage: _draft.shippingCoverage,
-          shippingCostHandling: _draft.shippingCostHandling,
-          shippingNotes: _draft.shippingNotes,
-          warranty: _draft.warranty,
-          spareParts: _draft.spareParts,
-          risks: _draft.risks,
-          safetyNotes: _draft.safetyNotes,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-      case 3: // Step 4: Included
-        _draft = Campaign(
-          id: _draft.id,
-          title: _draft.title,
-          creatorName: _draft.creatorName,
-          shortBlurb: _draft.shortBlurb,
-          description: _draft.description,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _draft.category,
-          goalAmount: _draft.goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _draft.endDate,
-          createdAt: _draft.createdAt,
-          rewards: _draft.rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _draft.equipmentType,
-          specs: _draft.specs,
-          includedItems: _includedItemsController.text
-              .split('\n')
-              .where((e) => e.trim().isNotEmpty)
-              .toList(),
-          chosenVariant: _hasVariants ? _variantController.text : null,
-          variantNotes: _hasVariants ? _variantNotesController.text : null,
-          productionTimeline: _draft.productionTimeline,
-          shippingCoverage: _draft.shippingCoverage,
-          shippingCostHandling: _draft.shippingCostHandling,
-          shippingNotes: _draft.shippingNotes,
-          warranty: _draft.warranty,
-          spareParts: _draft.spareParts,
-          risks: _draft.risks,
-          safetyNotes: _draft.safetyNotes,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-      case 4: // Step 5: Funding
-        final goalAmount = int.tryParse(_fundingGoalController.text) ?? 0;
-        _draft = Campaign(
-          id: _draft.id,
-          title: _draft.title,
-          creatorName: _draft.creatorName,
-          shortBlurb: _draft.shortBlurb,
-          description: _draft.description,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _draft.category,
-          goalAmount: goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _selectedEndDate ?? DateTime.now().add(Duration(days: 30)),
-          createdAt: _draft.createdAt,
-          rewards: _draft.rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _draft.equipmentType,
-          specs: _draft.specs,
-          includedItems: _draft.includedItems,
-          chosenVariant: _draft.chosenVariant,
-          variantNotes: _draft.variantNotes,
-          productionTimeline: _productionTimelineController.text,
-          shippingCoverage: _draft.shippingCoverage,
-          shippingCostHandling: _draft.shippingCostHandling,
-          shippingNotes: _draft.shippingNotes,
-          warranty: _draft.warranty,
-          spareParts: _draft.spareParts,
-          risks: _draft.risks,
-          safetyNotes: _draft.safetyNotes,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-      case 5: // Step 6: Rewards & Shipping
-        _draft = Campaign(
-          id: _draft.id,
-          title: _draft.title,
-          creatorName: _draft.creatorName,
-          shortBlurb: _draft.shortBlurb,
-          description: _draft.description,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _draft.category,
-          goalAmount: _draft.goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _draft.endDate,
-          createdAt: _draft.createdAt,
-          rewards: _rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _draft.equipmentType,
-          specs: _draft.specs,
-          includedItems: _draft.includedItems,
-          chosenVariant: _draft.chosenVariant,
-          variantNotes: _draft.variantNotes,
-          productionTimeline: _draft.productionTimeline,
-          shippingCoverage: _selectedShippingCoverage,
-          shippingCostHandling: _selectedShippingCostHandling,
-          shippingNotes: _shippingNotesController.text,
-          warranty: _draft.warranty,
-          spareParts: _draft.spareParts,
-          risks: _draft.risks,
-          safetyNotes: _draft.safetyNotes,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-      case 6: // Step 7: Support
-        _draft = Campaign(
-          id: _draft.id,
-          title: _draft.title,
-          creatorName: _draft.creatorName,
-          shortBlurb: _draft.shortBlurb,
-          description: _draft.description,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _draft.category,
-          goalAmount: _draft.goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _draft.endDate,
-          createdAt: _draft.createdAt,
-          rewards: _draft.rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _draft.equipmentType,
-          specs: _draft.specs,
-          includedItems: _draft.includedItems,
-          chosenVariant: _draft.chosenVariant,
-          variantNotes: _draft.variantNotes,
-          productionTimeline: _draft.productionTimeline,
-          shippingCoverage: _draft.shippingCoverage,
-          shippingCostHandling: _draft.shippingCostHandling,
-          shippingNotes: _draft.shippingNotes,
-          warranty: _warrantyController.text,
-          spareParts: _sparePartsController.text,
-          risks: _draft.risks,
-          safetyNotes: _draft.safetyNotes,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-      case 7: // Step 8: Risks & Preview
-        _draft = Campaign(
-          id: _draft.id,
-          title: _draft.title,
-          creatorName: _draft.creatorName,
-          shortBlurb: _draft.shortBlurb,
-          description: _draft.description,
-          isAssetImage: _draft.isAssetImage,
-          image: _draft.image,
-          category: _draft.category,
-          goalAmount: _draft.goalAmount,
-          pledgedAmount: _draft.pledgedAmount,
-          backersCount: _draft.backersCount,
-          endDate: _draft.endDate,
-          createdAt: _draft.createdAt,
-          rewards: _draft.rewards,
-          coverImages: _draft.coverImages,
-          equipmentType: _draft.equipmentType,
-          specs: _draft.specs,
-          includedItems: _draft.includedItems,
-          chosenVariant: _draft.chosenVariant,
-          variantNotes: _draft.variantNotes,
-          productionTimeline: _draft.productionTimeline,
-          shippingCoverage: _draft.shippingCoverage,
-          shippingCostHandling: _draft.shippingCostHandling,
-          shippingNotes: _draft.shippingNotes,
-          warranty: _draft.warranty,
-          spareParts: _draft.spareParts,
-          risks: _risksController.text,
-          safetyNotes: _safetyNotesController.text,
-          status: _draft.status,
-          publishedAt: _draft.publishedAt,
-          lastEditedAt: _draft.lastEditedAt,
-        );
-        break;
-    }
+    _draft = _formLogic.applyStepToDraft(
+      draft: _draft,
+      step: _currentStep,
+      state: _buildFormState(),
+    );
+  }
+
+  CampaignWizardFormState _buildFormState() {
+    return CampaignWizardFormState(
+      title: _titleController.text,
+      category: _selectedCategory ?? 'Irrigation',
+      isAssetImage: _isAssetImage,
+      imagePath: _imagePathController.text,
+      shortBlurb: _shortBlurbController.text,
+      fullStory: _fullStoryController.text,
+      equipmentType: _selectedEquipmentType,
+      specs: _specs,
+      includedItemsRaw: _includedItemsController.text,
+      hasVariants: _hasVariants,
+      variant: _variantController.text,
+      variantNotes: _variantNotesController.text,
+      fundingGoalRaw: _fundingGoalController.text,
+      selectedEndDate: _selectedEndDate,
+      productionTimeline: _productionTimelineController.text,
+      rewards: _rewards,
+      shippingCoverage: _selectedShippingCoverage,
+      shippingCostHandling: _selectedShippingCostHandling,
+      shippingNotes: _shippingNotesController.text,
+      warranty: _warrantyController.text,
+      spareParts: _sparePartsController.text,
+      risks: _risksController.text,
+      safetyNotes: _safetyNotesController.text,
+    );
+  }
+
+  String? _validateCurrentStep() {
+    return _formLogic.validateStep(
+      step: _currentStep,
+      state: _buildFormState(),
+    );
   }
 
   void _nextStep() {
+    final stepError = _validateCurrentStep();
+    if (stepError != null) {
+      showErrorSnackbar(
+        context: context,
+        title: 'Complete Required Fields',
+        message: stepError,
+      );
+      return;
+    }
     _updateDraftFromCurrentStep();
     if (_currentStep < 7) {
       setState(() => _currentStep++);
@@ -654,28 +431,54 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                 ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.image),
-                  label: const Text('Upload Photo'),
-                ),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment<bool>(
+                value: true,
+                label: Text('Asset'),
+                icon: Icon(Icons.image),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.videocam),
-                  label: const Text('Upload Video'),
-                ),
+              ButtonSegment<bool>(
+                value: false,
+                label: Text('URL'),
+                icon: Icon(Icons.link),
               ),
             ],
+            selected: {_isAssetImage},
+            onSelectionChanged: (selection) {
+              setState(() => _isAssetImage = selection.first);
+            },
+          ),
+          const SizedBox(height: 12),
+          if (_isAssetImage) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _assetImageOptions.map((assetPath) {
+                final selected = _imagePathController.text.trim() == assetPath;
+                return ChoiceChip(
+                  label: Text(assetPath.split('/').last),
+                  selected: selected,
+                  onSelected: (_) {
+                    setState(() => _imagePathController.text = assetPath);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 10),
+          ],
+          CustomTextFormField(
+            controller: _imagePathController,
+            hint: _isAssetImage
+                ? 'assets/images/farmBg.jpg'
+                : 'https://example.com/my-image.jpg',
+            onChanged: (_) {},
           ),
           const SizedBox(height: 4),
           Text(
-            'Use a real photo if possible. If it\'s a render/mockup, label it clearly.',
+            _isAssetImage
+                ? 'Choose an app asset or type an asset path.'
+                : 'Paste a direct image URL. Use a real photo whenever possible.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Colors.grey.shade600,
                 ),

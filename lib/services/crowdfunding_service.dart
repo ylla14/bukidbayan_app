@@ -1,17 +1,25 @@
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CrowdfundingService {
   static const String _campaignsKey = 'campaigns_v2';
+  static const String _legacyCampaignsKey = 'campaigns_v1';
   static const String _pledgesKey = 'pledges_v1';
-  static const String _draftsKey = 'campaign_drafts_v1';
   static const String _currentUserKey = 'current_user_email'; // from auth
 
   Future<void> seedIfEmpty() async {
     final prefs = await SharedPreferences.getInstance();
     final existing = prefs.getString(_campaignsKey);
     if (existing != null && existing.isNotEmpty) return;
+
+    // Lightweight migration path for older local builds.
+    final legacy = prefs.getString(_legacyCampaignsKey);
+    if (legacy != null && legacy.isNotEmpty) {
+      await prefs.setString(_campaignsKey, legacy);
+      return;
+    }
 
     final now = DateTime.now();
 
@@ -279,9 +287,8 @@ class CrowdfundingService {
     final jsonStr = prefs.getString(_campaignsKey);
     if (jsonStr == null || jsonStr.isEmpty) return [];
     final campaigns = decodeCampaigns(jsonStr);
-    // Only return live campaigns (exclude drafts)
-    // Treat null status as 'live' for backward compatibility with old campaigns
-    return campaigns.where((c) => (c.status ?? 'live') != 'draft').toList();
+    // Public browse list excludes drafts.
+    return campaigns.where((c) => c.status != 'draft').toList();
   }
 
   Future<Campaign?> getCampaignById(String id) async {
@@ -298,9 +305,59 @@ class CrowdfundingService {
     return prefs.getString(_currentUserKey);
   }
 
+  bool _isOwnedByUser(
+    Campaign campaign, {
+    String? email,
+    String? displayName,
+  }) {
+    if (email != null &&
+        campaign.creatorEmail != null &&
+        campaign.creatorEmail == email) {
+      return true;
+    }
+    if ((campaign.creatorEmail == null || campaign.creatorEmail!.isEmpty) &&
+        displayName != null &&
+        displayName.isNotEmpty &&
+        campaign.creatorName == displayName) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<List<Campaign>> getMyCampaigns({String? userEmail, String? status}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await seedIfEmpty();
+    final resolvedEmail = userEmail ??
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
+    final displayName = FirebaseAuth.instance.currentUser?.displayName;
+    final campaignsJson = prefs.getString(_campaignsKey);
+    if (campaignsJson == null || campaignsJson.isEmpty) return [];
+
+    final campaigns = decodeCampaigns(campaignsJson).where((c) {
+      final matchesOwner = _isOwnedByUser(
+        c,
+        email: resolvedEmail,
+        displayName: displayName,
+      );
+      if (!matchesOwner) return false;
+      if (status != null) return c.status == status;
+      return true;
+    }).toList();
+
+    campaigns.sort((a, b) {
+      final aTime = a.lastEditedAt ?? a.createdAt;
+      final bTime = b.lastEditedAt ?? b.createdAt;
+      return bTime.compareTo(aTime);
+    });
+
+    return campaigns;
+  }
+
   Future<List<Pledge>> getMyPledges() async {
     final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString(_currentUserKey);
+    final email =
+        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
     final jsonStr = prefs.getString(_pledgesKey);
     if (jsonStr == null || jsonStr.isEmpty) return [];
     final pledges = decodePledges(jsonStr);
@@ -338,7 +395,8 @@ class CrowdfundingService {
         ? <Pledge>[]
         : decodePledges(pledgesJson);
 
-    final email = prefs.getString(_currentUserKey);
+    final email =
+        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
 
     final isNewBacker = email == null
         ? true
@@ -397,6 +455,8 @@ class CrowdfundingService {
     }
 
     final prefs = await SharedPreferences.getInstance();
+    final creatorEmail =
+        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
 
     final campaignsJson = prefs.getString(_campaignsKey);
     final campaigns = (campaignsJson == null || campaignsJson.isEmpty)
@@ -407,6 +467,7 @@ class CrowdfundingService {
       id: 'c${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(9999)}',
       title: title,
       creatorName: creatorName,
+      creatorEmail: creatorEmail,
       shortBlurb: shortBlurb,
       description: description,
       isAssetImage: isAssetImage,
@@ -435,24 +496,26 @@ class CrowdfundingService {
   /// Save a campaign draft locally with lastEditedAt timestamp
   Future<void> saveDraft(Campaign draft) async {
     final prefs = await SharedPreferences.getInstance();
-    
+    final currentEmail =
+        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+
     final campaignsJson = prefs.getString(_campaignsKey);
     final campaigns = (campaignsJson == null || campaignsJson.isEmpty)
         ? <Campaign>[]
         : decodeCampaigns(campaignsJson);
 
+    final draftToSave = draft.copyWith(
+      creatorEmail: draft.creatorEmail ?? currentEmail,
+      status: 'draft',
+      lastEditedAt: DateTime.now(),
+    );
+
     // Update existing draft or add new one
     final idx = campaigns.indexWhere((d) => d.id == draft.id);
     if (idx >= 0) {
-      campaigns[idx] = draft.copyWith(
-        status: 'draft',
-        lastEditedAt: DateTime.now(),
-      );
+      campaigns[idx] = draftToSave;
     } else {
-      campaigns.add(draft.copyWith(
-        status: 'draft',
-        lastEditedAt: DateTime.now(),
-      ));
+      campaigns.add(draftToSave);
     }
 
     await prefs.setString(_campaignsKey, encodeCampaigns(campaigns));
@@ -461,22 +524,57 @@ class CrowdfundingService {
   /// Get all saved drafts for current user
   Future<List<Campaign>> getDrafts({String? userEmail}) async {
     final prefs = await SharedPreferences.getInstance();
+    await seedIfEmpty();
+    final resolvedEmail = userEmail ??
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
+    final displayName = FirebaseAuth.instance.currentUser?.displayName;
     final campaignsJson = prefs.getString(_campaignsKey);
     if (campaignsJson == null || campaignsJson.isEmpty) return [];
-    
+
     final campaigns = decodeCampaigns(campaignsJson);
-    return campaigns.where((c) => c.status == 'draft').toList();
+    final hasIdentity =
+        (resolvedEmail != null && resolvedEmail.isNotEmpty) ||
+        (displayName != null && displayName.isNotEmpty);
+
+    final drafts = campaigns.where((c) {
+      if (c.status != 'draft') return false;
+      if (!hasIdentity) return true;
+      return _isOwnedByUser(
+        c,
+        email: resolvedEmail,
+        displayName: displayName,
+      );
+    }).toList();
+
+    drafts.sort((a, b) {
+      final aTime = a.lastEditedAt ?? a.createdAt;
+      final bTime = b.lastEditedAt ?? b.createdAt;
+      return bTime.compareTo(aTime);
+    });
+
+    return drafts;
   }
 
   /// Get a specific draft by ID
   Future<Campaign?> getDraftById(String draftId) async {
     final prefs = await SharedPreferences.getInstance();
+    final email =
+        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+    final displayName = FirebaseAuth.instance.currentUser?.displayName;
     final campaignsJson = prefs.getString(_campaignsKey);
     if (campaignsJson == null || campaignsJson.isEmpty) return null;
 
     final campaigns = decodeCampaigns(campaignsJson);
     try {
-      return campaigns.firstWhere((c) => c.id == draftId && c.status == 'draft');
+      return campaigns.firstWhere((c) {
+        if (c.id != draftId || c.status != 'draft') return false;
+        final hasIdentity =
+            (email != null && email.isNotEmpty) ||
+            (displayName != null && displayName.isNotEmpty);
+        if (!hasIdentity) return true;
+        return _isOwnedByUser(c, email: email, displayName: displayName);
+      });
     } catch (_) {
       return null;
     }
@@ -485,11 +583,21 @@ class CrowdfundingService {
   /// Delete a draft
   Future<void> deleteDraft(String draftId) async {
     final prefs = await SharedPreferences.getInstance();
+    final email =
+        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+    final displayName = FirebaseAuth.instance.currentUser?.displayName;
     final campaignsJson = prefs.getString(_campaignsKey);
     if (campaignsJson == null || campaignsJson.isEmpty) return;
 
     final campaigns = decodeCampaigns(campaignsJson);
-    campaigns.removeWhere((c) => c.id == draftId && c.status == 'draft');
+    campaigns.removeWhere((c) {
+      if (c.id != draftId || c.status != 'draft') return false;
+      final hasIdentity =
+          (email != null && email.isNotEmpty) ||
+          (displayName != null && displayName.isNotEmpty);
+      if (!hasIdentity) return true;
+      return _isOwnedByUser(c, email: email, displayName: displayName);
+    });
 
     await prefs.setString(_campaignsKey, encodeCampaigns(campaigns));
   }
@@ -581,6 +689,8 @@ class CrowdfundingService {
     }
 
     final prefs = await SharedPreferences.getInstance();
+    final currentEmail =
+        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
 
     // Update draft to live
     final campaignsJson = prefs.getString(_campaignsKey);
@@ -591,6 +701,7 @@ class CrowdfundingService {
     final idx = campaigns.indexWhere((c) => c.id == campaign.id);
     if (idx >= 0) {
       campaigns[idx] = campaign.copyWith(
+        creatorEmail: campaign.creatorEmail ?? currentEmail,
         status: 'live',
         publishedAt: DateTime.now(),
         lastEditedAt: DateTime.now(),

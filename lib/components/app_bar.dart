@@ -1,5 +1,7 @@
 import 'package:bukidbayan_app/screens/notification_screen.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -7,48 +9,98 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
     return AppBar(
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-             colors: [lightColorScheme.primary, lightColorScheme.secondary],
-             stops: [0.0, 0.9]
-          )
-          
+            colors: [lightColorScheme.primary, lightColorScheme.secondary],
+            stops: const [0.0, 0.9],
+          ),
         ),
       ),
       backgroundColor: lightColorScheme.primary,
       centerTitle: true,
-      title: Icon(Icons.person),
+      title: const Icon(Icons.person),
       leading: Builder(
         builder: (context) => IconButton(
           icon: const Icon(Icons.menu),
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
+          onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
       actions: [
-          // IconButton(
-          //   onPressed: () {
-          //     Navigator.push(context, MaterialPageRoute(builder: (e) => const EquipmentListingScreen(),));
-          //   },
-          //   icon: Icon(Icons.add_box_rounded),
-          // ),
+        if (uid != null)
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .doc(uid)
+                .collection('items')
+                .where('read', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data?.docs.length ?? 0;
 
-             IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              iconSize: 35,
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (e) => NotificationScreen(),));              
+              return IconButton(
+                iconSize: 35,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationScreen(),
+                    ),
+                  );
                 },
-            ),
-
-        ],
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.notifications_outlined),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              height: 1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          )
+        else
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            iconSize: 35,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationScreen()),
+              );
+            },
+          ),
+      ],
     );
   }
 
-  // Required so Scaffold knows how tall the AppBar is
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

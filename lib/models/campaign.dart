@@ -50,6 +50,7 @@ class Campaign {
   final String id;
   final String title;
   final String creatorName;
+  final String? creatorEmail;
   final String shortBlurb;
   final String description;
 
@@ -106,6 +107,7 @@ class Campaign {
     required this.id,
     required this.title,
     required this.creatorName,
+    this.creatorEmail,
     required this.shortBlurb,
     required this.description,
     required this.isAssetImage,
@@ -144,6 +146,19 @@ class Campaign {
   }
 
   Campaign copyWith({
+    String? id,
+    String? title,
+    String? creatorName,
+    String? creatorEmail,
+    String? shortBlurb,
+    String? description,
+    bool? isAssetImage,
+    String? image,
+    String? category,
+    int? goalAmount,
+    DateTime? endDate,
+    DateTime? createdAt,
+    List<RewardTier>? rewards,
     int? pledgedAmount,
     int? backersCount,
     String? productionTimeline,
@@ -163,30 +178,34 @@ class Campaign {
     String? shippingCoverage,
     String? shippingCostHandling,
     String? shippingNotes,
+    bool clearPublishedAt = false,
+    bool clearLastEditedAt = false,
   }) {
     return Campaign(
-      id: id,
-      title: title,
-      creatorName: creatorName,
-      shortBlurb: shortBlurb,
-      description: description,
-      isAssetImage: isAssetImage,
-      image: image,
-      category: category,
-      goalAmount: goalAmount,
+      id: id ?? this.id,
+      title: title ?? this.title,
+      creatorName: creatorName ?? this.creatorName,
+      creatorEmail: creatorEmail ?? this.creatorEmail,
+      shortBlurb: shortBlurb ?? this.shortBlurb,
+      description: description ?? this.description,
+      isAssetImage: isAssetImage ?? this.isAssetImage,
+      image: image ?? this.image,
+      category: category ?? this.category,
+      goalAmount: goalAmount ?? this.goalAmount,
       pledgedAmount: pledgedAmount ?? this.pledgedAmount,
       backersCount: backersCount ?? this.backersCount,
-      endDate: endDate,
-      createdAt: createdAt,
-      rewards: rewards,
+      endDate: endDate ?? this.endDate,
+      createdAt: createdAt ?? this.createdAt,
+      rewards: rewards ?? this.rewards,
       productionTimeline: productionTimeline ?? this.productionTimeline,
       warranty: warranty ?? this.warranty,
       spareParts: spareParts ?? this.spareParts,
       risks: risks ?? this.risks,
       safetyNotes: safetyNotes ?? this.safetyNotes,
       status: status ?? this.status,
-      publishedAt: publishedAt ?? this.publishedAt,
-      lastEditedAt: lastEditedAt ?? this.lastEditedAt,
+      publishedAt: clearPublishedAt ? null : (publishedAt ?? this.publishedAt),
+      lastEditedAt:
+          clearLastEditedAt ? null : (lastEditedAt ?? this.lastEditedAt),
       coverImages: coverImages ?? this.coverImages,
       equipmentType: equipmentType ?? this.equipmentType,
       specs: specs ?? this.specs,
@@ -204,6 +223,7 @@ class Campaign {
       id: json['id'] as String,
       title: json['title'] as String,
       creatorName: json['creatorName'] as String,
+      creatorEmail: json['creatorEmail'] as String?,
       shortBlurb: json['shortBlurb'] as String,
       description: json['description'] as String,
       isAssetImage: json['isAssetImage'] as bool,
@@ -237,7 +257,7 @@ class Campaign {
       spareParts: json['spareParts'] as String?,
       risks: json['risks'] as String?,
       safetyNotes: json['safetyNotes'] as String?,
-      status: json['status'] as String? ?? 'draft',
+      status: json['status'] as String? ?? 'live',
       publishedAt: json['publishedAt'] != null
           ? DateTime.parse(json['publishedAt'] as String)
           : null,
@@ -251,6 +271,7 @@ class Campaign {
         'id': id,
         'title': title,
         'creatorName': creatorName,
+        'creatorEmail': creatorEmail,
         'shortBlurb': shortBlurb,
         'description': description,
         'isAssetImage': isAssetImage,
