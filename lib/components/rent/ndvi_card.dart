@@ -1,6 +1,9 @@
-// ── NDVI Card ─────────────────────────────────────────────────────────────────
-// Looks up the renter's registered farm polygon and fetches the latest NDVI
-// reading from Agromonitoring. Renders nothing if no polygon is registered.
+// ── Farm Field Data Card ───────────────────────────────────────────────────────
+// Fetches and displays three real-time data streams for the renter's farm:
+//   • NDVI   — latest satellite vegetation index (may be days old, free tier)
+//   • Soil   — surface temp, 10 cm temp, moisture (real-time, Agromonitoring)
+//   • Weather— temperature, humidity, wind, condition (real-time, Open-Meteo)
+// Renders nothing if the renter has no registered farm polygon.
 
 import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
@@ -20,20 +23,31 @@ class _NdviCardState extends State<NdviCard> {
   final AgromonitoringService _agroService = AgromonitoringService();
 
   bool _isLoading = true;
+
+  // NDVI
   NdviReading? _latest;
   bool _noPolygon = false;
-  String? _error;
+  String? _ndviError;
+
+  // Soil
+  SoilData? _soil;
+  String? _soilError;
+
+  // Weather
+  FarmWeather? _weather;
+  String? _weatherError;
 
   @override
   void initState() {
     super.initState();
-    _loadNdvi();
+    _loadFarmData();
   }
 
-  Future<void> _loadNdvi() async {
+  Future<void> _loadFarmData() async {
     try {
       final userData = await _authService.getUserData(widget.renterId);
       final polygonId = userData?['farmPolygonId'] as String?;
+
       if (polygonId == null) {
         setState(() {
           _noPolygon = true;
@@ -41,14 +55,40 @@ class _NdviCardState extends State<NdviCard> {
         });
         return;
       }
-      final readings = await _agroService.fetchNdvi(polygonId);
+
+      final farmLat = (userData?['farmLatitude'] as num?)?.toDouble();
+      final farmLng = (userData?['farmLongitude'] as num?)?.toDouble();
+
+      // Run all three fetches concurrently; failures are independent.
+      final results = await Future.wait([
+        _agroService.fetchNdvi(polygonId).then<NdviReading?>((r) => r.isNotEmpty ? r.first : null).catchError((e) {
+          _ndviError = e.toString().replaceAll('Exception: ', '');
+          return null;
+        }),
+        _agroService.fetchSoil(polygonId).then<SoilData?>((s) => s).catchError((e) {
+          _soilError = e.toString().replaceAll('Exception: ', '');
+          return null;
+        }),
+        if (farmLat != null && farmLng != null)
+          _agroService.fetchFarmWeather(farmLat, farmLng).then<FarmWeather?>((w) => w).catchError((e) {
+            _weatherError = e.toString().replaceAll('Exception: ', '');
+            return null;
+          })
+        else
+          Future.value(null),
+      ]);
+
+      if (!mounted) return;
       setState(() {
-        _latest = readings.isNotEmpty ? readings.first : null;
+        _latest = results[0] as NdviReading?;
+        _soil = results[1] as SoilData?;
+        _weather = results[2] as FarmWeather?;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
+        _ndviError = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
       });
     }
@@ -64,7 +104,6 @@ class _NdviCardState extends State<NdviCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Nothing to show when no polygon was registered or still loading.
     if (_noPolygon) return const SizedBox.shrink();
 
     return Container(
@@ -83,7 +122,7 @@ class _NdviCardState extends State<NdviCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ───────────────────────────────────────────────────────
+          // ── Header ─────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
@@ -98,7 +137,7 @@ class _NdviCardState extends State<NdviCard> {
                   ),
                 ),
                 const Text(
-                  'FARM SATELLITE DATA',
+                  'FARM FIELD DATA',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -107,13 +146,12 @@ class _NdviCardState extends State<NdviCard> {
                   ),
                 ),
                 const Spacer(),
-                const Icon(Icons.satellite_alt_rounded,
-                    size: 16, color: Colors.black38),
+                const Icon(Icons.grass_rounded, size: 16, color: Colors.black38),
               ],
             ),
           ),
 
-          // ── Body ─────────────────────────────────────────────────────────
+          // ── Body ───────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
             child: _buildBody(),
@@ -137,47 +175,204 @@ class _NdviCardState extends State<NdviCard> {
       );
     }
 
-    if (_error != null) {
-      return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Mud warning banner ──────────────────────────────────────────
+        if (_soil != null && _soil!.isMuddy) ...[
+          _mudWarningBanner(),
+          const SizedBox(height: 12),
+        ],
+
+        // ── Soil section ────────────────────────────────────────────────
+        _sectionHeader(Icons.thermostat_rounded, 'SOIL  ·  Real-time'),
+        const SizedBox(height: 8),
+        _buildSoilSection(),
+
+        const SizedBox(height: 14),
+        const Divider(height: 1),
+        const SizedBox(height: 14),
+
+        // ── Weather section ─────────────────────────────────────────────
+        _sectionHeader(Icons.wb_cloudy_outlined, 'WEATHER  ·  Real-time'),
+        const SizedBox(height: 8),
+        _buildWeatherSection(),
+
+        const SizedBox(height: 14),
+        const Divider(height: 1),
+        const SizedBox(height: 14),
+
+        // ── NDVI section ─────────────────────────────────────────────────
+        _sectionHeader(Icons.satellite_alt_rounded, 'NDVI  ·  Satellite (may be delayed)'),
+        const SizedBox(height: 8),
+        _buildNdviSection(),
+      ],
+    );
+  }
+
+  // ── Mud warning ─────────────────────────────────────────────────────────────
+
+  Widget _mudWarningBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.orange.shade300, width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.cloud_off_rounded, size: 18, color: Colors.black38),
+          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Could not load satellite data',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              'Soil moisture is above 40% — conditions may be too muddy '
+              'and unfriendly for machine operation.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.orange.shade800,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
             ),
           ),
         ],
-      );
+      ),
+    );
+  }
+
+  // ── Section header ───────────────────────────────────────────────────────────
+
+  Widget _sectionHeader(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 13, color: Colors.black38),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.black38,
+            letterSpacing: 0.6,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Soil section ─────────────────────────────────────────────────────────────
+
+  Widget _buildSoilSection() {
+    if (_soilError != null) {
+      return _inlineError('Could not load soil data');
+    }
+    if (_soil == null) {
+      return _inlineError('No soil data available');
+    }
+
+    final s = _soil!;
+    final moistureColor = s.isMuddy ? Colors.orange.shade700 : Colors.blueGrey;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _statTile(
+            icon: Icons.device_thermostat_rounded,
+            iconColor: Colors.red.shade300,
+            label: 'Surface Temp',
+            value: '${s.surfaceTempC.toStringAsFixed(1)}°C',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _statTile(
+            icon: Icons.thermostat_rounded,
+            iconColor: Colors.deepOrange.shade300,
+            label: '10 cm Depth',
+            value: '${s.depthTempC.toStringAsFixed(1)}°C',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _statTile(
+            icon: Icons.water_drop_rounded,
+            iconColor: moistureColor,
+            label: 'Moisture',
+            value: '${s.moisturePct.toStringAsFixed(1)}%',
+            valueColor: moistureColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Weather section ──────────────────────────────────────────────────────────
+
+  Widget _buildWeatherSection() {
+    if (_weatherError != null) {
+      return _inlineError('Could not load weather data');
+    }
+    if (_weather == null) {
+      return _inlineError('No weather data available');
+    }
+
+    final w = _weather!;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _statTile(
+            icon: w.conditionIcon,
+            iconColor: Colors.amber.shade600,
+            label: w.conditionLabel,
+            value: '${w.temperatureC.toStringAsFixed(1)}°C',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _statTile(
+            icon: Icons.water_rounded,
+            iconColor: Colors.blue.shade300,
+            label: 'Humidity',
+            value: '${w.humidityPct}%',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _statTile(
+            icon: Icons.air_rounded,
+            iconColor: Colors.blueGrey,
+            label: 'Wind',
+            value: '${w.windSpeedKmh.toStringAsFixed(1)} km/h',
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── NDVI section ─────────────────────────────────────────────────────────────
+
+  Widget _buildNdviSection() {
+    if (_ndviError != null) {
+      return _inlineError('Could not load satellite data');
     }
 
     if (_latest == null) {
-      return Row(
-        children: [
-          const Icon(Icons.cloud_rounded, size: 18, color: Colors.black38),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'No recent clear-sky imagery available',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-            ),
-          ),
-        ],
-      );
+      return _inlineError('No recent clear-sky imagery available');
     }
 
     final r = _latest!;
     final ndviColor = _ndviColor(r.mean);
-    final barWidth = (r.mean.clamp(0.0, 1.0));
+    final barWidth = r.mean.clamp(0.0, 1.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── NDVI gauge row ──────────────────────────────────────────────
+        // Big NDVI number + health label + bar
         Row(
           children: [
-            // Big NDVI number
             Text(
               r.mean.toStringAsFixed(2),
               style: TextStyle(
@@ -200,7 +395,6 @@ class _NdviCardState extends State<NdviCard> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // Progress bar
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
@@ -225,16 +419,11 @@ class _NdviCardState extends State<NdviCard> {
         ),
 
         const SizedBox(height: 10),
-        const Divider(height: 1),
-        const SizedBox(height: 10),
 
-        // ── Meta row ────────────────────────────────────────────────────
+        // Date + source chips
         Row(
           children: [
-            _metaChip(
-              Icons.calendar_today_rounded,
-              DateFormat('MMM dd, yyyy').format(r.date),
-            ),
+            _metaChip(Icons.calendar_today_rounded, DateFormat('MMM dd, yyyy').format(r.date)),
             const SizedBox(width: 8),
             _metaChip(Icons.satellite_alt_rounded, r.source),
           ],
@@ -242,11 +431,64 @@ class _NdviCardState extends State<NdviCard> {
 
         const SizedBox(height: 10),
 
-        // ── Legend hint ─────────────────────────────────────────────────
         Text(
           'NDVI ranges from 0 (bare soil) to 1 (dense vegetation). '
           'Values above 0.5 indicate healthy, actively growing crops.',
           style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.4),
+        ),
+      ],
+    );
+  }
+
+  // ── Shared helpers ────────────────────────────────────────────────────────────
+
+  Widget _statTile({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    Color? valueColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: valueColor ?? Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: Colors.black45),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _inlineError(String message) {
+    return Row(
+      children: [
+        const Icon(Icons.cloud_off_rounded, size: 16, color: Colors.black38),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            message,
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+          ),
         ),
       ],
     );
@@ -264,8 +506,7 @@ class _NdviCardState extends State<NdviCard> {
         children: [
           Icon(icon, size: 12, color: Colors.black45),
           const SizedBox(width: 4),
-          Text(label,
-              style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
         ],
       ),
     );
