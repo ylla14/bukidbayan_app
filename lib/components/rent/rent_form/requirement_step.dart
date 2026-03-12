@@ -9,12 +9,16 @@ import 'package:image_picker/image_picker.dart';
 
 class RequirementStep extends StatelessWidget {
   final Equipment item;
-  final XFile? landSizeProof;
-  final XFile? cropHeightProof;
-  final Function(XFile) onLandPick;
-  final VoidCallback onLandRemove;
-  final Function(XFile) onCropPick;
-  final VoidCallback onCropRemove;
+
+  // ── Now LISTS instead of single XFile ──────────────────────
+  final List<XFile> landSizeProofs;
+  final List<XFile> cropHeightProofs;
+
+  final Function(XFile) onLandAdd;
+  final Function(int) onLandRemove;
+  final Function(XFile) onCropAdd;
+  final Function(int) onCropRemove;
+
   final ImagePicker picker;
   final bool keepDarak;
   final VoidCallback onToggleDarak;
@@ -25,11 +29,11 @@ class RequirementStep extends StatelessWidget {
   const RequirementStep({
     super.key,
     required this.item,
-    this.landSizeProof,
-    this.cropHeightProof,
-    required this.onLandPick,
+    this.landSizeProofs = const [],
+    this.cropHeightProofs = const [],
+    required this.onLandAdd,
     required this.onLandRemove,
-    required this.onCropPick,
+    required this.onCropAdd,
     required this.onCropRemove,
     required this.picker,
     this.volumeController,
@@ -38,6 +42,119 @@ class RequirementStep extends StatelessWidget {
     required this.keepDarak,
     required this.onToggleDarak,
   });
+
+  // ── Source picker sheet ─────────────────────────────────────
+  Future<void> _showSourceSheet(
+    BuildContext context, {
+    required Function(XFile) onPicked,
+    bool allowVideo = true,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Photo from camera ───────────────────────────
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Kumuha ng Larawan'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final file = await picker.pickImage(
+                    source: ImageSource.camera,
+                    imageQuality: 85,
+                  );
+                  if (file != null) onPicked(file);
+                } catch (e) {
+                  debugPrint('Camera photo error: $e');
+                }
+              },
+            ),
+
+            // ── Video from camera (maxDuration cap prevents OOM) ──
+            if (allowVideo)
+              ListTile(
+                leading: const Icon(Icons.videocam_outlined),
+                title: const Text('Kumuha ng Video'),
+                subtitle: const Text(
+                  'Max 2 minuto',
+                  style: TextStyle(fontSize: 11),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    final file = await picker.pickVideo(
+                      source: ImageSource.camera,
+                      maxDuration: const Duration(minutes: 2),
+                    );
+                    if (file != null) onPicked(file);
+                  } catch (e) {
+                    debugPrint('Camera video error: $e');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Hindi ma-record ang video. Subukan mula sa gallery.',
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+
+            // ── Photo from gallery ──────────────────────────
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pumili ng Larawan mula sa Gallery'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final file = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    imageQuality: 85,
+                  );
+                  if (file != null) onPicked(file);
+                } catch (e) {
+                  debugPrint('Gallery photo error: $e');
+                }
+              },
+            ),
+
+            // ── Video from gallery (most reliable on Android) ──
+            if (allowVideo)
+              ListTile(
+                leading: const Icon(Icons.video_library_outlined),
+                title: const Text('Pumili ng Video mula sa Gallery'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    final file = await picker.pickVideo(
+                      source: ImageSource.gallery,
+                    );
+                    if (file != null) onPicked(file);
+                  } catch (e) {
+                    debugPrint('Gallery video error: $e');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Hindi ma-load ang video.'),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,30 +167,35 @@ class RequirementStep extends StatelessWidget {
         const CustomDivider(),
         StepHeader(
           title: 'Step 3: Patunay ng Requirements',
-          subtitle: 'Mag-upload ng larawan bilang patunay sa mga requirement.',
+          subtitle:
+              'Mag-upload ng mga larawan o video bilang patunay sa mga requirement.',
         ),
+
+        // ── Land size proof ─────────────────────────────────
         if (item.landSizeRequirement == true)
           RequirementUploadTile(
             label: 'Patunay ng Laki ng Lupa',
-            file: landSizeProof,
-            onPick: () async {
-              final image = await picker.pickImage(source: ImageSource.camera);
-              if (image != null) onLandPick(image);
-            },
+            files: landSizeProofs,
+            onPick: () => _showSourceSheet(
+              context,
+              onPicked: onLandAdd,
+            ),
             onRemove: onLandRemove,
           ),
+
+        // ── Crop height proof ───────────────────────────────
         if (item.maxCropHeightRequirement == true)
           RequirementUploadTile(
             label: 'Patunay ng Taas ng Pananim',
-            file: cropHeightProof,
-            onPick: () async {
-              final image = await picker.pickImage(source: ImageSource.camera);
-              if (image != null) onCropPick(image);
-            },
+            files: cropHeightProofs,
+            onPick: () => _showSourceSheet(
+              context,
+              onPicked: onCropAdd,
+            ),
             onRemove: onCropRemove,
           ),
 
-        // MINIMUM VOLUME + DARAK TOGGLE (Rice Mill only)
+        // ── Rice Mill: volume + darak (unchanged) ───────────
         if (isRiceMill && item.minimumVolumeRequired) ...[
           const SizedBox(height: 12),
           Padding(
@@ -81,7 +203,6 @@ class RequirementStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- Volume Input ---
                 const Text(
                   'Dami ng Palay (Volume)',
                   style: TextStyle(fontWeight: FontWeight.w500),
@@ -117,10 +238,9 @@ class RequirementStep extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 16),
 
-                // --- Darak Toggle ---
+                // Darak toggle
                 const Text(
                   'Keep Byproduct (Darak)?',
                   style: TextStyle(fontWeight: FontWeight.w500),
@@ -218,7 +338,7 @@ class RequirementStep extends StatelessWidget {
                   ],
                 ),
 
-                // --- Estimated Total ---
+                // Estimated total
                 if (estimatedTotal != null) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -234,8 +354,7 @@ class RequirementStep extends StatelessWidget {
                       children: [
                         const Text(
                           'Estimated Total',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.black54),
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -249,8 +368,7 @@ class RequirementStep extends StatelessWidget {
                         Text(
                           '${volumeController?.text ?? '0'} ${item.minimumVolumeUnit} × '
                           '₱${keepDarak ? item.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00' : item.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                         ),
                       ],
                     ),

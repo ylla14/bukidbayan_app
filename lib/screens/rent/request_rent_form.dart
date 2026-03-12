@@ -31,18 +31,21 @@ class _RequestRentFormState extends State<RequestRentForm> {
   double? _farmLat;
   double? _farmLng;
 
-  XFile? landSizeProof;
-  XFile? cropHeightProof;
+  String? _profileFarmAddress;
+double? _profileFarmLat;
+double? _profileFarmLng;
+
+  // ── Changed from single XFile? to List<XFile> ──────────────
+  List<XFile> _landSizeProofs = [];
+  List<XFile> _cropHeightProofs = [];
 
   final RentRequestService _requestService = RentRequestService();
   final ImagePicker _picker = ImagePicker();
 
-  bool get hasLandSizeRequirement =>
-      widget.item.landSizeRequirement &&
-      (widget.item.landSizeMin != null || widget.item.landSizeMax != null);
+  bool get hasLandSizeRequirement => widget.item.landSizeRequirement == true;
 
   bool get hasCropHeightRequirement =>
-      widget.item.maxCropHeightRequirement && widget.item.maxCropHeight != null;
+      widget.item.maxCropHeightRequirement == true;
 
   bool get isRiceMill =>
       widget.item.category?.toLowerCase().contains('rice mill') == true;
@@ -67,7 +70,6 @@ class _RequestRentFormState extends State<RequestRentForm> {
     final price = _keepDarak
         ? (widget.item.ricePlusDarakPricePerKg ?? 3.0)
         : (widget.item.riceOnlyPricePerKg ?? 2.0);
-    // volume input is in cavans, convert to kg
     final kg = widget.item.minimumVolumeUnit == 'cavans' ? vol * 50 : vol;
     return kg * price;
   }
@@ -78,13 +80,11 @@ class _RequestRentFormState extends State<RequestRentForm> {
   double? _profileLat;
   double? _profileLng;
 
-  // Add to _RequestRentFormState fields:
   DeliveryMethod _deliveryMethod = DeliveryMethod.pickup;
 
   @override
   void initState() {
     super.initState();
-
     nameController.addListener(_onFieldChanged);
     addressController.addListener(_onFieldChanged);
     _loadProfileAddress();
@@ -101,7 +101,12 @@ class _RequestRentFormState extends State<RequestRentForm> {
           _profileAddress = data['address'] as String?;
           _profileLat = (data['latitude'] as num?)?.toDouble();
           _profileLng = (data['longitude'] as num?)?.toDouble();
-          // Seed addressController with profile address as default
+
+            // add these:
+        _profileFarmAddress = data['farmAddress'] as String?;
+        _profileFarmLat = (data['farmLatitude'] as num?)?.toDouble();
+        _profileFarmLng = (data['farmLongitude'] as num?)?.toDouble();
+
           if (_profileAddress != null && addressController.text.isEmpty) {
             addressController.text = _profileAddress!;
           }
@@ -112,9 +117,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
     }
   }
 
-  void _onFieldChanged() {
-    setState(() {}); // rebuild to update isStep2Complete
-  }
+  void _onFieldChanged() => setState(() {});
 
   @override
   void dispose() {
@@ -123,6 +126,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
     nameController.dispose();
     addressController.dispose();
     farmAddressController.dispose();
+    _volumeController.dispose();
     super.dispose();
   }
 
@@ -157,7 +161,6 @@ class _RequestRentFormState extends State<RequestRentForm> {
             RentItemExpandable(item: widget.item),
             const SizedBox(height: 16),
 
-            /// Components
             DateStep(
               item: widget.item,
               startDate: startDate,
@@ -168,9 +171,7 @@ class _RequestRentFormState extends State<RequestRentForm> {
                   returnDate = null;
                 });
               },
-              onReturnDatePicked: (date) {
-                setState(() => returnDate = date);
-              },
+              onReturnDatePicked: (date) => setState(() => returnDate = date),
             ),
 
             if (isScheduleComplete) ...[
@@ -190,7 +191,6 @@ class _RequestRentFormState extends State<RequestRentForm> {
                 equipmentLocation: widget.item.location,
                 onChanged: (method) => setState(() {
                   _deliveryMethod = method;
-                  // Clear address when switching back to pickup
                   if (method == DeliveryMethod.pickup) {
                     addressController.clear();
                   }
@@ -201,23 +201,29 @@ class _RequestRentFormState extends State<RequestRentForm> {
                 profileAddress: _profileAddress,
                 profileLat: _profileLat,
                 profileLng: _profileLng,
+                profileFarmAddress: _profileFarmAddress,
+                profileFarmLat: _profileFarmLat,
+                profileFarmLng: _profileFarmLng,
                 addressController: addressController,
-                onLatChanged: (v) =>
-                    setState(() => _addressLat = v?.toString()),
-                onLngChanged: (v) =>
-                    setState(() => _addressLng = v?.toString()),
+                onLatChanged: (v) => setState(() => _addressLat = v?.toString()),
+                onLngChanged: (v) => setState(() => _addressLng = v?.toString()),
               ),
             ],
 
             if (isScheduleComplete && hasAnyRequirement) ...[
               RequirementStep(
                 item: widget.item,
-                landSizeProof: landSizeProof,
-                cropHeightProof: cropHeightProof,
-                onLandPick: (file) => setState(() => landSizeProof = file),
-                onLandRemove: () => setState(() => landSizeProof = null),
-                onCropPick: (file) => setState(() => cropHeightProof = file),
-                onCropRemove: () => setState(() => cropHeightProof = null),
+                // ── Pass lists ────────────────────────────────
+                landSizeProofs: _landSizeProofs,
+                cropHeightProofs: _cropHeightProofs,
+                onLandAdd: (file) =>
+                    setState(() => _landSizeProofs.add(file)),
+                onLandRemove: (index) =>
+                    setState(() => _landSizeProofs.removeAt(index)),
+                onCropAdd: (file) =>
+                    setState(() => _cropHeightProofs.add(file)),
+                onCropRemove: (index) =>
+                    setState(() => _cropHeightProofs.removeAt(index)),
                 picker: _picker,
                 volumeController: _volumeController,
                 volumeError: _volumeError,
@@ -241,8 +247,9 @@ class _RequestRentFormState extends State<RequestRentForm> {
                     : farmAddressController.text.trim(),
                 farmLatitude: _farmLat,
                 farmLongitude: _farmLng,
-                landSizeProof: landSizeProof,
-                cropHeightProof: cropHeightProof,
+                // ── Pass lists ────────────────────────────────
+                landSizeProofs: _landSizeProofs,
+                cropHeightProofs: _cropHeightProofs,
                 item: widget.item,
                 requestService: _requestService,
                 volumeController: _volumeController,

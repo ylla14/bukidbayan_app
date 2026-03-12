@@ -112,81 +112,81 @@ class _UserInfoStepState extends State<UserInfoStep> {
         const SizedBox(height: 20),
 
         // ── Farm Address ────────────────────────────────────────────────
-        Row(
-          children: [
-            Icon(Icons.grass_rounded,
-                size: 18, color: lightColorScheme.primary),
-            const SizedBox(width: 6),
-            const Text(
-              'Farm Field Address',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: widget.farmAddressController,
-          maxLines: 2,
-          onChanged: (val) {
-            // Clear picked coords when the user manually edits
-            if (_farmPickedAddress != null && val != _farmPickedAddress) {
-              _farmPickedLat = null;
-              _farmPickedLng = null;
-              _farmPickedAddress = null;
-            }
-          },
-          decoration: InputDecoration(
-            hintText: 'Lokasyon ng bukid / farm field',
-            hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
-            prefixIcon: Icon(Icons.location_on_outlined,
-                color: lightColorScheme.primary, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(Icons.map_outlined,
-                  color: lightColorScheme.primary, size: 22),
-              tooltip: 'Pumili sa mapa',
-              onPressed: _openFarmPicker,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Colors.black12),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Colors.black12),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  BorderSide(color: lightColorScheme.primary, width: 1.5),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-            filled: true,
-            fillColor: Colors.grey.shade50,
-          ),
-        ),
+        // Row(
+        //   children: [
+        //     Icon(Icons.grass_rounded,
+        //         size: 18, color: lightColorScheme.primary),
+        //     const SizedBox(width: 6),
+        //     const Text(
+        //       'Farm Field Address',
+        //       style: TextStyle(
+        //         fontSize: 14,
+        //         fontWeight: FontWeight.w600,
+        //         color: Colors.black87,
+        //       ),
+        //     ),
+        //   ],
+        // ),
+        // const SizedBox(height: 6),
+        // TextFormField(
+        //   controller: widget.farmAddressController,
+        //   maxLines: 2,
+        //   onChanged: (val) {
+        //     // Clear picked coords when the user manually edits
+        //     if (_farmPickedAddress != null && val != _farmPickedAddress) {
+        //       _farmPickedLat = null;
+        //       _farmPickedLng = null;
+        //       _farmPickedAddress = null;
+        //     }
+        //   },
+        //   decoration: InputDecoration(
+        //     hintText: 'Lokasyon ng bukid / farm field',
+        //     hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
+        //     prefixIcon: Icon(Icons.location_on_outlined,
+        //         color: lightColorScheme.primary, size: 20),
+        //     suffixIcon: IconButton(
+        //       icon: Icon(Icons.map_outlined,
+        //           color: lightColorScheme.primary, size: 22),
+        //       tooltip: 'Pumili sa mapa',
+        //       onPressed: _openFarmPicker,
+        //     ),
+        //     border: OutlineInputBorder(
+        //       borderRadius: BorderRadius.circular(10),
+        //       borderSide: const BorderSide(color: Colors.black12),
+        //     ),
+        //     enabledBorder: OutlineInputBorder(
+        //       borderRadius: BorderRadius.circular(10),
+        //       borderSide: const BorderSide(color: Colors.black12),
+        //     ),
+        //     focusedBorder: OutlineInputBorder(
+        //       borderRadius: BorderRadius.circular(10),
+        //       borderSide:
+        //           BorderSide(color: lightColorScheme.primary, width: 1.5),
+        //     ),
+        //     contentPadding:
+        //         const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+        //     filled: true,
+        //     fillColor: Colors.grey.shade50,
+        //   ),
+        // ),
 
-        if (_farmPickedLat != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4, left: 4),
-            child: Row(
-              children: [
-                Icon(Icons.my_location_rounded,
-                    size: 12, color: lightColorScheme.primary),
-                const SizedBox(width: 4),
-                Text(
-                  'GPS: ${_farmPickedLat!.toStringAsFixed(5)}, '
-                  '${_farmPickedLng!.toStringAsFixed(5)}',
-                  style: TextStyle(
-                      fontSize: 11, color: lightColorScheme.primary),
-                ),
-              ],
-            ),
-          ),
+        // if (_farmPickedLat != null)
+        //   Padding(
+        //     padding: const EdgeInsets.only(top: 4, left: 4),
+        //     child: Row(
+        //       children: [
+        //         Icon(Icons.my_location_rounded,
+        //             size: 12, color: lightColorScheme.primary),
+        //         const SizedBox(width: 4),
+        //         Text(
+        //           'GPS: ${_farmPickedLat!.toStringAsFixed(5)}, '
+        //           '${_farmPickedLng!.toStringAsFixed(5)}',
+        //           style: TextStyle(
+        //               fontSize: 11, color: lightColorScheme.primary),
+        //         ),
+        //       ],
+        //     ),
+        //   ),
       ],
     );
   }

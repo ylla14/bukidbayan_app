@@ -344,48 +344,48 @@ void clearFilters() {
             const SizedBox(height: 10),
 
             // CAROUSEL
-            if (searchQuery.isEmpty && activeCategory == null)
-              StreamBuilder<QuerySnapshot>(
-                stream: _firestoreService.getAvailableEquipment(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const SizedBox();
-                  }
+            // if (searchQuery.isEmpty && activeCategory == null)
+            //   StreamBuilder<QuerySnapshot>(
+            //     stream: _firestoreService.getAvailableEquipment(),
+            //     builder: (context, snapshot) {
+            //       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            //         return const SizedBox();
+            //       }
 
-                  final currentUserId = _auth.currentUser?.uid;
-                  final now = DateTime.now();
+            //       final currentUserId = _auth.currentUser?.uid;
+            //       final now = DateTime.now();
 
-                  final equipmentList = snapshot.data!.docs
-                      .map((doc) {
-                        final equipment = Equipment.fromFirestore(doc);
-                        final data = doc.data() as Map<String, dynamic>;
+            //       final equipmentList = snapshot.data!.docs
+            //           .map((doc) {
+            //             final equipment = Equipment.fromFirestore(doc);
+            //             final data = doc.data() as Map<String, dynamic>;
 
-                        final status = EquipmentStatus.fromString(data['status'] as String?);
-                        final availableUntil =
-                          (data['availableUntil'] as Timestamp?)?.toDate();
+            //             final status = EquipmentStatus.fromString(data['status'] as String?);
+            //             final availableUntil =
+            //               (data['availableUntil'] as Timestamp?)?.toDate();
 
-                        final dateOk = availableUntil != null && now.isBefore(availableUntil);
+            //             final dateOk = availableUntil != null && now.isBefore(availableUntil);
 
-                        final isOwnedByUser = equipment.ownerId == currentUserId;
+            //             final isOwnedByUser = equipment.ownerId == currentUserId;
 
-                        if (!isOwnedByUser && status == EquipmentStatus.available && dateOk){
-                          return equipment;
-                        }
-                        return null;
-                      })
-                      .whereType<Equipment>() // removes nulls
-                      .toList();
+            //             if (!isOwnedByUser && status == EquipmentStatus.available && dateOk){
+            //               return equipment;
+            //             }
+            //             return null;
+            //           })
+            //           .whereType<Equipment>() // removes nulls
+            //           .toList();
 
-                  if (equipmentList.isEmpty) {
-                    return const SizedBox();
-                  }
+            //       if (equipmentList.isEmpty) {
+            //         return const SizedBox();
+            //       }
 
-                  return EquipmentCarousel(
-                    equipment: equipmentList,
-                    maxItems: 5,
-                  );
-                },
-              ),
+            //       return EquipmentCarousel(
+            //         equipment: equipmentList,
+            //         maxItems: 5,
+            //       );
+            //     },
+            //   ),
 
 
 

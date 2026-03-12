@@ -17,17 +17,17 @@ class CustomDrawer extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(30),
         children: [
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-          ),
+          // ListTile(
+          //   leading: const Icon(Icons.settings),
+          //   title: const Text('Settings'),
+          // ),
 
-          ListTile(
-            leading: const Icon(Icons.circle),
-            title: const Text('Menu 2'),
-          ),
+          // ListTile(
+          //   leading: const Icon(Icons.circle),
+          //   title: const Text('Menu 2'),
+          // ),
 
-          const Divider(),
+          // const Divider(),
 
           //LOGOUT BUTTON
           ListTile(

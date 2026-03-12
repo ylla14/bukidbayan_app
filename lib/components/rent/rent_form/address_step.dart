@@ -9,6 +9,11 @@ class AddressStep extends StatefulWidget {
   final double? profileLat;
   final double? profileLng;
 
+  /// Pre-filled from user profile's farm field
+  final String? profileFarmAddress;
+  final double? profileFarmLat;
+  final double? profileFarmLng;
+
   final TextEditingController addressController;
   final ValueChanged<double?> onLatChanged;
   final ValueChanged<double?> onLngChanged;
@@ -18,6 +23,9 @@ class AddressStep extends StatefulWidget {
     required this.profileAddress,
     required this.profileLat,
     required this.profileLng,
+    required this.profileFarmAddress,
+    required this.profileFarmLat,
+    required this.profileFarmLng,
     required this.addressController,
     required this.onLatChanged,
     required this.onLngChanged,
@@ -28,7 +36,7 @@ class AddressStep extends StatefulWidget {
 }
 
 class _AddressStepState extends State<AddressStep> {
-  String _mode = 'my'; // 'my' or 'other'
+  String _mode = 'my'; // 'my' or 'farm'
 
   double? _pickedLat;
   double? _pickedLng;
@@ -37,21 +45,24 @@ class _AddressStepState extends State<AddressStep> {
   bool get _profileHasAddress =>
       widget.profileAddress != null && widget.profileAddress!.isNotEmpty;
 
-@override
-void initState() {
-  super.initState();
-  if (!_profileHasAddress) {
-    _mode = 'other';
-  } else {
-    widget.addressController.text = widget.profileAddress!;
-    // ✅ Defer parent setState calls until after the current build is done
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      widget.onLatChanged(widget.profileLat);
-      widget.onLngChanged(widget.profileLng);
-    });
+  bool get _profileHasFarmAddress =>
+      widget.profileFarmAddress != null && widget.profileFarmAddress!.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_profileHasAddress) {
+      _mode = 'farm';
+    } else {
+      widget.addressController.text = widget.profileAddress!;
+      // Defer parent setState calls until after the current build is done
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.onLatChanged(widget.profileLat);
+        widget.onLngChanged(widget.profileLng);
+      });
+    }
   }
-}
 
   void _selectMode(String mode) {
     setState(() => _mode = mode);
@@ -60,18 +71,22 @@ void initState() {
       widget.onLatChanged(widget.profileLat);
       widget.onLngChanged(widget.profileLng);
     } else {
-      // Clear to force explicit input
-      widget.addressController.text = '';
-      widget.onLatChanged(null);
-      widget.onLngChanged(null);
+      // Pre-fill with farm address from profile, if available
+      widget.addressController.text = widget.profileFarmAddress ?? '';
+      widget.onLatChanged(widget.profileFarmLat);
+      widget.onLngChanged(widget.profileFarmLng);
+      // Sync picker coords so the GPS badge shows immediately
+      _pickedLat     = widget.profileFarmLat;
+      _pickedLng     = widget.profileFarmLng;
+      _pickedAddress = widget.profileFarmAddress;
     }
   }
 
   Future<void> _openMapPicker() async {
     final initial = (_pickedLat != null && _pickedLng != null)
         ? LatLng(_pickedLat!, _pickedLng!)
-        : (widget.profileLat != null && widget.profileLng != null)
-            ? LatLng(widget.profileLat!, widget.profileLng!)
+        : (widget.profileFarmLat != null && widget.profileFarmLng != null)
+            ? LatLng(widget.profileFarmLat!, widget.profileFarmLng!)
             : null;
 
     final result = await Navigator.push<LocationPickerResult>(
@@ -131,25 +146,27 @@ void initState() {
             const SizedBox(width: 10),
             Expanded(
               child: _AddressOptionCard(
-                icon: Icons.edit_location_alt_rounded,
-                label: 'Other Address',
-                subtitle: (_mode == 'other' &&
-                        widget.addressController.text.isNotEmpty)
-                    ? widget.addressController.text
-                    : 'Tap to set address',
-                isSelected: _mode == 'other',
+                icon: Icons.grass_rounded,
+                label: 'Farm Field Address',
+                subtitle: _profileHasFarmAddress
+                    ? widget.profileFarmAddress!
+                    : (_mode == 'farm' && widget.addressController.text.isNotEmpty)
+                        ? widget.addressController.text
+                        : 'Tap to set farm address',
+                isSelected: _mode == 'farm',
                 isDisabled: false,
-                onTap: () => _selectMode('other'),
+                onTap: () => _selectMode('farm'),
               ),
             ),
           ],
         ),
 
-        // ── 'Other' text input ──────────────────────────────────────
-        if (_mode == 'other') ...[
+        // ── Farm Field text input ───────────────────────────────────
+        if (_mode == 'farm') ...[
           const SizedBox(height: 12),
           TextFormField(
             controller: widget.addressController,
+            maxLines: 2,
             keyboardType: TextInputType.streetAddress,
             onChanged: (v) {
               // User typed manually — clear picker coords
@@ -164,9 +181,20 @@ void initState() {
               }
             },
             decoration: InputDecoration(
-              hintText: 'Type address or pick on map',
+              hintText: 'Lokasyon ng bukid / farm field',
+              hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
+              prefixIcon: Icon(Icons.location_on_outlined,
+                  color: lightColorScheme.primary, size: 20),
+              suffixIcon: IconButton(
+                icon: Icon(Icons.map_outlined,
+                    color: lightColorScheme.primary, size: 22),
+                tooltip: 'Pumili sa mapa',
+                onPressed: _openMapPicker,
+              ),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.black12),
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(
@@ -175,29 +203,31 @@ void initState() {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide:
-                    BorderSide(color: lightColorScheme.primary, width: 2),
+                    BorderSide(color: lightColorScheme.primary, width: 1.5),
               ),
-              suffixIcon: IconButton(
-                icon: Icon(Icons.map_outlined,
-                    color: lightColorScheme.primary),
-                tooltip: 'Pick on map',
-                onPressed: _openMapPicker,
-              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+              filled: true,
+              fillColor: Colors.grey.shade50,
             ),
           ),
           if (_pickedLat != null) ...[
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.check_circle_outline,
-                    size: 14, color: Colors.green.shade600),
-                const SizedBox(width: 4),
-                Text(
-                  'Location pinned on map',
-                  style: TextStyle(
-                      fontSize: 11, color: Colors.green.shade600),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.my_location_rounded,
+                      size: 12, color: lightColorScheme.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'GPS: ${_pickedLat!.toStringAsFixed(5)}, '
+                    '${_pickedLng!.toStringAsFixed(5)}',
+                    style: TextStyle(
+                        fontSize: 11, color: lightColorScheme.primary),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -208,7 +238,7 @@ void initState() {
   }
 }
 
-// ── Option card (same style as equipment listing) ─────────────────────────────
+// ── Option card ───────────────────────────────────────────────────────────────
 
 class _AddressOptionCard extends StatelessWidget {
   final IconData    icon;
