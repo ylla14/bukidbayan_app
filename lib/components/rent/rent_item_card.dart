@@ -8,8 +8,8 @@ class RentItemCard extends StatelessWidget {
   final String imageUrl;
   final String rentalUnit;
   final bool isAvailable;
-  final bool isPending; // 👈 ADD THIS
-
+  final bool isPending;
+  final bool isRecommended;
 
   const RentItemCard({
     super.key,
@@ -19,9 +19,8 @@ class RentItemCard extends StatelessWidget {
     this.ownerName,
     required this.rentalUnit,
     required this.isAvailable,
-    this.isPending = false, // 👈 ADD THIS with default value
-
-
+    this.isPending = false,
+    this.isRecommended = false,
   });
 
   bool _isNetworkUrl(String url) =>
@@ -48,11 +47,42 @@ class RentItemCard extends StatelessWidget {
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: AvailabilityChip( 
+                    child: AvailabilityChip(
                       isAvailable: isAvailable,
-                      isPending: isPending,)
-                    
+                      isPending: isPending,
+                    ),
                   ),
+
+                  // RECOMMENDED BADGE
+                  if (isRecommended)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.green[700],
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.eco_rounded,
+                                color: Colors.white, size: 11),
+                            SizedBox(width: 3),
+                            Text(
+                              'Recommended',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -83,7 +113,7 @@ class RentItemCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '$price',
+                      price,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,

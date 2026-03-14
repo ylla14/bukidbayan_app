@@ -9,7 +9,10 @@ class CategoryFilterBar extends StatelessWidget {
     super.key,
     required this.activeCategory,
     required this.onCategorySelected,
-    this.categories = const ['Hand Tool', 'Tractor', 'Machine', 'Harvester'],
+    this.categories = const [
+    'Hand Tool', 'Hand Tractor', 'Floating Tiller',
+    'Tractor', 'Implements', 'Machine', 'Harvester', 'Rice Mill',
+  ],
   });
 
   @override

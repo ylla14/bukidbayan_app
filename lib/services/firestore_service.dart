@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/review.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'dart:math' show sin, cos, sqrt, atan2;
 
 class FirestoreService {
@@ -128,6 +129,52 @@ class FirestoreService {
       });
     } catch (e) {
       throw Exception('Error updating user profile: $e');
+    }
+  }
+
+  // ── Crop Preferences ────────────────────────────────────────────────────
+
+  /// Returns the user's saved crop preferences, or null if never set.
+  /// null → show the onboarding dialog; [] → user saved with no selections.
+  Future<List<String>?> getCropPreferences(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (!doc.exists) return null;
+      final data = doc.data();
+      if (data == null || !data.containsKey('cropPreferences')) return null;
+      return List<String>.from(data['cropPreferences'] ?? []);
+    } catch (e) {
+      debugPrint('Error fetching crop preferences: $e');
+      return null;
+    }
+  }
+
+  Future<void> saveCropPreferences(String userId, List<String> crops) async {
+    await _firestore.collection('users').doc(userId).update({
+      'cropPreferences': crops,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ── Category seeding ─────────────────────────────────────────────────────
+
+  /// Ensures the three new categories exist in the Firestore categories doc.
+  Future<void> ensureNewCategoriesExist() async {
+    const newCategories = ['Hand Tractor', 'Floating Tiller', 'Implements'];
+    final docRef = _firestore.collection('categories').doc('equipment_categories');
+    final doc = await docRef.get();
+
+    if (!doc.exists) {
+      await docRef.set({'categories': newCategories});
+      return;
+    }
+
+    final existing = List<String>.from(doc.data()?['categories'] ?? []);
+    final toAdd = newCategories.where((c) => !existing.contains(c)).toList();
+    if (toAdd.isNotEmpty) {
+      await docRef.update({
+        'categories': FieldValue.arrayUnion(toAdd),
+      });
     }
   }
 

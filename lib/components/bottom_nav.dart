@@ -1,5 +1,8 @@
+import 'package:bukidbayan_app/components/crop_preference_dialog.dart';
 import 'package:bukidbayan_app/screens/crowdfunding_screen.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
 import 'package:bukidbayan_app/screens/profile/profile_screen.dart';
@@ -16,11 +19,31 @@ class _BottomNavState extends State<BottomNav> {
   int currentIndex = 0;
 
   final List<Widget> screens = [
-    HomeScreen(),    
+    HomeScreen(),
     RentScreen(),
     CrowdfundingScreen(),
-    ProfileScreen(),  
+    ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkCropPreferences());
+  }
+
+  Future<void> _checkCropPreferences() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || !mounted) return;
+
+    final prefs = await FirestoreService().getCropPreferences(user.uid);
+    if (prefs == null && mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => CropPreferenceDialog(userId: user.uid),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

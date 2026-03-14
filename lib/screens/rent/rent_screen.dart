@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
+import 'package:bukidbayan_app/models/crop_preference.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/notification_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
@@ -49,6 +50,7 @@ class _RentScreenState extends State<RentScreen> {
   late RangeValues priceRange;
 
   Set<String> blockedCategories = {};
+  Set<String> _recommendedToolTypes = {};
 
   Timer? _availabilityTimer;
   DateTimeRange? dateFilter;
@@ -63,8 +65,8 @@ void initState() {
   
   // ✅ Add this: Listen to rent request changes and update availability
   _setupAvailabilityListener();
-  _loadBlockedCategories(); // NEW
-
+  _loadBlockedCategories();
+  _loadCropPreferences();
 }
 
 StreamSubscription<QuerySnapshot>? _requestListener;
@@ -141,6 +143,17 @@ void _setupAvailabilityListener() {
     if (mounted) {
       setState(() {
         blockedCategories = categories;
+      });
+    }
+  }
+
+  Future<void> _loadCropPreferences() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+    final prefs = await _firestoreService.getCropPreferences(userId);
+    if (prefs != null && mounted) {
+      setState(() {
+        _recommendedToolTypes = recommendedToolTypes(prefs);
       });
     }
   }
@@ -690,8 +703,9 @@ void clearFilters() {
                               price: '₱${equipment.price.toStringAsFixed(0)}',
                               ownerName: 'Loading...',
                               isAvailable: false,
-                              isPending: false, // NEW
+                              isPending: false,
                               rentalUnit: equipment.rentalUnit,
+                              isRecommended: _recommendedToolTypes.contains(equipment.category),
                             );
                           }
 
@@ -736,7 +750,8 @@ void clearFilters() {
                                       ownerName: ownerName,
                                       rentalUnit: equipment.rentalUnit,
                                       isAvailable: false,
-                                      isPending: true, // NEW
+                                      isPending: true,
+                                      isRecommended: _recommendedToolTypes.contains(equipment.category),
                                     ),
                                   ),
                                 );
@@ -775,6 +790,7 @@ void clearFilters() {
                                       rentalUnit: equipment.rentalUnit,
                                       isAvailable: false,
                                       isPending: false,
+                                      isRecommended: _recommendedToolTypes.contains(equipment.category),
                                     ),
                                   ),
                                 );
@@ -801,6 +817,7 @@ void clearFilters() {
                                   rentalUnit: equipment.rentalUnit,
                                   isAvailable: true,
                                   isPending: false,
+                                  isRecommended: _recommendedToolTypes.contains(equipment.category),
                                 ),
                               );
                             },
