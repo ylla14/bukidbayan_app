@@ -88,6 +88,13 @@ double? _profileFarmLng;
     nameController.addListener(_onFieldChanged);
     addressController.addListener(_onFieldChanged);
     _loadProfileAddress();
+
+    // Auto-select the only available method if restricted
+    if (widget.item.deliveryMode == DeliveryMode.deliveryOnly) {
+      _deliveryMethod = DeliveryMethod.delivery;
+    } else if (widget.item.deliveryMode == DeliveryMode.pickupOnly) {
+      _deliveryMethod = DeliveryMethod.pickup;
+    }
   }
 
   Future<void> _loadProfileAddress() async {
@@ -186,16 +193,17 @@ double? _profileFarmLng;
                 },
               ),
 
-              DeliveryMethodStep(
-                selected: _deliveryMethod,
-                equipmentLocation: widget.item.location,
-                onChanged: (method) => setState(() {
-                  _deliveryMethod = method;
-                  if (method == DeliveryMethod.pickup) {
-                    addressController.clear();
-                  }
-                }),
-              ),
+             DeliveryMethodStep(
+              selected: _deliveryMethod,
+              equipmentLocation: widget.item.location,
+              deliveryMode: widget.item.deliveryMode, // ← add this
+              onChanged: (method) => setState(() {
+                _deliveryMethod = method;
+                if (method == DeliveryMethod.pickup) {
+                  addressController.clear();
+                }
+              }),
+            ),
 
               AddressStep(
                 profileAddress: _profileAddress,
