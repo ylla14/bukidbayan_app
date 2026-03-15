@@ -7,8 +7,11 @@ class CustomTextFormField extends StatelessWidget {
   final String hint;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
+  final TextInputAction? textInputAction;
   final int maxLines;
+  final int? maxLength;
   final bool obscureText;
+  final Function(String)? onChanged;
 
   const CustomTextFormField({
     super.key,
@@ -17,8 +20,11 @@ class CustomTextFormField extends StatelessWidget {
     required this.hint,
     this.validator,
     this.keyboardType = TextInputType.text,
+    this.textInputAction,
     this.maxLines = 1,
+    this.maxLength,
     this.obscureText = false,
+    this.onChanged,
   });
 
   @override
@@ -27,8 +33,11 @@ class CustomTextFormField extends StatelessWidget {
       controller: controller,
       validator: validator,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
       maxLines: maxLines,
+      maxLength: maxLength,
       obscureText: obscureText,
+      onChanged: onChanged,
       decoration: InputDecoration(
         // labelText: label,
         hintText: hint,
