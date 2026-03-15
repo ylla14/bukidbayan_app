@@ -1,20 +1,30 @@
+import 'dart:convert';
+
 import 'package:bukidbayan_app/models/campaign.dart';
+import 'package:bukidbayan_app/screens/campaign_creation/campaign_wizard_form_logic.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
+import 'package:bukidbayan_app/widgets/campaign_cover_image.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:bukidbayan_app/widgets/custom_text_form_field.dart';
 import 'package:bukidbayan_app/widgets/reward_tier_form.dart';
 import 'package:bukidbayan_app/widgets/step_progress_indicator.dart';
-import 'package:bukidbayan_app/screens/campaign_creation/campaign_wizard_form_logic.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class CampaignWizardScreen extends StatefulWidget {
   final Campaign? existingDraft;
+  final CrowdfundingService? serviceOverride;
+  final FirebaseAuth? authOverride;
+  final ImagePicker? imagePickerOverride;
 
   const CampaignWizardScreen({
     super.key,
     this.existingDraft,
+    this.serviceOverride,
+    this.authOverride,
+    this.imagePickerOverride,
   });
 
   @override
@@ -22,10 +32,36 @@ class CampaignWizardScreen extends StatefulWidget {
 }
 
 class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
+  static const List<String> _stepTitles = [
+    'Panimula',
+    'Kwento ng Kampanya',
+    'Detalye ng Kagamitan',
+    'Saklaw ng Bibilhin',
+    'Pondo at Iskedyul',
+    'Benepisyo at Delivery',
+    'Suporta at Maintenance',
+    'Pagsusuri',
+  ];
+
+  static const List<String> _stepDescriptions = [
+    'Ilagay ang malinaw na pamagat, kategorya, at cover photo na unang makikita ng mga susuporta.',
+    'Ipaliwanag ang problema, sino ang makikinabang, at bakit mahalaga ang kagamitang ito.',
+    'Ilagay ang mahahalagang detalye ng kagamitan para malinaw ang eksaktong bibilhin.',
+    'Ilista ang kumpletong laman ng bibilhin at anumang mahalagang pagpipilian o variant.',
+    'Itakda ang tamang target na pondo, petsa ng pagtatapos, at plano ng pagpapatupad.',
+    'Ilatag ang benepisyo para sa supporters at kung paano hahawakan ang delivery o shipping.',
+    'Ipaliwanag ang warranty, maintenance, at plano sa spare parts pagkatapos mabili ang kagamitan.',
+    'Suriin ang draft, ilagay ang mga panganib at paalala sa kaligtasan, saka i-publish.',
+  ];
+
   int _currentStep = 0;
   bool _isLoading = false;
+  bool _allowImmediatePop = false;
   late Campaign _draft;
   final CampaignWizardFormLogic _formLogic = CampaignWizardFormLogic();
+  late final CrowdfundingService _service;
+  late final ImagePicker _imagePicker;
+  FirebaseAuth? _auth;
 
   // Form controllers - Step 1
   late TextEditingController _titleController;
@@ -85,6 +121,23 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     'assets/images/loopyBg.jpg',
   ];
 
+  final Map<String, String> _assetImageLabels = const {
+    'assets/images/farmBg.jpg': 'Bukirin',
+    'assets/images/bg1.png': 'Patubig',
+    'assets/images/loopyBg.jpg': 'Pamayanan',
+  };
+
+  final Map<String, String> _categoryLabels = const {
+    'Irrigation': 'Patubig',
+    'Crop Care': 'Pangangalaga ng Pananim',
+    'Post-harvest': 'Pagkatapos ng Ani',
+    'Mechanized Tools': 'Mekanikal na Kagamitan',
+    'Livestock': 'Alagang Hayop',
+    'Solar/Power': 'Solar/Kuryente',
+    'Hand Tools': 'Kagamitang Kamay',
+    'Other': 'Iba pa',
+  };
+
   final List<String> _equipmentTypes = [
     'Pump',
     'Sprayer',
@@ -94,6 +147,15 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     'Other',
   ];
 
+  final Map<String, String> _equipmentTypeLabels = const {
+    'Pump': 'Bomba',
+    'Sprayer': 'Sprayer',
+    'Thresher/Sheller': 'Thresher/Sheller',
+    'Solar equipment': 'Kagamitang Solar',
+    'Hand tool': 'Kagamitang Kamay',
+    'Other': 'Iba pa',
+  };
+
   final List<String> _shippingCoverageOptions = [
     'Pickup',
     'Local delivery',
@@ -101,9 +163,26 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     'Other',
   ];
 
+  final Map<String, String> _shippingCoverageLabels = const {
+    'Pickup': 'Pickup',
+    'Local delivery': 'Lokal na delivery',
+    'Nationwide delivery': 'Nationwide na delivery',
+    'Other': 'Iba pa',
+  };
+
   @override
   void initState() {
     super.initState();
+    _service = widget.serviceOverride ?? CrowdfundingService();
+    _imagePicker = widget.imagePickerOverride ?? ImagePicker();
+    _auth = widget.authOverride;
+    if (_auth == null) {
+      try {
+        _auth = FirebaseAuth.instance;
+      } catch (_) {
+        _auth = null;
+      }
+    }
     _initializeDraft();
     _initializeControllers();
   }
@@ -115,9 +194,8 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
       _draft = Campaign(
         id: 'draft_${DateTime.now().millisecondsSinceEpoch}',
         title: '',
-        creatorName:
-            FirebaseAuth.instance.currentUser?.displayName ?? 'Anonymous',
-        creatorEmail: FirebaseAuth.instance.currentUser?.email,
+        creatorName: _auth?.currentUser?.displayName ?? 'Anonymous',
+        creatorEmail: _auth?.currentUser?.email,
         shortBlurb: '',
         description: '',
         isAssetImage: true,
@@ -151,33 +229,46 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     _specs = _draft.specs.entries.toList();
     _specKeyController = TextEditingController();
     _specValueController = TextEditingController();
-    _includedItemsController =
-        TextEditingController(text: _draft.includedItems.join('\n'));
+    _includedItemsController = TextEditingController(
+      text: _draft.includedItems.join('\n'),
+    );
     _hasVariants = _draft.chosenVariant != null;
-    _variantController = TextEditingController(text: _draft.chosenVariant ?? '');
-    _variantNotesController =
-        TextEditingController(text: _draft.variantNotes ?? '');
-    _fundingGoalController =
-        TextEditingController(text: _draft.goalAmount.toString());
-    _productionTimelineController =
-        TextEditingController(text: _draft.productionTimeline ?? '');
+    _variantController = TextEditingController(
+      text: _draft.chosenVariant ?? '',
+    );
+    _variantNotesController = TextEditingController(
+      text: _draft.variantNotes ?? '',
+    );
+    _fundingGoalController = TextEditingController(
+      text: _draft.goalAmount.toString(),
+    );
+    _productionTimelineController = TextEditingController(
+      text: _draft.productionTimeline ?? '',
+    );
     _selectedEndDate = _draft.endDate;
     _rewards = _draft.rewards;
     // Validate shipping coverage exists in options, default to first option if not
-    _selectedShippingCoverage = _shippingCoverageOptions.contains(_draft.shippingCoverage)
+    _selectedShippingCoverage =
+        _shippingCoverageOptions.contains(_draft.shippingCoverage)
         ? _draft.shippingCoverage
         : _shippingCoverageOptions.first;
     // Validate shipping cost handling is valid, default if not
-    _selectedShippingCostHandling = (_draft.shippingCostHandling == 'included' || _draft.shippingCostHandling == 'separate')
+    _selectedShippingCostHandling =
+        (_draft.shippingCostHandling == 'included' ||
+            _draft.shippingCostHandling == 'separate')
         ? _draft.shippingCostHandling
         : 'included';
-    _shippingNotesController =
-        TextEditingController(text: _draft.shippingNotes ?? '');
+    _shippingNotesController = TextEditingController(
+      text: _draft.shippingNotes ?? '',
+    );
     _warrantyController = TextEditingController(text: _draft.warranty ?? '');
-    _sparePartsController =
-        TextEditingController(text: _draft.spareParts ?? '');
+    _sparePartsController = TextEditingController(
+      text: _draft.spareParts ?? '',
+    );
     _risksController = TextEditingController(text: _draft.risks ?? '');
-    _safetyNotesController = TextEditingController(text: _draft.safetyNotes ?? '');
+    _safetyNotesController = TextEditingController(
+      text: _draft.safetyNotes ?? '',
+    );
   }
 
   @override
@@ -201,25 +292,27 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     super.dispose();
   }
 
-  Future<void> _saveDraft() async {
+  Future<bool> _saveDraft({bool showFeedback = true}) async {
     _updateDraftFromCurrentStep();
     try {
-      await CrowdfundingService().saveDraft(_draft);
-      if (mounted) {
+      await _service.saveDraft(_draft);
+      if (mounted && showFeedback) {
         showConfirmSnackbar(
           context: context,
-          title: 'Draft Saved',
-          message: 'Your campaign draft has been saved.',
+          title: 'Na-save ang draft',
+          message: 'Na-save ang draft ng kampanya mo.',
         );
       }
+      return true;
     } catch (e) {
       if (mounted) {
         showErrorSnackbar(
           context: context,
-          title: 'Error',
-          message: 'Failed to save draft: $e',
+          title: 'May problema',
+          message: 'Hindi na-save ang draft: $e',
         );
       }
+      return false;
     }
   }
 
@@ -229,26 +322,27 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final service = CrowdfundingService();
-      final errors = service.validateForPublish(_draft);
-      
+      final errors = _service.validateForPublish(_draft);
+
       if (errors.isNotEmpty) {
         if (mounted) {
           showErrorSnackbar(
             context: context,
-            title: 'Cannot Publish',
-            message: 'Please complete all required fields:\n${errors.join('\n')}',
+            title: 'Hindi ma-publish',
+            message:
+                'Pakikumpleto ang mga kailangang detalye:\n${errors.join('\n')}',
           );
         }
         return;
       }
 
-      await service.publishCampaign(_draft);
+      await _service.publishCampaign(_draft);
       if (mounted) {
         showConfirmSnackbar(
           context: context,
-          title: 'Campaign Published!',
-          message: 'Supporters can now pledge to help fund this tool.',
+          title: 'Na-publish na ang kampanya',
+          message:
+              'Maaari nang mag-pledge ang supporters para pondohan ang kagamitang ito.',
         );
         Navigator.pop(context, true);
       }
@@ -256,8 +350,8 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
       if (mounted) {
         showErrorSnackbar(
           context: context,
-          title: 'Error',
-          message: 'Failed to publish: $e',
+          title: 'May problema',
+          message: 'Hindi na-publish ang kampanya: $e',
         );
       }
     } finally {
@@ -315,7 +409,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     if (stepError != null) {
       showErrorSnackbar(
         context: context,
-        title: 'Complete Required Fields',
+        title: 'Kumpletuhin ang mga detalye',
         message: stepError,
       );
       return;
@@ -331,6 +425,148 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
       setState(() => _currentStep--);
     }
   }
+
+  bool _isRemoteImagePath(String path) {
+    final uri = Uri.tryParse(path.trim());
+    return uri != null &&
+        (uri.scheme.toLowerCase() == 'http' ||
+            uri.scheme.toLowerCase() == 'https');
+  }
+
+  bool get _hasSelectedCustomPhoto {
+    final imagePath = _imagePathController.text.trim();
+    return !_isAssetImage &&
+        imagePath.isNotEmpty &&
+        !_isRemoteImagePath(imagePath);
+  }
+
+  String _resolveMimeType(XFile pickedFile) {
+    final normalized = pickedFile.name.toLowerCase();
+    if (normalized.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (normalized.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    if (normalized.endsWith('.gif')) {
+      return 'image/gif';
+    }
+    return 'image/jpeg';
+  }
+
+  Future<String> _encodePickedImage(XFile pickedFile) async {
+    final bytes = await pickedFile.readAsBytes();
+    final encoded = base64Encode(bytes);
+    final mimeType = _resolveMimeType(pickedFile);
+    return 'data:$mimeType;base64,$encoded';
+  }
+
+  String _displayLabel(Map<String, String> labels, String? value) {
+    if (value == null || value.isEmpty) {
+      return '';
+    }
+    return labels[value] ?? value;
+  }
+
+  Widget _buildTipCard({
+    required String title,
+    required String message,
+    IconData icon = Icons.tips_and_updates_outlined,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: lightColorScheme.secondary.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: lightColorScheme.secondary.withOpacity(0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: lightColorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickCustomPhoto(ImageSource source) async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 88,
+      );
+      if (pickedFile == null) {
+        return;
+      }
+
+      final savedPath = await _encodePickedImage(pickedFile);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isAssetImage = false;
+        _imagePathController.text = savedPath;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi naidagdag ang larawan',
+        message: 'Nagkaroon ng problema sa pagdagdag ng larawan: $e',
+      );
+    }
+  }
+
+  Future<void> _saveDraftAndExit() async {
+    if (_isLoading) {
+      return;
+    }
+
+    final saved = await _saveDraft(showFeedback: false);
+    if (!saved || !mounted) {
+      return;
+    }
+
+    _allowImmediatePop = true;
+    await Navigator.of(context).maybePop(true);
+    _allowImmediatePop = false;
+  }
+
+  Campaign get _previewDraft {
+    return _formLogic.applyStepToDraft(
+      draft: _draft,
+      step: _currentStep,
+      state: _buildFormState(),
+    );
+  }
+
+  String get _currentStepTitle => _stepTitles[_currentStep];
+
+  String get _currentStepDescription => _stepDescriptions[_currentStep];
 
   Widget _buildStepContent() {
     switch (_currentStep) {
@@ -357,53 +593,56 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
 
   // STEP 1: BASICS
   Widget _buildStep1Basics() {
+    final imagePath = _imagePathController.text.trim();
+
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildTipCard(
+            title: 'Hakbang 1 muna',
+            message:
+                'Kumpletuhin ang pamagat, kategorya, at larawan bago magpatuloy sa susunod na hakbang.',
+          ),
           const SizedBox(height: 16),
           Text(
-            'Create Campaign',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'This campaign raises funds for a tool the co-op will buy and add to its rental pool.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Campaign Title*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Pamagat ng Kampanya*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _titleController,
-            hint: 'e.g., Solar Water Pump for Co-op Rental',
+            hint: 'Hal. Solar Water Pump para sa Pahiram ng Kooperatiba',
             maxLength: 70,
             onChanged: (_) {},
           ),
           const SizedBox(height: 4),
           Text(
-            'Keep it specific: tool name + purpose. Avoid "best" or "guaranteed".',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            'Gawing tiyak: pangalan ng kagamitan + gamit nito. Iwasan ang malabong pangakong tulad ng "pinakamaganda" o "garantisado".',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
           Text(
-            'Category*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Kategorya*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: _selectedCategory,
             items: _categoryOptions
-                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c,
+                    child: Text(_displayLabel(_categoryLabels, c)),
+                  ),
+                )
                 .toList(),
             onChanged: (value) {
               setState(() => _selectedCategory = value);
@@ -418,35 +657,40 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Pick the closest match so people can find it easily.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            'Piliin ang pinakaakmang kategorya para madaling mahanap at maintindihan ng supporters.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
           Text(
             'Cover Photo*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           SegmentedButton<bool>(
             segments: const [
               ButtonSegment<bool>(
                 value: true,
-                label: Text('Asset'),
+                label: Text('Larawan ng App'),
                 icon: Icon(Icons.image),
               ),
               ButtonSegment<bool>(
                 value: false,
-                label: Text('URL'),
-                icon: Icon(Icons.link),
+                label: Text('Sarili Mong Larawan'),
+                icon: Icon(Icons.photo_camera_back_outlined),
               ),
             ],
             selected: {_isAssetImage},
             onSelectionChanged: (selection) {
-              setState(() => _isAssetImage = selection.first);
+              setState(() {
+                _isAssetImage = selection.first;
+                if (_isAssetImage && _imagePathController.text.trim().isEmpty) {
+                  _imagePathController.text = _assetImageOptions.first;
+                }
+              });
             },
           ),
           const SizedBox(height: 12),
@@ -457,7 +701,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               children: _assetImageOptions.map((assetPath) {
                 final selected = _imagePathController.text.trim() == assetPath;
                 return ChoiceChip(
-                  label: Text(assetPath.split('/').last),
+                  label: Text(_assetImageLabels[assetPath] ?? assetPath),
                   selected: selected,
                   onSelected: (_) {
                     setState(() => _imagePathController.text = assetPath);
@@ -466,22 +710,75 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               }).toList(),
             ),
             const SizedBox(height: 10),
-          ],
-          CustomTextFormField(
-            controller: _imagePathController,
-            hint: _isAssetImage
-                ? 'assets/images/farmBg.jpg'
-                : 'https://example.com/my-image.jpg',
-            onChanged: (_) {},
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _isAssetImage
-                ? 'Choose an app asset or type an asset path.'
-                : 'Paste a direct image URL. Use a real photo whenever possible.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
+            CustomTextFormField(
+              controller: _imagePathController,
+              hint: 'assets/images/farmBg.jpg',
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pumili ng nakaabang na larawan ng app kung ayaw mo munang gumamit ng sariling photo.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+            ),
+          ] else ...[
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _pickCustomPhoto(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Pumili ng Larawan'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: () => _pickCustomPhoto(ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: const Text('Kunan ng Larawan'),
+                ),
+              ],
+            ),
+            if (_hasSelectedCustomPhoto) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Ang napiling larawan ay mase-save kasama ng draft at gagana sa mobile at web.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Text(
+              'O maglagay ng image URL',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            CustomTextFormField(
+              controller: _imagePathController,
+              hint: 'https://example.com/my-image.jpg',
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Puwede kang gumamit ng sariling larawan o direktang link ng image.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+            ),
+          ],
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: CampaignCoverImage(
+                imagePath: imagePath,
+                isAssetImage: _isAssetImage,
+              ),
+            ),
           ),
           const SizedBox(height: 32),
         ],
@@ -497,56 +794,57 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         children: [
           const SizedBox(height: 16),
           Text(
-            'Tell Your Story',
+            'Ipaliwanag ang Kampanya',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Help supporters understand why this tool matters.',
+            'Ipaliwanag kung bakit mahalaga ang kagamitang ito at paano ito makakatulong.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           Text(
-            'Short Blurb*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Maikling Buod*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _shortBlurbController,
             hint:
-                'e.g., Help us buy a shared thresher so small farmers can reduce post-harvest losses.',
+                'Hal. Tulungan kaming bumili ng shared thresher para mabawasan ang post-harvest losses ng maliliit na magsasaka.',
             maxLines: 2,
             onChanged: (_) {},
           ),
           const SizedBox(height: 4),
           Text(
-            '1–2 lines. What is it, who benefits, and why it matters.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            'Sa loob ng 1-2 pangungusap: ano ito, sino ang makikinabang, at bakit ito mahalaga.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
           Text(
-            'Full Story*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Buong Paglalarawan*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _fullStoryController,
-            hint: 'Tell your campaign story here...',
+            hint:
+                'Ilarawan dito ang pangangailangan, plano, at inaasahang epekto ng kampanya...',
             maxLines: 8,
             onChanged: (_) {},
           ),
           const SizedBox(height: 4),
           Text(
-            'Prompt tips:\n• What problem are you solving?\n• Who will use the tool and how?\n• How will renting work after purchase?\n• What impact will this create?',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            'Mga gabay sa pagsulat:\n• Anong problema ang nilulutas?\n• Sino ang gagamit ng kagamitan at paano?\n• Paano ito papahiram kapag nabili na?\n• Anong konkretong epekto ang inaasahan?',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 32),
         ],
@@ -562,26 +860,31 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         children: [
           const SizedBox(height: 16),
           Text(
-            'Tool Specifications',
+            'Detalye ng Kagamitan',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Clear specs reduce confusion and build trust.',
+            'Mas malinaw na detalye, mas madaling pagkatiwalaan ng supporters.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           Text(
-            'Equipment Type*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Uri ng Kagamitan*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: _selectedEquipmentType,
             items: _equipmentTypes
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .map(
+                  (e) => DropdownMenuItem(
+                    value: e,
+                    child: Text(_displayLabel(_equipmentTypeLabels, e)),
+                  ),
+                )
                 .toList(),
             onChanged: (value) {
               setState(() => _selectedEquipmentType = value);
@@ -596,12 +899,27 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            'Specifications* (at least 3)',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Mahahalagang Detalye* (hindi bababa sa 3)',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
+          if (_specs.isEmpty)
+            _buildTipCard(
+              title: 'Wala pang detalye',
+              message:
+                  'Maglagay ng kahit 3 malinaw na detalye tulad ng kapasidad, sukat, at power rating.',
+              icon: Icons.rule_folder_outlined,
+            ),
+          if (_specs.isNotEmpty)
+            Text(
+              '${_specs.length} detalye na ang nailagay',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+            ),
+          const SizedBox(height: 8),
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -642,7 +960,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               Expanded(
                 child: CustomTextFormField(
                   controller: _specKeyController,
-                  hint: 'e.g., Flow rate',
+                  hint: 'Hal. Kapasidad',
                   onChanged: (_) {},
                 ),
               ),
@@ -650,7 +968,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               Expanded(
                 child: CustomTextFormField(
                   controller: _specValueController,
-                  hint: 'e.g., 50 L/min',
+                  hint: 'Hal. 50 L/min',
                   onChanged: (_) {},
                 ),
               ),
@@ -671,7 +989,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                     });
                   }
                 },
-                child: const Text('Add'),
+                child: const Text('Idagdag'),
               ),
             ],
           ),
@@ -689,38 +1007,41 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         children: [
           const SizedBox(height: 16),
           Text(
-            'What Will the Co-op Buy?',
+            'Ano ang Eksaktong Bibilhin?',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Be specific about what\'s included in the purchase.',
+            'Ilagay nang malinaw ang eksaktong kasama sa bibilhin ng kooperatiba.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           Text(
-            'What\'s Included*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Saklaw ng Bibilhin*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _includedItemsController,
-            hint: '• 1 unit (tool name/model)\n• Accessories: hose/nozzle\n• Manual/training',
+            hint:
+                '• 1 unit ng kagamitan o model\n• Mga accessory o attachment\n• Manual, training, o installation',
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.newline,
             maxLines: 4,
             onChanged: (_) {},
           ),
           const SizedBox(height: 4),
           Text(
-            'List everything the co-op expects to receive.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            'Ilista ang lahat ng inaasahang matatanggap kapag nabili ang kagamitan.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 24),
           CheckboxListTile(
-            title: const Text('This tool has variants/options'),
+            title: const Text('May variant o pagpipilian ang kagamitang ito'),
             value: _hasVariants,
             onChanged: (value) {
               setState(() => _hasVariants = value ?? false);
@@ -730,28 +1051,29 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           if (_hasVariants) ...[
             const SizedBox(height: 16),
             Text(
-              'Chosen Variant*',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              'Piling Variant*',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             CustomTextFormField(
               controller: _variantController,
-              hint: 'e.g., 2HP motor version',
+              hint: 'Hal. 2HP na bersyon',
               onChanged: (_) {},
             ),
             const SizedBox(height: 16),
             Text(
-              'Variant Notes',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              'Paliwanag sa Variant',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             CustomTextFormField(
               controller: _variantNotesController,
-              hint: 'If final choice depends on supplier availability...',
+              hint:
+                  'Kung nakadepende ang final choice sa available na supplier, ilahad dito.',
               maxLines: 2,
               onChanged: (_) {},
             ),
@@ -770,20 +1092,20 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         children: [
           const SizedBox(height: 16),
           Text(
-            'Funding & Timeline',
+            'Pondo at Iskedyul',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Set a realistic goal and what happens after the campaign ends.',
+            'Itakda ang makatotohanang target na pondo at malinaw na plano pagkatapos ng kampanya.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           Text(
-            'Funding Goal (₱)*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Target na Pondo (₱)*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
@@ -794,17 +1116,17 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Include tool cost + delivery + setup + a small buffer.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            'Isama ang halaga ng kagamitan, delivery, setup, at maliit na allowance para sa aberya.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
           Text(
-            'Campaign End Date*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Petsa ng Pagtatapos*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Card(
@@ -812,7 +1134,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               title: Text(
                 _selectedEndDate != null
                     ? '${_selectedEndDate!.toLocal().toString().split(' ')[0]} (${_selectedEndDate!.difference(DateTime.now()).inDays} days)'
-                    : 'Select date',
+                    : 'Pumili ng petsa',
               ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
@@ -830,22 +1152,25 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Recommended: 7–60 days from publish.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            'Rekomendado: 7 hanggang 60 araw mula sa pag-publish.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
           Text(
-            'Production Timeline*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Timeline ng Pagpapatupad*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _productionTimelineController,
-            hint: '• Week 1: order the tool\n• Week 2-3: delivery\n• Week 4: testing',
+            hint:
+                '• Linggo 1: pag-order ng kagamitan\n• Linggo 2-3: delivery at setup\n• Linggo 4: testing at turnover',
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.newline,
             maxLines: 4,
             onChanged: (_) {},
           ),
@@ -863,22 +1188,37 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         children: [
           const SizedBox(height: 16),
           Text(
-            'Rewards & Delivery',
+            'Benepisyo at Delivery',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Rewards are rental discounts. The tool is delivered to the co-op.',
+            'Ang benepisyo para sa supporters ay maaaring diskuwento o perk. Ilahad din kung paano darating ang kagamitan.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           Text(
-            'Reward Tiers* (at least 1)',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Mga Antas ng Benepisyo* (hindi bababa sa 1)',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
+          if (_rewards.isEmpty)
+            _buildTipCard(
+              title: 'Wala pang benepisyo',
+              message:
+                  'Magdagdag ng kahit isang benepisyo para malinaw kung ano ang matatanggap ng supporters.',
+              icon: Icons.card_giftcard_outlined,
+            ),
+          if (_rewards.isNotEmpty)
+            Text(
+              '${_rewards.length} benepisyo na ang nailagay',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+            ),
+          const SizedBox(height: 8),
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -901,13 +1241,12 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                               children: [
                                 Text(
                                   reward.title,
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '₱${reward.minPledge} minimum | ${reward.discountValue.toStringAsFixed(reward.discountType == 'percent' ? 0 : 2)}${reward.discountType == 'percent' ? '%' : '₱'} discount',
+                                  'Minimum na pledge: ₱${reward.minPledge} | Diskuwento: ${reward.discountValue.toStringAsFixed(reward.discountType == 'percent' ? 0 : 2)}${reward.discountType == 'percent' ? '%' : '₱'}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
@@ -916,7 +1255,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                           PopupMenuButton(
                             itemBuilder: (_) => [
                               PopupMenuItem(
-                                child: const Text('Edit'),
+                                child: const Text('I-edit'),
                                 onTap: () {
                                   showModalBottomSheet(
                                     context: context,
@@ -935,7 +1274,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                                 },
                               ),
                               PopupMenuItem(
-                                child: const Text('Delete'),
+                                child: const Text('Tanggalin'),
                                 onTap: () {
                                   setState(() => _rewards.removeAt(index));
                                 },
@@ -966,27 +1305,32 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               );
             },
             icon: const Icon(Icons.add),
-            label: const Text('Add Reward Tier'),
+            label: const Text('Magdagdag ng Benepisyo'),
           ),
           const SizedBox(height: 24),
           Text(
-            'Tool Delivery to the Co-op',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Delivery ng Kagamitan',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'Shipping Coverage*',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            'Saklaw ng Delivery*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: _selectedShippingCoverage,
             items: _shippingCoverageOptions
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                .map(
+                  (s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(_displayLabel(_shippingCoverageLabels, s)),
+                  ),
+                )
                 .toList(),
             onChanged: (value) {
               setState(() => _selectedShippingCoverage = value);
@@ -1001,16 +1345,16 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Shipping Cost Handling*',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            'Paano Isasama ang Gastos sa Delivery*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           Column(
             children: [
               RadioListTile<String>(
-                title: const Text('Included in goal'),
+                title: const Text('Kasama na sa target na pondo'),
                 value: 'included',
                 groupValue: _selectedShippingCostHandling,
                 onChanged: (value) {
@@ -1019,7 +1363,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                 contentPadding: EdgeInsets.zero,
               ),
               RadioListTile<String>(
-                title: const Text('Separate estimate'),
+                title: const Text('Hiwalay na tantiya'),
                 value: 'separate',
                 groupValue: _selectedShippingCostHandling,
                 onChanged: (value) {
@@ -1031,15 +1375,16 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Shipping Notes (optional)',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            'Dagdag na Tala sa Delivery (opsyonal)',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _shippingNotesController,
-            hint: 'e.g., Delivered to co-op office...',
+            hint:
+                'Hal. Ihahatid sa opisina ng kooperatiba at iko-coordinate muna ang schedule.',
             maxLines: 2,
             onChanged: (_) {},
           ),
@@ -1057,41 +1402,41 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         children: [
           const SizedBox(height: 16),
           Text(
-            'Support & Maintenance',
+            'Suporta at Maintenance',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Tell supporters how the tool will be supported after purchase.',
+            'Ipaliwanag kung paano aalagaan at susuportahan ang kagamitan matapos itong mabili.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           Text(
-            'Warranty / Support*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Warranty at Suporta*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _warrantyController,
             hint:
-                'e.g., Supplier warranty 3 months for defects. Co-op handles basic troubleshooting.',
+                'Hal. May 3 buwang supplier warranty para sa defects at ang kooperatiba ang sasagot sa basic troubleshooting.',
             maxLines: 3,
             onChanged: (_) {},
           ),
           const SizedBox(height: 20),
           Text(
-            'Spare Parts Plan*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Plano sa Spare Parts*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _sparePartsController,
             hint:
-                'e.g., We will stock spare nozzles. Parts sourced from (supplier).',
+                'Hal. Magtatabi ng spare nozzles at ibang piyesa mula sa napiling supplier.',
             maxLines: 3,
             onChanged: (_) {},
           ),
@@ -1103,52 +1448,52 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
 
   // STEP 8: RISKS & PREVIEW
   Widget _buildStep8Preview() {
+    final previewDraft = _previewDraft;
+
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildTipCard(
+            title: 'Final check bago i-publish',
+            message:
+                'Siguraduhin na malinaw ang panganib at safety notes para mapagkatiwalaan ang kampanya.',
+            icon: Icons.verified_user_outlined,
+          ),
           const SizedBox(height: 16),
           Text(
-            'Final Checks',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Honest risks and safety notes build trust.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Risks*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Mga Panganib*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _risksController,
             hint:
-                'Possible delays: supplier lead time, shipping delays... Our fallback plan is...',
+                'Hal. Posibleng maantala ang supplier o shipping. Ilagay rin ang backup plan kung mangyari ito.',
             maxLines: 3,
             onChanged: (_) {},
           ),
           const SizedBox(height: 20),
           Text(
-            'Safety Notes*',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            'Paalala sa Kaligtasan*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           CustomTextFormField(
             controller: _safetyNotesController,
-            hint: 'e.g., PPE required. Training required for first-time renters.',
+            hint:
+                'Hal. Kailangan ang PPE at orientation bago gamitin ng unang beses.',
             maxLines: 3,
             onChanged: (_) {},
           ),
           const SizedBox(height: 24),
           Text(
-            'Campaign Preview',
+            'Preview ng Kampanya',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
@@ -1158,13 +1503,28 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: CampaignCoverImage(
+                        imagePath: previewDraft.image,
+                        isAssetImage: previewDraft.isAssetImage,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Text(
-                    _draft.title,
+                    previewDraft.title.isEmpty
+                        ? '(Wala pang pamagat)'
+                        : previewDraft.title,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _draft.shortBlurb,
+                    previewDraft.shortBlurb.isEmpty
+                        ? 'Maglagay ng maikling buod para agad maintindihan ng supporters ang kampanya.'
+                        : previewDraft.shortBlurb,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 12),
@@ -1172,13 +1532,13 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Goal: ₱${_draft.goalAmount}',
+                        'Target: ₱${previewDraft.goalAmount}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
-                        'Ends: ${_draft.endDate.toLocal().toString().split(' ')[0]}',
+                        'Hanggang: ${previewDraft.endDate.toLocal().toString().split(' ')[0]}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -1197,6 +1557,9 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
+        if (_allowImmediatePop) {
+          return true;
+        }
         if (_currentStep > 0) {
           _previousStep();
           return false;
@@ -1208,79 +1571,147 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  lightColorScheme.primary,
-                  lightColorScheme.secondary,
-                ],
+                colors: [lightColorScheme.primary, lightColorScheme.secondary],
                 stops: const [0.0, 0.9],
               ),
             ),
           ),
-          title: Text('Step ${_currentStep + 1} of 8'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'I-save ang draft at lumabas',
+            onPressed: _saveDraftAndExit,
+          ),
+          title: Text(_currentStepTitle),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(24),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Hakbang ${_currentStep + 1} ng 8',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ),
+          ),
           centerTitle: true,
           elevation: 0,
         ),
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: StepProgressIndicator(
-                currentStep: _currentStep + 1,
-                totalSteps: 8,
-                primaryColor: lightColorScheme.primary,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                children: [
+                  StepProgressIndicator(
+                    currentStep: _currentStep + 1,
+                    totalSteps: 8,
+                    primaryColor: lightColorScheme.primary,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _currentStepTitle,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _currentStepDescription,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.grey.shade700),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Ang back sa itaas ay magse-save at lalabas. Ang device back o ang button sa ibaba ay babalik ng isang hakbang.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
-              child: _buildStepContent(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildStepContent(),
+              ),
             ),
           ],
         ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.grey.shade300),
+        bottomNavigationBar: SafeArea(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.grey.shade300)),
             ),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              ElevatedButton(
-                onPressed: _currentStep > 0 ? _previousStep : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade300,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _currentStep > 0 ? _previousStep : null,
+                        child: const Text('Bumalik'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _currentStep < 7
+                          ? ElevatedButton(
+                              onPressed: _isLoading ? null : _nextStep,
+                              child: const Text('Susunod'),
+                            )
+                          : ElevatedButton(
+                              onPressed: _isLoading ? null : _publishCampaign,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('I-publish'),
+                            ),
+                    ),
+                  ],
                 ),
-                child: const Text('Back'),
-              ),
-              ElevatedButton(
-                onPressed: _saveDraft,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade400,
-                ),
-                child: const Text('Save Draft'),
-              ),
-              if (_currentStep < 7)
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _nextStep,
-                  child: const Text('Next'),
-                )
-              else
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _publishCampaign,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : () => _saveDraft(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade400,
+                    ),
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('I-save ang Draft'),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text('Publish'),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

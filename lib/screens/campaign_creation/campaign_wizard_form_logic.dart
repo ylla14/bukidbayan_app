@@ -96,7 +96,8 @@ class CampaignWizardFormLogic {
         return draft.copyWith(
           goalAmount: state.goalAmount,
           endDate:
-              state.selectedEndDate ?? DateTime.now().add(const Duration(days: 30)),
+              state.selectedEndDate ??
+              DateTime.now().add(const Duration(days: 30)),
           productionTimeline: state.productionTimeline.trim(),
         );
       case 5:
@@ -128,60 +129,61 @@ class CampaignWizardFormLogic {
     switch (step) {
       case 0:
         if (state.title.trim().length < 8) {
-          return 'Title must be at least 8 characters.';
+          return 'Ang pamagat ay dapat hindi bababa sa 8 character.';
         }
         if (state.imagePath.trim().isEmpty) {
-          return 'Cover image is required.';
+          return 'Kailangan ang cover photo.';
         }
         return null;
       case 1:
         if (state.shortBlurb.trim().length < 10) {
-          return 'Short blurb must be at least 10 characters.';
+          return 'Ang maikling buod ay dapat hindi bababa sa 10 character.';
         }
         if (state.fullStory.trim().length < 50) {
-          return 'Full story must be at least 50 characters.';
+          return 'Ang buong paglalarawan ay dapat hindi bababa sa 50 character.';
         }
         return null;
       case 2:
         if (state.specs.length < 3) {
-          return 'Please add at least 3 specifications.';
+          return 'Maglagay ng hindi bababa sa 3 mahalagang detalye.';
         }
         return null;
       case 3:
         if (state.includedItemsForValidation.length < 10) {
-          return "What's included must be at least 10 characters.";
+          return 'Ang saklaw ng bibilhin ay dapat hindi bababa sa 10 character.';
         }
         return null;
       case 4:
         if (state.goalAmount < 1000) {
-          return 'Funding goal must be at least 1,000.';
+          return 'Ang target na pondo ay dapat hindi bababa sa 1,000.';
         }
         if (state.selectedEndDate == null ||
             state.selectedEndDate!.isBefore(DateTime.now())) {
-          return 'Please select a future end date.';
+          return 'Pumili ng petsa ng pagtatapos sa hinaharap.';
         }
         if (state.productionTimeline.trim().length < 10) {
-          return 'Production timeline must be at least 10 characters.';
+          return 'Ang timeline ng pagpapatupad ay dapat hindi bababa sa 10 character.';
         }
         return null;
       case 5:
         if (state.rewards.isEmpty) {
-          return 'Please add at least one reward tier.';
+          return 'Magdagdag ng hindi bababa sa isang antas ng benepisyo.';
         }
-        if (state.shippingCoverage == null || state.shippingCoverage!.trim().isEmpty) {
-          return 'Shipping coverage is required.';
+        if (state.shippingCoverage == null ||
+            state.shippingCoverage!.trim().isEmpty) {
+          return 'Kailangan ang saklaw ng delivery.';
         }
         if (state.shippingCostHandling == null ||
             state.shippingCostHandling!.trim().isEmpty) {
-          return 'Shipping cost handling is required.';
+          return 'Kailangan kung paano isasama ang gastos sa delivery.';
         }
         return null;
       case 6:
         if (state.warranty.trim().length < 10) {
-          return 'Warranty/support must be at least 10 characters.';
+          return 'Ang warranty at suporta ay dapat hindi bababa sa 10 character.';
         }
         if (state.spareParts.trim().length < 10) {
-          return 'Spare parts info must be at least 10 characters.';
+          return 'Ang plano sa spare parts ay dapat hindi bababa sa 10 character.';
         }
         return null;
       default:

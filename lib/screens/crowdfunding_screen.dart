@@ -1,4 +1,4 @@
-﻿import 'package:bukidbayan_app/components/app_bar.dart';
+import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/screens/campaign_creation/campaign_creation_screen.dart';
@@ -11,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 enum CampaignSort { popular, endingSoon, newest }
+
 enum ListingFilter { all, drafts, live, ended }
 
 class CrowdfundingScreen extends StatefulWidget {
@@ -32,6 +33,18 @@ class CrowdfundingScreen extends StatefulWidget {
 }
 
 class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
+  static const Map<String, String> _categoryLabels = {
+    'All': 'Lahat',
+    'Irrigation': 'Patubig',
+    'Crop Care': 'Pangangalaga ng Pananim',
+    'Post-harvest': 'Pagkatapos ng Ani',
+    'Mechanized Tools': 'Mekanikal na Kagamitan',
+    'Livestock': 'Alagang Hayop',
+    'Solar/Power': 'Solar/Kuryente',
+    'Hand Tools': 'Kagamitang Kamay',
+    'Other': 'Iba pa',
+  };
+
   late final CrowdfundingService _service;
   FirebaseAuth? _auth;
 
@@ -43,7 +56,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
   late Future<List<Campaign>> _myListingsFuture;
 
   String _discoverCategory = 'All';
-  CampaignSort _sort = CampaignSort.popular;
+  CampaignSort _sort = CampaignSort.newest;
   ListingFilter _listingFilter = ListingFilter.all;
 
   @override
@@ -73,6 +86,50 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
     _myListingsFuture = _service.getMyCampaigns();
   }
 
+  String _categoryLabel(String value) => _categoryLabels[value] ?? value;
+
+  Widget _buildGuideCard({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: lightColorScheme.secondary.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: lightColorScheme.secondary.withOpacity(0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: lightColorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _refresh() async {
     setState(_reloadFutures);
     await Future.wait([_discoverFuture, _myListingsFuture]);
@@ -96,7 +153,8 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
     final q = _discoverSearchController.text.trim().toLowerCase();
 
     final filtered = campaigns.where((c) {
-      final matchesSearch = q.isEmpty ||
+      final matchesSearch =
+          q.isEmpty ||
           c.title.toLowerCase().contains(q) ||
           c.shortBlurb.toLowerCase().contains(q) ||
           c.creatorName.toLowerCase().contains(q) ||
@@ -116,7 +174,11 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
         filtered.sort((a, b) => a.endDate.compareTo(b.endDate));
         break;
       case CampaignSort.newest:
-        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        filtered.sort((a, b) {
+          final aTime = a.publishedAt ?? a.createdAt;
+          final bTime = b.publishedAt ?? b.createdAt;
+          return bTime.compareTo(aTime);
+        });
         break;
     }
 
@@ -131,7 +193,8 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
     final q = _manageSearchController.text.trim().toLowerCase();
 
     final filtered = listings.where((c) {
-      final matchesSearch = q.isEmpty ||
+      final matchesSearch =
+          q.isEmpty ||
           c.title.toLowerCase().contains(q) ||
           c.shortBlurb.toLowerCase().contains(q) ||
           c.category.toLowerCase().contains(q);
@@ -166,8 +229,8 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
 
   String _statusLabel(Campaign c) {
     if (c.status == 'draft') return 'Draft';
-    if (_isEnded(c)) return 'Ended';
-    if (c.status == 'live') return 'Live';
+    if (_isEnded(c)) return 'Tapos na';
+    if (c.status == 'live') return 'Aktibo';
     return c.status;
   }
 
@@ -184,12 +247,17 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
   }
 
   Future<void> _openCreate({Campaign? draft}) async {
-    await Navigator.push(
+    final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => CampaignCreationScreen(existingDraft: draft),
       ),
     );
+    if (result == true) {
+      _discoverSearchController.clear();
+      _discoverCategory = 'All';
+      _sort = CampaignSort.newest;
+    }
     await _refresh();
   }
 
@@ -209,20 +277,21 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
   }
 
   Future<void> _confirmDeleteDraft(Campaign draft) async {
-    final shouldDelete = await showDialog<bool>(
+    final shouldDelete =
+        await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Delete Draft?'),
-            content: const Text('This action cannot be undone.'),
+            title: const Text('Burahin ang Draft?'),
+            content: const Text('Hindi na ito maibabalik kapag nabura.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: const Text('Kanselahin'),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
                 child: const Text(
-                  'Delete',
+                  'Burahin',
                   style: TextStyle(color: Colors.red),
                 ),
               ),
@@ -258,20 +327,33 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Discover Campaigns',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: lightColorScheme.primary,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tuklasin ang mga Kampanya',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: lightColorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Pumili ng kampanyang nais suportahan o gumawa ng bago.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () => _openCreate(),
                       icon: const Icon(Icons.add),
-                      label: const Text('Create'),
+                      label: const Text('Gumawa'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: lightColorScheme.primary,
                         foregroundColor: Colors.white,
@@ -282,12 +364,32 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                child: _buildGuideCard(
+                  icon: Icons.touch_app_outlined,
+                  title: 'Madaling gabay',
+                  description:
+                      '1) Maghanap o pumili ng kategorya. 2) Pindutin ang card. 3) Basahin ang detalye bago sumuporta.',
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
                 child: TextField(
                   controller: _discoverSearchController,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: 'Search title, category, or creator...',
+                    labelText: 'Maghanap ng kampanya',
+                    hintText: 'Maghanap ng pamagat, kategorya, o gumawa...',
                     prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _discoverSearchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              _discoverSearchController.clear();
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'Linisin ang hanap',
+                          ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -307,7 +409,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: ChoiceChip(
-                            label: Text(category),
+                            label: Text(_categoryLabel(category)),
                             selected: selected,
                             onSelected: (_) {
                               setState(() => _discoverCategory = category);
@@ -328,15 +430,15 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                         items: const [
                           DropdownMenuItem(
                             value: CampaignSort.popular,
-                            child: Text('Sort: Popular'),
+                            child: Text('Ayos: Pinakasikat'),
                           ),
                           DropdownMenuItem(
                             value: CampaignSort.endingSoon,
-                            child: Text('Sort: Ending soon'),
+                            child: Text('Ayos: Malapit matapos'),
                           ),
                           DropdownMenuItem(
                             value: CampaignSort.newest,
-                            child: Text('Sort: Newest'),
+                            child: Text('Ayos: Pinakabago'),
                           ),
                         ],
                         onChanged: (value) {
@@ -344,6 +446,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                           setState(() => _sort = value);
                         },
                         decoration: InputDecoration(
+                          labelText: 'Ayusin ang resulta',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -354,7 +457,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      '${visible.length} result${visible.length == 1 ? '' : 's'}',
+                      '${visible.length} resulta',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -366,10 +469,33 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                   padding: EdgeInsets.all(20),
                   child: Center(child: CircularProgressIndicator()),
                 )
-              else if (visible.isEmpty)
+              else if (snapshot.hasError)
                 const Padding(
                   padding: EdgeInsets.all(20),
-                  child: Center(child: Text('No campaigns match your filters.')),
+                  child: Center(
+                    child: Text('May problema sa pag-load. Hilahin pababa para subukan ulit.'),
+                  ),
+                )
+              else if (visible.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      const Text('Walang kampanyang tugma sa napiling filter.'),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          _discoverSearchController.clear();
+                          setState(() {
+                            _discoverCategory = 'All';
+                            _sort = CampaignSort.newest;
+                          });
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('I-reset ang filter'),
+                      ),
+                    ],
+                  ),
                 )
               else
                 ...visible.map(
@@ -393,11 +519,14 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        minVerticalPadding: 10,
         onTap: () => _openCampaign(campaign),
         title: Text(
-          campaign.title.isEmpty ? '(Untitled Campaign)' : campaign.title,
+          campaign.title.isEmpty ? '(Walang Pamagat)' : campaign.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -417,19 +546,25 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                     ),
                     side: BorderSide(color: statusColor.withOpacity(0.35)),
                   ),
-                  Chip(label: Text(campaign.category)),
+                  Chip(label: Text(_categoryLabel(campaign.category))),
                 ],
               ),
               const SizedBox(height: 4),
-              Text('Goal: ${formatPeso(campaign.goalAmount)}'),
+              Text('Target: ${formatPeso(campaign.goalAmount)}'),
+              const SizedBox(height: 2),
+              const Text(
+                'Pindutin ang card para buksan at i-manage.',
+                style: TextStyle(fontSize: 12),
+              ),
               Text(
-                'Updated: ${edited.month}/${edited.day}/${edited.year}',
+                'Huling update: ${edited.month}/${edited.day}/${edited.year}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
         ),
         trailing: PopupMenuButton<String>(
+          tooltip: 'Higit pang aksyon',
           onSelected: (value) async {
             if (value == 'open') {
               await _openCampaign(campaign);
@@ -441,21 +576,18 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
           },
           itemBuilder: (context) {
             final items = <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'open',
-                child: Text('Open'),
-              ),
+              const PopupMenuItem<String>(value: 'open', child: Text('Buksan')),
             ];
 
             if (campaign.status == 'draft') {
               items.addAll(const [
                 PopupMenuItem<String>(
                   value: 'edit',
-                  child: Text('Edit Draft'),
+                  child: Text('I-edit ang Draft'),
                 ),
                 PopupMenuItem<String>(
                   value: 'delete',
-                  child: Text('Delete Draft'),
+                  child: Text('Burahin ang Draft'),
                 ),
               ]);
             }
@@ -486,20 +618,33 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'My Listings',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: lightColorScheme.primary,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Aking Mga Kampanya',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: lightColorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Dito mo makikita ang draft, aktibo, at tapos na kampanya.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () => _openCreate(),
                     icon: const Icon(Icons.add),
-                    label: const Text('New'),
+                    label: const Text('Bago'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: lightColorScheme.primary,
                       foregroundColor: Colors.white,
@@ -508,14 +653,21 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+              _buildGuideCard(
+                icon: Icons.task_alt_outlined,
+                title: 'Mabilis na pamamahala',
+                description:
+                    'Gamitin ang status filter para makita agad kung alin ang draft, aktibo, o tapos na.',
+              ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  Chip(label: Text('All: ${listings.length}')),
-                  Chip(label: Text('Drafts: $draftsCount')),
-                  Chip(label: Text('Live: $liveCount')),
-                  Chip(label: Text('Ended: $endedCount')),
+                  Chip(label: Text('Lahat: ${listings.length}')),
+                  Chip(label: Text('Draft: $draftsCount')),
+                  Chip(label: Text('Aktibo: $liveCount')),
+                  Chip(label: Text('Tapos na: $endedCount')),
                 ],
               ),
               const SizedBox(height: 12),
@@ -523,8 +675,19 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                 controller: _manageSearchController,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Search my listings...',
+                  labelText: 'Hanapin sa mga kampanya ko',
+                  hintText: 'Hanapin ang mga kampanya ko...',
                   prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _manageSearchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _manageSearchController.clear();
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.clear),
+                          tooltip: 'Linisin ang hanap',
+                        ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -537,19 +700,19 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                 segments: const [
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.all,
-                    label: Text('All'),
+                    label: Text('Lahat'),
                   ),
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.drafts,
-                    label: Text('Drafts'),
+                    label: Text('Draft'),
                   ),
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.live,
-                    label: Text('Live'),
+                    label: Text('Aktibo'),
                   ),
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.ended,
-                    label: Text('Ended'),
+                    label: Text('Tapos na'),
                   ),
                 ],
                 selected: {_listingFilter},
@@ -564,6 +727,13 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                   padding: EdgeInsets.all(20),
                   child: Center(child: CircularProgressIndicator()),
                 )
+              else if (snapshot.hasError)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(
+                    child: Text('May problema sa pag-load. Hilahin pababa para subukan ulit.'),
+                  ),
+                )
               else if (listings.isEmpty)
                 Card(
                   child: Padding(
@@ -572,7 +742,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'No listings yet',
+                          'Wala ka pang kampanya',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
@@ -580,23 +750,36 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Create your first campaign draft to start raising funds.',
+                          'Gumawa ng unang draft ng kampanya para makapagsimulang mangalap ng pondo.',
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed: () => _openCreate(),
                           icon: const Icon(Icons.add),
-                          label: const Text('Create Campaign'),
+                          label: const Text('Gumawa ng Kampanya'),
                         ),
                       ],
                     ),
                   ),
                 )
               else if (visible.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Center(
-                    child: Text('No listings match the selected filter.'),
+                    child: Column(
+                      children: [
+                        const Text('Walang kampanyang tugma sa napiling filter.'),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            _manageSearchController.clear();
+                            setState(() => _listingFilter = ListingFilter.all);
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Ipakita lahat'),
+                        ),
+                      ],
+                    ),
                   ),
                 )
               else
@@ -620,20 +803,21 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
             Material(
               color: Colors.transparent,
               child: TabBar(
+                isScrollable: true,
                 labelColor: lightColorScheme.primary,
+                unselectedLabelColor: Colors.black54,
                 indicatorColor: lightColorScheme.primary,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w700),
                 tabs: const [
-                  Tab(text: 'Discover'),
-                  Tab(text: 'My Listings'),
+                  Tab(text: 'Tuklasin'),
+                  Tab(text: 'Aking Mga Kampanya'),
                 ],
               ),
             ),
             Expanded(
               child: TabBarView(
-                children: [
-                  _buildDiscoverTab(),
-                  _buildManageTab(),
-                ],
+                children: [_buildDiscoverTab(), _buildManageTab()],
               ),
             ),
           ],

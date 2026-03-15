@@ -49,16 +49,26 @@ class CrowdfundingService {
           'Dimensions': '4m x 6m x 2.5m height',
           'Water System': 'Drip irrigation with timer',
         },
-        includedItems: ['1 greenhouse structure', 'Irrigation system', 'Basic hand tools', 'Seedlings starter pack'],
+        includedItems: [
+          '1 greenhouse structure',
+          'Irrigation system',
+          'Basic hand tools',
+          'Seedlings starter pack',
+        ],
         chosenVariant: null,
-        productionTimeline: 'Week 1-2: Material sourcing and site prep, Week 3-4: Construction and setup, Week 5: Installation and training',
+        productionTimeline:
+            'Week 1-2: Material sourcing and site prep, Week 3-4: Construction and setup, Week 5: Installation and training',
         shippingCoverage: 'Local delivery',
         shippingCostHandling: 'included',
         shippingNotes: 'Delivered and assembled at co-op site',
-        warranty: '1-year manufacturer warranty on all materials. Co-op provides ongoing maintenance support.',
-        spareParts: 'Replacement polycarbonate panels, drip lines, and valve parts stocked at co-op office.',
-        risks: 'Weather delays during construction. Alternative: Indoor seedling setup if greenhouse cannot be built.',
-        safetyNotes: 'PPE required during assembly. Training provided for irrigation system maintenance.',
+        warranty:
+            '1-year manufacturer warranty on all materials. Co-op provides ongoing maintenance support.',
+        spareParts:
+            'Replacement polycarbonate panels, drip lines, and valve parts stocked at co-op office.',
+        risks:
+            'Weather delays during construction. Alternative: Indoor seedling setup if greenhouse cannot be built.',
+        safetyNotes:
+            'PPE required during assembly. Training provided for irrigation system maintenance.',
         rewards: const [
           RewardTier(
             id: 'r1',
@@ -96,7 +106,8 @@ class CrowdfundingService {
         id: 'c2',
         title: 'Solar-Powered Water Pump for a Small Farm',
         creatorName: 'Ka-Agri Team',
-        shortBlurb: 'Lower electricity costs and improve irrigation reliability.',
+        shortBlurb:
+            'Lower electricity costs and improve irrigation reliability.',
         description:
             'This project installs a solar-powered pump and a simple storage system. '
             'It reduces downtime during power interruptions and supports consistent watering.',
@@ -116,16 +127,28 @@ class CrowdfundingService {
           'Pump Type': '1.5HP submersible centrifugal pump',
           'Storage': '5000L tank with float valve',
         },
-        includedItems: ['Solar panel array', 'Submersible pump', 'Storage tank', 'Mounting hardware', 'Installation guide'],
+        includedItems: [
+          'Solar panel array',
+          'Submersible pump',
+          'Storage tank',
+          'Mounting hardware',
+          'Installation guide',
+        ],
         chosenVariant: null,
-        productionTimeline: 'Week 1: Procurement and site assessment, Week 2-3: Installation of panels and tank, Week 4: Pump setup and testing, Week 5: Training and handover',
+        productionTimeline:
+            'Week 1: Procurement and site assessment, Week 2-3: Installation of panels and tank, Week 4: Pump setup and testing, Week 5: Training and handover',
         shippingCoverage: 'Nationwide delivery',
         shippingCostHandling: 'included',
-        shippingNotes: 'Delivered to farm site. Professional installation included.',
-        warranty: '5-year manufacturer warranty on solar panels. 2-year warranty on pump and components.',
-        spareParts: 'Replacement pump available from local agricultural suppliers. Panel repair kits stocked.',
-        risks: 'Weather delays in installation. Fallback: temporary generator rental during setup.',
-        safetyNotes: 'Electrical safety training provided. PPE required. High-voltage warning signs installed.',
+        shippingNotes:
+            'Delivered to farm site. Professional installation included.',
+        warranty:
+            '5-year manufacturer warranty on solar panels. 2-year warranty on pump and components.',
+        spareParts:
+            'Replacement pump available from local agricultural suppliers. Panel repair kits stocked.',
+        risks:
+            'Weather delays in installation. Fallback: temporary generator rental during setup.',
+        safetyNotes:
+            'Electrical safety training provided. PPE required. High-voltage warning signs installed.',
         rewards: const [
           RewardTier(
             id: 'r1',
@@ -170,20 +193,32 @@ class CrowdfundingService {
         publishedAt: now.subtract(const Duration(days: 2)),
         equipmentType: 'Other',
         specs: {
-          'Platform': 'Simple online ordering system compatible with mobile and desktop',
+          'Platform':
+              'Simple online ordering system compatible with mobile and desktop',
           'Inventory': 'Real-time tracking of farmer inventory and pricing',
           'Payment': 'Cash and digital payment options at pickup',
         },
-        includedItems: ['Website and mobile app access', 'Pickup point setup materials', 'Farmer onboarding training', 'Marketing materials'],
+        includedItems: [
+          'Website and mobile app access',
+          'Pickup point setup materials',
+          'Farmer onboarding training',
+          'Marketing materials',
+        ],
         chosenVariant: null,
-        productionTimeline: 'Week 1: Platform development finalization, Week 2: Farmer recruitment and training, Week 3: Pickup point setup, Week 4: Soft launch and testing',
+        productionTimeline:
+            'Week 1: Platform development finalization, Week 2: Farmer recruitment and training, Week 3: Pickup point setup, Week 4: Soft launch and testing',
         shippingCoverage: 'Pickup',
         shippingCostHandling: 'included',
-        shippingNotes: 'Customers pick up at designated co-op location. Hub operates Saturdays 6am-10am.',
-        warranty: 'Platform support and maintenance included for first year. Dedicated support team available.',
-        spareParts: 'Signage and display materials can be reprinted as needed from local printers.',
-        risks: 'Low farmer adoption initially. Mitigation: Guaranteed market for first 50 farmers.',
-        safetyNotes: 'Food handling best practices training required for all handlers. Cold storage available.',
+        shippingNotes:
+            'Customers pick up at designated co-op location. Hub operates Saturdays 6am-10am.',
+        warranty:
+            'Platform support and maintenance included for first year. Dedicated support team available.',
+        spareParts:
+            'Signage and display materials can be reprinted as needed from local printers.',
+        risks:
+            'Low farmer adoption initially. Mitigation: Guaranteed market for first 50 farmers.',
+        safetyNotes:
+            'Food handling best practices training required for all handlers. Cold storage available.',
         rewards: const [
           RewardTier(
             id: 'r1',
@@ -228,20 +263,34 @@ class CrowdfundingService {
         publishedAt: now.subtract(const Duration(days: 8)),
         equipmentType: 'Other',
         specs: {
-          'Storage': 'Temperature and humidity controlled seed vault (15-20C, 30-40% humidity)',
+          'Storage':
+              'Temperature and humidity controlled seed vault (15-20C, 30-40% humidity)',
           'Capacity': 'Storage for 10000+ seed varieties',
-          'Testing Equipment': 'Seed germination testing kits and documentation system',
+          'Testing Equipment':
+              'Seed germination testing kits and documentation system',
         },
-        includedItems: ['Climate-controlled storage unit', 'Seed testing equipment', 'Documentation system', 'Preservation containers', 'Workshop materials'],
+        includedItems: [
+          'Climate-controlled storage unit',
+          'Seed testing equipment',
+          'Documentation system',
+          'Preservation containers',
+          'Workshop materials',
+        ],
         chosenVariant: null,
-        productionTimeline: 'Week 1-2: Facility setup and equipment installation, Week 3: Collection drives with local farmers, Week 4: Cataloging and storage, Week 5: Launch first workshop',
+        productionTimeline:
+            'Week 1-2: Facility setup and equipment installation, Week 3: Collection drives with local farmers, Week 4: Cataloging and storage, Week 5: Launch first workshop',
         shippingCoverage: 'Local delivery',
         shippingCostHandling: 'included',
-        shippingNotes: 'Facility located at central co-op location. Seeds distributed via workshops.',
-        warranty: 'Equipment warranty through manufacturers. 2-year seed viability guarantee for stored seeds.',
-        spareParts: 'Replacement storage containers and preservation supplies available quarterly.',
-        risks: 'Seed sourcing delays possible. Mitigation: Partner with 5 regional seed savers.',
-        safetyNotes: 'Proper storage handling training required. PPE provided for seed collection activities.',
+        shippingNotes:
+            'Facility located at central co-op location. Seeds distributed via workshops.',
+        warranty:
+            'Equipment warranty through manufacturers. 2-year seed viability guarantee for stored seeds.',
+        spareParts:
+            'Replacement storage containers and preservation supplies available quarterly.',
+        risks:
+            'Seed sourcing delays possible. Mitigation: Partner with 5 regional seed savers.',
+        safetyNotes:
+            'Proper storage handling training required. PPE provided for seed collection activities.',
         rewards: const [
           RewardTier(
             id: 'r1',
@@ -251,7 +300,8 @@ class CrowdfundingService {
             discountValue: 8,
             usageLimit: 1,
             validityDays: 60,
-            notes: 'A curated collection of heirloom seeds to start your garden.',
+            notes:
+                'A curated collection of heirloom seeds to start your garden.',
           ),
           RewardTier(
             id: 'r2',
@@ -261,7 +311,8 @@ class CrowdfundingService {
             discountValue: 150,
             usageLimit: 3,
             validityDays: 120,
-            notes: 'Hands-on training session on proper seed collection and storage.',
+            notes:
+                'Hands-on training session on proper seed collection and storage.',
           ),
           RewardTier(
             id: 'r3',
@@ -271,7 +322,8 @@ class CrowdfundingService {
             discountValue: 20,
             usageLimit: 2,
             validityDays: 365,
-            notes: 'Full year access to our seed bank library and monthly seed shares.',
+            notes:
+                'Full year access to our seed bank library and monthly seed shares.',
           ),
         ],
       ),
@@ -305,11 +357,7 @@ class CrowdfundingService {
     return prefs.getString(_currentUserKey);
   }
 
-  bool _isOwnedByUser(
-    Campaign campaign, {
-    String? email,
-    String? displayName,
-  }) {
+  bool _isOwnedByUser(Campaign campaign, {String? email, String? displayName}) {
     if (email != null &&
         campaign.creatorEmail != null &&
         campaign.creatorEmail == email) {
@@ -324,10 +372,14 @@ class CrowdfundingService {
     return false;
   }
 
-  Future<List<Campaign>> getMyCampaigns({String? userEmail, String? status}) async {
+  Future<List<Campaign>> getMyCampaigns({
+    String? userEmail,
+    String? status,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await seedIfEmpty();
-    final resolvedEmail = userEmail ??
+    final resolvedEmail =
+        userEmail ??
         prefs.getString(_currentUserKey) ??
         FirebaseAuth.instance.currentUser?.email;
     final displayName = FirebaseAuth.instance.currentUser?.displayName;
@@ -357,7 +409,8 @@ class CrowdfundingService {
   Future<List<Pledge>> getMyPledges() async {
     final prefs = await SharedPreferences.getInstance();
     final email =
-        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
     final jsonStr = prefs.getString(_pledgesKey);
     if (jsonStr == null || jsonStr.isEmpty) return [];
     final pledges = decodePledges(jsonStr);
@@ -396,11 +449,14 @@ class CrowdfundingService {
         : decodePledges(pledgesJson);
 
     final email =
-        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
 
     final isNewBacker = email == null
         ? true
-        : !pledges.any((p) => p.campaignId == campaignId && p.backerEmail == email);
+        : !pledges.any(
+            (p) => p.campaignId == campaignId && p.backerEmail == email,
+          );
 
     final pledge = Pledge(
       id: 'p${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(999)}',
@@ -415,7 +471,9 @@ class CrowdfundingService {
 
     final updatedCampaign = campaign.copyWith(
       pledgedAmount: campaign.pledgedAmount + amount,
-      backersCount: isNewBacker ? campaign.backersCount + 1 : campaign.backersCount,
+      backersCount: isNewBacker
+          ? campaign.backersCount + 1
+          : campaign.backersCount,
     );
 
     campaigns[idx] = updatedCampaign;
@@ -456,7 +514,8 @@ class CrowdfundingService {
 
     final prefs = await SharedPreferences.getInstance();
     final creatorEmail =
-        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
 
     final campaignsJson = prefs.getString(_campaignsKey);
     final campaigns = (campaignsJson == null || campaignsJson.isEmpty)
@@ -497,7 +556,8 @@ class CrowdfundingService {
   Future<void> saveDraft(Campaign draft) async {
     final prefs = await SharedPreferences.getInstance();
     final currentEmail =
-        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
 
     final campaignsJson = prefs.getString(_campaignsKey);
     final campaigns = (campaignsJson == null || campaignsJson.isEmpty)
@@ -525,7 +585,8 @@ class CrowdfundingService {
   Future<List<Campaign>> getDrafts({String? userEmail}) async {
     final prefs = await SharedPreferences.getInstance();
     await seedIfEmpty();
-    final resolvedEmail = userEmail ??
+    final resolvedEmail =
+        userEmail ??
         prefs.getString(_currentUserKey) ??
         FirebaseAuth.instance.currentUser?.email;
     final displayName = FirebaseAuth.instance.currentUser?.displayName;
@@ -540,11 +601,7 @@ class CrowdfundingService {
     final drafts = campaigns.where((c) {
       if (c.status != 'draft') return false;
       if (!hasIdentity) return true;
-      return _isOwnedByUser(
-        c,
-        email: resolvedEmail,
-        displayName: displayName,
-      );
+      return _isOwnedByUser(c, email: resolvedEmail, displayName: displayName);
     }).toList();
 
     drafts.sort((a, b) {
@@ -560,7 +617,8 @@ class CrowdfundingService {
   Future<Campaign?> getDraftById(String draftId) async {
     final prefs = await SharedPreferences.getInstance();
     final email =
-        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
     final displayName = FirebaseAuth.instance.currentUser?.displayName;
     final campaignsJson = prefs.getString(_campaignsKey);
     if (campaignsJson == null || campaignsJson.isEmpty) return null;
@@ -584,7 +642,8 @@ class CrowdfundingService {
   Future<void> deleteDraft(String draftId) async {
     final prefs = await SharedPreferences.getInstance();
     final email =
-        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
     final displayName = FirebaseAuth.instance.currentUser?.displayName;
     final campaignsJson = prefs.getString(_campaignsKey);
     if (campaignsJson == null || campaignsJson.isEmpty) return;
@@ -606,76 +665,101 @@ class CrowdfundingService {
   List<String> validateForPublish(Campaign campaign) {
     final errors = <String>[];
 
-    if (campaign.title.isEmpty || campaign.title.length < 8 || campaign.title.length > 70) {
-      errors.add('Title must be between 8 and 70 characters');
+    if (campaign.title.isEmpty ||
+        campaign.title.length < 8 ||
+        campaign.title.length > 70) {
+      errors.add('Ang pamagat ay dapat nasa pagitan ng 8 at 70 character');
     }
     if (campaign.category.isEmpty) {
-      errors.add('Category is required');
+      errors.add('Kailangan ang kategorya');
     }
     if (campaign.image.isEmpty) {
-      errors.add('Cover image/video is required');
+      errors.add('Kailangan ang cover photo o video');
     }
     if (campaign.shortBlurb.isEmpty || campaign.shortBlurb.length < 10) {
-      errors.add('Short blurb must be at least 10 characters');
+      errors.add('Ang maikling buod ay dapat hindi bababa sa 10 character');
     }
     if (campaign.description.isEmpty || campaign.description.length < 50) {
-      errors.add('Full story must be at least 50 characters');
+      errors.add(
+        'Ang buong paglalarawan ay dapat hindi bababa sa 50 character',
+      );
     }
     if (campaign.specs.isEmpty || campaign.specs.length < 3) {
-      errors.add('At least 3 equipment specs are required');
+      errors.add('Kailangan ang hindi bababa sa 3 detalye ng kagamitan');
     }
-    if (campaign.includedItems.isEmpty || 
+    if (campaign.includedItems.isEmpty ||
         campaign.includedItems.join().isEmpty ||
         campaign.includedItems.join().length < 10) {
-      errors.add("What's included must be at least 10 characters");
+      errors.add(
+        'Ang saklaw ng bibilhin ay dapat hindi bababa sa 10 character',
+      );
     }
     if (campaign.goalAmount < 1000) {
-      errors.add('Funding goal must be at least ₱1,000');
+      errors.add('Ang target na pondo ay dapat hindi bababa sa ₱1,000');
     }
     if (campaign.endDate.isBefore(DateTime.now())) {
-      errors.add('End date must be in the future');
+      errors.add('Ang petsa ng pagtatapos ay dapat nasa hinaharap');
     }
-    if (campaign.productionTimeline == null || 
+    if (campaign.productionTimeline == null ||
         campaign.productionTimeline!.isEmpty ||
         campaign.productionTimeline!.length < 10) {
-      errors.add('Production timeline must be at least 10 characters');
+      errors.add(
+        'Ang timeline ng pagpapatupad ay dapat hindi bababa sa 10 character',
+      );
     }
     if (campaign.rewards.isEmpty) {
-      errors.add('At least one reward tier is required');
+      errors.add('Kailangan ang hindi bababa sa isang antas ng benepisyo');
     } else {
       // Validate reward tiers
       for (final reward in campaign.rewards) {
         if (reward.title.isEmpty) {
-          errors.add('All reward tiers must have a title');
+          errors.add('Kailangang may pamagat ang bawat antas ng benepisyo');
         }
         if (reward.minPledge <= 0) {
-          errors.add('All reward tiers must have a positive minimum pledge');
+          errors.add(
+            'Kailangang higit sa zero ang minimum na pledge ng bawat benepisyo',
+          );
         }
         if (reward.discountValue <= 0) {
-          errors.add('All reward tiers must have a positive discount value');
+          errors.add(
+            'Kailangang higit sa zero ang halaga ng diskuwento ng bawat benepisyo',
+          );
         }
       }
     }
-    if (campaign.shippingCoverage == null || campaign.shippingCoverage!.isEmpty) {
-      errors.add('Shipping coverage is required');
+    if (campaign.shippingCoverage == null ||
+        campaign.shippingCoverage!.isEmpty) {
+      errors.add('Kailangan ang saklaw ng delivery');
     }
-    if (campaign.shippingCostHandling == null || campaign.shippingCostHandling!.isEmpty) {
-      errors.add('Shipping cost handling is required');
+    if (campaign.shippingCostHandling == null ||
+        campaign.shippingCostHandling!.isEmpty) {
+      errors.add('Kailangan kung paano isasama ang gastos sa delivery');
     }
-    if (campaign.warranty == null || 
+    if (campaign.warranty == null ||
         campaign.warranty!.isEmpty ||
         campaign.warranty!.length < 10) {
-      errors.add('Warranty/support must be at least 10 characters');
+      errors.add(
+        'Ang warranty at suporta ay dapat hindi bababa sa 10 character',
+      );
     }
-    if (campaign.spareParts == null || 
+    if (campaign.spareParts == null ||
         campaign.spareParts!.isEmpty ||
         campaign.spareParts!.length < 10) {
-      errors.add('Spare parts info must be at least 10 characters');
+      errors.add(
+        'Ang plano sa spare parts ay dapat hindi bababa sa 10 character',
+      );
     }
-    if (campaign.risks == null || 
+    if (campaign.risks == null ||
         campaign.risks!.isEmpty ||
         campaign.risks!.length < 10) {
-      errors.add('Risks & safety must be at least 10 characters');
+      errors.add('Ang mga panganib ay dapat hindi bababa sa 10 character');
+    }
+    if (campaign.safetyNotes == null ||
+        campaign.safetyNotes!.isEmpty ||
+        campaign.safetyNotes!.length < 10) {
+      errors.add(
+        'Ang paalala sa kaligtasan ay dapat hindi bababa sa 10 character',
+      );
     }
 
     return errors;
@@ -690,7 +774,8 @@ class CrowdfundingService {
 
     final prefs = await SharedPreferences.getInstance();
     final currentEmail =
-        prefs.getString(_currentUserKey) ?? FirebaseAuth.instance.currentUser?.email;
+        prefs.getString(_currentUserKey) ??
+        FirebaseAuth.instance.currentUser?.email;
 
     // Update draft to live
     final campaignsJson = prefs.getString(_campaignsKey);
@@ -699,13 +784,17 @@ class CrowdfundingService {
         : decodeCampaigns(campaignsJson);
 
     final idx = campaigns.indexWhere((c) => c.id == campaign.id);
+    final publishedCampaign = campaign.copyWith(
+      creatorEmail: campaign.creatorEmail ?? currentEmail,
+      status: 'live',
+      publishedAt: DateTime.now(),
+      lastEditedAt: DateTime.now(),
+    );
+
     if (idx >= 0) {
-      campaigns[idx] = campaign.copyWith(
-        creatorEmail: campaign.creatorEmail ?? currentEmail,
-        status: 'live',
-        publishedAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      );
+      campaigns[idx] = publishedCampaign;
+    } else {
+      campaigns.add(publishedCampaign);
     }
 
     await prefs.setString(_campaignsKey, encodeCampaigns(campaigns));

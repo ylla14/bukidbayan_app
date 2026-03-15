@@ -18,7 +18,10 @@ class FakeCrowdfundingService extends CrowdfundingService {
   Future<List<Campaign>> getCampaigns() async => discoverCampaigns;
 
   @override
-  Future<List<Campaign>> getMyCampaigns({String? userEmail, String? status}) async {
+  Future<List<Campaign>> getMyCampaigns({
+    String? userEmail,
+    String? status,
+  }) async {
     if (status == null) return myCampaigns;
     return myCampaigns.where((c) => c.status == status).toList();
   }
@@ -42,7 +45,8 @@ Campaign _campaign({
     creatorName: 'Tester',
     creatorEmail: 'tester@example.com',
     shortBlurb: 'A valid short blurb for testing.',
-    description: 'A long enough description to satisfy campaign rendering needs.',
+    description:
+        'A long enough description to satisfy campaign rendering needs.',
     isAssetImage: true,
     image: 'assets/images/farmBg.jpg',
     category: category,
@@ -90,16 +94,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Solar Pump Upgrade'), findsOneWidget);
-    expect(find.text('2 results'), findsOneWidget);
+    expect(find.text('2 resulta'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'solar');
     await tester.pumpAndSettle();
 
     expect(find.text('Solar Pump Upgrade'), findsOneWidget);
-    expect(find.text('1 result'), findsOneWidget);
+    expect(find.text('1 resulta'), findsOneWidget);
   });
 
-  testWidgets('My Listings tab filters listings by manage search', (tester) async {
+  testWidgets('My Listings tab filters listings by manage search', (
+    tester,
+  ) async {
     final service = FakeCrowdfundingService(
       discoverCampaigns: const [],
       myCampaigns: [
@@ -121,7 +127,7 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('My Listings'));
+    await tester.tap(find.text('Aking Mga Kampanya'));
     await tester.pumpAndSettle();
 
     expect(find.text('Draft One Listing'), findsOneWidget);
@@ -134,7 +140,9 @@ void main() {
     expect(find.text('Live Campaign Listing'), findsNothing);
   });
 
-  testWidgets('My Listings tab shows empty state when no listings exist', (tester) async {
+  testWidgets('My Listings tab shows empty state when no listings exist', (
+    tester,
+  ) async {
     final service = FakeCrowdfundingService(
       discoverCampaigns: const [],
       myCampaigns: const [],
@@ -143,12 +151,14 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('My Listings'));
+    await tester.tap(find.text('Aking Mga Kampanya'));
     await tester.pumpAndSettle();
 
-    expect(find.text('No listings yet'), findsOneWidget);
+    expect(find.text('Wala ka pang kampanya'), findsOneWidget);
     expect(
-      find.text('Create your first campaign draft to start raising funds.'),
+      find.text(
+        'Gumawa ng unang draft ng kampanya para makapagsimulang mangalap ng pondo.',
+      ),
       findsOneWidget,
     );
   });

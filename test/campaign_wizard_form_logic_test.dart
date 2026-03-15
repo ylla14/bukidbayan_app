@@ -9,7 +9,8 @@ Campaign _baseDraft() {
     creatorName: 'Tester',
     creatorEmail: 'tester@example.com',
     shortBlurb: 'A short blurb that is valid',
-    description: 'A long description that should be longer than fifty chars for tests.',
+    description:
+        'A long description that should be longer than fifty chars for tests.',
     isAssetImage: true,
     image: 'assets/images/farmBg.jpg',
     category: 'Irrigation',
@@ -83,45 +84,48 @@ void main() {
       expect(updated.shortBlurb, _baseDraft().shortBlurb);
     });
 
-    test('parses included items and clears variants when disabled on step 3', () {
-      final logic = CampaignWizardFormLogic();
-      final state = _validState();
-      final noVariantState = CampaignWizardFormState(
-        title: state.title,
-        category: state.category,
-        isAssetImage: state.isAssetImage,
-        imagePath: state.imagePath,
-        shortBlurb: state.shortBlurb,
-        fullStory: state.fullStory,
-        equipmentType: state.equipmentType,
-        specs: state.specs,
-        includedItemsRaw: 'Item A\nItem B\n',
-        hasVariants: false,
-        variant: state.variant,
-        variantNotes: state.variantNotes,
-        fundingGoalRaw: state.fundingGoalRaw,
-        selectedEndDate: state.selectedEndDate,
-        productionTimeline: state.productionTimeline,
-        rewards: state.rewards,
-        shippingCoverage: state.shippingCoverage,
-        shippingCostHandling: state.shippingCostHandling,
-        shippingNotes: state.shippingNotes,
-        warranty: state.warranty,
-        spareParts: state.spareParts,
-        risks: state.risks,
-        safetyNotes: state.safetyNotes,
-      );
+    test(
+      'parses included items and clears variants when disabled on step 3',
+      () {
+        final logic = CampaignWizardFormLogic();
+        final state = _validState();
+        final noVariantState = CampaignWizardFormState(
+          title: state.title,
+          category: state.category,
+          isAssetImage: state.isAssetImage,
+          imagePath: state.imagePath,
+          shortBlurb: state.shortBlurb,
+          fullStory: state.fullStory,
+          equipmentType: state.equipmentType,
+          specs: state.specs,
+          includedItemsRaw: 'Item A\nItem B\n',
+          hasVariants: false,
+          variant: state.variant,
+          variantNotes: state.variantNotes,
+          fundingGoalRaw: state.fundingGoalRaw,
+          selectedEndDate: state.selectedEndDate,
+          productionTimeline: state.productionTimeline,
+          rewards: state.rewards,
+          shippingCoverage: state.shippingCoverage,
+          shippingCostHandling: state.shippingCostHandling,
+          shippingNotes: state.shippingNotes,
+          warranty: state.warranty,
+          spareParts: state.spareParts,
+          risks: state.risks,
+          safetyNotes: state.safetyNotes,
+        );
 
-      final updated = logic.applyStepToDraft(
-        draft: _baseDraft(),
-        step: 3,
-        state: noVariantState,
-      );
+        final updated = logic.applyStepToDraft(
+          draft: _baseDraft(),
+          step: 3,
+          state: noVariantState,
+        );
 
-      expect(updated.includedItems, ['Item A', 'Item B']);
-      expect(updated.chosenVariant, isNull);
-      expect(updated.variantNotes, isNull);
-    });
+        expect(updated.includedItems, ['Item A', 'Item B']);
+        expect(updated.chosenVariant, isNull);
+        expect(updated.variantNotes, isNull);
+      },
+    );
   });
 
   group('CampaignWizardFormLogic.validateStep', () {
@@ -156,7 +160,7 @@ void main() {
 
       final error = logic.validateStep(step: 0, state: invalidState);
       expect(error, isNotNull);
-      expect(error, contains('Title'));
+      expect(error, contains('pamagat'));
     });
 
     test('returns error when rewards are empty on step 5', () {
@@ -190,7 +194,7 @@ void main() {
 
       final error = logic.validateStep(step: 5, state: invalidState);
       expect(error, isNotNull);
-      expect(error, contains('reward'));
+      expect(error, contains('benepisyo'));
     });
 
     test('returns null for valid funding step', () {

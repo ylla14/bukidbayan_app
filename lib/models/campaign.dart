@@ -25,25 +25,33 @@ class RewardTier {
     return RewardTier(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
-      minPledge: json['minPledge'] != null ? (json['minPledge'] as num).toInt() : 0,
+      minPledge: json['minPledge'] != null
+          ? (json['minPledge'] as num).toInt()
+          : 0,
       discountType: json['discountType'] as String? ?? 'percent',
-      discountValue: json['discountValue'] != null ? (json['discountValue'] as num).toDouble() : 0.0,
-      usageLimit: json['usageLimit'] != null ? (json['usageLimit'] as num).toInt() : 1,
-      validityDays: json['validityDays'] != null ? (json['validityDays'] as num).toInt() : 30,
+      discountValue: json['discountValue'] != null
+          ? (json['discountValue'] as num).toDouble()
+          : 0.0,
+      usageLimit: json['usageLimit'] != null
+          ? (json['usageLimit'] as num).toInt()
+          : 1,
+      validityDays: json['validityDays'] != null
+          ? (json['validityDays'] as num).toInt()
+          : 30,
       notes: json['notes'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'minPledge': minPledge,
-        'discountType': discountType,
-        'discountValue': discountValue,
-        'usageLimit': usageLimit,
-        'validityDays': validityDays,
-        'notes': notes,
-      };
+    'id': id,
+    'title': title,
+    'minPledge': minPledge,
+    'discountType': discountType,
+    'discountValue': discountValue,
+    'usageLimit': usageLimit,
+    'validityDays': validityDays,
+    'notes': notes,
+  };
 }
 
 class Campaign {
@@ -54,8 +62,8 @@ class Campaign {
   final String shortBlurb;
   final String description;
 
-  /// If true, use Image.asset(image)
-  /// If false, use Image.network(image)
+  /// If true, use an app asset.
+  /// If false, `image` may be a remote URL or a stored data URI.
   final bool isAssetImage;
   final String image;
 
@@ -72,34 +80,35 @@ class Campaign {
 
   // WIZARD FIELDS - Step 1: Basics
   final List<String> coverImages; // Multiple images/videos
-  
+
   // WIZARD FIELDS - Step 3: Specs
   final String? equipmentType; // Pump, Sprayer, Thresher, etc
   final Map<String, String> specs; // Dynamic specs (key-value pairs)
-  
+
   // WIZARD FIELDS - Step 4: What's Included
   final List<String> includedItems;
   final String? chosenVariant;
   final String? variantNotes;
-  
+
   // WIZARD FIELDS - Step 5: Funding
   final String? productionTimeline;
-  
+
   // WIZARD FIELDS - Step 6: Shipping
   final String? shippingCoverage; // Pickup, Local delivery, Nationwide, Other
   final String? shippingCostHandling; // Included in goal / Separate estimate
   final String? shippingNotes;
-  
+
   // WIZARD FIELDS - Step 7: Support
   final String? warranty;
   final String? spareParts;
-  
+
   // WIZARD FIELDS - Step 8: Risks & Safety
   final String? risks;
   final String? safetyNotes;
-  
+
   // Status and Timestamps
-  final String status; // draft, live, ended_success, ended_fail, purchased, cancelled
+  final String
+  status; // draft, live, ended_success, ended_fail, purchased, cancelled
   final DateTime? publishedAt;
   final DateTime? lastEditedAt;
 
@@ -204,8 +213,9 @@ class Campaign {
       safetyNotes: safetyNotes ?? this.safetyNotes,
       status: status ?? this.status,
       publishedAt: clearPublishedAt ? null : (publishedAt ?? this.publishedAt),
-      lastEditedAt:
-          clearLastEditedAt ? null : (lastEditedAt ?? this.lastEditedAt),
+      lastEditedAt: clearLastEditedAt
+          ? null
+          : (lastEditedAt ?? this.lastEditedAt),
       coverImages: coverImages ?? this.coverImages,
       equipmentType: equipmentType ?? this.equipmentType,
       specs: specs ?? this.specs,
@@ -268,39 +278,39 @@ class Campaign {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'creatorName': creatorName,
-        'creatorEmail': creatorEmail,
-        'shortBlurb': shortBlurb,
-        'description': description,
-        'isAssetImage': isAssetImage,
-        'image': image,
-        'category': category,
-        'goalAmount': goalAmount,
-        'pledgedAmount': pledgedAmount,
-        'backersCount': backersCount,
-        'endDate': endDate.toIso8601String(),
-        'createdAt': createdAt.toIso8601String(),
-        'rewards': rewards.map((r) => r.toJson()).toList(),
-        'coverImages': coverImages,
-        'equipmentType': equipmentType,
-        'specs': specs,
-        'includedItems': includedItems,
-        'chosenVariant': chosenVariant,
-        'variantNotes': variantNotes,
-        'productionTimeline': productionTimeline,
-        'shippingCoverage': shippingCoverage,
-        'shippingCostHandling': shippingCostHandling,
-        'shippingNotes': shippingNotes,
-        'warranty': warranty,
-        'spareParts': spareParts,
-        'risks': risks,
-        'safetyNotes': safetyNotes,
-        'status': status,
-        'publishedAt': publishedAt?.toIso8601String(),
-        'lastEditedAt': lastEditedAt?.toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'creatorName': creatorName,
+    'creatorEmail': creatorEmail,
+    'shortBlurb': shortBlurb,
+    'description': description,
+    'isAssetImage': isAssetImage,
+    'image': image,
+    'category': category,
+    'goalAmount': goalAmount,
+    'pledgedAmount': pledgedAmount,
+    'backersCount': backersCount,
+    'endDate': endDate.toIso8601String(),
+    'createdAt': createdAt.toIso8601String(),
+    'rewards': rewards.map((r) => r.toJson()).toList(),
+    'coverImages': coverImages,
+    'equipmentType': equipmentType,
+    'specs': specs,
+    'includedItems': includedItems,
+    'chosenVariant': chosenVariant,
+    'variantNotes': variantNotes,
+    'productionTimeline': productionTimeline,
+    'shippingCoverage': shippingCoverage,
+    'shippingCostHandling': shippingCostHandling,
+    'shippingNotes': shippingNotes,
+    'warranty': warranty,
+    'spareParts': spareParts,
+    'risks': risks,
+    'safetyNotes': safetyNotes,
+    'status': status,
+    'publishedAt': publishedAt?.toIso8601String(),
+    'lastEditedAt': lastEditedAt?.toIso8601String(),
+  };
 }
 
 class Pledge {
@@ -321,22 +331,22 @@ class Pledge {
   });
 
   factory Pledge.fromJson(Map<String, dynamic> json) => Pledge(
-        id: json['id'] as String,
-        campaignId: json['campaignId'] as String,
-        backerEmail: json['backerEmail'] as String?,
-        amount: (json['amount'] as num).toInt(),
-        rewardId: json['rewardId'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    campaignId: json['campaignId'] as String,
+    backerEmail: json['backerEmail'] as String?,
+    amount: (json['amount'] as num).toInt(),
+    rewardId: json['rewardId'] as String?,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'campaignId': campaignId,
-        'backerEmail': backerEmail,
-        'amount': amount,
-        'rewardId': rewardId,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'campaignId': campaignId,
+    'backerEmail': backerEmail,
+    'amount': amount,
+    'rewardId': rewardId,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }
 
 // Simple helper so you can quickly serialize lists if needed.
