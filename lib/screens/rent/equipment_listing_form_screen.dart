@@ -67,6 +67,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   final _minimumVolumeController        = TextEditingController();
   final _riceOnlyPriceController        = TextEditingController();
   final _ricePlusDarakPriceController   = TextEditingController();
+  final _cropSharePercentController   = TextEditingController();
+  final _maintenanceIntervalController = TextEditingController();
+
 
   // ── Address controllers ─────────────────────────────────────────────────
   final _otherAddressController = TextEditingController();
@@ -132,6 +135,11 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
 
   DeliveryMode _selectedDeliveryMode = DeliveryMode.both;
 
+  bool? cropShareRequired;
+  bool  showCropShareError = false;
+  bool? maintenanceRequired;
+  bool  showMaintenanceError = false;
+
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -161,6 +169,10 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       _riceOnlyPriceController.text        = eq.riceOnlyPricePerKg?.toString() ?? '2.0';
       _ricePlusDarakPriceController.text   = eq.ricePlusDarakPricePerKg?.toString() ?? '3.0';
       _selectedDeliveryMode = eq.deliveryMode;
+      _cropSharePercentController.text =
+          eq.cropSharePercent?.toString() ?? '';
+     _maintenanceIntervalController.text =
+           eq.maintenanceIntervalHrs == 240 ? '240' : eq.maintenanceIntervalHrs.toString();
 
 
       selectedCategory    = eq.category;
@@ -180,6 +192,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       availableFrom = eq.availableFrom;
       availableUntil = eq.availableUntil;
 
+      cropShareRequired  = eq.cropShareRequired;
+      maintenanceRequired = eq.maintenanceRequired;
+
       // Pre-fill address from existing equipment
       if (eq.location != null && eq.location!.isNotEmpty) {
         _addressMode = 'other';
@@ -193,6 +208,10 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
       for (int i = 0; i < existingUrls.length && i < images.length; i++) {
         images[i] = XFile(existingUrls[i]);
       }
+
+      if (widget.existingEquipment == null) {
+        _maintenanceIntervalController.text = '240';
+      }
     }
   }
 
@@ -200,6 +219,8 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   void dispose() {
     _otherAddressController.dispose();
     _cropConditionController.dispose();
+    _cropSharePercentController.dispose();
+    _maintenanceIntervalController.dispose();
     super.dispose();
   }
 
@@ -307,6 +328,140 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
     }
   }
 
+  bool get _isHarvester =>
+    selectedCategory?.toLowerCase().contains('harvester') == true ||
+    selectedCategory?.toLowerCase().contains('halimaw') == true;
+
+
+  void _showMissingFieldsSheet(List<String> missing) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (_) => Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.error_outline_rounded,
+                    color: Colors.red.shade600, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Hindi pa kumpleto ang form',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Pakitapos ang mga sumusunod bago mag-save:',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+
+          // Missing fields list
+          if (missing.isEmpty)
+            // Form fields are invalid (validators caught them) but no named missing fields
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.orange.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'May mga patlang na may maling halaga. '
+                      'Tingnan ang mga pulang mensahe sa form.',
+                      style: TextStyle(fontSize: 13, color: Colors.orange.shade800),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...missing.map((field) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Icon(Icons.radio_button_unchecked,
+                        size: 14, color: Colors.red.shade400),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      field,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+
+          const SizedBox(height: 8),
+
+          // Dismiss button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: lightColorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Bumalik sa Form',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
   // ── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -411,12 +566,28 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                 ),
 
                 if (showImageError)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Please upload at least one image',
-                      style: TextStyle(color: Colors.red, fontSize: 12),
-                    ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(8,4,0,0),
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.image_not_supported_outlined,
+                              size: 14, color: Colors.red.shade600),
+                          const SizedBox(width: 6),
+                          Text('Mag-upload ng kahit isang larawan',
+                              style: TextStyle(color: Colors.red.shade700,
+                                  fontSize: 12, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    )
                   ),
 
                 const SizedBox(height: 15),
@@ -863,6 +1034,12 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       const SizedBox(height: 16),
                       const Text('Land Size Requirement',
                           style: TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Mayroon bang minimum o maximum na sukat ng lupa na kailangan bago gamitin ang kagamitan? '
+                        'Halimbawa: hindi angkop sa mga lupang mas maliit sa 1 ektarya.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
                       const SizedBox(height: 8),
                       ToggleButtons(
                         isSelected: [landSizeRequirement == true, landSizeRequirement == false],
@@ -880,10 +1057,19 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                         children: const [Text('Yes'), Text('No')],
                       ),
                       if (showLandSizeError)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 4),
-                          child: Text('Required',
-                              style: TextStyle(color: Colors.red, fontSize: 12)),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, size: 14, color: Colors.red.shade600),
+                              SizedBox(width: 4),
+                              Text(
+                                'Kailangan itong sagutin',
+                                style: TextStyle(color: Colors.red.shade600, fontSize: 12,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          )
                         ),
                       if (landSizeRequirement == true) ...[
                         const SizedBox(height: 6),
@@ -919,6 +1105,12 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       const SizedBox(height: 16),
                       const Text('Maximum Grass Height?',
                           style: TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Mayroon bang limitasyon sa taas ng damo o pananim bago gamitin ang kagamitan? '
+                        'Halimbawa: hindi pwedeng gamitin kung masyado nang mataas ang damo.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
                       const SizedBox(height: 8),
                       ToggleButtons(
                         isSelected: [
@@ -939,10 +1131,19 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                         children: const [Text('Yes'), Text('No')],
                       ),
                       if (showCropHeightError)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 4),
-                          child: Text('Required',
-                              style: TextStyle(color: Colors.red, fontSize: 12)),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, size: 14, color: Colors.red.shade600),
+                              SizedBox(width: 4),
+                              Text(
+                                'Kailangan itong sagutin',
+                                style: TextStyle(color: Colors.red.shade600, fontSize: 12,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          )
                         ),
                       if (maxCropHeightRequirement == true) ...[
                         const SizedBox(height: 6),
@@ -962,52 +1163,240 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       ],
 
                       // CROP CONDITION REQUIREMENT
-const SizedBox(height: 16),
-const Text('Crop Condition Requirement',
-    style: TextStyle(fontWeight: FontWeight.w500)),
-const SizedBox(height: 8),
-ToggleButtons(
-  isSelected: [
-    cropConditionRequirement == true,
-    cropConditionRequirement == false,
-  ],
-  onPressed: (i) => setState(() {
-    cropConditionRequirement = i == 0;
-    showCropConditionError = false;
-  }),
-  borderRadius: BorderRadius.circular(20),
-  selectedBorderColor: lightColorScheme.primary,
-  selectedColor: Colors.white,
-  fillColor: lightColorScheme.primary,
-  color: lightColorScheme.primary,
-  constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
-  children: const [Text('Yes'), Text('No')],
-),
-if (showCropConditionError)
-  const Padding(
-    padding: EdgeInsets.only(top: 4),
-    child: Text('Required',
-        style: TextStyle(color: Colors.red, fontSize: 12)),
-  ),
-if (cropConditionRequirement == true) ...[
-  const SizedBox(height: 6),
-  Text(
-    'Ilarawan ang kinakailangang kondisyon ng pananim bago gamitin ang kagamitang ito. '
-    'Halimbawa: tuyo na ang uhay, hindi pa naani, o naka-bundle na.',
-    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-  ),
-  const SizedBox(height: 4),
-  CustomTextFormField(
-    hint: 'e.g. Dapat tuyo na ang pananim bago gamitin',
-    maxLines: 3,
-    controller: _cropConditionController,
-    validator: (v) {
-      if (cropConditionRequirement == true &&
-          (v == null || v.isEmpty)) return 'Required';
-      return null;
-    },
-  ),
-],
+                      const SizedBox(height: 16),
+                      const Text('Crop Condition Requirement',
+                          style: TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Mayroon bang kinakailangang kondisyon ng pananim bago pwedeng gamitin ang kagamitan? '
+                        'Halimbawa: kailangang tuyo na ang uhay, o kailangang naka-bundle na ang ani.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      ToggleButtons(
+                        isSelected: [
+                          cropConditionRequirement == true,
+                          cropConditionRequirement == false,
+                        ],
+                        onPressed: (i) => setState(() {
+                          cropConditionRequirement = i == 0;
+                          showCropConditionError = false;
+                        }),
+                        borderRadius: BorderRadius.circular(20),
+                        selectedBorderColor: lightColorScheme.primary,
+                        selectedColor: Colors.white,
+                        fillColor: lightColorScheme.primary,
+                        color: lightColorScheme.primary,
+                        constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
+                        children: const [Text('Yes'), Text('No')],
+                      ),
+                      if (showCropConditionError)
+                        Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, size: 14, color: Colors.red.shade600),
+                              SizedBox(width: 4),
+                              Text(
+                                'Kailangan itong sagutin',
+                                style: TextStyle(color: Colors.red.shade600, fontSize: 12,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          )
+                        ),
+                      if (cropConditionRequirement == true) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Ilarawan ang kinakailangang kondisyon ng pananim bago gamitin ang kagamitang ito. '
+                          'Halimbawa: tuyo na ang uhay, hindi pa naani, o naka-bundle na.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 4),
+                        CustomTextFormField(
+                          hint: 'e.g. Dapat tuyo na ang pananim bago gamitin',
+                          maxLines: 3,
+                          controller: _cropConditionController,
+                          validator: (v) {
+                            if (cropConditionRequirement == true &&
+                                (v == null || v.isEmpty)) return 'Required';
+                            return null;
+                          },
+                        ),
+                      ],
+
+                      // ── CROP SHARE (Harvester / Halimaw only) ─────────────────────────
+                      if (_isHarvester) ...[
+                        const SizedBox(height: 16),
+                        const Text('Crop Share', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Hinihingi ba ng may-ari ng kagamitan ang bahagi ng ani bilang bayad?',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 8),
+                        ToggleButtons(
+                          isSelected: [cropShareRequired == true, cropShareRequired == false],
+                          onPressed: (i) => setState(() {
+                            cropShareRequired = i == 0;
+                            showCropShareError = false;
+                            if (i == 1) _cropSharePercentController.clear();
+                          }),
+                          borderRadius: BorderRadius.circular(20),
+                          selectedBorderColor: lightColorScheme.primary,
+                          selectedColor: Colors.white,
+                          fillColor: lightColorScheme.primary,
+                          color: lightColorScheme.primary,
+                          constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
+                          children: const [Text('Yes'), Text('No')],
+                        ),
+                        if (showCropShareError)
+                          Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded, size: 14, color: Colors.red.shade600),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Kailangan itong sagutin',
+                                  style: TextStyle(color: Colors.red.shade600, fontSize: 12,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (cropShareRequired == true) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Crop Share Percentage (%)',
+                                        style: TextStyle(fontSize: 12)),
+                                    const SizedBox(height: 4),
+                                    CustomTextFormField(
+                                      controller: _cropSharePercentController,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(decimal: true),
+                                      hint: 'e.g. 10',
+                                      validator: (v) {
+                                        if (cropShareRequired != true) return null;
+                                        if (v == null || v.isEmpty) return 'Required';
+                                        final n = double.tryParse(v);
+                                        if (n == null || n <= 0) return 'Enter a valid number';
+                                        if (n > 15) return 'Maximum is 15%';
+                                        return null;
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.amber.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(children: [
+                                        Icon(Icons.info_outline,
+                                            size: 13, color: Colors.amber.shade800),
+                                        const SizedBox(width: 4),
+                                        Text('Max 15%',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.amber.shade800)),
+                                      ]),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Ang crop share ay hindi dapat lumagpas sa 15% ng kabuuang ani.',
+                                        style: TextStyle(
+                                            fontSize: 10, color: Colors.amber.shade700),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+
+                    // ── MAINTENANCE INTERVAL (all equipment) ──────────────────────────
+                    const SizedBox(height: 16),
+                    const Text('Maintenance Interval',
+                        style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ilagay ang bilang ng oras ng operasyon bago kailangang mag-maintain ng kagamitan.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Interval (hours)', style: TextStyle(fontSize: 12)),
+                              const SizedBox(height: 4),
+                              CustomTextFormField(
+                                controller: _maintenanceIntervalController,
+                                keyboardType: TextInputType.number,
+                                hint: 'Default: 240 hrs',
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return 'Required';
+                                  final n = double.tryParse(v);
+                                  if (n == null || n <= 0) return 'Enter a valid number';
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.blue.shade100),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Icon(Icons.build_circle_outlined,
+                                      size: 13, color: Colors.blue.shade700),
+                                  const SizedBox(width: 4),
+                                  Text('Default: 240 hrs',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue.shade700)),
+                                ]),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Karaniwang isinasagawa ang maintenance tuwing 240 oras ng operasyon.',
+                                  style: TextStyle(fontSize: 10, color: Colors.blue.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
 
                       // RICE MILL MINIMUM VOLUME
                       if (_isRiceMill) ...[
@@ -1391,28 +1780,44 @@ if (cropConditionRequirement == true) ...[
       });
     }
   }
+Future<void> _onSavePressed() async {
+  final isFormValid = _formKey.currentState!.validate();
+  final hasImage    = images.any((img) => img != null);
 
-  Future<void> _onSavePressed() async {
-    final isFormValid = _formKey.currentState!.validate();
-    final hasImage    = images.any((img) => img != null);
+  setState(() {
+    showLandSizeError     = landSizeRequirement == null;
+    showCropHeightError   = maxCropHeightRequirement == null;
+    showCropConditionError = cropConditionRequirement == null;
+    showImageError        = !hasImage;
+    showAvailabilityError = availableFrom == null || availableUntil == null;
+    showAddressError      = !_addressIsValid;
+    showCropShareError    = _isHarvester && cropShareRequired == null;
+  });
 
-    setState(() {
-      showLandSizeError      = landSizeRequirement == null;
-      showCropHeightError    = maxCropHeightRequirement == null;
-      showImageError         = !hasImage;
-      showAvailabilityError  = availableFrom == null || availableUntil == null;
-      showAddressError       = !_addressIsValid;
-    });
+  // ── Collect human-readable missing field names ──────────────────────────
+  final List<String> missing = [];
 
-    if (!isFormValid ||
-        landSizeRequirement == null ||
-        maxCropHeightRequirement == null ||
-        !hasImage ||
-        availableFrom == null ||
-        availableUntil == null ||
-        !_addressIsValid) {
-      return;
-    }
+  if (!hasImage)                                       missing.add('At least one photo');
+  if (selectedCategory == null)                        missing.add('Equipment Category');
+  if (_equipmentNameController.text.trim().isEmpty)    missing.add('Listing Name');
+  if (_equipmentDescriptionController.text.trim().isEmpty) missing.add('Description');
+  if (!_addressIsValid)                                missing.add('Equipment Location');
+  if (selectedCondition == null)                       missing.add('Condition');
+  if (operatorIncluded == null)                        missing.add('Operator Included (Yes/No)');
+  if (landSizeRequirement == null)                     missing.add('Land Size Requirement (Yes/No)');
+  if (maxCropHeightRequirement == null)                missing.add('Maximum Grass Height (Yes/No)');
+  if (cropConditionRequirement == null)                missing.add('Crop Condition Requirement (Yes/No)');
+  if (_isHarvester && cropShareRequired == null)       missing.add('Crop Share (Yes/No)');
+  if (availableFrom == null || availableUntil == null) missing.add('Availability Dates');
+  if (!_isRiceMill && selectedRentalUnit == null)      missing.add('Rate Type');
+  if (!_isRiceMill && (_equipmentPriceController.text.trim().isEmpty ||
+      _equipmentPriceController.text.trim() == '0'))  missing.add('Price');
+
+  if (!isFormValid || missing.isNotEmpty) {
+    _showMissingFieldsSheet(missing);
+    return;
+  }
+
 
     showDialog(
       context: context,
@@ -1544,6 +1949,12 @@ if (cropConditionRequirement == true) ...[
         deliveryMode: operatorIncluded == true
           ? DeliveryMode.deliveryOnly  // operator comes to renter, always delivery
           : _selectedDeliveryMode,
+        cropShareRequired:    _isHarvester && (cropShareRequired ?? false),
+        cropSharePercent:     (_isHarvester && cropShareRequired == true)
+            ? double.tryParse(_cropSharePercentController.text)
+            : null,
+        maintenanceRequired:  true,
+        maintenanceIntervalHrs: double.tryParse(_maintenanceIntervalController.text) ?? 240,
       );
 
       if (widget.existingEquipment != null) {
@@ -1663,7 +2074,9 @@ class _AddressOptionCard extends StatelessWidget {
       ),
     );
   }
+  
 }
+
 
 class _DeliveryModeCard extends StatelessWidget {
   final IconData icon;

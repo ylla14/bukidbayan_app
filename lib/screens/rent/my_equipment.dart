@@ -292,43 +292,43 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
                       
                       // Maintenance Toggle Button
                       SizedBox(
-  width: 100,
-  child: ElevatedButton.icon(
-    onPressed: equipment.status == EquipmentStatus.unavailable
-        ? null
-        : () async {
-            if (equipment.status == EquipmentStatus.available) {
-              await _scheduleMaintenance(context, equipment);
-            } else {
-              await _endMaintenance(context, equipment);
-            }
-          },
-    icon: Icon(
-      equipment.status == EquipmentStatus.available
-          ? Icons.build_outlined
-          : Icons.check_circle_outline,
-      size: 14,
-    ),
-    label: Text(
-      equipment.status == EquipmentStatus.available
-          ? 'Maintenance'
-          : 'Set Available',
-      style: const TextStyle(fontSize: 11),
-    ),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: equipment.status == EquipmentStatus.unavailable
-          ? Colors.grey.shade400
-          : equipment.status == EquipmentStatus.available
-              ? Colors.orange.shade600
-              : Colors.green.shade600,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-      ),
-    ),
-  ),
-),
+                        width: 100,
+                        child: ElevatedButton.icon(
+                          onPressed: equipment.status == EquipmentStatus.unavailable
+                              ? null
+                              : () async {
+                                  if (equipment.status == EquipmentStatus.available) {
+                                    await _scheduleMaintenance(context, equipment);
+                                  } else {
+                                    await _endMaintenance(context, equipment);
+                                  }
+                                },
+                          icon: Icon(
+                            equipment.status == EquipmentStatus.available
+                                ? Icons.build_outlined
+                                : Icons.check_circle_outline,
+                            size: 14,
+                          ),
+                          label: Text(
+                            equipment.status == EquipmentStatus.available
+                                ? 'Maintenance'
+                                : 'Set Available',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: equipment.status == EquipmentStatus.unavailable
+                                ? Colors.grey.shade400
+                                : equipment.status == EquipmentStatus.available
+                                    ? Colors.orange.shade600
+                                    : Colors.green.shade600,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
