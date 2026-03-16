@@ -621,8 +621,44 @@ class RequestSentPage extends StatelessWidget {
                             _infoTile(Icons.location_on_outlined, 'ADDRESS',
                                 request.address, const Color(0xFF3B82F6)),
 
-                            // ── Land size proofs ──────────────────────────────────
-                            if (request.landSizeProofPaths.isNotEmpty) ...[
+                            // // ── Land size proofs ──────────────────────────────────
+                            // if (request.landSizeProofPaths.isNotEmpty) ...[
+                            //   const SizedBox(height: 4),
+                            //   _proofImages(
+                            //     request.landSizeProofPaths,
+                            //     'LAND SIZE PROOF',
+                            //     context,
+                            //   ),
+                            // ],
+
+                            if (request.hectaresEntered != null) ...[
+                              () {
+                                final totalDays = request.end.difference(request.start).inDays + 1;
+                                final haPerDay = request.hectaresEntered! / totalDays;
+                                return Column(
+                                  children: [
+                                    _infoTile(
+                                      Icons.crop_square_rounded,
+                                      'LAND AREA',
+                                      '${request.hectaresEntered! % 1 == 0 ? request.hectaresEntered!.toInt() : request.hectaresEntered} hectares',
+                                      const Color(0xFF3B82F6),
+                                    ),
+                                    _infoTile(
+                                      Icons.calendar_month_rounded,
+                                      'DURATION',
+                                      '$totalDays day${totalDays == 1 ? '' : 's'}',
+                                      const Color(0xFF3B82F6),
+                                    ),
+                                    _infoTile(
+                                      Icons.speed_rounded,
+                                      'COVERAGE RATE',
+                                      '${haPerDay % 1 == 0 ? haPerDay.toInt() : haPerDay.toStringAsFixed(1)} ha/day',
+                                      const Color(0xFF3B82F6),
+                                    ),
+                                  ],
+                                );
+                              }(),
+                            ] else if (request.landSizeProofPaths.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               _proofImages(
                                 request.landSizeProofPaths,

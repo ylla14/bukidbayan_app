@@ -22,7 +22,6 @@ class SubmitButton extends StatefulWidget {
   final String name;
   final String address;
 
-  // ── Now lists ──────────────────────────────────────────────
   final List<XFile> landSizeProofs;
   final List<XFile> cropHeightProofs;
   final List<XFile> cropConditionProofs;
@@ -36,6 +35,7 @@ class SubmitButton extends StatefulWidget {
   final double? farmLatitude;
   final double? farmLongitude;
   final DeliveryMethod deliveryMethod;
+  final double? hectaresEntered;
 
   const SubmitButton({
     super.key,
@@ -47,6 +47,7 @@ class SubmitButton extends StatefulWidget {
     this.landSizeProofs = const [],
     this.cropHeightProofs = const [],
     this.cropConditionProofs = const [],
+    this.hectaresEntered,
     required this.item,
     required this.requestService,
     this.volumeController,
@@ -65,36 +66,59 @@ class SubmitButton extends StatefulWidget {
 class _SubmitButtonState extends State<SubmitButton> {
   bool _isSubmitting = false;
 
+  // ── Shared rate helper (mirrors date_step.dart) ─────────────────────────
+  double get _hectaresPerDay {
+    switch (widget.item.category?.toLowerCase()) {
+      case 'hand tractor (kuliglig)':  return 0.5;
+      case 'floating tiller (pagong)': return 1.0;
+      default:                          return 2.0; // tractor, harvester (halimaw)
+    }
+  }
+
+  bool get _isAutoComputed {
+    final cat = widget.item.category?.toLowerCase();
+    final isEligible = cat == 'tractor' ||
+        cat == 'harvester (halimaw)' ||
+        cat == 'hand tractor (kuliglig)' ||
+        cat == 'floating tiller (pagong)';
+    return isEligible && widget.item.landSizeRequirement;
+  }
+
   @override
   Widget build(BuildContext context) {
     String _getRateSuffix(String rentRate) {
       switch (rentRate.toLowerCase()) {
-        case 'per day':
-          return '/day';
-        case 'per hour':
-          return '/hour';
-        case 'per week':
-          return '/week';
-        case 'per month':
-          return '/month';
-        case 'per kg':
-          return '/kg';
-        case 'per hectare':
-          return '/ha';
-        default:
-          return '';
+        case 'per day':     return '/day';
+        case 'per hour':    return '/hour';
+        case 'per week':    return '/week';
+        case 'per month':   return '/month';
+        case 'per kg':      return '/kg';
+        case 'per hectare': return '/ha';
+        default:            return '';
       }
     }
 
     final isHarvester = widget.item.category?.toLowerCase() == 'harvester';
-    final isRiceMill =
-        widget.item.category?.toLowerCase().contains('rice mill') == true;
+    final isHalimaw   = widget.item.category?.toLowerCase() == 'harvester (halimaw)';
+    final isRiceMill  = widget.item.category?.toLowerCase().contains('rice mill') == true;
+
+    final isAutoComputed  = _isAutoComputed;
+    final hectaresPerDay  = _hectaresPerDay;
+    final ha              = widget.hectaresEntered;
+    final int? days       = (isAutoComputed && ha != null)
+        ? (ha / hectaresPerDay).ceil().clamp(1, 9999)
+        : null;
+    final double basePrice = widget.item.price;
+
+    // Format ha for display (no trailing .0)
+    String fmtHa(double v) =>
+        v == v.truncateToDouble() ? v.toInt().toString() : v.toString();
 
     return Column(
       children: [
-        // ── Price Summary Card ──────────────────────────────
+        // ── Price Summary Card ──────────────────────────────────────────
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          margin: const EdgeInsets.fromLTRB(8, 8, 8, 8),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.green.shade50,
@@ -114,6 +138,7 @@ class _SubmitButtonState extends State<SubmitButton> {
               ),
               const SizedBox(height: 10),
 
+              // ── Rice Mill ─────────────────────────────────────────────
               if (isRiceMill) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -154,8 +179,7 @@ class _SubmitButtonState extends State<SubmitButton> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Estimated Total',
-                          style:
-                              TextStyle(fontSize: 15, color: Colors.black54)),
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
                       Text(
                         '₱${widget.estimatedMillingFee!.toStringAsFixed(2)}',
                         style: const TextStyle(
@@ -166,14 +190,16 @@ class _SubmitButtonState extends State<SubmitButton> {
                     ],
                   ),
                 ],
-              ] else ...[
+
+              // ── Auto-computed (tractor / halimaw / kuliglig / pagong) ──
+              ] else if (isAutoComputed) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Rental Rate',
                         style: TextStyle(fontSize: 15, color: Colors.black54)),
                     Text(
-                      '₱${widget.item.price} ${_getRateSuffix(widget.item.rentalUnit)}',
+                      '₱${basePrice.toStringAsFixed(2)}/day',
                       style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -181,7 +207,87 @@ class _SubmitButtonState extends State<SubmitButton> {
                     ),
                   ],
                 ),
-                if (isHarvester) ...[
+                if (ha != null && days != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Land Area',
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      Text(
+                        '${fmtHa(ha)} ha',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Duration',
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      Text(
+                        '$days day${days == 1 ? '' : 's'} '
+                        '(${fmtHa(ha)} ha ÷ ${fmtHa(hectaresPerDay)} ha/day)',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Estimated Total',
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      Text(
+                        '₱${(basePrice * days).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '₱${basePrice.toStringAsFixed(2)}/day × $days days',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Enter your land area above to see the estimated total.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+
+              // ── All other equipment ───────────────────────────────────
+              ] else ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Rental Rate',
+                        style: TextStyle(fontSize: 15, color: Colors.black54)),
+                    Text(
+                      '₱${basePrice.toStringAsFixed(2)}${_getRateSuffix(widget.item.rentalUnit)}',
+                      style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87),
+                    ),
+                  ],
+                ),
+                if (isHarvester && !isHalimaw) ...[
                   const SizedBox(height: 8),
                   const Divider(height: 1),
                   const SizedBox(height: 8),
@@ -189,8 +295,7 @@ class _SubmitButtonState extends State<SubmitButton> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Additional Fee',
-                          style:
-                              TextStyle(fontSize: 15, color: Colors.black54)),
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
@@ -212,7 +317,7 @@ class _SubmitButtonState extends State<SubmitButton> {
                 ],
               ],
 
-              // Delivery method
+              // ── Delivery method (always shown) ────────────────────────
               const SizedBox(height: 8),
               const Divider(height: 1),
               const SizedBox(height: 8),
@@ -248,7 +353,7 @@ class _SubmitButtonState extends State<SubmitButton> {
           ),
         ),
 
-        // ── Submit button ───────────────────────────────────
+        // ── Submit button ───────────────────────────────────────────────
         Align(
           alignment: Alignment.center,
           child: OutlinedButton(
@@ -292,7 +397,8 @@ class _SubmitButtonState extends State<SubmitButton> {
 
     if (widget.item.minimumVolumeRequired &&
         widget.item.minimumVolumeKg != null) {
-      final entered = double.tryParse(widget.volumeController?.text ?? '') ?? 0;
+      final entered =
+          double.tryParse(widget.volumeController?.text ?? '') ?? 0;
       final minInUnit = widget.item.minimumVolumeUnit == 'cavans'
           ? widget.item.minimumVolumeKg! / 50
           : widget.item.minimumVolumeKg!;
@@ -349,9 +455,7 @@ class _SubmitButtonState extends State<SubmitButton> {
     try {
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-      // Block submission if the renter has 3+ strikes
-      final blockedUntil =
-          await StrikeService().blockedUntil(currentUserId);
+      final blockedUntil = await StrikeService().blockedUntil(currentUserId);
       if (blockedUntil != null) {
         if (!mounted) return;
         final unblockDate =
@@ -388,19 +492,31 @@ class _SubmitButtonState extends State<SubmitButton> {
 
       final cloudinary = CloudinaryService();
 
-      // ── Upload all land-size proof files in parallel ───────
       final landPaths = await Future.wait(
         widget.landSizeProofs.map((f) => cloudinary.uploadImage(f)),
       );
-
-      // ── Upload all crop-height proof files in parallel ─────
       final cropPaths = await Future.wait(
         widget.cropHeightProofs.map((f) => cloudinary.uploadImage(f)),
       );
-
       final cropConditionPaths = await Future.wait(
         widget.cropConditionProofs.map((f) => cloudinary.uploadImage(f)),
       );
+
+      // ── Compute agreedPrice using correct per-category rate ────────────
+      final agreedPrice = () {
+        if (isRiceMill) {
+          return widget.keepDarak
+              ? widget.item.ricePlusDarakPricePerKg ?? 3.0
+              : widget.item.riceOnlyPricePerKg ?? 2.0;
+        }
+        if (_isAutoComputed && widget.hectaresEntered != null) {
+          final days = (widget.hectaresEntered! / _hectaresPerDay)
+              .ceil()
+              .clamp(1, 9999);
+          return widget.item.price * days;
+        }
+        return widget.item.price;
+      }();
 
       final request = RentRequest(
         requestId: '',
@@ -410,8 +526,8 @@ class _SubmitButtonState extends State<SubmitButton> {
         address: widget.address,
         start: widget.startDate,
         end: widget.returnDate,
-        landSizeProofPaths: landPaths,   // ← list
-        cropHeightProofPaths: cropPaths, // ← list
+        landSizeProofPaths: landPaths,
+        cropHeightProofPaths: cropPaths,
         cropConditionProofPaths: cropConditionPaths,
         status: RentRequestStatus.pending,
         renterId: currentUserId,
@@ -420,16 +536,13 @@ class _SubmitButtonState extends State<SubmitButton> {
             double.tryParse(widget.volumeController?.text ?? ''),
         keepDarak: widget.keepDarak,
         estimatedMillingFee: widget.estimatedMillingFee,
-        agreedPrice: isRiceMill
-            ? (widget.keepDarak
-                ? widget.item.ricePlusDarakPricePerKg ?? 3.0
-                : widget.item.riceOnlyPricePerKg ?? 2.0)
-            : widget.item.price,
+        agreedPrice: agreedPrice,
         agreedRentalUnit: widget.item.rentalUnit,
         deliveryMethod: widget.deliveryMethod,
         farmAddress: widget.farmAddress,
         farmLatitude: widget.farmLatitude,
         farmLongitude: widget.farmLongitude,
+        hectaresEntered: widget.hectaresEntered,
       );
 
       final newRequestId = await widget.requestService.saveRequest(request);

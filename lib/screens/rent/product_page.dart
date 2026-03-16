@@ -590,7 +590,7 @@ class ProductPage extends StatelessWidget {
                       if (liveItem.landSizeRequirement)
                         _requirementChip(
                           (liveItem.landSizeMin != null && liveItem.landSizeMax != null)
-                              ? 'Land size requirement: ${liveItem.landSizeMin} – ${liveItem.landSizeMax} sqm'
+                              ? 'Land size requirement: ${liveItem.landSizeMin} – ${liveItem.landSizeMax} ha'
                               : 'Land size requirement',
                         ),
                       if (liveItem.maxCropHeightRequirement)
@@ -608,10 +608,17 @@ class ProductPage extends StatelessWidget {
                               : 'Min volume: ${liveItem.minimumVolumeKg!.toStringAsFixed(0)} kg'
                                   '${liveItem.batchingAllowed ? ' (batching available)' : ''}',
                         ),
+                      if (liveItem.cropConditionRequirement)
+                      _requirementChip(
+                        liveItem.cropCondition != null
+                            ? 'Crop condition: ${liveItem.cropCondition}'
+                            : 'Crop condition required',
+                      ),
                       if (!liveItem.landSizeRequirement &&
-                          !liveItem.maxCropHeightRequirement &&
-                          !liveItem.minimumVolumeRequired)
-                        _requirementChip('No specific requirements'),
+                        !liveItem.maxCropHeightRequirement &&
+                        !liveItem.minimumVolumeRequired &&
+                        !liveItem.cropConditionRequirement)
+                      _requirementChip('No specific requirements'),
                     ],
                   ),
                 ),
