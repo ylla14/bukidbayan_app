@@ -116,6 +116,12 @@ class Equipment {
 
   final bool cropConditionRequirement;
 final String? cropCondition;
+// After cropCondition field
+final bool cropShareRequired;
+final double? cropSharePercent; // max 15.0
+
+final bool maintenanceRequired;
+final double maintenanceIntervalHrs; // default 240
 
   Equipment({
     this.id,
@@ -163,6 +169,10 @@ final String? cropCondition;
     this.maintenanceStart,
     this.maintenanceEnd,
     this.deliveryMode = DeliveryMode.both,
+    this.cropShareRequired = false,
+this.cropSharePercent,
+this.maintenanceRequired = false,
+this.maintenanceIntervalHrs = 240,
   });
 
   Map<String, dynamic> toMap() {
@@ -210,6 +220,10 @@ final String? cropCondition;
         'maintenanceStart': maintenanceStart != null ? Timestamp.fromDate(maintenanceStart!) : null,
   'maintenanceEnd': maintenanceEnd != null ? Timestamp.fromDate(maintenanceEnd!) : null,
   'deliveryMode': deliveryMode.toValue(),
+  'cropShareRequired': cropShareRequired,
+'cropSharePercent': cropSharePercent,
+'maintenanceRequired': maintenanceRequired,
+'maintenanceIntervalHrs': maintenanceIntervalHrs,
     };
   }
 
@@ -280,6 +294,14 @@ final String? cropCondition;
       maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
   maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
   deliveryMode: DeliveryMode.fromString(data['deliveryMode']),
+  cropShareRequired: data['cropShareRequired'] is bool
+    ? data['cropShareRequired']
+    : data['cropShareRequired']?.toString().toLowerCase() == 'true',
+cropSharePercent: (data['cropSharePercent'] as num?)?.toDouble(),
+maintenanceRequired: data['maintenanceRequired'] is bool
+    ? data['maintenanceRequired']
+    : data['maintenanceRequired']?.toString().toLowerCase() == 'true',
+maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
     );
   }
 
@@ -346,6 +368,14 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
   maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
   deliveryMode: DeliveryMode.fromString(data['deliveryMode']),
+  cropShareRequired: data['cropShareRequired'] is bool
+    ? data['cropShareRequired']
+    : data['cropShareRequired']?.toString().toLowerCase() == 'true',
+cropSharePercent: (data['cropSharePercent'] as num?)?.toDouble(),
+maintenanceRequired: data['maintenanceRequired'] is bool
+    ? data['maintenanceRequired']
+    : data['maintenanceRequired']?.toString().toLowerCase() == 'true',
+maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
     );
   }
 
@@ -393,6 +423,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       DateTime? maintenanceStart,
   DateTime? maintenanceEnd,
   DeliveryMode? deliveryMode,
+  bool? cropShareRequired,
+double? cropSharePercent,
+bool? maintenanceRequired,
+double? maintenanceIntervalHrs,
   }) {
     return Equipment(
       id: id,
@@ -437,9 +471,12 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       riceOnlyPricePerKg: riceOnlyPricePerKg ?? this.riceOnlyPricePerKg,
       ricePlusDarakPricePerKg: ricePlusDarakPricePerKg ?? this.ricePlusDarakPricePerKg,
         maintenanceStart: maintenanceStart ?? this.maintenanceStart,
-  maintenanceEnd: maintenanceEnd ?? this.maintenanceEnd,
-  deliveryMode: deliveryMode ?? this.deliveryMode,
-
+      maintenanceEnd: maintenanceEnd ?? this.maintenanceEnd,
+      deliveryMode: deliveryMode ?? this.deliveryMode,
+      cropShareRequired: cropShareRequired ?? this.cropShareRequired,
+      cropSharePercent: cropSharePercent ?? this.cropSharePercent,
+      maintenanceRequired: maintenanceRequired ?? this.maintenanceRequired,
+      maintenanceIntervalHrs: maintenanceIntervalHrs ?? this.maintenanceIntervalHrs,
     );
   }
 }
