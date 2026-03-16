@@ -25,6 +25,7 @@ class SubmitButton extends StatefulWidget {
   // ── Now lists ──────────────────────────────────────────────
   final List<XFile> landSizeProofs;
   final List<XFile> cropHeightProofs;
+  final List<XFile> cropConditionProofs;
 
   final Equipment item;
   final RentRequestService requestService;
@@ -45,6 +46,7 @@ class SubmitButton extends StatefulWidget {
     required this.address,
     this.landSizeProofs = const [],
     this.cropHeightProofs = const [],
+    this.cropConditionProofs = const [],
     required this.item,
     required this.requestService,
     this.volumeController,
@@ -75,6 +77,10 @@ class _SubmitButtonState extends State<SubmitButton> {
           return '/week';
         case 'per month':
           return '/month';
+        case 'per kg':
+          return '/kg';
+        case 'per hectare':
+          return '/ha';
         default:
           return '';
       }
@@ -392,6 +398,10 @@ class _SubmitButtonState extends State<SubmitButton> {
         widget.cropHeightProofs.map((f) => cloudinary.uploadImage(f)),
       );
 
+      final cropConditionPaths = await Future.wait(
+        widget.cropConditionProofs.map((f) => cloudinary.uploadImage(f)),
+      );
+
       final request = RentRequest(
         requestId: '',
         itemId: widget.item.id ?? 'Unknown',
@@ -402,6 +412,7 @@ class _SubmitButtonState extends State<SubmitButton> {
         end: widget.returnDate,
         landSizeProofPaths: landPaths,   // ← list
         cropHeightProofPaths: cropPaths, // ← list
+        cropConditionProofPaths: cropConditionPaths,
         status: RentRequestStatus.pending,
         renterId: currentUserId,
         ownerId: widget.item.ownerId,

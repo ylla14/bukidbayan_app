@@ -24,6 +24,30 @@ enum EquipmentStatus {
   }
 }
 
+// ── New enum ──────────────────────────────────────────────────────────────
+enum DeliveryMode {
+  pickupOnly,
+  deliveryOnly,
+  both;
+
+  static DeliveryMode fromString(String? value) {
+    switch (value) {
+      case 'pickup_only':   return DeliveryMode.pickupOnly;
+      case 'delivery_only': return DeliveryMode.deliveryOnly;
+      case 'both':          return DeliveryMode.both;
+      default:              return DeliveryMode.both; // safe fallback
+    }
+  }
+
+  String toValue() {
+    switch (this) {
+      case DeliveryMode.pickupOnly:   return 'pickup_only';
+      case DeliveryMode.deliveryOnly: return 'delivery_only';
+      case DeliveryMode.both:         return 'both';
+    }
+  }
+}
+
 class Equipment {
   final String? id;
 
@@ -87,6 +111,11 @@ class Equipment {
 
     final DateTime? maintenanceStart;
   final DateTime? maintenanceEnd;
+  
+  final DeliveryMode deliveryMode; // NEW
+
+  final bool cropConditionRequirement;
+final String? cropCondition;
 
   Equipment({
     this.id,
@@ -109,6 +138,8 @@ class Equipment {
     this.landSizeMin,
     this.landSizeMax,
     this.maxCropHeight,
+    this.cropConditionRequirement = false,
+    this.cropCondition,
     this.operatorIncluded = false,
     this.status = EquipmentStatus.available,
     this.availableFrom,
@@ -129,8 +160,9 @@ class Equipment {
     this.minimumVolumeCavans,
     this.riceOnlyPricePerKg,
     this.ricePlusDarakPricePerKg,
-      this.maintenanceStart,
-  this.maintenanceEnd,
+    this.maintenanceStart,
+    this.maintenanceEnd,
+    this.deliveryMode = DeliveryMode.both,
   });
 
   Map<String, dynamic> toMap() {
@@ -154,6 +186,8 @@ class Equipment {
       'landSizeMin': landSizeMin,
       'landSizeMax': landSizeMax,
       'maxCropHeight': maxCropHeight,
+      'cropConditionRequirement': cropConditionRequirement,
+      'cropCondition': cropCondition,
       'operatorIncluded': operatorIncluded,
       'status': status.toValue(),
       'availableFrom': availableFrom != null ? Timestamp.fromDate(availableFrom!) : null,
@@ -175,6 +209,7 @@ class Equipment {
       'ricePlusDarakPricePerKg': ricePlusDarakPricePerKg,
         'maintenanceStart': maintenanceStart != null ? Timestamp.fromDate(maintenanceStart!) : null,
   'maintenanceEnd': maintenanceEnd != null ? Timestamp.fromDate(maintenanceEnd!) : null,
+  'deliveryMode': deliveryMode.toValue(),
     };
   }
 
@@ -219,6 +254,10 @@ class Equipment {
       landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true ? data['landSizeMin'] : null,
       landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true ? data['landSizeMax'] : null,
       maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true ? data['maxCropHeight'] : null,
+      cropConditionRequirement: data['cropConditionRequirement'] is bool
+          ? data['cropConditionRequirement']
+          : data['cropConditionRequirement']?.toString().toLowerCase() == 'true',
+      cropCondition: (data['cropCondition'] as String?)?.isNotEmpty == true ? data['cropCondition'] : null,
       operatorIncluded: data['operatorIncluded'] ?? false,
       status: resolvedStatus, // NEW
       availableFrom: data['availableFrom'] != null ? (data['availableFrom'] as Timestamp).toDate() : null,
@@ -240,6 +279,7 @@ class Equipment {
       ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
       maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
   maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
+  deliveryMode: DeliveryMode.fromString(data['deliveryMode']),
     );
   }
 
@@ -280,6 +320,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true ? data['landSizeMin'] : null,
       landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true ? data['landSizeMax'] : null,
       maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true ? data['maxCropHeight'] : null,
+      cropConditionRequirement: data['cropConditionRequirement'] is bool
+          ? data['cropConditionRequirement']
+          : data['cropConditionRequirement']?.toString().toLowerCase() == 'true',
+      cropCondition: (data['cropCondition'] as String?)?.isNotEmpty == true ? data['cropCondition'] : null,
       operatorIncluded: data['operatorIncluded'] ?? false,
       status: resolvedStatus, // NEW
       availableFrom: data['availableFrom'] is Timestamp ? (data['availableFrom'] as Timestamp).toDate() : null,
@@ -301,6 +345,7 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
       maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
   maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
+  deliveryMode: DeliveryMode.fromString(data['deliveryMode']),
     );
   }
 
@@ -325,6 +370,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     String? landSizeMin,
     String? landSizeMax,
     String? maxCropHeight,
+    bool? cropConditionRequirement,
+    String? cropCondition,
     EquipmentStatus? status,
     DateTime? availableFrom,
     DateTime? availableUntil,
@@ -345,6 +392,7 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     double? ricePlusDarakPricePerKg,
       DateTime? maintenanceStart,
   DateTime? maintenanceEnd,
+  DeliveryMode? deliveryMode,
   }) {
     return Equipment(
       id: id,
@@ -368,6 +416,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       landSizeMin: landSizeMin ?? this.landSizeMin,
       landSizeMax: landSizeMax ?? this.landSizeMax,
       maxCropHeight: maxCropHeight ?? this.maxCropHeight,
+      cropConditionRequirement: cropConditionRequirement ?? this.cropConditionRequirement,
+      cropCondition: cropCondition ?? this.cropCondition,
       status: status ?? this.status, // NEW
       availableFrom: availableFrom ?? this.availableFrom,
       availableUntil: availableUntil ?? this.availableUntil,
@@ -388,6 +438,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       ricePlusDarakPricePerKg: ricePlusDarakPricePerKg ?? this.ricePlusDarakPricePerKg,
         maintenanceStart: maintenanceStart ?? this.maintenanceStart,
   maintenanceEnd: maintenanceEnd ?? this.maintenanceEnd,
+  deliveryMode: deliveryMode ?? this.deliveryMode,
+
     );
   }
 }

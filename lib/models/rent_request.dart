@@ -32,6 +32,7 @@ class RentRequest {
   // ── Changed: lists of URLs instead of single nullable String ──
   final List<String> landSizeProofPaths;
   final List<String> cropHeightProofPaths;
+  final List<String> cropConditionProofPaths;
 
   final RentRequestStatus status;
   final String renterId;
@@ -64,6 +65,7 @@ class RentRequest {
     required this.end,
     this.landSizeProofPaths = const [],
     this.cropHeightProofPaths = const [],
+    this.cropConditionProofPaths = const [],
     this.status = RentRequestStatus.pending,
     required this.renterId,
     required this.ownerId,
@@ -95,6 +97,7 @@ class RentRequest {
       // ── Lists stored as Firestore arrays ──────────────────
       'landSizeProofPaths': landSizeProofPaths,
       'cropHeightProofPaths': cropHeightProofPaths,
+      'cropConditionProofPaths': cropConditionProofPaths,
       'status': status.name,
       'renterId': renterId,
       'ownerId': ownerId,
@@ -141,6 +144,9 @@ class RentRequest {
       cropHeightProofPaths: _toStringList(
         map['cropHeightProofPaths'] ?? map['cropHeightProofPath'],
       ),
+      cropConditionProofPaths: _toStringList(
+        map['cropConditionProofPaths'] ?? map['cropConditionProofPath'],
+      ),
       status: RentRequestStatus.values.firstWhere(
         (e) => e.name == (map['status'] ?? 'pending'),
         orElse: () => RentRequestStatus.pending,
@@ -182,6 +188,7 @@ class RentRequest {
     DateTime? end,
     List<String>? landSizeProofPaths,
     List<String>? cropHeightProofPaths,
+    List<String>? cropConditionProofPaths,
     RentRequestStatus? status,
     String? renterId,
     String? ownerId,
@@ -208,6 +215,7 @@ class RentRequest {
       end: end ?? this.end,
       landSizeProofPaths: landSizeProofPaths ?? this.landSizeProofPaths,
       cropHeightProofPaths: cropHeightProofPaths ?? this.cropHeightProofPaths,
+      cropConditionProofPaths: cropConditionProofPaths ?? this.cropConditionProofPaths,
       status: status ?? this.status,
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,

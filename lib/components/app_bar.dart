@@ -22,12 +22,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       backgroundColor: lightColorScheme.primary,
       centerTitle: true,
-      title: const Icon(Icons.person),
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
+      title: Image.asset(
+        "assets/icon/logo_white.png",
+        height: 32,
       ),
       actions: [
         if (uid != null)

@@ -15,15 +15,14 @@ import 'package:bukidbayan_app/screens/location_picker_screen.dart';
 import 'package:latlong2/latlong.dart';
 
 const List<String> rentalUnit = <String>[
-  'Per Hour',
   'Per Day',
+  'Per Hectare'
 ];
 const List<String> condition = <String>[
   'Brand New',
   'Excellent',
   'Good',
   'Fair',
-  'Needs Maintenance',
 ];
 
 final List<String> yearOptions = List.generate(
@@ -95,6 +94,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   bool? operatorIncluded;
   bool? landSizeRequirement;
   bool? maxCropHeightRequirement;
+  bool? cropConditionRequirement;
+  bool showCropConditionError = false;
+  final TextEditingController _cropConditionController = TextEditingController();
 
   bool showLandSizeError    = false;
   bool showCropHeightError  = false;
@@ -128,6 +130,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   bool   showMinVolumeError     = false;
   String selectedMinVolumeUnit  = 'cavans';
 
+  DeliveryMode _selectedDeliveryMode = DeliveryMode.both;
+
+
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
   @override
@@ -155,6 +160,8 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
           : '';
       _riceOnlyPriceController.text        = eq.riceOnlyPricePerKg?.toString() ?? '2.0';
       _ricePlusDarakPriceController.text   = eq.ricePlusDarakPricePerKg?.toString() ?? '3.0';
+      _selectedDeliveryMode = eq.deliveryMode;
+
 
       selectedCategory    = eq.category;
       selectedBrand       = eq.brand;
@@ -192,6 +199,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   @override
   void dispose() {
     _otherAddressController.dispose();
+    _cropConditionController.dispose();
     super.dispose();
   }
 
@@ -783,7 +791,10 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                       const SizedBox(height: 8),
                       ToggleButtons(
                         isSelected: [operatorIncluded == true, operatorIncluded == false],
-                        onPressed: (i) => setState(() => operatorIncluded = i == 0),
+                        onPressed: (i) => setState(() {
+                          operatorIncluded = i == 0;
+                          if (i == 0) _selectedDeliveryMode = DeliveryMode.deliveryOnly;
+                        }),
                         borderRadius: BorderRadius.circular(20),
                         selectedBorderColor: lightColorScheme.primary,
                         selectedColor: Colors.white,
@@ -796,6 +807,46 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
 
                       const SizedBox(height: 10),
                       const Padding(padding: EdgeInsets.all(5), child: Divider(thickness: 1)),
+
+                      // ── DELIVERY MODE (only when no operator) ─────────────────────────────
+                      if (operatorIncluded == false) ...[
+                        const SizedBox(height: 16),
+                        const Text('How can renters get the equipment?',
+                            style: TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Piliin kung pwedeng i-pickup ng renter, ipadala mo, o pareho.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            _DeliveryModeCard(
+                              icon: Icons.directions_walk_rounded,
+                              label: 'Pick Up Only',
+                              subtitle: 'Renter collects from your location',
+                              isSelected: _selectedDeliveryMode == DeliveryMode.pickupOnly,
+                              onTap: () => setState(() => _selectedDeliveryMode = DeliveryMode.pickupOnly),
+                            ),
+                            const SizedBox(width: 8),
+                            _DeliveryModeCard(
+                              icon: Icons.local_shipping_rounded,
+                              label: 'Delivery Only',
+                              subtitle: 'You deliver to the renter',
+                              isSelected: _selectedDeliveryMode == DeliveryMode.deliveryOnly,
+                              onTap: () => setState(() => _selectedDeliveryMode = DeliveryMode.deliveryOnly),
+                            ),
+                            const SizedBox(width: 8),
+                            _DeliveryModeCard(
+                              icon: Icons.swap_horiz_rounded,
+                              label: 'Both',
+                              subtitle: "Renter's choice",
+                              isSelected: _selectedDeliveryMode == DeliveryMode.both,
+                              onTap: () => setState(() => _selectedDeliveryMode = DeliveryMode.both),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       // ── USAGE REQUIREMENTS ─────────────────────────────
                       const Text('Usage Requirements & Conditions',
@@ -866,7 +917,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
 
                       // CROP HEIGHT
                       const SizedBox(height: 16),
-                      const Text('Maximum Grass / Crop Height?',
+                      const Text('Maximum Grass Height?',
                           style: TextStyle(fontWeight: FontWeight.w500)),
                       const SizedBox(height: 8),
                       ToggleButtons(
@@ -909,6 +960,54 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                           },
                         ),
                       ],
+
+                      // CROP CONDITION REQUIREMENT
+const SizedBox(height: 16),
+const Text('Crop Condition Requirement',
+    style: TextStyle(fontWeight: FontWeight.w500)),
+const SizedBox(height: 8),
+ToggleButtons(
+  isSelected: [
+    cropConditionRequirement == true,
+    cropConditionRequirement == false,
+  ],
+  onPressed: (i) => setState(() {
+    cropConditionRequirement = i == 0;
+    showCropConditionError = false;
+  }),
+  borderRadius: BorderRadius.circular(20),
+  selectedBorderColor: lightColorScheme.primary,
+  selectedColor: Colors.white,
+  fillColor: lightColorScheme.primary,
+  color: lightColorScheme.primary,
+  constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
+  children: const [Text('Yes'), Text('No')],
+),
+if (showCropConditionError)
+  const Padding(
+    padding: EdgeInsets.only(top: 4),
+    child: Text('Required',
+        style: TextStyle(color: Colors.red, fontSize: 12)),
+  ),
+if (cropConditionRequirement == true) ...[
+  const SizedBox(height: 6),
+  Text(
+    'Ilarawan ang kinakailangang kondisyon ng pananim bago gamitin ang kagamitang ito. '
+    'Halimbawa: tuyo na ang uhay, hindi pa naani, o naka-bundle na.',
+    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+  ),
+  const SizedBox(height: 4),
+  CustomTextFormField(
+    hint: 'e.g. Dapat tuyo na ang pananim bago gamitin',
+    maxLines: 3,
+    controller: _cropConditionController,
+    validator: (v) {
+      if (cropConditionRequirement == true &&
+          (v == null || v.isEmpty)) return 'Required';
+      return null;
+    },
+  ),
+],
 
                       // RICE MILL MINIMUM VOLUME
                       if (_isRiceMill) ...[
@@ -1345,7 +1444,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         requirementsList.add(
           _maxCropHeightController.text.isNotEmpty
               ? _maxCropHeightController.text
-              : 'Max crop height required',
+              : 'Max grass height required',
         );
       }
       if (requirementsList.isEmpty) requirementsList.add('No specific requirements');
@@ -1442,6 +1541,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         location:  _resolvedLocation,
         latitude:  _resolvedLat,
         longitude: _resolvedLng,
+        deliveryMode: operatorIncluded == true
+          ? DeliveryMode.deliveryOnly  // operator comes to renter, always delivery
+          : _selectedDeliveryMode,
       );
 
       if (widget.existingEquipment != null) {
@@ -1557,6 +1659,67 @@ class _AddressOptionCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeliveryModeCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _DeliveryModeCard({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = lightColorScheme.primary;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? primary.withOpacity(0.08) : Colors.grey.shade50,
+            border: Border.all(
+              color: isSelected ? primary : Colors.black12,
+              width: isSelected ? 1.8 : 1,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 20, color: isSelected ? primary : Colors.black45),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected ? primary : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
         ),
       ),
     );
