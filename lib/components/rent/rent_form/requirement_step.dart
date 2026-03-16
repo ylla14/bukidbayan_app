@@ -29,6 +29,8 @@ class RequirementStep extends StatelessWidget {
   final TextEditingController? volumeController;
   final String? volumeError;
 
+  
+
   const RequirementStep({
     super.key,
     required this.item,
@@ -164,21 +166,28 @@ class RequirementStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isRiceMill =
-        item.category?.toLowerCase().contains('rice mill') == true;
+    final bool isRiceMill = item.category?.toLowerCase().contains('rice mill') == true;
+
+    final bool _isAutoComputedCategory = () {
+    final cat = item.category?.toLowerCase();
+    return cat == 'tractor' ||
+        cat == 'harvester (halimaw)' ||
+        cat == 'hand tractor (kuliglig)' ||
+        cat == 'floating tiller (pagong)';
+  }();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const CustomDivider(),
         StepHeader(
-          title: 'Step 3: Patunay ng Requirements',
+          title: 'Step 4: Patunay ng Requirements',
           subtitle:
               'Mag-upload ng mga larawan o video bilang patunay sa mga requirement.',
         ),
 
         // ── Land size proof ─────────────────────────────────
-        if (item.landSizeRequirement == true)
+        if (item.landSizeRequirement == true && !_isAutoComputedCategory)
           RequirementUploadTile(
             label: 'Patunay ng Laki ng Lupa',
             files: landSizeProofs,

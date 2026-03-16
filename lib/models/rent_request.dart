@@ -33,6 +33,7 @@ class RentRequest {
   final List<String> landSizeProofPaths;
   final List<String> cropHeightProofPaths;
   final List<String> cropConditionProofPaths;
+  final double? hectaresEntered; // for tractor bookings
 
   final RentRequestStatus status;
   final String renterId;
@@ -66,6 +67,7 @@ class RentRequest {
     this.landSizeProofPaths = const [],
     this.cropHeightProofPaths = const [],
     this.cropConditionProofPaths = const [],
+    this.hectaresEntered,
     this.status = RentRequestStatus.pending,
     required this.renterId,
     required this.ownerId,
@@ -98,6 +100,7 @@ class RentRequest {
       'landSizeProofPaths': landSizeProofPaths,
       'cropHeightProofPaths': cropHeightProofPaths,
       'cropConditionProofPaths': cropConditionProofPaths,
+      'hectaresEntered': hectaresEntered,
       'status': status.name,
       'renterId': renterId,
       'ownerId': ownerId,
@@ -147,6 +150,7 @@ class RentRequest {
       cropConditionProofPaths: _toStringList(
         map['cropConditionProofPaths'] ?? map['cropConditionProofPath'],
       ),
+      hectaresEntered: (map['hectaresEntered'] as num?)?.toDouble(),
       status: RentRequestStatus.values.firstWhere(
         (e) => e.name == (map['status'] ?? 'pending'),
         orElse: () => RentRequestStatus.pending,
@@ -204,6 +208,7 @@ class RentRequest {
     String? farmAddress,
     double? farmLatitude,
     double? farmLongitude,
+    double? hectaresEntered,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -216,6 +221,7 @@ class RentRequest {
       landSizeProofPaths: landSizeProofPaths ?? this.landSizeProofPaths,
       cropHeightProofPaths: cropHeightProofPaths ?? this.cropHeightProofPaths,
       cropConditionProofPaths: cropConditionProofPaths ?? this.cropConditionProofPaths,
+      hectaresEntered: hectaresEntered ?? this.hectaresEntered,
       status: status ?? this.status,
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,

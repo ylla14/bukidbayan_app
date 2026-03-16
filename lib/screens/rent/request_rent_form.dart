@@ -80,6 +80,21 @@ double? _profileFarmLng;
   String? _profileAddress;
   double? _profileLat;
   double? _profileLng;
+  double? _hectaresEntered;
+
+  bool get _onlyHasLandReq => hasLandSizeRequirement &&
+    !hasCropHeightRequirement &&
+    !widget.item.cropConditionRequirement &&
+    !isRiceMill;
+
+  bool get _isAutoComputedCategory => () {
+    final cat = widget.item.category?.toLowerCase();
+    return cat == 'tractor' ||
+        cat == 'harvester (halimaw)' ||
+        cat == 'hand tractor (kuliglig)' ||
+        cat == 'floating tiller (pagong)';
+  }();
+
 
   DeliveryMethod _deliveryMethod = DeliveryMethod.pickup;
 
@@ -180,6 +195,7 @@ double? _profileFarmLng;
                 });
               },
               onReturnDatePicked: (date) => setState(() => returnDate = date),
+              onHectaresChanged: (ha) => setState(() => _hectaresEntered = ha), // ADD
             ),
 
             if (isScheduleComplete) ...[
@@ -219,7 +235,7 @@ double? _profileFarmLng;
               ),
             ],
 
-            if (isScheduleComplete && hasAnyRequirement) ...[
+            if (isScheduleComplete && hasAnyRequirement && !(_isAutoComputedCategory && _onlyHasLandReq))...[
               RequirementStep(
                 item: widget.item,
                 landSizeProofs: _landSizeProofs,
@@ -262,13 +278,14 @@ double? _profileFarmLng;
                 farmLongitude: _farmLng,
                 landSizeProofs: _landSizeProofs,
                 cropHeightProofs: _cropHeightProofs,
-                cropConditionProofs: _cropConditionProofs,  // NEW
+                cropConditionProofs: _cropConditionProofs,
                 item: widget.item,
                 requestService: _requestService,
                 volumeController: _volumeController,
                 keepDarak: _keepDarak,
                 estimatedMillingFee: _estimatedTotal,
                 deliveryMethod: _deliveryMethod,
+                hectaresEntered: _hectaresEntered, // ADD
               ),
           ],
         ),
