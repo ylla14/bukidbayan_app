@@ -114,6 +114,9 @@ class Equipment {
   
   final DeliveryMode deliveryMode; // NEW
 
+  final bool cropConditionRequirement;
+final String? cropCondition;
+
   Equipment({
     this.id,
     required this.name,
@@ -135,6 +138,8 @@ class Equipment {
     this.landSizeMin,
     this.landSizeMax,
     this.maxCropHeight,
+    this.cropConditionRequirement = false,
+    this.cropCondition,
     this.operatorIncluded = false,
     this.status = EquipmentStatus.available,
     this.availableFrom,
@@ -181,6 +186,8 @@ class Equipment {
       'landSizeMin': landSizeMin,
       'landSizeMax': landSizeMax,
       'maxCropHeight': maxCropHeight,
+      'cropConditionRequirement': cropConditionRequirement,
+      'cropCondition': cropCondition,
       'operatorIncluded': operatorIncluded,
       'status': status.toValue(),
       'availableFrom': availableFrom != null ? Timestamp.fromDate(availableFrom!) : null,
@@ -247,6 +254,10 @@ class Equipment {
       landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true ? data['landSizeMin'] : null,
       landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true ? data['landSizeMax'] : null,
       maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true ? data['maxCropHeight'] : null,
+      cropConditionRequirement: data['cropConditionRequirement'] is bool
+          ? data['cropConditionRequirement']
+          : data['cropConditionRequirement']?.toString().toLowerCase() == 'true',
+      cropCondition: (data['cropCondition'] as String?)?.isNotEmpty == true ? data['cropCondition'] : null,
       operatorIncluded: data['operatorIncluded'] ?? false,
       status: resolvedStatus, // NEW
       availableFrom: data['availableFrom'] != null ? (data['availableFrom'] as Timestamp).toDate() : null,
@@ -309,6 +320,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true ? data['landSizeMin'] : null,
       landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true ? data['landSizeMax'] : null,
       maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true ? data['maxCropHeight'] : null,
+      cropConditionRequirement: data['cropConditionRequirement'] is bool
+          ? data['cropConditionRequirement']
+          : data['cropConditionRequirement']?.toString().toLowerCase() == 'true',
+      cropCondition: (data['cropCondition'] as String?)?.isNotEmpty == true ? data['cropCondition'] : null,
       operatorIncluded: data['operatorIncluded'] ?? false,
       status: resolvedStatus, // NEW
       availableFrom: data['availableFrom'] is Timestamp ? (data['availableFrom'] as Timestamp).toDate() : null,
@@ -355,6 +370,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     String? landSizeMin,
     String? landSizeMax,
     String? maxCropHeight,
+    bool? cropConditionRequirement,
+    String? cropCondition,
     EquipmentStatus? status,
     DateTime? availableFrom,
     DateTime? availableUntil,
@@ -399,6 +416,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       landSizeMin: landSizeMin ?? this.landSizeMin,
       landSizeMax: landSizeMax ?? this.landSizeMax,
       maxCropHeight: maxCropHeight ?? this.maxCropHeight,
+      cropConditionRequirement: cropConditionRequirement ?? this.cropConditionRequirement,
+      cropCondition: cropCondition ?? this.cropCondition,
       status: status ?? this.status, // NEW
       availableFrom: availableFrom ?? this.availableFrom,
       availableUntil: availableUntil ?? this.availableUntil,

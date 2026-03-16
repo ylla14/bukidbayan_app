@@ -13,11 +13,14 @@ class RequirementStep extends StatelessWidget {
   // ── Now LISTS instead of single XFile ──────────────────────
   final List<XFile> landSizeProofs;
   final List<XFile> cropHeightProofs;
+  final List<XFile> cropConditionProofs;
 
   final Function(XFile) onLandAdd;
   final Function(int) onLandRemove;
   final Function(XFile) onCropAdd;
   final Function(int) onCropRemove;
+  final Function(XFile) onCropConditionAdd;
+  final Function(int) onCropConditionRemove;
 
   final ImagePicker picker;
   final bool keepDarak;
@@ -31,10 +34,13 @@ class RequirementStep extends StatelessWidget {
     required this.item,
     this.landSizeProofs = const [],
     this.cropHeightProofs = const [],
+    this.cropConditionProofs = const [],
     required this.onLandAdd,
     required this.onLandRemove,
     required this.onCropAdd,
     required this.onCropRemove,
+    required this.onCropConditionAdd,
+    required this.onCropConditionRemove,
     required this.picker,
     this.volumeController,
     this.volumeError,
@@ -193,6 +199,18 @@ class RequirementStep extends StatelessWidget {
               onPicked: onCropAdd,
             ),
             onRemove: onCropRemove,
+          ),
+        
+        // ── Crop condition proof ────────────────────────────
+        if (item.cropConditionRequirement == true)
+          RequirementUploadTile(
+            label: 'Patunay ng Kondisyon ng Pananim',
+            files: cropConditionProofs,
+            onPick: () => _showSourceSheet(
+              context,
+              onPicked: onCropConditionAdd,
+            ),
+            onRemove: onCropConditionRemove,
           ),
 
         // ── Rice Mill: volume + darak (unchanged) ───────────

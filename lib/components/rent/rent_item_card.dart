@@ -162,6 +162,8 @@ class RentItemCard extends StatelessWidget {
         return '/month';
       case 'per kg':
         return '/kg';
+      case 'per hectare':
+        return '/ha';
       default:
         return '';
     }

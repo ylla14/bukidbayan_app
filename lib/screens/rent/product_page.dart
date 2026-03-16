@@ -237,6 +237,10 @@ class ProductPage extends StatelessWidget {
           return '/week';
         case 'per month':
           return '/month';
+        case 'per kg':
+          return '/kg';
+        case 'per hectare':
+          return '/ha';
         default:
           return '';
       }
@@ -592,8 +596,8 @@ class ProductPage extends StatelessWidget {
                       if (liveItem.maxCropHeightRequirement)
                         _requirementChip(
                           liveItem.maxCropHeight != null
-                              ? 'Max crop height: ${liveItem.maxCropHeight} cm'
-                              : 'Max crop height required',
+                              ? 'Max grass height: ${liveItem.maxCropHeight} cm'
+                              : 'Max grass height required',
                         ),
                       if (liveItem.minimumVolumeRequired &&
                           liveItem.minimumVolumeKg != null)

@@ -155,6 +155,10 @@ Widget _buildImage(String imageUrl) {
         return '/week';
       case 'per month':
         return '/month';
+      case 'per kg':
+        return '/kg';
+      case 'per hectare':
+        return '/ha';
       default:
         return '';
     }

@@ -38,6 +38,7 @@ double? _profileFarmLng;
   // ── Changed from single XFile? to List<XFile> ──────────────
   List<XFile> _landSizeProofs = [];
   List<XFile> _cropHeightProofs = [];
+  final List<XFile> _cropConditionProofs = [];
 
   final RentRequestService _requestService = RentRequestService();
   final ImagePicker _picker = ImagePicker();
@@ -221,9 +222,9 @@ double? _profileFarmLng;
             if (isScheduleComplete && hasAnyRequirement) ...[
               RequirementStep(
                 item: widget.item,
-                // ── Pass lists ────────────────────────────────
                 landSizeProofs: _landSizeProofs,
                 cropHeightProofs: _cropHeightProofs,
+                cropConditionProofs: _cropConditionProofs,         // NEW
                 onLandAdd: (file) =>
                     setState(() => _landSizeProofs.add(file)),
                 onLandRemove: (index) =>
@@ -232,6 +233,10 @@ double? _profileFarmLng;
                     setState(() => _cropHeightProofs.add(file)),
                 onCropRemove: (index) =>
                     setState(() => _cropHeightProofs.removeAt(index)),
+                onCropConditionAdd: (file) =>                      // NEW
+                    setState(() => _cropConditionProofs.add(file)),
+                onCropConditionRemove: (index) =>                  // NEW
+                    setState(() => _cropConditionProofs.removeAt(index)),
                 picker: _picker,
                 volumeController: _volumeController,
                 volumeError: _volumeError,
@@ -255,9 +260,9 @@ double? _profileFarmLng;
                     : farmAddressController.text.trim(),
                 farmLatitude: _farmLat,
                 farmLongitude: _farmLng,
-                // ── Pass lists ────────────────────────────────
                 landSizeProofs: _landSizeProofs,
                 cropHeightProofs: _cropHeightProofs,
+                cropConditionProofs: _cropConditionProofs,  // NEW
                 item: widget.item,
                 requestService: _requestService,
                 volumeController: _volumeController,

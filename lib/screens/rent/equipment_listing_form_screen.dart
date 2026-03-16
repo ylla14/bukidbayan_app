@@ -15,15 +15,14 @@ import 'package:bukidbayan_app/screens/location_picker_screen.dart';
 import 'package:latlong2/latlong.dart';
 
 const List<String> rentalUnit = <String>[
-  'Per Hour',
   'Per Day',
+  'Per Hectare'
 ];
 const List<String> condition = <String>[
   'Brand New',
   'Excellent',
   'Good',
   'Fair',
-    'Needs Maintenance',
 ];
 
 final List<String> yearOptions = List.generate(
@@ -95,6 +94,9 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   bool? operatorIncluded;
   bool? landSizeRequirement;
   bool? maxCropHeightRequirement;
+  bool? cropConditionRequirement;
+  bool showCropConditionError = false;
+  final TextEditingController _cropConditionController = TextEditingController();
 
   bool showLandSizeError    = false;
   bool showCropHeightError  = false;
@@ -197,6 +199,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
   @override
   void dispose() {
     _otherAddressController.dispose();
+    _cropConditionController.dispose();
     super.dispose();
   }
 
@@ -914,7 +917,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
 
                       // CROP HEIGHT
                       const SizedBox(height: 16),
-                      const Text('Maximum Grass / Crop Height?',
+                      const Text('Maximum Grass Height?',
                           style: TextStyle(fontWeight: FontWeight.w500)),
                       const SizedBox(height: 8),
                       ToggleButtons(
@@ -957,6 +960,54 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                           },
                         ),
                       ],
+
+                      // CROP CONDITION REQUIREMENT
+const SizedBox(height: 16),
+const Text('Crop Condition Requirement',
+    style: TextStyle(fontWeight: FontWeight.w500)),
+const SizedBox(height: 8),
+ToggleButtons(
+  isSelected: [
+    cropConditionRequirement == true,
+    cropConditionRequirement == false,
+  ],
+  onPressed: (i) => setState(() {
+    cropConditionRequirement = i == 0;
+    showCropConditionError = false;
+  }),
+  borderRadius: BorderRadius.circular(20),
+  selectedBorderColor: lightColorScheme.primary,
+  selectedColor: Colors.white,
+  fillColor: lightColorScheme.primary,
+  color: lightColorScheme.primary,
+  constraints: const BoxConstraints(minHeight: 40, minWidth: 80),
+  children: const [Text('Yes'), Text('No')],
+),
+if (showCropConditionError)
+  const Padding(
+    padding: EdgeInsets.only(top: 4),
+    child: Text('Required',
+        style: TextStyle(color: Colors.red, fontSize: 12)),
+  ),
+if (cropConditionRequirement == true) ...[
+  const SizedBox(height: 6),
+  Text(
+    'Ilarawan ang kinakailangang kondisyon ng pananim bago gamitin ang kagamitang ito. '
+    'Halimbawa: tuyo na ang uhay, hindi pa naani, o naka-bundle na.',
+    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+  ),
+  const SizedBox(height: 4),
+  CustomTextFormField(
+    hint: 'e.g. Dapat tuyo na ang pananim bago gamitin',
+    maxLines: 3,
+    controller: _cropConditionController,
+    validator: (v) {
+      if (cropConditionRequirement == true &&
+          (v == null || v.isEmpty)) return 'Required';
+      return null;
+    },
+  ),
+],
 
                       // RICE MILL MINIMUM VOLUME
                       if (_isRiceMill) ...[
@@ -1393,7 +1444,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
         requirementsList.add(
           _maxCropHeightController.text.isNotEmpty
               ? _maxCropHeightController.text
-              : 'Max crop height required',
+              : 'Max grass height required',
         );
       }
       if (requirementsList.isEmpty) requirementsList.add('No specific requirements');

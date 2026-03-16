@@ -167,6 +167,8 @@ class RequestSentPage extends StatelessWidget {
       case 'per week': return '/week';
       case 'per month': return '/mo';
       case 'per kg': return '/kg';
+      case 'per hectare':
+        return '/ha';
       default: return '';
     }
   }
@@ -610,36 +612,46 @@ class RequestSentPage extends StatelessWidget {
                           ),
 
                          // ── RENTER INFO ──
-_sectionCard(
-  title: 'RENTER INFORMATION',
-  accentColor: const Color(0xFF3B82F6),
-  children: [
-    _infoTile(Icons.person_outline, 'NAME',
-        request.name, const Color(0xFF3B82F6)),
-    _infoTile(Icons.location_on_outlined, 'ADDRESS',
-        request.address, const Color(0xFF3B82F6)),
- 
-    // ── Land size proofs ──────────────────────────────────
-    if (request.landSizeProofPaths.isNotEmpty) ...[
-      const SizedBox(height: 4),
-      _proofImages(
-        request.landSizeProofPaths,
-        'LAND SIZE PROOF',
-        context,
-      ),
-    ],
- 
-    // ── Crop height proofs ────────────────────────────────
-    if (request.cropHeightProofPaths.isNotEmpty) ...[
-      const SizedBox(height: 4),
-      _proofImages(
-        request.cropHeightProofPaths,
-        'CROP HEIGHT PROOF',
-        context,
-      ),
-    ],
-  ],
-),
+                        _sectionCard(
+                          title: 'RENTER INFORMATION',
+                          accentColor: const Color(0xFF3B82F6),
+                          children: [
+                            _infoTile(Icons.person_outline, 'NAME',
+                                request.name, const Color(0xFF3B82F6)),
+                            _infoTile(Icons.location_on_outlined, 'ADDRESS',
+                                request.address, const Color(0xFF3B82F6)),
+
+                            // ── Land size proofs ──────────────────────────────────
+                            if (request.landSizeProofPaths.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _proofImages(
+                                request.landSizeProofPaths,
+                                'LAND SIZE PROOF',
+                                context,
+                              ),
+                            ],
+
+                            // ── Crop height proofs ────────────────────────────────
+                            if (request.cropHeightProofPaths.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _proofImages(
+                                request.cropHeightProofPaths,
+                                'GRASS HEIGHT PROOF',
+                                context,
+                              ),
+                            ],
+
+                            // ── Crop condition proofs ─────────────────────────────
+                            if (request.cropConditionProofPaths.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _proofImages(
+                                request.cropConditionProofPaths,
+                                'CROP CONDITION PROOF',
+                                context,
+                              ),
+                            ],
+                          ],
+                        ),
 
 
                           // ── FARM SATELLITE DATA ──

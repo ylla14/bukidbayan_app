@@ -21,19 +21,21 @@ class WelcomeScreen extends StatelessWidget {
               children: [
 
                 // ── Logo / Icon ───────────────────────────────────────────
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: lightColorScheme.primary.withOpacity(0.12),
-                    shape: BoxShape.circle,
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: lightColorScheme.primary.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Image.asset(
+                        "assets/icon/logo_foreground.png",
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.location_city_rounded,
-                    size: 52,
-                    color: lightColorScheme.primary,
-                  ),
-                ),
 
                 const SizedBox(height: 28),
 
