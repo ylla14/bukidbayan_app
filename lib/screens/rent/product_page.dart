@@ -804,7 +804,7 @@ class ProductPage extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      if (liveItem.category?.toLowerCase() == 'harvester')
+                      if (liveItem.category?.toLowerCase() == 'harvester (halimaw)')
                         Text(
                           '+ 12% of Crop Harvest',
                           style: TextStyle(
