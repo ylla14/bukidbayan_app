@@ -161,5 +161,98 @@ Future<bool> hasActiveRequestInCategory(
   return requests.isNotEmpty;
 }
 
+  // ── Case 4: shift queued bookings forward ──────────────────────────────────
 
+  /// Pushes the start/end dates of all queued bookings for [equipmentId]
+  /// forward by [daysLate] days.
+  ///
+  /// "Queued" means any request in a pending/active state that has not yet
+  /// started (i.e. start > now).  Statuses covered: pending, approved,
+  /// readyForPickup, pickedUp.
+  Future<void> shiftQueuedBookingsForEquipment({
+    required String equipmentId,
+    required int daysLate,
+  }) async {
+    if (daysLate <= 0) return;
+
+    const queuedStatuses = [
+      'pending',
+      'approved',
+      'readyForPickup',
+      'pickedUp',
+    ];
+
+    final snapshot = await _collection
+        .where('itemId', isEqualTo: equipmentId)
+        .where('status', whereIn: queuedStatuses)
+        .get();
+
+    // Collect shifted request data before committing so we can notify renters.
+    final List<_ShiftedBooking> shifted = [];
+
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in snapshot.docs) {
+      final data  = doc.data() as Map<String, dynamic>;
+      final start = (data['start'] as Timestamp?)?.toDate();
+      final end   = (data['end']   as Timestamp?)?.toDate();
+      if (start == null || end == null) continue;
+
+      final newStart = start.add(Duration(days: daysLate));
+      final newEnd   = end.add(Duration(days: daysLate));
+
+      batch.update(doc.reference, {
+        'start': Timestamp.fromDate(newStart),
+        'end'  : Timestamp.fromDate(newEnd),
+        'shiftedDueToLateReturn': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      shifted.add(_ShiftedBooking(
+        renterId : data['renterId'] as String,
+        itemName : data['itemName'] as String,
+        newStart : newStart,
+        newEnd   : newEnd,
+      ));
+    }
+
+    await batch.commit();
+
+    // Notify each affected renter (non-critical — failures don't roll back).
+    String fmt(DateTime d) => '${d.month}/${d.day}/${d.year}';
+
+    final db = FirebaseFirestore.instance;
+    for (final b in shifted) {
+      try {
+        await db
+            .collection('notifications')
+            .doc(b.renterId)
+            .collection('items')
+            .add({
+          'type'     : 'booking_shifted',
+          'title'    : 'Booking Schedule Updated',
+          'body'     : 'Ang iyong booking para sa "${b.itemName}" ay na-delay ng '
+              '$daysLate ${daysLate == 1 ? 'araw' : 'na araw'} dahil sa '
+              'late return ng nakaraang nangupahan. '
+              'Bagong schedule: ${fmt(b.newStart)} – ${fmt(b.newEnd)}.',
+          'createdAt': FieldValue.serverTimestamp(),
+          'read'     : false,
+        });
+      } catch (_) {
+        // Non-fatal — swallow silently.
+      }
+    }
+  }
+}
+
+class _ShiftedBooking {
+  final String renterId;
+  final String itemName;
+  final DateTime newStart;
+  final DateTime newEnd;
+  const _ShiftedBooking({
+    required this.renterId,
+    required this.itemName,
+    required this.newStart,
+    required this.newEnd,
+  });
 }

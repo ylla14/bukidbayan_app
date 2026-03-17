@@ -47,6 +47,10 @@ class RentRequest {
   final bool weatherFlag;
   final List<DateTime> weatherFlagDates;
 
+  /// Tracks the last date a late-return strike was issued for this request.
+  /// Used client-side to calculate how many new overdue days need strikes.
+  final DateTime? lastLateStrikeIssuedDate;
+
   final bool? keepDarak;
   final double? estimatedMillingFee;
   final double? latitude;
@@ -86,6 +90,7 @@ class RentRequest {
     this.farmAddress,
     this.farmLatitude,
     this.farmLongitude,
+    this.lastLateStrikeIssuedDate,
   });
 
   Map<String, dynamic> toMap() {
@@ -116,6 +121,9 @@ class RentRequest {
       'farmAddress': farmAddress,
       'farmLatitude': farmLatitude,
       'farmLongitude': farmLongitude,
+      'lastLateStrikeIssuedDate': lastLateStrikeIssuedDate != null
+          ? Timestamp.fromDate(lastLateStrikeIssuedDate!)
+          : null,
     };
   }
 
@@ -179,6 +187,8 @@ class RentRequest {
       farmAddress: map['farmAddress'] as String?,
       farmLatitude: (map['farmLatitude'] as num?)?.toDouble(),
       farmLongitude: (map['farmLongitude'] as num?)?.toDouble(),
+      lastLateStrikeIssuedDate:
+          (map['lastLateStrikeIssuedDate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -209,6 +219,7 @@ class RentRequest {
     double? farmLatitude,
     double? farmLongitude,
     double? hectaresEntered,
+    DateTime? lastLateStrikeIssuedDate,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -237,6 +248,8 @@ class RentRequest {
       farmAddress: farmAddress ?? this.farmAddress,
       farmLatitude: farmLatitude ?? this.farmLatitude,
       farmLongitude: farmLongitude ?? this.farmLongitude,
+      lastLateStrikeIssuedDate:
+          lastLateStrikeIssuedDate ?? this.lastLateStrikeIssuedDate,
     );
   }
 }

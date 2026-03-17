@@ -1,15 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+/// Block durations per case (in days).
+const int kBlockDurationCancelStrike = 7;   // Case 1: 3 cancel-strikes  → 1 week
+const int kBlockDurationMisuse       = 14;  // Case 2/3: misuse/damage   → 2 weeks
+const int kBlockDurationLateReturn   = 7;   // Case 4: 3 late-day-strikes → 1 week
+
 class StrikeService {
   static const int _maxStrikes = 3;
-  static const int _blockDurationDays = 3;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Saves a report to Firestore, increments the renter's strike counter
-  /// atomically, sets [blockedUntil] if strikes reach [_maxStrikes], and
-  /// sends an in-app notification to the renter.
+  // ── Generic report (Cases 1, 2, 3) ────────────────────────────────────────
+
+  /// Saves a report, increments the renter's strike count, and optionally
+  /// blocks immediately (for misuse/damage — set [immediateBlock] = true).
+  ///
+  /// [blockDurationDays] controls the suspension length when the block fires.
   Future<void> submitReport({
     required String requestId,
     required String renterId,
@@ -17,8 +24,10 @@ class StrikeService {
     required String reason,
     required String details,
     List<String> evidenceUrls = const [],
+    int blockDurationDays = kBlockDurationCancelStrike,
+    bool immediateBlock = false,
   }) async {
-    final userRef = _db.collection('users').doc(renterId);
+    final userRef   = _db.collection('users').doc(renterId);
     final reportRef = _db.collection('reports').doc();
 
     int newStrikes = 0;
@@ -26,59 +35,129 @@ class StrikeService {
     DateTime? blockedUntil;
 
     await _db.runTransaction((tx) async {
-      final userSnap = await tx.get(userRef);
+      final userSnap       = await tx.get(userRef);
       final currentStrikes = (userSnap.data()?['strikeCount'] as int?) ?? 0;
       newStrikes = currentStrikes + 1;
 
-      // Save the report document
       tx.set(reportRef, {
-        'requestId': requestId,
-        'renterId': renterId,
-        'ownerId': ownerId,
-        'reason': reason,
-        'details': details,
+        'requestId'   : requestId,
+        'renterId'    : renterId,
+        'ownerId'     : ownerId,
+        'reason'      : reason,
+        'details'     : details,
         'evidenceUrls': evidenceUrls,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt'   : FieldValue.serverTimestamp(),
       });
 
-      // Update the renter's strike count
       final Map<String, dynamic> userUpdate = {'strikeCount': newStrikes};
-      if (newStrikes >= _maxStrikes) {
-        blockedUntil =
-            DateTime.now().add(const Duration(days: _blockDurationDays));
+
+      if (immediateBlock || newStrikes >= _maxStrikes) {
+        blockedUntil = DateTime.now().add(Duration(days: blockDurationDays));
         userUpdate['blockedUntil'] = Timestamp.fromDate(blockedUntil!);
         nowBlocked = true;
       }
+
       tx.update(userRef, userUpdate);
     });
 
-    // Notify the renter (outside the transaction — non-critical)
     try {
       await _sendStrikeNotification(
-        renterId: renterId,
-        strikeCount: newStrikes,
-        reason: reason,
-        nowBlocked: nowBlocked,
-        blockedUntil: blockedUntil,
+        renterId         : renterId,
+        strikeCount      : newStrikes,
+        reason           : reason,
+        nowBlocked       : nowBlocked,
+        blockedUntil     : blockedUntil,
+        blockDurationDays: blockDurationDays,
       );
     } catch (e) {
       debugPrint('Strike notification failed (non-fatal): $e');
     }
   }
 
-  /// Returns true if the renter is currently blocked from making new requests.
-  Future<bool> isRenterBlocked(String userId) async {
-    final doc = await _db.collection('users').doc(userId).get();
-    final data = doc.data();
-    if (data == null) return false;
-    final blockedUntil = (data['blockedUntil'] as Timestamp?)?.toDate();
-    if (blockedUntil == null) return false;
-    return DateTime.now().isBefore(blockedUntil);
+  // ── Case 4: per-day late-return strikes ────────────────────────────────────
+
+  /// Calculates how many new overdue days have elapsed since the last strike
+  /// was issued ([lastLateStrikeIssuedDate] on the request doc), issues one
+  /// strike per new day, and updates the request document.
+  ///
+  /// Safe to call repeatedly — it only acts on days not yet accounted for.
+  Future<void> issueLateDayStrikes({
+    required String requestId,
+    required String renterId,
+    required String ownerId,
+    required DateTime endDate,
+    required DateTime? lastLateStrikeIssuedDate,
+  }) async {
+    final now = DateTime.now();
+    if (!now.isAfter(endDate)) return;
+
+    // Baseline: the end-date itself (no grace period — day 1 of lateness = day
+    // after endDate). If we've issued before, use that date as baseline.
+    final baseline = lastLateStrikeIssuedDate ?? endDate;
+    final newDays  = now.difference(baseline).inDays;
+    if (newDays <= 0) return;
+
+    final userRef    = _db.collection('users').doc(renterId);
+    final requestRef = _db.collection('rentRequests').doc(requestId);
+
+    int finalStrikes = 0;
+    bool nowBlocked  = false;
+    DateTime? blockedUntil;
+    int strikesBeforeThis = 0;
+
+    await _db.runTransaction((tx) async {
+      final userSnap   = await tx.get(userRef);
+      strikesBeforeThis = (userSnap.data()?['strikeCount'] as int?) ?? 0;
+      finalStrikes      = strikesBeforeThis + newDays;
+
+      final Map<String, dynamic> userUpdate = {'strikeCount': finalStrikes};
+
+      if (finalStrikes >= _maxStrikes) {
+        blockedUntil =
+            DateTime.now().add(const Duration(days: kBlockDurationLateReturn));
+        userUpdate['blockedUntil'] = Timestamp.fromDate(blockedUntil!);
+        nowBlocked = true;
+      }
+
+      tx.update(userRef, userUpdate);
+      tx.update(requestRef, {
+        'lastLateStrikeIssuedDate': Timestamp.fromDate(now),
+      });
+    });
+
+    try {
+      // Send one notification per new strike day so the renter sees each one.
+      for (int i = 1; i <= newDays; i++) {
+        final strikeNum = strikesBeforeThis + i;
+        await _sendStrikeNotification(
+          renterId         : renterId,
+          strikeCount      : strikeNum,
+          reason           : 'late_return',
+          nowBlocked       : nowBlocked && strikeNum >= _maxStrikes,
+          blockedUntil     : (nowBlocked && strikeNum >= _maxStrikes)
+              ? blockedUntil
+              : null,
+          blockDurationDays: kBlockDurationLateReturn,
+        );
+      }
+    } catch (e) {
+      debugPrint('Late-return strike notifications failed (non-fatal): $e');
+    }
   }
 
-  /// Returns the [DateTime] when the block expires, or null if not blocked.
+  // ── Block checks ───────────────────────────────────────────────────────────
+
+  Future<bool> isRenterBlocked(String userId) async {
+    final doc  = await _db.collection('users').doc(userId).get();
+    final data = doc.data();
+    if (data == null) return false;
+    final until = (data['blockedUntil'] as Timestamp?)?.toDate();
+    if (until == null) return false;
+    return DateTime.now().isBefore(until);
+  }
+
   Future<DateTime?> blockedUntil(String userId) async {
-    final doc = await _db.collection('users').doc(userId).get();
+    final doc  = await _db.collection('users').doc(userId).get();
     final data = doc.data();
     if (data == null) return null;
     final until = (data['blockedUntil'] as Timestamp?)?.toDate();
@@ -86,22 +165,25 @@ class StrikeService {
     return DateTime.now().isBefore(until) ? until : null;
   }
 
+  // ── Notifications ──────────────────────────────────────────────────────────
+
   Future<void> _sendStrikeNotification({
     required String renterId,
     required int strikeCount,
     required String reason,
     required bool nowBlocked,
     DateTime? blockedUntil,
+    int blockDurationDays = kBlockDurationCancelStrike,
   }) async {
     final reasonLabel = _reasonLabel(reason);
     final String body;
 
     if (nowBlocked && blockedUntil != null) {
-      final unblockDate =
-          '${blockedUntil.day}/${blockedUntil.month}/${blockedUntil.year}';
+      final d = blockedUntil;
+      final unblockDate = '${d.day}/${d.month}/${d.year}';
       body = 'Nakatanggap ka ng strike ($strikeCount/$_maxStrikes) dahil sa: '
-          '"$reasonLabel". Dahil umabot na sa $_maxStrikes ang iyong mga strike, '
-          'pansamantalang hindi ka makakapaghiram ng kagamitan hanggang $unblockDate.';
+          '"$reasonLabel". Pansamantalang hindi ka makakapaghiram ng kagamitan '
+          'hanggang $unblockDate ($blockDurationDays na araw).';
     } else {
       body = 'Nakatanggap ka ng strike ($strikeCount/$_maxStrikes) dahil sa: '
           '"$reasonLabel". Sa $_maxStrikes na strikes, '
@@ -113,26 +195,22 @@ class StrikeService {
         .doc(renterId)
         .collection('items')
         .add({
-      'type': 'strike',
-      'title': 'Nakatanggap ka ng Strike',
-      'body': body,
+      'type'     : 'strike',
+      'title'    : 'Nakatanggap ka ng Strike',
+      'body'     : body,
       'createdAt': FieldValue.serverTimestamp(),
-      'read': false,
+      'read'     : false,
     });
   }
 
   String _reasonLabel(String reason) {
     switch (reason) {
-      case 'damaged_equipment':
-        return 'Nasirang Kagamitan';
-      case 'late_return':
-        return 'Nahuling Ibalik';
-      case 'missing_parts':
-        return 'Nawawalang Parte / Accessories';
-      case 'misuse':
-        return 'Maling Paggamit ng Kagamitan';
-      default:
-        return 'Iba pa';
+      case 'damaged_equipment'    : return 'Nasirang Kagamitan';
+      case 'late_return'          : return 'Nahuling Ibalik';
+      case 'missing_parts'        : return 'Nawawalang Parte / Accessories';
+      case 'misuse'               : return 'Maling Paggamit ng Kagamitan';
+      case 'cancel_after_approval': return 'Kinansela Pagkatapos ng Pag-apruba';
+      default                     : return 'Iba pa';
     }
   }
 }

@@ -9,6 +9,8 @@ import 'package:bukidbayan_app/screens/rent/report_renter_page.dart';
 import 'package:bukidbayan_app/screens/rent/review_page.dart';
 import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
+import 'package:bukidbayan_app/services/rent_request_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +18,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:photo_view/photo_view.dart';
 
-class RequestSentPage extends StatelessWidget {
+class RequestSentPage extends StatefulWidget {
   final String requestId;
-  
 
   const RequestSentPage({super.key, required this.requestId});
+
+  @override
+  State<RequestSentPage> createState() => _RequestSentPageState();
+}
+
+class _RequestSentPageState extends State<RequestSentPage> {
+  /// Prevents issuing late-strikes more than once per screen session.
+  bool _lateStrikesChecked = false;
 
   String _formatDate(DateTime date) =>
       DateFormat('MMM dd, yyyy • hh:mm a').format(date);
@@ -379,7 +388,7 @@ class RequestSentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => RequestBloc()..add(LoadRequest(requestId)),
+      create: (_) => RequestBloc()..add(LoadRequest(widget.requestId)),
       child: BlocBuilder<RequestBloc, RequestState>(
         builder: (context, state) {
           if (state is RequestLoading) {
@@ -404,9 +413,26 @@ class RequestSentPage extends StatelessWidget {
 
             final now = DateTime.now();
             final isWithinReturnWindow =
-                now.isAfter(request.start.subtract(const Duration(days: 1))); 
-              //  && now.isBefore(request.end.add(const Duration(days: 1)));
+                now.isAfter(request.start.subtract(const Duration(days: 1))) &&
+                now.isBefore(request.end.add(const Duration(days: 1)));
             final isOverdue = now.isAfter(request.end);
+            final daysOverdue = isOverdue
+                ? now.difference(request.end).inDays
+                : 0;
+
+            // ── Late-return strike check (Case 4) ─────────────────────────
+            if (!_lateStrikesChecked &&
+                isOverdue &&
+                request.status == RentRequestStatus.inProgress) {
+              _lateStrikesChecked = true;
+              StrikeService().issueLateDayStrikes(
+                requestId               : widget.requestId,
+                renterId                : request.renterId,
+                ownerId                 : request.ownerId,
+                endDate                 : request.end,
+                lastLateStrikeIssuedDate: request.lastLateStrikeIssuedDate,
+              );
+            }
             final isTerminal = request.status == RentRequestStatus.declined ||
                 request.status == RentRequestStatus.canceled;
             final showApproveDecline =
@@ -767,24 +793,54 @@ class RequestSentPage extends StatelessWidget {
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
+                                color: Colors.red.shade50,
                                 borderRadius: BorderRadius.circular(16),
-                                border:
-                                    Border.all(color: Colors.orange.shade300),
+                                border: Border.all(color: Colors.red.shade300),
                               ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.warning_amber_rounded,
-                                      color: Colors.orange.shade600, size: 22),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'Return period has ended. Please notify renter to return the equipment immediately',
-                                      style: TextStyle(
-                                          color: Colors.orange.shade800,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500),
-                                    ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded,
+                                          color: Colors.red.shade600, size: 22),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Equipment Not Returned',
+                                          style: TextStyle(
+                                              color: Colors.red.shade800,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade600,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          daysOverdue == 0
+                                              ? 'Due today'
+                                              : '$daysOverdue ${daysOverdue == 1 ? 'day' : 'days'} late',
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'The renter has not returned the equipment. '
+                                    'Queued bookings are shifted forward by 1 day for each day overdue. '
+                                    'The renter receives a strike per day until the equipment is returned.',
+                                    style: TextStyle(
+                                        color: Colors.red.shade700,
+                                        fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -1165,33 +1221,59 @@ class RequestSentPage extends StatelessWidget {
                               },
                             ),
 
-                          // Owner: Confirm Retrieved (Path B)
+                          // Owner: Confirm Retrieved (Path B — forced retrieval)
                           if (isOwner &&
                               request.status == RentRequestStatus.retrieving)
                             _actionButton(
                               label: 'Confirm Retrieved',
                               icon: Icons.task_alt_rounded,
                               color: const Color(0xFF10B981),
-                              onPressed: () {
-                                context.read<RequestBloc>().add(
-                                      RequestStatusUpdated(request.requestId,
-                                          RentRequestStatus.finished),
-                                    );
+                              onPressed: () async {
+                                final days = DateTime.now()
+                                    .difference(request.end)
+                                    .inDays
+                                    .clamp(0, 9999);
+                                if (days > 0) {
+                                  await RentRequestService()
+                                      .shiftQueuedBookingsForEquipment(
+                                    equipmentId: request.itemId,
+                                    daysLate   : days,
+                                  );
+                                }
+                                if (context.mounted) {
+                                  context.read<RequestBloc>().add(
+                                        RequestStatusUpdated(request.requestId,
+                                            RentRequestStatus.finished),
+                                      );
+                                }
                               },
                             ),
 
-                          // Owner: Confirm Return (Path A)
+                          // Owner: Confirm Return (Path A — renter self-returns)
                           if (isOwner &&
                               request.status == RentRequestStatus.returned)
                             _actionButton(
                               label: 'Confirm Return',
                               icon: Icons.task_alt_rounded,
                               color: lightColorScheme.primary,
-                              onPressed: () {
-                                context.read<RequestBloc>().add(
-                                      RequestStatusUpdated(request.requestId,
-                                          RentRequestStatus.finished),
-                                    );
+                              onPressed: () async {
+                                final days = DateTime.now()
+                                    .difference(request.end)
+                                    .inDays
+                                    .clamp(0, 9999);
+                                if (days > 0) {
+                                  await RentRequestService()
+                                      .shiftQueuedBookingsForEquipment(
+                                    equipmentId: request.itemId,
+                                    daysLate   : days,
+                                  );
+                                }
+                                if (context.mounted) {
+                                  context.read<RequestBloc>().add(
+                                        RequestStatusUpdated(request.requestId,
+                                            RentRequestStatus.finished),
+                                      );
+                                }
                               },
                             ),
 
