@@ -102,6 +102,7 @@ class DashboardCalendarContext {
   final List<WeatherDay> forecast;
   final String season;
   final List<String> seasonalCrops;
+  final Map<String, List<String>> cropsBySeason;
 
   const DashboardCalendarContext({
     required this.userId,
@@ -109,6 +110,7 @@ class DashboardCalendarContext {
     required this.forecast,
     required this.season,
     required this.seasonalCrops,
+    this.cropsBySeason = const {},
   });
 }
 

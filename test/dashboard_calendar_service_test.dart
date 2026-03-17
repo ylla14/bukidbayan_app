@@ -107,6 +107,34 @@ void main() {
         isTrue,
       );
     });
+
+    test('uses day month for season and crop context (July -> Wet Season)', () {
+      final context = DashboardCalendarContext(
+        userId: 'user-1',
+        requests: const [],
+        forecast: const [],
+        season: 'Dry Season',
+        seasonalCrops: ['Corn'],
+        cropsBySeason: const {
+          'Dry Season': ['Corn'],
+          'Wet Season': ['Rice'],
+        },
+      );
+
+      final monthData = service.buildMonthData(
+        month: DateTime(2026, 7, 1),
+        context: context,
+        now: DateTime(2026, 7, 10),
+      );
+      final day = monthData.daysByDate[DateTime(2026, 7, 10)];
+
+      expect(day, isNotNull);
+      final seasonEvent = day!.events.firstWhere(
+        (e) => e.type == DashboardCalendarEventType.season,
+      );
+      expect(seasonEvent.title, 'Wet Season');
+      expect(seasonEvent.subtitle, contains('Rice'));
+    });
   });
 }
 

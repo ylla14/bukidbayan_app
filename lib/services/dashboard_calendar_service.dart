@@ -55,6 +55,7 @@ class DashboardCalendarService implements DashboardCalendarController {
     List<RentRequest> ownerRequests = const [];
     List<WeatherDay> forecast = const [];
     List<String> seasonalCrops = const [];
+    Map<String, List<String>> cropsBySeason = const {};
     final season = _resolvedCropService.detectSeason(_now().month);
 
     var hasRenter = false;
@@ -72,6 +73,7 @@ class DashboardCalendarService implements DashboardCalendarController {
           forecast: forecast,
           season: season,
           seasonalCrops: seasonalCrops,
+          cropsBySeason: cropsBySeason,
         ),
       );
     }
@@ -89,9 +91,11 @@ class DashboardCalendarService implements DashboardCalendarController {
         final crops = await _resolvedCropService.getRegionalCrops(
           region: region,
         );
-        seasonalCrops = crops.map((c) => c.name).toList(growable: false);
+        cropsBySeason = _buildCropsBySeason(crops);
+        seasonalCrops = cropsBySeason[season] ?? const [];
       } catch (_) {
         seasonalCrops = const [];
+        cropsBySeason = const {};
       }
       await emit();
     }
@@ -130,6 +134,11 @@ class DashboardCalendarService implements DashboardCalendarController {
     final monthStart = DateTime(month.year, month.month, 1);
     final monthEnd = DateTime(month.year, month.month + 1, 0);
     final today = _dayKey(now ?? _now());
+    final monthSeason = _seasonForMonth(monthStart.month);
+    final monthSeasonalCrops = _seasonalCropsForSeason(
+      season: monthSeason,
+      context: context,
+    );
 
     final daysByDate = <DateTime, DashboardCalendarDayData>{
       for (
@@ -137,13 +146,21 @@ class DashboardCalendarService implements DashboardCalendarController {
         !day.isAfter(monthEnd);
         day = day.add(const Duration(days: 1))
       )
+        // Season context is day-based, not "today"-based.
+        // This keeps months like July correctly marked as Wet Season.
         day: DashboardCalendarDayData(
           date: day,
           events: [
             DashboardCalendarEvent(
               type: DashboardCalendarEventType.season,
-              title: context.season,
-              subtitle: _seasonSubtitle(context),
+              title: _seasonForMonth(day.month),
+              subtitle: _seasonSubtitle(
+                season: _seasonForMonth(day.month),
+                seasonalCrops: _seasonalCropsForSeason(
+                  season: _seasonForMonth(day.month),
+                  context: context,
+                ),
+              ),
             ),
           ],
         ),
@@ -182,6 +199,11 @@ class DashboardCalendarService implements DashboardCalendarController {
 
       for (final day in _daysInRange(start, end)) {
         if (!_isInMonth(day, monthStart)) continue;
+        final daySeason = _seasonForMonth(day.month);
+        final daySeasonalCrops = _seasonalCropsForSeason(
+          season: daySeason,
+          context: context,
+        );
 
         _addEvent(
           daysByDate: daysByDate,
@@ -216,8 +238,8 @@ class DashboardCalendarService implements DashboardCalendarController {
           role: role,
           request: request,
           hasWeatherRisk: hasWeatherRisk,
-          season: context.season,
-          seasonalCrops: context.seasonalCrops,
+          season: daySeason,
+          seasonalCrops: daySeasonalCrops,
         );
 
         for (final suggestion in daySuggestions) {
@@ -235,14 +257,19 @@ class DashboardCalendarService implements DashboardCalendarController {
       if (today.isAfter(end) &&
           request.status == RentRequestStatus.inProgress &&
           _isInMonth(today, monthStart)) {
+        final todaySeason = _seasonForMonth(today.month);
+        final todaySeasonalCrops = _seasonalCropsForSeason(
+          season: todaySeason,
+          context: context,
+        );
         final overdueSuggestions = _buildSuggestionsForDay(
           day: today,
           today: today,
           role: role,
           request: request,
           hasWeatherRisk: false,
-          season: context.season,
-          seasonalCrops: context.seasonalCrops,
+          season: todaySeason,
+          seasonalCrops: todaySeasonalCrops,
         );
 
         for (final suggestion in overdueSuggestions) {
@@ -259,13 +286,18 @@ class DashboardCalendarService implements DashboardCalendarController {
     }
 
     if (daysByDate.containsKey(today)) {
+      final todaySeason = _seasonForMonth(today.month);
+      final todaySeasonalCrops = _seasonalCropsForSeason(
+        season: todaySeason,
+        context: context,
+      );
       final seasonSuggestion = DashboardCalendarSuggestion(
         type: DashboardCalendarSuggestionType.seasonalPlanning,
         title: 'Seasonal planning',
-        description: context.seasonalCrops.isEmpty
-            ? 'Review your requests for ${context.season.toLowerCase()}.'
-            : 'Plan equipment for ${context.season.toLowerCase()} crops: '
-                  '${context.seasonalCrops.take(3).join(', ')}.',
+        description: todaySeasonalCrops.isEmpty
+            ? 'Review your requests for ${todaySeason.toLowerCase()}.'
+            : 'Plan equipment for ${todaySeason.toLowerCase()} crops: '
+                  '${todaySeasonalCrops.take(3).join(', ')}.',
         priority: DashboardCalendarSuggestionPriority.low,
         actionTarget: const DashboardCalendarActionTarget(
           kind: DashboardCalendarActionKind.openMyRequests,
@@ -282,8 +314,8 @@ class DashboardCalendarService implements DashboardCalendarController {
     return DashboardCalendarMonthData(
       month: monthStart,
       daysByDate: daysByDate,
-      season: context.season,
-      seasonalCrops: context.seasonalCrops,
+      season: monthSeason,
+      seasonalCrops: monthSeasonalCrops,
     );
   }
 
@@ -419,11 +451,14 @@ class DashboardCalendarService implements DashboardCalendarController {
     return suggestions;
   }
 
-  String _seasonSubtitle(DashboardCalendarContext context) {
-    if (context.seasonalCrops.isEmpty) {
-      return 'Plan tasks for ${context.season.toLowerCase()}';
+  String _seasonSubtitle({
+    required String season,
+    required List<String> seasonalCrops,
+  }) {
+    if (seasonalCrops.isEmpty) {
+      return 'Plan tasks for ${season.toLowerCase()}';
     }
-    return '${context.seasonalCrops.take(3).join(', ')} in season';
+    return '${seasonalCrops.take(3).join(', ')} in season';
   }
 
   bool _isInMonth(DateTime day, DateTime monthStart) =>
@@ -489,6 +524,56 @@ class DashboardCalendarService implements DashboardCalendarController {
     final list = byId.values.toList(growable: false);
     list.sort((a, b) => a.start.compareTo(b.start));
     return list;
+  }
+
+  String _seasonForMonth(int month) {
+    return (month >= 6 && month <= 11) ? 'Wet Season' : 'Dry Season';
+  }
+
+  List<String> _seasonalCropsForSeason({
+    required String season,
+    required DashboardCalendarContext context,
+  }) {
+    if (context.cropsBySeason.isNotEmpty) {
+      return context.cropsBySeason[season] ?? const [];
+    }
+    if (season == context.season) return context.seasonalCrops;
+    return const [];
+  }
+
+  Map<String, List<String>> _buildCropsBySeason(List<CropSeasonItem> crops) {
+    final wet = <String>{};
+    final dry = <String>{};
+    final yearRound = <String>{};
+
+    for (final crop in crops) {
+      final seasons = crop.seasons.map((s) => s.trim()).toSet();
+      final name = crop.name.trim();
+      if (name.isEmpty) continue;
+
+      if (seasons.contains('Year Round')) {
+        wet.add(name);
+        dry.add(name);
+        yearRound.add(name);
+      }
+      if (seasons.contains('Wet Season')) {
+        wet.add(name);
+      }
+      if (seasons.contains('Dry Season')) {
+        dry.add(name);
+      }
+      yearRound.add(name);
+    }
+
+    final wetList = wet.toList()..sort();
+    final dryList = dry.toList()..sort();
+    final yearRoundList = yearRound.toList()..sort();
+
+    return {
+      'Wet Season': wetList,
+      'Dry Season': dryList,
+      'Year Round': yearRoundList,
+    };
   }
 
   String _roleLabel(_RequestRole role) {
