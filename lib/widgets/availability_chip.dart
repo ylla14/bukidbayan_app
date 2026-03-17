@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 class AvailabilityChip extends StatelessWidget {
   final bool isAvailable;
-  final bool isPending; // 👈 ADD THIS
+  final bool isPending; //
 
   const AvailabilityChip({
     super.key,
     required this.isAvailable,
-    this.isPending = false, // 👈 ADD THIS with default
+    this.isPending = false, // 
   });
 
   @override
@@ -18,7 +18,7 @@ class AvailabilityChip extends StatelessWidget {
     
     if (isPending) {
       chipColor = Colors.orange[600]!;
-      chipText = 'Pending Request';
+      chipText = 'Pending\nRequest';
     } else if (isAvailable) {
       chipColor = Colors.green[600]!;
       chipText = 'Available';
