@@ -82,14 +82,141 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   itemBuilder: (context, index) {
                     final doc = docs[index];
                     final data = doc.data() as Map<String, dynamic>;
-                    final isWeather = (data['type'] as String?) == 'weather_alert';
+                    final type = (data['type'] as String?) ?? '';
+                    final isWeather = type == 'weather_alert';
+                    final isShifted = type == 'booking_shifted';
+                    final canCancel = (data['canCancel'] as bool?) ?? false;
+                    final requestId = data['requestId'] as String?;
                     final isRead = (data['read'] as bool?) ?? false;
                     final title = (data['title'] as String?) ?? 'Notification';
                     final body = (data['body'] as String?) ?? '';
                     final createdAt = data['createdAt'] as Timestamp?;
 
+                    Future<void> handleCancel() async {
+                      if (!isRead) _markRead(doc.id);
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Cancel Booking?'),
+                          content: const Text(
+                              'This will cancel your rescheduled booking. '
+                              'No strike will be recorded. This cannot be undone.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Keep It'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Yes, Cancel'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && context.mounted) {
+                        await FirebaseFirestore.instance
+                            .collection('rentRequests')
+                            .doc(requestId)
+                            .update({
+                          'status': 'canceled',
+                          'cancelledDueToShift': true,
+                          'declineReason':
+                              'Cancelled by renter due to booking delay from a late return.',
+                        });
+                        await _notifCollection
+                            ?.doc(doc.id)
+                            .update({'canCancel': false});
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Booking cancelled.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    }
+
+                    // ── Booking-shifted tile (has visible cancel button) ───
+                    if (isShifted) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: isRead
+                              ? Colors.orange.shade50
+                              : Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.schedule_rounded,
+                                      color: Colors.orange.shade700, size: 18),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      style: TextStyle(
+                                        fontWeight: isRead
+                                            ? FontWeight.w600
+                                            : FontWeight.bold,
+                                        fontSize: 14,
+                                        color: Colors.orange.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    _timeAgo(createdAt),
+                                    style: TextStyle(
+                                        color: Colors.orange.shade700,
+                                        fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(body,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.orange.shade900)),
+                              if (canCancel && requestId != null) ...[
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.cancel_outlined,
+                                        size: 16),
+                                    label: const Text('Cancel Booking (No Penalty)'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.red.shade700,
+                                      side: BorderSide(
+                                          color: Colors.red.shade400),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                    ),
+                                    onPressed: handleCancel,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // ── Standard tile ──────────────────────────────────────
                     return ListTile(
-                      tileColor: isRead ? null : lightColorScheme.primary.withValues(alpha: 0.05),
+                      tileColor: isRead
+                          ? null
+                          : lightColorScheme.primary.withValues(alpha: 0.05),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                       leading: CircleAvatar(
@@ -100,7 +227,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           isWeather
                               ? Icons.warning_amber_rounded
                               : Icons.notifications,
-                          color: isWeather ? Colors.amber.shade800 : Colors.blue,
+                          color: isWeather
+                              ? Colors.amber.shade800
+                              : Colors.blue,
                         ),
                       ),
                       title: Text(
@@ -121,77 +250,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style:
                             const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
-                     onTap: () async {
-  if (!isRead) _markRead(doc.id);
-  final canCancel = (data['canCancel'] as bool?) ?? false;
-  final requestId = data['requestId'] as String?;
-  await showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text(title),
-      content: Text(body),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
-        ),
-        if (canCancel && requestId != null)
-          ElevatedButton.icon(
-            icon: const Icon(Icons.cancel_outlined, size: 16),
-            label: const Text('Cancel Booking'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Cancel Booking?'),
-                  content: const Text(
-                    'This will cancel your rescheduled booking. This cannot be undone.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Keep It'),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Yes, Cancel'),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                await FirebaseFirestore.instance
-                    .collection('rentRequests')
-                    .doc(requestId)
-                    .update({
-                  'status': 'canceled',
-                  'declineReason': 'Cancelled by renter after maintenance reschedule.',
-                });
-                // Mark notification as no longer cancellable
-                await _notifCollection?.doc(doc.id).update({'canCancel': false});
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Booking cancelled.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-      ],
-    ),
-  );
-},
+                      onTap: () async {
+                        if (!isRead) _markRead(doc.id);
+                        await showDialog<void>(
+                          context: context,
+                          builder: (dlgCtx) => AlertDialog(
+                            title: Text(title),
+                            content: Text(body),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dlgCtx),
+                                child: const Text('Close'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   },
                 );

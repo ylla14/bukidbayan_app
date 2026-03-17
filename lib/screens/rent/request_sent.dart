@@ -1349,7 +1349,7 @@ class _RequestSentPageState extends State<RequestSentPage> {
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
                                 onPressed: () => _showCancelDialog(context,
-                                    request.requestId,
+                                    request,
                                     isRenter: true),
                               ),
                             ),
@@ -1364,7 +1364,7 @@ class _RequestSentPageState extends State<RequestSentPage> {
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
                                 onPressed: () => _showCancelDialog(context,
-                                    request.requestId,
+                                    request,
                                     isRenter: false),
                               ),
                             ),
@@ -2102,8 +2102,13 @@ Future<void> _sendNotification({
   });
 }
 
-  void _showCancelDialog(BuildContext context, String requestId,
+  void _showCancelDialog(BuildContext context, RentRequest request,
       {required bool isRenter}) {
+    // Case 1: strike if renter cancels after approval.
+    final isPostApproval = isRenter &&
+        (request.status == RentRequestStatus.approved ||
+            request.status == RentRequestStatus.readyForPickup);
+
     final requestBloc = context.read<RequestBloc>();
     showDialog(
       context: context,
@@ -2113,7 +2118,10 @@ Future<void> _sendNotification({
         title: const Text('Cancel Request',
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(isRenter
-            ? 'Are you sure you want to cancel this rental request? This cannot be undone.'
+            ? isPostApproval
+                ? 'Are you sure you want to cancel this approved rental? '
+                  'Cancelling after approval will result in a strike on your account.'
+                : 'Are you sure you want to cancel this rental request? This cannot be undone.'
             : 'Are you sure you want to cancel this request? The renter will be notified.'),
         actions: [
           TextButton(
@@ -2121,13 +2129,28 @@ Future<void> _sendNotification({
             child: const Text('Go Back'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(dialogContext);
               requestBloc.add(RequestStatusUpdated(
-                  requestId, RentRequestStatus.canceled));
+                  request.requestId, RentRequestStatus.canceled));
+
+              // ── Case 1: issue strike for post-approval cancel ────────────
+              if (isPostApproval) {
+                try {
+                  await StrikeService().submitReport(
+                    requestId        : request.requestId,
+                    renterId         : request.renterId,
+                    ownerId          : request.ownerId,
+                    reason           : 'cancel_after_approval',
+                    details          : 'Renter cancelled after the request was approved.',
+                    blockDurationDays: kBlockDurationCancelStrike,
+                  );
+                } catch (e) {
+                  debugPrint('Case 1 strike failed (non-fatal): $e');
+                }
+              }
             },
-            style:
-                ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Yes, Cancel',
                 style: TextStyle(color: Colors.white)),
           ),

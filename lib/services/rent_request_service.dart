@@ -208,6 +208,7 @@ Future<bool> hasActiveRequestInCategory(
       });
 
       shifted.add(_ShiftedBooking(
+        requestId: doc.id,
         renterId : data['renterId'] as String,
         itemName : data['itemName'] as String,
         newStart : newStart,
@@ -228,14 +229,17 @@ Future<bool> hasActiveRequestInCategory(
             .doc(b.renterId)
             .collection('items')
             .add({
-          'type'     : 'booking_shifted',
-          'title'    : 'Booking Schedule Updated',
-          'body'     : 'Ang iyong booking para sa "${b.itemName}" ay na-delay ng '
+          'type'      : 'booking_shifted',
+          'title'     : 'Booking Schedule Updated',
+          'body'      : 'Ang iyong booking para sa "${b.itemName}" ay na-delay ng '
               '$daysLate ${daysLate == 1 ? 'araw' : 'na araw'} dahil sa '
               'late return ng nakaraang nangupahan. '
-              'Bagong schedule: ${fmt(b.newStart)} – ${fmt(b.newEnd)}.',
-          'createdAt': FieldValue.serverTimestamp(),
-          'read'     : false,
+              'Bagong schedule: ${fmt(b.newStart)} – ${fmt(b.newEnd)}. '
+              'Maaari mong i-cancel ang booking nang walang penalty.',
+          'requestId' : b.requestId,
+          'canCancel' : true,
+          'createdAt' : FieldValue.serverTimestamp(),
+          'read'      : false,
         });
       } catch (_) {
         // Non-fatal — swallow silently.
@@ -245,11 +249,13 @@ Future<bool> hasActiveRequestInCategory(
 }
 
 class _ShiftedBooking {
+  final String requestId;
   final String renterId;
   final String itemName;
   final DateTime newStart;
   final DateTime newEnd;
   const _ShiftedBooking({
+    required this.requestId,
     required this.renterId,
     required this.itemName,
     required this.newStart,
