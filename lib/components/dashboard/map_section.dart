@@ -267,6 +267,8 @@ class _MapSectionState extends State<MapSection> {
           context: context,
           origin: origin,
           markerResults: markerResults,
+          nearbyOnly: _nearbyOnly,
+          radiusKm: _radiusKm,
         ),
         const SizedBox(height: 10),
         _buildNearbyControls(
@@ -290,6 +292,8 @@ class _MapSectionState extends State<MapSection> {
     required BuildContext context,
     required LatLng? origin,
     required List<NearbyEquipmentResult> markerResults,
+    required bool nearbyOnly,
+    required double radiusKm,
   }) {
     final mapCenter = origin ?? _fallbackCenter;
 
@@ -322,6 +326,19 @@ class _MapSectionState extends State<MapSection> {
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.bukidbayan.app',
                 ),
+              if (origin != null && nearbyOnly)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: origin,
+                      radius: radiusKm * 1000,
+                      useRadiusInMeter: true,
+                      color: Colors.blue.withValues(alpha: 0.15),
+                      borderColor: Colors.blue.withValues(alpha: 0.65),
+                      borderStrokeWidth: 2,
+                    ),
+                  ],
+                ),
               if (origin != null)
                 MarkerLayer(
                   markers: [
@@ -335,21 +352,22 @@ class _MapSectionState extends State<MapSection> {
                         size: 28,
                       ),
                     ),
-                    ...markerResults.map(
-                      (result) => Marker(
+                    ...markerResults.map((result) {
+                      final style = _equipmentMarkerStyle(result.equipment);
+                      return Marker(
                         point: LatLng(
                           result.equipment.latitude!,
                           result.equipment.longitude!,
                         ),
-                        width: 36,
-                        height: 36,
-                        child: const Icon(
-                          Icons.agriculture_rounded,
-                          color: Colors.green,
-                          size: 24,
+                        width: 40,
+                        height: 40,
+                        child: Tooltip(
+                          message:
+                              result.equipment.category ?? 'Equipment tool',
+                          child: _EquipmentMapMarker(style: style),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ],
                 ),
             ],
@@ -365,6 +383,25 @@ class _MapSectionState extends State<MapSection> {
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          if (origin != null && nearbyOnly)
+            Positioned(
+              left: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Search radius: ${radiusKm.toStringAsFixed(0)} km',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -684,6 +721,70 @@ class _MapSectionState extends State<MapSection> {
         return 'Home';
     }
   }
+
+  _EquipmentMarkerStyle _equipmentMarkerStyle(Equipment equipment) {
+    final keyword = '${equipment.category ?? ''} ${equipment.name}'
+        .toLowerCase()
+        .trim();
+
+    if (keyword.contains('tractor') || keyword.contains('tiller')) {
+      return const _EquipmentMarkerStyle(
+        icon: Icons.agriculture_rounded,
+        color: Colors.green,
+      );
+    }
+    if (keyword.contains('harvest')) {
+      return const _EquipmentMarkerStyle(
+        icon: Icons.grass_rounded,
+        color: Colors.lightGreen,
+      );
+    }
+    if (keyword.contains('mill') || keyword.contains('machine')) {
+      return const _EquipmentMarkerStyle(
+        icon: Icons.settings_rounded,
+        color: Colors.indigo,
+      );
+    }
+    if (keyword.contains('tool') || keyword.contains('implement')) {
+      return const _EquipmentMarkerStyle(
+        icon: Icons.handyman_rounded,
+        color: Colors.orange,
+      );
+    }
+
+    // Neutral fallback for general or unknown equipment types.
+    return const _EquipmentMarkerStyle(
+      icon: Icons.construction_rounded,
+      color: Colors.teal,
+    );
+  }
+}
+
+class _EquipmentMapMarker extends StatelessWidget {
+  final _EquipmentMarkerStyle style;
+
+  const _EquipmentMapMarker({required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Icon(Icons.location_on_rounded, color: style.color, size: 32),
+        Transform.translate(
+          offset: const Offset(0, -2),
+          child: Icon(style.icon, color: Colors.white, size: 14),
+        ),
+      ],
+    );
+  }
+}
+
+class _EquipmentMarkerStyle {
+  final IconData icon;
+  final Color color;
+
+  const _EquipmentMarkerStyle({required this.icon, required this.color});
 }
 
 class _NearbyEquipmentCard extends StatelessWidget {
