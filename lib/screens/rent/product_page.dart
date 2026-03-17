@@ -86,7 +86,7 @@ List<_PhaseTag> _getPhaseTagsForEquipment(Equipment item) {
   }
 
   // Harvesting
-  if (category.contains('harvester') ||
+  if (category.contains('Harvester (Halimaw)') ||
       name.contains('harvest') ||
       name.contains('reaper') ||
       name.contains('combine')) {

@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/screens/dashboard/earnings_report_page.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
@@ -52,6 +53,19 @@ class ActionButtonsSection extends StatelessWidget {
               ),
             ),
           ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Full-width earnings button
+        _ActionCard(
+          icon: Icons.payments_rounded,
+          label: "Total Earnings from Completed Rentals",
+          color: lightColorScheme.primary,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const EarningsReportPage()),
+          ),
         ),
       ],
     );

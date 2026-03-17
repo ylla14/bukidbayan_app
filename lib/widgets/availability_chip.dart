@@ -18,7 +18,7 @@ class AvailabilityChip extends StatelessWidget {
     
     if (isPending) {
       chipColor = Colors.orange[600]!;
-      chipText = 'Pending\nRequest';
+      chipText = 'Pending Request';
     } else if (isAvailable) {
       chipColor = Colors.green[600]!;
       chipText = 'Available';
