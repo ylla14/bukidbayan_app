@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
+import 'package:bukidbayan_app/services/maintenance_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -260,6 +261,57 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
                             ),
                           ),
                         ),
+                        if (equipment.isForMaintenance) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.build_rounded, size: 10, color: Colors.red.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'For Maintenance',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (equipment.isUpcomingMaintenance) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.amber.shade400),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_amber_rounded, size: 10, color: Colors.amber.shade800),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Upcoming Maintenance',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.amber.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -809,6 +861,9 @@ Future<void> _endMaintenance(
     'maintenanceStart': null,
     'maintenanceEnd': null,
   });
+
+  // Reset the usage counter so the interval starts fresh after maintenance.
+  await MaintenanceService().resetMaintenanceHours(equipment.id!);
 
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(

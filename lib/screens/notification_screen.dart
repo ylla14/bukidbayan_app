@@ -83,8 +83,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     final doc = docs[index];
                     final data = doc.data() as Map<String, dynamic>;
                     final type = (data['type'] as String?) ?? '';
-                    final isWeather = type == 'weather_alert';
-                    final isShifted = type == 'booking_shifted';
+                    final isWeather  = type == 'weather_alert';
+                    final isShifted  = type == 'booking_shifted';
+                    final isMaintReschedule = type == 'maintenance_reschedule';
+                    final isMaintCancel     = type == 'maintenance_cancel';
+                    final isActionCard = isShifted || isMaintReschedule || isMaintCancel;
                     final canCancel = (data['canCancel'] as bool?) ?? false;
                     final requestId = data['requestId'] as String?;
                     final isRead = (data['read'] as bool?) ?? false;
@@ -118,14 +121,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       );
                       if (confirm == true && context.mounted) {
+                        final declineReason = isMaintReschedule
+                            ? 'Cancelled by renter due to booking reschedule from equipment maintenance.'
+                            : 'Cancelled by renter due to booking delay from a late return.';
                         await FirebaseFirestore.instance
                             .collection('rentRequests')
                             .doc(requestId)
                             .update({
                           'status': 'canceled',
                           'cancelledDueToShift': true,
-                          'declineReason':
-                              'Cancelled by renter due to booking delay from a late return.',
+                          'declineReason': declineReason,
                         });
                         await _notifCollection
                             ?.doc(doc.id)
@@ -141,8 +146,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       }
                     }
 
-                    // ── Booking-shifted tile (has visible cancel button) ───
-                    if (isShifted) {
+                    // ── Action cards (shifted / maintenance reschedule / cancel) ──
+                    if (isActionCard) {
+                      final icon = (isShifted || isMaintReschedule)
+                          ? (isShifted
+                              ? Icons.schedule_rounded
+                              : Icons.build_rounded)
+                          : Icons.build_rounded;
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
@@ -159,7 +170,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.schedule_rounded,
+                                  Icon(icon,
                                       color: Colors.orange.shade700, size: 18),
                                   const SizedBox(width: 6),
                                   Expanded(

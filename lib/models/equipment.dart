@@ -121,7 +121,20 @@ final bool cropShareRequired;
 final double? cropSharePercent; // max 15.0
 
 final bool maintenanceRequired;
-final double maintenanceIntervalHrs; // default 240
+final double maintenanceIntervalHrs;        // default 240
+final double hoursUsedSinceLastMaintenance; // accumulated rental hours
+
+/// Hours remaining before maintenance is due.
+double get remainingMaintenanceHrs =>
+    maintenanceIntervalHrs - hoursUsedSinceLastMaintenance;
+
+/// True when ≤ 48 hours remain but maintenance is not yet overdue.
+bool get isUpcomingMaintenance =>
+    remainingMaintenanceHrs <= 48 && remainingMaintenanceHrs > 0;
+
+/// True when accumulated hours have reached or exceeded the interval.
+bool get isForMaintenance =>
+    hoursUsedSinceLastMaintenance >= maintenanceIntervalHrs;
 
   Equipment({
     this.id,
@@ -173,6 +186,7 @@ final double maintenanceIntervalHrs; // default 240
 this.cropSharePercent,
 this.maintenanceRequired = false,
 this.maintenanceIntervalHrs = 240,
+this.hoursUsedSinceLastMaintenance = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -224,6 +238,7 @@ this.maintenanceIntervalHrs = 240,
 'cropSharePercent': cropSharePercent,
 'maintenanceRequired': maintenanceRequired,
 'maintenanceIntervalHrs': maintenanceIntervalHrs,
+'hoursUsedSinceLastMaintenance': hoursUsedSinceLastMaintenance,
     };
   }
 
@@ -302,6 +317,8 @@ maintenanceRequired: data['maintenanceRequired'] is bool
     ? data['maintenanceRequired']
     : data['maintenanceRequired']?.toString().toLowerCase() == 'true',
 maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
+hoursUsedSinceLastMaintenance:
+    (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -376,6 +393,8 @@ maintenanceRequired: data['maintenanceRequired'] is bool
     ? data['maintenanceRequired']
     : data['maintenanceRequired']?.toString().toLowerCase() == 'true',
 maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
+hoursUsedSinceLastMaintenance:
+    (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -427,6 +446,7 @@ maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 
 double? cropSharePercent,
 bool? maintenanceRequired,
 double? maintenanceIntervalHrs,
+double? hoursUsedSinceLastMaintenance,
   }) {
     return Equipment(
       id: id,
@@ -477,6 +497,8 @@ double? maintenanceIntervalHrs,
       cropSharePercent: cropSharePercent ?? this.cropSharePercent,
       maintenanceRequired: maintenanceRequired ?? this.maintenanceRequired,
       maintenanceIntervalHrs: maintenanceIntervalHrs ?? this.maintenanceIntervalHrs,
+      hoursUsedSinceLastMaintenance:
+          hoursUsedSinceLastMaintenance ?? this.hoursUsedSinceLastMaintenance,
     );
   }
 }

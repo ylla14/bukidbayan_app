@@ -7,8 +7,8 @@ import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/report_renter_page.dart';
 import 'package:bukidbayan_app/screens/rent/review_page.dart';
-import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
+import 'package:bukidbayan_app/services/maintenance_service.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -1346,7 +1346,14 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
                                     .get();
                                 final equipment = Equipment.fromFirestore(doc);
                                 if (context.mounted) {
-                                  _showEquipmentConditionDialog(context, request.requestId, equipment);
+                                  _showEquipmentConditionDialog(
+                                    context,
+                                    request.requestId,
+                                    equipment,
+                                    rentalStart: request.start,
+                                    rentalEnd  : request.end,
+                                    ownerId    : request.ownerId,
+                                  );
                                 }
                               },
                             ),
@@ -1632,7 +1639,14 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
     );
   }
 
-void _showEquipmentConditionDialog(BuildContext context, String requestId, Equipment equipment) {
+void _showEquipmentConditionDialog(
+  BuildContext context,
+  String requestId,
+  Equipment equipment, {
+  required DateTime rentalStart,
+  required DateTime rentalEnd,
+  required String ownerId,
+}) {
   bool? equipmentGood;
   final commentController = TextEditingController();
   final maintenanceDaysController = TextEditingController();
@@ -1918,6 +1932,21 @@ void _showEquipmentConditionDialog(BuildContext context, String requestId, Equip
                         // Complete the rental
                         requestBloc.add(
                             RequestStatusUpdated(requestId, RentRequestStatus.completed));
+
+                        // Log rental usage for maintenance hour tracking.
+                        // Each rental day = 24 hours of assumed machine use.
+                        final startDate = DateTime(rentalStart.year,
+                            rentalStart.month, rentalStart.day);
+                        final endDate = DateTime(rentalEnd.year,
+                            rentalEnd.month, rentalEnd.day);
+                        final rentalDays =
+                            endDate.difference(startDate).inDays + 1;
+                        MaintenanceService().logRentalUsage(
+                          equipmentId  : equipment.id ?? requestId,
+                          ownerId      : ownerId,
+                          equipmentName: equipment.name,
+                          rentalDays   : rentalDays,
+                        );
 
                         // If No + maintenance end date selected → schedule it
                         if (equipmentGood == false && maintenanceEndDate != null) {
