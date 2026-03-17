@@ -376,6 +376,15 @@ class RequestSentPage extends StatelessWidget {
     );
   }
 
+  // Add this near the top of the class (alongside other helpers)
+Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
+  final doc = await FirebaseFirestore.instance
+      .collection('users')       // ← adjust to your users collection name
+      .doc(ownerId)
+      .get();
+  return doc.exists ? doc.data() as Map<String, dynamic> : null;
+}
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -611,6 +620,50 @@ class RequestSentPage extends StatelessWidget {
                             ],
                           ),
 
+                          // ── LENDER INFORMATION ──
+                          FutureBuilder<Map<String, dynamic>?>(
+                            future: _fetchOwnerProfile(request.ownerId),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return _sectionCard(
+                                  title: 'LENDER INFORMATION',
+                                  accentColor: const Color(0xFFF59E0B),
+                                  children: const [
+                                    Center(child: Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 8),
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )),
+                                  ],
+                                );
+                              }
+
+                              final owner = snapshot.data;
+                              if (owner == null) return const SizedBox.shrink();
+
+                              return _sectionCard(
+                                title: 'LENDER INFORMATION',
+                                accentColor: const Color(0xFFF59E0B),
+                                children: [
+                                  if (owner['firstName'] != null || owner['lastName'] != null)
+                                    _infoTile(
+                                      Icons.person_outline,
+                                      'NAME',
+                                      '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'.trim().isNotEmpty
+                                          ? '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'.trim()
+                                          : '—',
+                                      const Color(0xFFF59E0B),
+                                    ),
+                                  if (owner['phoneNumber'] != null || owner['contactNumber'] != null)
+                                    _infoTile(Icons.phone_outlined, 'CONTACT',
+                                      owner?['phoneNumber'] ?? '—', const Color(0xFFF59E0B)),
+                                  if (owner['address'] != null)
+                                    _infoTile(Icons.location_on_outlined, 'ADDRESS',
+                                        owner?['address'] ?? '—', const Color(0xFFF59E0B)),
+                                ],
+                              );
+                            },
+),
+
                          // ── RENTER INFO ──
                         _sectionCard(
                           title: 'RENTER INFORMATION',
@@ -619,6 +672,8 @@ class RequestSentPage extends StatelessWidget {
                             _infoTile(Icons.person_outline, 'NAME',
                                 request.name, const Color(0xFF3B82F6)),
                             _infoTile(Icons.location_on_outlined, 'ADDRESS',
+                                request.address, const Color(0xFF3B82F6)),
+                            _infoTile(Icons.location_on_outlined, 'CONTACY',
                                 request.address, const Color(0xFF3B82F6)),
 
                             // // ── Land size proofs ──────────────────────────────────
