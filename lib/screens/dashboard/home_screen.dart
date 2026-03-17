@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/components/dashboard/action_buttons_section.dart';
+import 'package:bukidbayan_app/components/dashboard/dashboard_calendar_section.dart';
 import 'package:bukidbayan_app/components/dashboard/greeting_section.dart';
 import 'package:bukidbayan_app/components/dashboard/map_section.dart';
 import 'package:bukidbayan_app/components/dashboard/summary_cards_section.dart';
@@ -36,6 +37,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SummaryCardsSection(),
             const SizedBox(height: 24),
             ActionButtonsSection(),
+            const SizedBox(height: 24),
+            DashboardCalendarSection(currentUserId: _auth.currentUser?.uid),
             const SizedBox(height: 24),
             MapSection(currentUserId: _auth.currentUser?.uid),
             const SizedBox(height: 20),
