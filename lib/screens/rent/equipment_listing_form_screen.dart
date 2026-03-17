@@ -1454,19 +1454,20 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
                                     controller: _minimumVolumeController,
                                     keyboardType: TextInputType.number,
                                     hint: selectedMinVolumeUnit == 'cavans'
-                                        ? 'e.g. 5 cavans'
-                                        : 'e.g. 250 kg',
+                                        ? 'e.g. 1 cavan'
+                                        : 'e.g. 5 kg',
                                     validator: (v) {
                                       if (!_isRiceMill) return null;
                                       if (v == null || v.isEmpty) return 'Required';
                                       final n = double.tryParse(v);
                                       if (n == null || n <= 0) return 'Enter a valid number';
-                                      if (selectedMinVolumeUnit == 'cavans' && n < 5) {
-                                        return 'Minimum is 5 cavans (250 kg)';
-                                      }
-                                      if (selectedMinVolumeUnit == 'kg' && n < 250) {
-                                        return 'Minimum is 250 kg (5 cavans)';
-                                      }
+                                      if (selectedMinVolumeUnit == 'cavans' && n < 1) {
+                                          return 'Minimum is 1 cavan (50 kg)';
+                                        }
+                                        if (selectedMinVolumeUnit == 'kg' && n < 50) {
+                                          return 'Minimum is 50 kg (1 cavan)';
+                                        }
+
                                       return null;
                                     },
                                   ),
