@@ -28,6 +28,8 @@ class _RequestRentFormState extends State<RequestRentForm> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final TextEditingController farmAddressController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+
   double? _farmLat;
   double? _farmLng;
 
@@ -103,6 +105,8 @@ double? _profileFarmLng;
     super.initState();
     nameController.addListener(_onFieldChanged);
     addressController.addListener(_onFieldChanged);
+    phoneController.addListener(_onFieldChanged);
+
     _loadProfileAddress();
 
     // Auto-select the only available method if restricted
@@ -148,6 +152,8 @@ double? _profileFarmLng;
   void dispose() {
     nameController.removeListener(_onFieldChanged);
     addressController.removeListener(_onFieldChanged);
+    phoneController.removeListener(_onFieldChanged);
+    phoneController.dispose();
     nameController.dispose();
     addressController.dispose();
     farmAddressController.dispose();
@@ -201,8 +207,9 @@ double? _profileFarmLng;
             ),
 
             if (isScheduleComplete) ...[
-              UserInfoStep(
+             UserInfoStep(
                 nameController: nameController,
+                phoneController: phoneController, // ← add this
                 farmAddressController: farmAddressController,
                 onFarmLocationPicked: (lat, lng) {
                   setState(() {
@@ -288,6 +295,9 @@ double? _profileFarmLng;
                 estimatedMillingFee: _estimatedTotal,
                 deliveryMethod: _deliveryMethod,
                 hectaresEntered: _hectaresEntered, // ADD
+                phoneNumber: phoneController.text,
+
+
               ),
           ],
         ),

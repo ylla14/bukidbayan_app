@@ -394,6 +394,16 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
   return doc.exists ? doc.data() as Map<String, dynamic> : null;
 }
 
+Future<bool> _hasLeftReview(String requestId) async {
+  final doc = await FirebaseFirestore.instance
+      .collection('reviews')  // adjust to your collection name
+      .where('requestId', isEqualTo: requestId)
+      .where('renterId', isEqualTo: AuthService().currentUser?.uid)
+      .limit(1)
+      .get();
+  return doc.docs.isNotEmpty;
+}
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -1014,6 +1024,49 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
                           const SizedBox(height: 4),
 
                           // Owner: Approve / Decline
+                          // Owner: Approve / Decline
+if (showApproveDecline && now.isBefore(request.start))
+  Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.amber.shade50,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.amber.shade300),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline_rounded,
+            color: Colors.amber.shade700, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                  fontSize: 13, color: Colors.amber.shade900),
+              children: [
+                const TextSpan(
+                  text: 'Note: ',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const TextSpan(
+                  text: 'If you approve this request, the rental will still begin on ',
+                ),
+                TextSpan(
+                  text: DateFormat('MMMM dd, yyyy').format(request.start),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const TextSpan(
+                  text: ' as scheduled by the renter.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
                           if (showApproveDecline)
                             Row(
                               children: [
@@ -1247,7 +1300,8 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
                           // Renter: Return Equipment
                           if (isRenter &&
                               request.status == RentRequestStatus.inProgress &&
-                              isWithinReturnWindow)
+                              isWithinReturnWindow &&
+                              request.deliveryMethod == DeliveryMethod.pickup)
                             _actionButton(
                               label: 'Return Equipment',
                               icon: Icons.assignment_return_rounded,
@@ -1263,7 +1317,7 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
                           // Owner: On My Way to Retrieve (overdue)
                          if (isOwner &&
                             request.status == RentRequestStatus.inProgress &&
-                            isOverdue)
+                            request.deliveryMethod == DeliveryMethod.delivery)
                             _actionButton(
                               label: 'On My Way to Retrieve',
                               icon: Icons.directions_car_rounded,
@@ -1282,6 +1336,12 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
                             _actionButton(
                               label: 'Confirm Retrieved',
                               icon: Icons.task_alt_rounded,
+                              color: lightColorScheme.primary,
+                              onPressed: () {
+                                context.read<RequestBloc>().add(
+                                      RequestStatusUpdated(request.requestId,
+                                          RentRequestStatus.finished),
+                                    );
                               color: const Color(0xFF10B981),
                               onPressed: () async {
                                 final days = DateTime.now()
@@ -1359,22 +1419,51 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
                             ),
 
                           // Renter: Leave Review
-                          if (isRenter &&
-                              request.status == RentRequestStatus.completed)
-                            _actionButton(
-                              label: 'Leave a Review',
-                              icon: Icons.star_rounded,
-                              color: const Color(0xFFF59E0B),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ReviewPage(
-                                      requestId: request.requestId,
-                                      lenderId: request.ownerId,
-                                      itemId: request.itemId,
+                          if (isRenter && request.status == RentRequestStatus.completed)
+                            FutureBuilder<bool>(
+                              future: _hasLeftReview(request.requestId),
+                              builder: (context, snapshot) {
+                                if (snapshot.data == true) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.amber.shade200),
                                     ),
-                                  ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 22),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'You have already left a review.',
+                                          style: TextStyle(
+                                            color: Colors.amber.shade800,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return _actionButton(
+                                  label: 'Leave a Review',
+                                  icon: Icons.star_rounded,
+                                  color: const Color(0xFFF59E0B),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ReviewPage(
+                                          requestId: request.requestId,
+                                          lenderId: request.ownerId,
+                                          itemId: request.itemId,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -1417,7 +1506,7 @@ Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
                             ),
 
                           // Owner: Cancel
-                          if (isOwner && _canOwnerCancel(request))
+                          if (isOwner && !showApproveDecline && _canOwnerCancel(request))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: _actionButton(

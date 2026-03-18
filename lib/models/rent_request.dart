@@ -59,6 +59,8 @@ class RentRequest {
   final String? farmAddress;
   final double? farmLatitude;
   final double? farmLongitude;
+  final String? phoneNumber;
+
 
   RentRequest({
     required this.requestId,
@@ -90,6 +92,8 @@ class RentRequest {
     this.farmAddress,
     this.farmLatitude,
     this.farmLongitude,
+    this.phoneNumber,
+
     this.lastLateStrikeIssuedDate,
   });
 
@@ -121,6 +125,8 @@ class RentRequest {
       'farmAddress': farmAddress,
       'farmLatitude': farmLatitude,
       'farmLongitude': farmLongitude,
+      'phoneNumber': phoneNumber,
+
       'lastLateStrikeIssuedDate': lastLateStrikeIssuedDate != null
           ? Timestamp.fromDate(lastLateStrikeIssuedDate!)
           : null,
@@ -187,6 +193,8 @@ class RentRequest {
       farmAddress: map['farmAddress'] as String?,
       farmLatitude: (map['farmLatitude'] as num?)?.toDouble(),
       farmLongitude: (map['farmLongitude'] as num?)?.toDouble(),
+      phoneNumber: map['phoneNumber'] as String?,
+
       lastLateStrikeIssuedDate:
           (map['lastLateStrikeIssuedDate'] as Timestamp?)?.toDate(),
     );
@@ -219,6 +227,8 @@ class RentRequest {
     double? farmLatitude,
     double? farmLongitude,
     double? hectaresEntered,
+    String? phoneNumber,
+
     DateTime? lastLateStrikeIssuedDate,
   }) {
     return RentRequest(
@@ -248,6 +258,7 @@ class RentRequest {
       farmAddress: farmAddress ?? this.farmAddress,
       farmLatitude: farmLatitude ?? this.farmLatitude,
       farmLongitude: farmLongitude ?? this.farmLongitude,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       lastLateStrikeIssuedDate:
           lastLateStrikeIssuedDate ?? this.lastLateStrikeIssuedDate,
     );

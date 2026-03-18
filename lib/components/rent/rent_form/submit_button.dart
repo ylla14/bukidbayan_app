@@ -36,6 +36,8 @@ class SubmitButton extends StatefulWidget {
   final double? farmLongitude;
   final DeliveryMethod deliveryMethod;
   final double? hectaresEntered;
+  final String phoneNumber;
+
 
   const SubmitButton({
     super.key,
@@ -57,6 +59,8 @@ class SubmitButton extends StatefulWidget {
     this.farmLatitude,
     this.farmLongitude,
     required this.deliveryMethod,
+    required this.phoneNumber,
+
   });
 
   @override
@@ -543,6 +547,8 @@ class _SubmitButtonState extends State<SubmitButton> {
         farmLatitude: widget.farmLatitude,
         farmLongitude: widget.farmLongitude,
         hectaresEntered: widget.hectaresEntered,
+        phoneNumber: widget.phoneNumber,
+
       );
 
       final newRequestId = await widget.requestService.saveRequest(request);
