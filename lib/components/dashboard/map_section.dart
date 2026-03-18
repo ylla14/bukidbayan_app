@@ -46,49 +46,129 @@ class _MapSectionState extends State<MapSection> {
   DashboardCoordinateSource _preferredCoordinateSource =
       DashboardCoordinateSource.farm;
 
-  @override
-  void initState() {
-    super.initState();
-    _firestoreService = widget.firestoreService ?? FirestoreService();
-    _userContextFuture = _loadUserContext();
-  }
+
+  late Stream<List<Equipment>> _equipmentStream;
+  // Add these fields
+DashboardUserContext? _userContext;
+bool _userContextLoading = true;
+String? _userContextError;
 
   @override
-  void didUpdateWidget(covariant MapSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentUserId != widget.currentUserId ||
-        oldWidget.userContextLoader != widget.userContextLoader) {
-      _userContextFuture = _loadUserContext();
-    }
+@override
+void initState() {
+  super.initState();
+  _firestoreService = widget.firestoreService ?? FirestoreService();
+  _loadUserContext(); // no longer returns a Future we store
+  _initEquipmentStream();
+}
+
+  void _initEquipmentStream() {
+    final builder = widget.equipmentStreamBuilder
+        ?? _firestoreService.getDashboardBrowseEquipmentStream;
+    _equipmentStream = builder();
   }
 
-  Future<DashboardUserContext?> _loadUserContext() async {
+@override
+void didUpdateWidget(covariant MapSection oldWidget) {
+  super.didUpdateWidget(oldWidget);
+  if (oldWidget.currentUserId != widget.currentUserId ||
+      oldWidget.userContextLoader != widget.userContextLoader) {
+    _loadUserContext();
+  }
+  if (oldWidget.equipmentStreamBuilder != widget.equipmentStreamBuilder) {
+    setState(() => _initEquipmentStream());
+  }
+}
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _firestoreService = widget.firestoreService ?? FirestoreService();
+  //   _userContextFuture = _loadUserContext();
+  // }
+
+  // @override
+  // void didUpdateWidget(covariant MapSection oldWidget) {
+  //   super.didUpdateWidget(oldWidget);
+  //   if (oldWidget.currentUserId != widget.currentUserId ||
+  //       oldWidget.userContextLoader != widget.userContextLoader) {
+  //     _userContextFuture = _loadUserContext();
+  //   }
+  // }
+
+  // Future<DashboardUserContext?> _loadUserContext() async {
+  //   if (widget.userContextLoader != null) {
+  //     return widget.userContextLoader!(widget.currentUserId);
+  //   }
+
+  //   final userId = widget.currentUserId;
+  //   if (userId == null) return null;
+
+  //   final profileDoc = await _firestoreService.getUserProfile(userId);
+  //   if (!profileDoc.exists) return null;
+
+  //   final data = profileDoc.data() as Map<String, dynamic>?;
+  //   if (data == null) return null;
+
+  //   final cropPreferences =
+  //       await _firestoreService.getCropPreferences(userId) ?? [];
+
+  //   return DashboardUserContext(
+  //     homeAddress: data['address'] as String?,
+  //     farmAddress: data['farmAddress'] as String?,
+  //     homeLatitude: _asDouble(data['latitude']),
+  //     homeLongitude: _asDouble(data['longitude']),
+  //     farmLatitude: _asDouble(data['farmLatitude']),
+  //     farmLongitude: _asDouble(data['farmLongitude']),
+  //     cropPreferences: cropPreferences,
+  //   );
+  // }
+
+  Future<void> _loadUserContext() async {
+  if (!mounted) return;
+  setState(() {
+    _userContextLoading = true;
+    _userContextError = null;
+  });
+
+  try {
+    DashboardUserContext? context;
     if (widget.userContextLoader != null) {
-      return widget.userContextLoader!(widget.currentUserId);
+      context = await widget.userContextLoader!(widget.currentUserId);
+    } else {
+      final userId = widget.currentUserId;
+      if (userId != null) {
+        final profileDoc = await _firestoreService.getUserProfile(userId);
+        if (profileDoc.exists) {
+          final data = profileDoc.data() as Map<String, dynamic>?;
+          if (data != null) {
+            final cropPreferences =
+                await _firestoreService.getCropPreferences(userId) ?? [];
+            context = DashboardUserContext(
+              homeAddress: data['address'] as String?,
+              farmAddress: data['farmAddress'] as String?,
+              homeLatitude: _asDouble(data['latitude']),
+              homeLongitude: _asDouble(data['longitude']),
+              farmLatitude: _asDouble(data['farmLatitude']),
+              farmLongitude: _asDouble(data['farmLongitude']),
+              cropPreferences: cropPreferences,
+            );
+          }
+        }
+      }
     }
-
-    final userId = widget.currentUserId;
-    if (userId == null) return null;
-
-    final profileDoc = await _firestoreService.getUserProfile(userId);
-    if (!profileDoc.exists) return null;
-
-    final data = profileDoc.data() as Map<String, dynamic>?;
-    if (data == null) return null;
-
-    final cropPreferences =
-        await _firestoreService.getCropPreferences(userId) ?? [];
-
-    return DashboardUserContext(
-      homeAddress: data['address'] as String?,
-      farmAddress: data['farmAddress'] as String?,
-      homeLatitude: _asDouble(data['latitude']),
-      homeLongitude: _asDouble(data['longitude']),
-      farmLatitude: _asDouble(data['farmLatitude']),
-      farmLongitude: _asDouble(data['farmLongitude']),
-      cropPreferences: cropPreferences,
-    );
+    if (!mounted) return;
+    setState(() {
+      _userContext = context;
+      _userContextLoading = false;
+    });
+  } catch (e) {
+    if (!mounted) return;
+    setState(() {
+      _userContextError = e.toString();
+      _userContextLoading = false;
+    });
   }
+}
 
   static double? _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
@@ -107,55 +187,91 @@ class _MapSectionState extends State<MapSection> {
     });
   }
 
+  // @override
+  // Widget build(BuildContext context) {
+  //   final equipmentStreamBuilder =
+  //       widget.equipmentStreamBuilder ??
+  //       _firestoreService.getDashboardBrowseEquipmentStream;
+
+  //   return FutureBuilder<DashboardUserContext?>(
+  //     future: _userContextFuture,
+  //     builder: (context, userSnapshot) {
+  //       if (userSnapshot.connectionState == ConnectionState.waiting) {
+  //         return _buildLoadingCard(context);
+  //       }
+
+  //       if (userSnapshot.hasError) {
+  //         return _buildErrorCard(context, 'Could not load nearby settings.');
+  //       }
+
+  //       final userContext = userSnapshot.data;
+  //       final userId = widget.currentUserId;
+  //       if (userId == null || userContext == null) {
+  //         return _buildErrorCard(context, 'Sign in to use nearby equipment.');
+  //       }
+
+  //       return StreamBuilder<List<Equipment>>(
+  //         stream: _equipmentStream,
+  //         // stream: equipmentStreamBuilder(),
+  //         builder: (context, equipmentSnapshot) {
+  //           if (equipmentSnapshot.connectionState == ConnectionState.waiting) {
+  //             return _buildLoadingCard(context);
+  //           }
+
+  //           if (equipmentSnapshot.hasError) {
+  //             return _buildErrorCard(
+  //               context,
+  //               'Could not load nearby equipment.',
+  //             );
+  //           }
+
+  //           final allEquipment = equipmentSnapshot.data ?? const <Equipment>[];
+  //           return _buildContent(
+  //             context: context,
+  //             userId: userId,
+  //             userContext: userContext,
+  //             allEquipment: allEquipment,
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
+
   @override
-  Widget build(BuildContext context) {
-    final equipmentStreamBuilder =
-        widget.equipmentStreamBuilder ??
-        _firestoreService.getDashboardBrowseEquipmentStream;
-
-    return FutureBuilder<DashboardUserContext?>(
-      future: _userContextFuture,
-      builder: (context, userSnapshot) {
-        if (userSnapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingCard(context);
-        }
-
-        if (userSnapshot.hasError) {
-          return _buildErrorCard(context, 'Could not load nearby settings.');
-        }
-
-        final userContext = userSnapshot.data;
-        final userId = widget.currentUserId;
-        if (userId == null || userContext == null) {
-          return _buildErrorCard(context, 'Sign in to use nearby equipment.');
-        }
-
-        return StreamBuilder<List<Equipment>>(
-          stream: equipmentStreamBuilder(),
-          builder: (context, equipmentSnapshot) {
-            if (equipmentSnapshot.connectionState == ConnectionState.waiting) {
-              return _buildLoadingCard(context);
-            }
-
-            if (equipmentSnapshot.hasError) {
-              return _buildErrorCard(
-                context,
-                'Could not load nearby equipment.',
-              );
-            }
-
-            final allEquipment = equipmentSnapshot.data ?? const <Equipment>[];
-            return _buildContent(
-              context: context,
-              userId: userId,
-              userContext: userContext,
-              allEquipment: allEquipment,
-            );
-          },
-        );
-      },
-    );
+Widget build(BuildContext context) {
+  if (_userContextLoading) return _buildLoadingCard(context);
+  if (_userContextError != null) {
+    return _buildErrorCard(context, 'Could not load nearby settings.');
   }
+
+  final userContext = _userContext;
+  final userId = widget.currentUserId;
+  if (userId == null || userContext == null) {
+    return _buildErrorCard(context, 'Sign in to use nearby equipment.');
+  }
+
+  // StreamBuilder is now top-level — never torn down
+  return StreamBuilder<List<Equipment>>(
+    stream: _equipmentStream,
+    builder: (context, equipmentSnapshot) {
+      if (equipmentSnapshot.connectionState == ConnectionState.waiting) {
+        return _buildLoadingCard(context);
+      }
+      if (equipmentSnapshot.hasError) {
+        return _buildErrorCard(context, 'Could not load nearby equipment.');
+      }
+
+      final allEquipment = equipmentSnapshot.data ?? const <Equipment>[];
+      return _buildContent(
+        context: context,
+        userId: userId,
+        userContext: userContext,
+        allEquipment: allEquipment,
+      );
+    },
+  );
+}
 
   Widget _buildContent({
     required BuildContext context,

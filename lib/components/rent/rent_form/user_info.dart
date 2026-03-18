@@ -8,19 +8,15 @@ import 'package:flutter/material.dart';
 
 class UserInfoStep extends StatefulWidget {
   final TextEditingController nameController;
-
-  /// Controller for the farm address field. The parent owns it so it can
-  /// pass the value to SubmitButton.
   final TextEditingController farmAddressController;
-
-  /// Called whenever the user picks or geocodes a new farm location.
-  /// Provides lat/lng so the parent can forward them to SubmitButton.
+  final TextEditingController phoneController; // ← add this
   final void Function(double lat, double lng)? onFarmLocationPicked;
 
   const UserInfoStep({
     super.key,
     required this.nameController,
     required this.farmAddressController,
+    required this.phoneController, // ← add this
     this.onFarmLocationPicked,
   });
 
@@ -53,6 +49,14 @@ class _UserInfoStepState extends State<UserInfoStep> {
             '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'
                 .trim();
         widget.nameController.text = name;
+
+        // Auto-fill phone number
+        if (widget.phoneController.text.isEmpty) {
+          final phone = userData['phoneNumber'] as String?;
+          if (phone != null && phone.isNotEmpty) {
+            widget.phoneController.text = phone;
+          }
+        }
 
         // Auto-fill farm address if the field is still empty
         if (widget.farmAddressController.text.isEmpty) {
@@ -104,10 +108,26 @@ class _UserInfoStepState extends State<UserInfoStep> {
         const CustomDivider(),
         const StepHeader(
           title: 'Step 2: Impormasyon ng Umuupa',
-          subtitle: 'Ilagay ang iyong buong pangalan.',
+          subtitle: 'Ang iyong pangalan at numero ay awtomatikong napuno.',        
         ),
-        CustomTextFormField(
-            controller: widget.nameController, hint: 'Buong Pangalan'),
+        Opacity(
+          opacity: 0.5,
+          child: IgnorePointer(
+            child: CustomTextFormField(
+                controller: widget.nameController, hint: 'Buong Pangalan',),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Opacity(
+          opacity: 0.5,
+          child: IgnorePointer(
+            child: CustomTextFormField(
+              controller: widget.phoneController,
+              hint: 'Numero ng Telepono',
+              keyboardType: TextInputType.phone, // if your widget supports this
+            ),
+          ),
+        ),
 
         const SizedBox(height: 20),
 

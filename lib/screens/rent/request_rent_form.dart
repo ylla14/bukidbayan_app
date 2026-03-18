@@ -28,6 +28,8 @@ class _RequestRentFormState extends State<RequestRentForm> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final TextEditingController farmAddressController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+
   double? _farmLat;
   double? _farmLng;
 
@@ -38,6 +40,7 @@ double? _profileFarmLng;
   // ── Changed from single XFile? to List<XFile> ──────────────
   List<XFile> _landSizeProofs = [];
   List<XFile> _cropHeightProofs = [];
+  final List<XFile> _cropConditionProofs = [];
 
   final RentRequestService _requestService = RentRequestService();
   final ImagePicker _picker = ImagePicker();
@@ -79,6 +82,21 @@ double? _profileFarmLng;
   String? _profileAddress;
   double? _profileLat;
   double? _profileLng;
+  double? _hectaresEntered;
+
+  bool get _onlyHasLandReq => hasLandSizeRequirement &&
+    !hasCropHeightRequirement &&
+    !widget.item.cropConditionRequirement &&
+    !isRiceMill;
+
+  bool get _isAutoComputedCategory => () {
+    final cat = widget.item.category?.toLowerCase();
+    return cat == 'tractor' ||
+        cat == 'harvester (halimaw)' ||
+        cat == 'hand tractor (kuliglig)' ||
+        cat == 'floating tiller (pagong)';
+  }();
+
 
   DeliveryMethod _deliveryMethod = DeliveryMethod.pickup;
 
@@ -87,7 +105,16 @@ double? _profileFarmLng;
     super.initState();
     nameController.addListener(_onFieldChanged);
     addressController.addListener(_onFieldChanged);
+    phoneController.addListener(_onFieldChanged);
+
     _loadProfileAddress();
+
+    // Auto-select the only available method if restricted
+    if (widget.item.deliveryMode == DeliveryMode.deliveryOnly) {
+      _deliveryMethod = DeliveryMethod.delivery;
+    } else if (widget.item.deliveryMode == DeliveryMode.pickupOnly) {
+      _deliveryMethod = DeliveryMethod.pickup;
+    }
   }
 
   Future<void> _loadProfileAddress() async {
@@ -117,12 +144,16 @@ double? _profileFarmLng;
     }
   }
 
+  
+
   void _onFieldChanged() => setState(() {});
 
   @override
   void dispose() {
     nameController.removeListener(_onFieldChanged);
     addressController.removeListener(_onFieldChanged);
+    phoneController.removeListener(_onFieldChanged);
+    phoneController.dispose();
     nameController.dispose();
     addressController.dispose();
     farmAddressController.dispose();
@@ -172,11 +203,13 @@ double? _profileFarmLng;
                 });
               },
               onReturnDatePicked: (date) => setState(() => returnDate = date),
+              onHectaresChanged: (ha) => setState(() => _hectaresEntered = ha), // ADD
             ),
 
             if (isScheduleComplete) ...[
-              UserInfoStep(
+             UserInfoStep(
                 nameController: nameController,
+                phoneController: phoneController, // ← add this
                 farmAddressController: farmAddressController,
                 onFarmLocationPicked: (lat, lng) {
                   setState(() {
@@ -186,16 +219,17 @@ double? _profileFarmLng;
                 },
               ),
 
-              DeliveryMethodStep(
-                selected: _deliveryMethod,
-                equipmentLocation: widget.item.location,
-                onChanged: (method) => setState(() {
-                  _deliveryMethod = method;
-                  if (method == DeliveryMethod.pickup) {
-                    addressController.clear();
-                  }
-                }),
-              ),
+             DeliveryMethodStep(
+              selected: _deliveryMethod,
+              equipmentLocation: widget.item.location,
+              deliveryMode: widget.item.deliveryMode, // ← add this
+              onChanged: (method) => setState(() {
+                _deliveryMethod = method;
+                if (method == DeliveryMethod.pickup) {
+                  addressController.clear();
+                }
+              }),
+            ),
 
               AddressStep(
                 profileAddress: _profileAddress,
@@ -210,12 +244,12 @@ double? _profileFarmLng;
               ),
             ],
 
-            if (isScheduleComplete && hasAnyRequirement) ...[
+            if (isScheduleComplete && hasAnyRequirement && !(_isAutoComputedCategory && _onlyHasLandReq))...[
               RequirementStep(
                 item: widget.item,
-                // ── Pass lists ────────────────────────────────
                 landSizeProofs: _landSizeProofs,
                 cropHeightProofs: _cropHeightProofs,
+                cropConditionProofs: _cropConditionProofs,         // NEW
                 onLandAdd: (file) =>
                     setState(() => _landSizeProofs.add(file)),
                 onLandRemove: (index) =>
@@ -224,6 +258,10 @@ double? _profileFarmLng;
                     setState(() => _cropHeightProofs.add(file)),
                 onCropRemove: (index) =>
                     setState(() => _cropHeightProofs.removeAt(index)),
+                onCropConditionAdd: (file) =>                      // NEW
+                    setState(() => _cropConditionProofs.add(file)),
+                onCropConditionRemove: (index) =>                  // NEW
+                    setState(() => _cropConditionProofs.removeAt(index)),
                 picker: _picker,
                 volumeController: _volumeController,
                 volumeError: _volumeError,
@@ -247,15 +285,19 @@ double? _profileFarmLng;
                     : farmAddressController.text.trim(),
                 farmLatitude: _farmLat,
                 farmLongitude: _farmLng,
-                // ── Pass lists ────────────────────────────────
                 landSizeProofs: _landSizeProofs,
                 cropHeightProofs: _cropHeightProofs,
+                cropConditionProofs: _cropConditionProofs,
                 item: widget.item,
                 requestService: _requestService,
                 volumeController: _volumeController,
                 keepDarak: _keepDarak,
                 estimatedMillingFee: _estimatedTotal,
                 deliveryMethod: _deliveryMethod,
+                hectaresEntered: _hectaresEntered, // ADD
+                phoneNumber: phoneController.text,
+
+
               ),
           ],
         ),

@@ -13,11 +13,14 @@ class RequirementStep extends StatelessWidget {
   // ── Now LISTS instead of single XFile ──────────────────────
   final List<XFile> landSizeProofs;
   final List<XFile> cropHeightProofs;
+  final List<XFile> cropConditionProofs;
 
   final Function(XFile) onLandAdd;
   final Function(int) onLandRemove;
   final Function(XFile) onCropAdd;
   final Function(int) onCropRemove;
+  final Function(XFile) onCropConditionAdd;
+  final Function(int) onCropConditionRemove;
 
   final ImagePicker picker;
   final bool keepDarak;
@@ -26,15 +29,20 @@ class RequirementStep extends StatelessWidget {
   final TextEditingController? volumeController;
   final String? volumeError;
 
+  
+
   const RequirementStep({
     super.key,
     required this.item,
     this.landSizeProofs = const [],
     this.cropHeightProofs = const [],
+    this.cropConditionProofs = const [],
     required this.onLandAdd,
     required this.onLandRemove,
     required this.onCropAdd,
     required this.onCropRemove,
+    required this.onCropConditionAdd,
+    required this.onCropConditionRemove,
     required this.picker,
     this.volumeController,
     this.volumeError,
@@ -158,21 +166,28 @@ class RequirementStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isRiceMill =
-        item.category?.toLowerCase().contains('rice mill') == true;
+    final bool isRiceMill = item.category?.toLowerCase().contains('rice mill') == true;
+
+    final bool _isAutoComputedCategory = () {
+    final cat = item.category?.toLowerCase();
+    return cat == 'tractor' ||
+        cat == 'harvester (halimaw)' ||
+        cat == 'hand tractor (kuliglig)' ||
+        cat == 'floating tiller (pagong)';
+  }();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const CustomDivider(),
         StepHeader(
-          title: 'Step 3: Patunay ng Requirements',
+          title: 'Step 4: Patunay ng Requirements',
           subtitle:
               'Mag-upload ng mga larawan o video bilang patunay sa mga requirement.',
         ),
 
         // ── Land size proof ─────────────────────────────────
-        if (item.landSizeRequirement == true)
+        if (item.landSizeRequirement == true && !_isAutoComputedCategory)
           RequirementUploadTile(
             label: 'Patunay ng Laki ng Lupa',
             files: landSizeProofs,
@@ -193,6 +208,18 @@ class RequirementStep extends StatelessWidget {
               onPicked: onCropAdd,
             ),
             onRemove: onCropRemove,
+          ),
+        
+        // ── Crop condition proof ────────────────────────────
+        if (item.cropConditionRequirement == true)
+          RequirementUploadTile(
+            label: 'Patunay ng Kondisyon ng Pananim',
+            files: cropConditionProofs,
+            onPick: () => _showSourceSheet(
+              context,
+              onPicked: onCropConditionAdd,
+            ),
+            onRemove: onCropConditionRemove,
           ),
 
         // ── Rice Mill: volume + darak (unchanged) ───────────

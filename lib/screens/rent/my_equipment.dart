@@ -2,6 +2,8 @@ import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
+import 'package:bukidbayan_app/screens/rent/request_sent.dart';
+import 'package:bukidbayan_app/services/maintenance_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -45,32 +47,40 @@ class MyEquipment extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('equipment')
-            .where('ownerId', isEqualTo: uid)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          // ── Overdue returns banner ──────────────────────────────────────
+          _OverdueReturnsSection(ownerId: uid),
+          const SizedBox(height: 8),
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No equipment listed yet.'));
-          }
+          // ── Equipment list ──────────────────────────────────────────────
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('equipment')
+                .where('ownerId', isEqualTo: uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          final equipmentList = snapshot.data!.docs
-              .map((doc) => Equipment.fromFirestore(doc))
-              .toList();
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text('No equipment listed yet.'));
+              }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: equipmentList.length,
-            itemBuilder: (context, index) {
-              return buildEquipmentCard(context, equipmentList[index]);
+              final equipmentList = snapshot.data!.docs
+                  .map((doc) => Equipment.fromFirestore(doc))
+                  .toList();
+
+              return Column(
+                children: equipmentList
+                    .map((eq) => buildEquipmentCard(context, eq))
+                    .toList(),
+              );
             },
-          );
-        },
+          ),
+        ],
       ),
 
       floatingActionButton: Align(
@@ -251,6 +261,57 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
                             ),
                           ),
                         ),
+                        if (equipment.isForMaintenance) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.build_rounded, size: 10, color: Colors.red.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'For Maintenance',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (equipment.isUpcomingMaintenance) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.amber.shade400),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_amber_rounded, size: 10, color: Colors.amber.shade800),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Upcoming Maintenance',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.amber.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -292,43 +353,43 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
                       
                       // Maintenance Toggle Button
                       SizedBox(
-  width: 100,
-  child: ElevatedButton.icon(
-    onPressed: equipment.status == EquipmentStatus.unavailable
-        ? null
-        : () async {
-            if (equipment.status == EquipmentStatus.available) {
-              await _scheduleMaintenance(context, equipment);
-            } else {
-              await _endMaintenance(context, equipment);
-            }
-          },
-    icon: Icon(
-      equipment.status == EquipmentStatus.available
-          ? Icons.build_outlined
-          : Icons.check_circle_outline,
-      size: 14,
-    ),
-    label: Text(
-      equipment.status == EquipmentStatus.available
-          ? 'Maintenance'
-          : 'Set Available',
-      style: const TextStyle(fontSize: 11),
-    ),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: equipment.status == EquipmentStatus.unavailable
-          ? Colors.grey.shade400
-          : equipment.status == EquipmentStatus.available
-              ? Colors.orange.shade600
-              : Colors.green.shade600,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-      ),
-    ),
-  ),
-),
+                        width: 100,
+                        child: ElevatedButton.icon(
+                          onPressed: equipment.status == EquipmentStatus.unavailable
+                              ? null
+                              : () async {
+                                  if (equipment.status == EquipmentStatus.available) {
+                                    await _scheduleMaintenance(context, equipment);
+                                  } else {
+                                    await _endMaintenance(context, equipment);
+                                  }
+                                },
+                          icon: Icon(
+                            equipment.status == EquipmentStatus.available
+                                ? Icons.build_outlined
+                                : Icons.check_circle_outline,
+                            size: 14,
+                          ),
+                          label: Text(
+                            equipment.status == EquipmentStatus.available
+                                ? 'Maintenance'
+                                : 'Set Available',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: equipment.status == EquipmentStatus.unavailable
+                                ? Colors.grey.shade400
+                                : equipment.status == EquipmentStatus.available
+                                    ? Colors.orange.shade600
+                                    : Colors.green.shade600,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -801,6 +862,9 @@ Future<void> _endMaintenance(
     'maintenanceEnd': null,
   });
 
+  // Reset the usage counter so the interval starts fresh after maintenance.
+  await MaintenanceService().resetMaintenanceHours(equipment.id!);
+
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -1046,6 +1110,112 @@ class _DateRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Overdue Returns Section ───────────────────────────────────────────────────
+
+class _OverdueReturnsSection extends StatelessWidget {
+  final String ownerId;
+  const _OverdueReturnsSection({required this.ownerId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('rentRequests')
+          .where('ownerId', isEqualTo: ownerId)
+          .where('status', isEqualTo: 'inProgress')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final now = DateTime.now();
+        final overdue = snapshot.data!.docs
+            .map((doc) => RentRequest.fromDoc(doc))
+            .where((r) => now.isAfter(r.end))
+            .toList();
+
+        if (overdue.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 4),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.red.shade300),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.red.shade600, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Unreturned Equipment (${overdue.length})',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.red.shade800,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ...overdue.map((r) {
+                final days = now.difference(r.end).inDays;
+                return ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                  leading: Icon(Icons.agriculture_rounded,
+                      color: Colors.red.shade400, size: 22),
+                  title: Text(
+                    r.itemName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  subtitle: Text(
+                    'Renter: ${r.name}  •  Due: ${DateFormat('MMM dd').format(r.end)}',
+                    style:
+                        TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade600,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      days == 0
+                          ? 'Due today'
+                          : '$days ${days == 1 ? 'day' : 'days'} late',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          RequestSentPage(requestId: r.requestId),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -56,8 +56,8 @@ class RentItemCard extends StatelessWidget {
                   // RECOMMENDED BADGE
                   if (isRecommended)
                     Positioned(
-                      top: 8,
-                      left: 8,
+                    bottom: 8, // changed from top: 8
+                    left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 3),
@@ -192,6 +192,8 @@ class RentItemCard extends StatelessWidget {
         return '/month';
       case 'per kg':
         return '/kg';
+      case 'per hectare':
+        return '/ha';
       default:
         return '';
     }

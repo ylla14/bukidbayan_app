@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
@@ -7,19 +8,23 @@ import 'package:flutter/material.dart';
 class DeliveryMethodStep extends StatelessWidget {
   final DeliveryMethod selected;
   final ValueChanged<DeliveryMethod> onChanged;
-
-  /// Equipment location — shown as a hint under the Pickup option
   final String? equipmentLocation;
+  final DeliveryMode deliveryMode;
 
   const DeliveryMethodStep({
     super.key,
     required this.selected,
     required this.onChanged,
+    required this.deliveryMode,
     this.equipmentLocation,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool showPickup = deliveryMode != DeliveryMode.deliveryOnly;
+    final bool showDelivery = deliveryMode != DeliveryMode.pickupOnly;
+    final bool isOperatorMode = deliveryMode == DeliveryMode.deliveryOnly;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -28,36 +33,62 @@ class DeliveryMethodStep extends StatelessWidget {
           title: 'Step 3: Paraan ng Pagkuha',
           subtitle: 'Piliin kung kukuha ka mismo o ipapadala.',
         ),
+        if (isOperatorMode) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade100),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 14, color: Colors.blue.shade700),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'May kasamang operator — sila na pupunta sa inyo.',
+                    style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 4),
         Row(
           children: [
-            Expanded(
-              child: _MethodCard(
-                icon: Icons.directions_walk_rounded,
-                label: 'Pick Up',
-                subtitle: equipmentLocation != null && equipmentLocation!.isNotEmpty
-                    ? equipmentLocation!
-                    : 'Collect from equipment location',
-                isSelected: selected == DeliveryMethod.pickup,
-                onTap: () => onChanged(DeliveryMethod.pickup),
+            if (showPickup) ...[
+              Expanded(
+                child: _MethodCard(
+                  icon: Icons.directions_walk_rounded,
+                  label: 'Pick Up',
+                  subtitle: equipmentLocation != null && equipmentLocation!.isNotEmpty
+                      ? equipmentLocation!
+                      : 'Collect from equipment location',
+                  isSelected: selected == DeliveryMethod.pickup,
+                  onTap: () => onChanged(DeliveryMethod.pickup),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _MethodCard(
-                icon: Icons.local_shipping_rounded,
-                label: 'Delivery',
-                subtitle: 'Owner delivers to your address',
-                isSelected: selected == DeliveryMethod.delivery,
-                onTap: () => onChanged(DeliveryMethod.delivery),
+              if (showDelivery) const SizedBox(width: 10),
+            ],
+            if (showDelivery)
+              Expanded(
+                child: _MethodCard(
+                  icon: Icons.local_shipping_rounded,
+                  label: 'Delivery',
+                  subtitle: 'Owner delivers to your address',
+                  isSelected: selected == DeliveryMethod.delivery,
+                  onTap: () => onChanged(DeliveryMethod.delivery),
+                ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 16),
       ],
     );
-  }
+  } // ← this closing brace was missing
 }
 
 class _MethodCard extends StatelessWidget {
@@ -65,14 +96,14 @@ class _MethodCard extends StatelessWidget {
   final String label;
   final String subtitle;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _MethodCard({
     required this.icon,
     required this.label,
     required this.subtitle,
     required this.isSelected,
-    required this.onTap,
+    this.onTap,
   });
 
   @override

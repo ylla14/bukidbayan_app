@@ -7,8 +7,10 @@ import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/report_renter_page.dart';
 import 'package:bukidbayan_app/screens/rent/review_page.dart';
-import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
+import 'package:bukidbayan_app/services/maintenance_service.dart';
+import 'package:bukidbayan_app/services/rent_request_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +18,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:photo_view/photo_view.dart';
 
-class RequestSentPage extends StatelessWidget {
+class RequestSentPage extends StatefulWidget {
   final String requestId;
-  
 
   const RequestSentPage({super.key, required this.requestId});
+
+  @override
+  State<RequestSentPage> createState() => _RequestSentPageState();
+}
+
+class _RequestSentPageState extends State<RequestSentPage> {
+  /// Prevents issuing late-strikes more than once per screen session.
+  bool _lateStrikesChecked = false;
 
   String _formatDate(DateTime date) =>
       DateFormat('MMM dd, yyyy • hh:mm a').format(date);
@@ -167,6 +176,8 @@ class RequestSentPage extends StatelessWidget {
       case 'per week': return '/week';
       case 'per month': return '/mo';
       case 'per kg': return '/kg';
+      case 'per hectare':
+        return '/ha';
       default: return '';
     }
   }
@@ -374,10 +385,29 @@ class RequestSentPage extends StatelessWidget {
     );
   }
 
+  // Add this near the top of the class (alongside other helpers)
+Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
+  final doc = await FirebaseFirestore.instance
+      .collection('users')       // ← adjust to your users collection name
+      .doc(ownerId)
+      .get();
+  return doc.exists ? doc.data() as Map<String, dynamic> : null;
+}
+
+Future<bool> _hasLeftReview(String requestId) async {
+  final doc = await FirebaseFirestore.instance
+      .collection('reviews')  // adjust to your collection name
+      .where('requestId', isEqualTo: requestId)
+      .where('renterId', isEqualTo: AuthService().currentUser?.uid)
+      .limit(1)
+      .get();
+  return doc.docs.isNotEmpty;
+}
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => RequestBloc()..add(LoadRequest(requestId)),
+      create: (_) => RequestBloc()..add(LoadRequest(widget.requestId)),
       child: BlocBuilder<RequestBloc, RequestState>(
         builder: (context, state) {
           if (state is RequestLoading) {
@@ -402,9 +432,26 @@ class RequestSentPage extends StatelessWidget {
 
             final now = DateTime.now();
             final isWithinReturnWindow =
-                now.isAfter(request.start.subtract(const Duration(days: 1))); 
-              //  && now.isBefore(request.end.add(const Duration(days: 1)));
+                now.isAfter(request.start.subtract(const Duration(days: 1))) &&
+                now.isBefore(request.end.add(const Duration(days: 1)));
             final isOverdue = now.isAfter(request.end);
+            final daysOverdue = isOverdue
+                ? now.difference(request.end).inDays
+                : 0;
+
+            // ── Late-return strike check (Case 4) ─────────────────────────
+            if (!_lateStrikesChecked &&
+                isOverdue &&
+                request.status == RentRequestStatus.inProgress) {
+              _lateStrikesChecked = true;
+              StrikeService().issueLateDayStrikes(
+                requestId               : widget.requestId,
+                renterId                : request.renterId,
+                ownerId                 : request.ownerId,
+                endDate                 : request.end,
+                lastLateStrikeIssuedDate: request.lastLateStrikeIssuedDate,
+              );
+            }
             final isTerminal = request.status == RentRequestStatus.declined ||
                 request.status == RentRequestStatus.canceled;
             final showApproveDecline =
@@ -609,37 +656,129 @@ class RequestSentPage extends StatelessWidget {
                             ],
                           ),
 
-                         // ── RENTER INFO ──
-_sectionCard(
-  title: 'RENTER INFORMATION',
-  accentColor: const Color(0xFF3B82F6),
-  children: [
-    _infoTile(Icons.person_outline, 'NAME',
-        request.name, const Color(0xFF3B82F6)),
-    _infoTile(Icons.location_on_outlined, 'ADDRESS',
-        request.address, const Color(0xFF3B82F6)),
- 
-    // ── Land size proofs ──────────────────────────────────
-    if (request.landSizeProofPaths.isNotEmpty) ...[
-      const SizedBox(height: 4),
-      _proofImages(
-        request.landSizeProofPaths,
-        'LAND SIZE PROOF',
-        context,
-      ),
-    ],
- 
-    // ── Crop height proofs ────────────────────────────────
-    if (request.cropHeightProofPaths.isNotEmpty) ...[
-      const SizedBox(height: 4),
-      _proofImages(
-        request.cropHeightProofPaths,
-        'CROP HEIGHT PROOF',
-        context,
-      ),
-    ],
-  ],
+                          // ── LENDER INFORMATION ──
+                          FutureBuilder<Map<String, dynamic>?>(
+                            future: _fetchOwnerProfile(request.ownerId),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return _sectionCard(
+                                  title: 'LENDER INFORMATION',
+                                  accentColor: const Color(0xFFF59E0B),
+                                  children: const [
+                                    Center(child: Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 8),
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )),
+                                  ],
+                                );
+                              }
+
+                              final owner = snapshot.data;
+                              if (owner == null) return const SizedBox.shrink();
+
+                              return _sectionCard(
+                                title: 'LENDER INFORMATION',
+                                accentColor: const Color(0xFFF59E0B),
+                                children: [
+                                  if (owner['firstName'] != null || owner['lastName'] != null)
+                                    _infoTile(
+                                      Icons.person_outline,
+                                      'NAME',
+                                      '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'.trim().isNotEmpty
+                                          ? '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'.trim()
+                                          : '—',
+                                      const Color(0xFFF59E0B),
+                                    ),
+                                  if (owner['phoneNumber'] != null || owner['contactNumber'] != null)
+                                    _infoTile(Icons.phone_outlined, 'CONTACT',
+                                      owner?['phoneNumber'] ?? '—', const Color(0xFFF59E0B)),
+                                  if (owner['address'] != null)
+                                    _infoTile(Icons.location_on_outlined, 'ADDRESS',
+                                        owner?['address'] ?? '—', const Color(0xFFF59E0B)),
+                                ],
+                              );
+                            },
 ),
+
+                         // ── RENTER INFO ──
+                        _sectionCard(
+                          title: 'RENTER INFORMATION',
+                          accentColor: const Color(0xFF3B82F6),
+                          children: [
+                            _infoTile(Icons.person_outline, 'NAME',
+                                request.name, const Color(0xFF3B82F6)),
+                            _infoTile(Icons.location_on_outlined, 'ADDRESS',
+                                request.address, const Color(0xFF3B82F6)),
+                            _infoTile(Icons.location_on_outlined, 'CONTACY',
+                                request.address, const Color(0xFF3B82F6)),
+
+                            // // ── Land size proofs ──────────────────────────────────
+                            // if (request.landSizeProofPaths.isNotEmpty) ...[
+                            //   const SizedBox(height: 4),
+                            //   _proofImages(
+                            //     request.landSizeProofPaths,
+                            //     'LAND SIZE PROOF',
+                            //     context,
+                            //   ),
+                            // ],
+
+                            if (request.hectaresEntered != null) ...[
+                              () {
+                                final totalDays = request.end.difference(request.start).inDays + 1;
+                                final haPerDay = request.hectaresEntered! / totalDays;
+                                return Column(
+                                  children: [
+                                    _infoTile(
+                                      Icons.crop_square_rounded,
+                                      'LAND AREA',
+                                      '${request.hectaresEntered! % 1 == 0 ? request.hectaresEntered!.toInt() : request.hectaresEntered} hectares',
+                                      const Color(0xFF3B82F6),
+                                    ),
+                                    _infoTile(
+                                      Icons.calendar_month_rounded,
+                                      'DURATION',
+                                      '$totalDays day${totalDays == 1 ? '' : 's'}',
+                                      const Color(0xFF3B82F6),
+                                    ),
+                                    _infoTile(
+                                      Icons.speed_rounded,
+                                      'COVERAGE RATE',
+                                      '${haPerDay % 1 == 0 ? haPerDay.toInt() : haPerDay.toStringAsFixed(1)} ha/day',
+                                      const Color(0xFF3B82F6),
+                                    ),
+                                  ],
+                                );
+                              }(),
+                            ] else if (request.landSizeProofPaths.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _proofImages(
+                                request.landSizeProofPaths,
+                                'LAND SIZE PROOF',
+                                context,
+                              ),
+                            ],
+
+                            // ── Crop height proofs ────────────────────────────────
+                            if (request.cropHeightProofPaths.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _proofImages(
+                                request.cropHeightProofPaths,
+                                'GRASS HEIGHT PROOF',
+                                context,
+                              ),
+                            ],
+
+                            // ── Crop condition proofs ─────────────────────────────
+                            if (request.cropConditionProofPaths.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              _proofImages(
+                                request.cropConditionProofPaths,
+                                'CROP CONDITION PROOF',
+                                context,
+                              ),
+                            ],
+                          ],
+                        ),
 
 
                           // ── FARM SATELLITE DATA ──
@@ -719,24 +858,54 @@ _sectionCard(
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
+                                color: Colors.red.shade50,
                                 borderRadius: BorderRadius.circular(16),
-                                border:
-                                    Border.all(color: Colors.orange.shade300),
+                                border: Border.all(color: Colors.red.shade300),
                               ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.warning_amber_rounded,
-                                      color: Colors.orange.shade600, size: 22),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'Return period has ended. Please notify renter to return the equipment immediately',
-                                      style: TextStyle(
-                                          color: Colors.orange.shade800,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500),
-                                    ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded,
+                                          color: Colors.red.shade600, size: 22),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Equipment Not Returned',
+                                          style: TextStyle(
+                                              color: Colors.red.shade800,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade600,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          daysOverdue == 0
+                                              ? 'Due today'
+                                              : '$daysOverdue ${daysOverdue == 1 ? 'day' : 'days'} late',
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'The renter has not returned the equipment. '
+                                    'Queued bookings are shifted forward by 1 day for each day overdue. '
+                                    'The renter receives a strike per day until the equipment is returned.',
+                                    style: TextStyle(
+                                        color: Colors.red.shade700,
+                                        fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -855,6 +1024,49 @@ _sectionCard(
                           const SizedBox(height: 4),
 
                           // Owner: Approve / Decline
+                          // Owner: Approve / Decline
+if (showApproveDecline && now.isBefore(request.start))
+  Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.amber.shade50,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.amber.shade300),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline_rounded,
+            color: Colors.amber.shade700, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                  fontSize: 13, color: Colors.amber.shade900),
+              children: [
+                const TextSpan(
+                  text: 'Note: ',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const TextSpan(
+                  text: 'If you approve this request, the rental will still begin on ',
+                ),
+                TextSpan(
+                  text: DateFormat('MMMM dd, yyyy').format(request.start),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const TextSpan(
+                  text: ' as scheduled by the renter.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
                           if (showApproveDecline)
                             Row(
                               children: [
@@ -1088,7 +1300,8 @@ _sectionCard(
                           // Renter: Return Equipment
                           if (isRenter &&
                               request.status == RentRequestStatus.inProgress &&
-                              isWithinReturnWindow)
+                              isWithinReturnWindow &&
+                              request.deliveryMethod == DeliveryMethod.pickup)
                             _actionButton(
                               label: 'Return Equipment',
                               icon: Icons.assignment_return_rounded,
@@ -1104,7 +1317,7 @@ _sectionCard(
                           // Owner: On My Way to Retrieve (overdue)
                          if (isOwner &&
                             request.status == RentRequestStatus.inProgress &&
-                            isOverdue)
+                            request.deliveryMethod == DeliveryMethod.delivery)
                             _actionButton(
                               label: 'On My Way to Retrieve',
                               icon: Icons.directions_car_rounded,
@@ -1117,33 +1330,59 @@ _sectionCard(
                               },
                             ),
 
-                          // Owner: Confirm Retrieved (Path B)
+                          // Owner: Confirm Retrieved (Path B — forced retrieval)
                           if (isOwner &&
-                              request.status == RentRequestStatus.retrieving)
-                            _actionButton(
-                              label: 'Confirm Retrieved',
-                              icon: Icons.task_alt_rounded,
-                              color: const Color(0xFF10B981),
-                              onPressed: () {
+                            request.status == RentRequestStatus.retrieving)
+                          _actionButton(
+                            label: 'Confirm Retrieved',
+                            icon: Icons.task_alt_rounded,
+                            color: const Color(0xFF10B981),
+                            onPressed: () async {
+                              final days = DateTime.now()
+                                  .difference(request.end)
+                                  .inDays
+                                  .clamp(0, 9999);
+                              if (days > 0) {
+                                await RentRequestService()
+                                    .shiftQueuedBookingsForEquipment(
+                                  equipmentId: request.itemId,
+                                  daysLate: days,
+                                );
+                              }
+                              if (context.mounted) {
                                 context.read<RequestBloc>().add(
                                       RequestStatusUpdated(request.requestId,
                                           RentRequestStatus.finished),
                                     );
-                              },
-                            ),
+                              }
+                            },
+                          ),
 
-                          // Owner: Confirm Return (Path A)
+                          // Owner: Confirm Return (Path A — renter self-returns)
                           if (isOwner &&
                               request.status == RentRequestStatus.returned)
                             _actionButton(
                               label: 'Confirm Return',
                               icon: Icons.task_alt_rounded,
                               color: lightColorScheme.primary,
-                              onPressed: () {
-                                context.read<RequestBloc>().add(
-                                      RequestStatusUpdated(request.requestId,
-                                          RentRequestStatus.finished),
-                                    );
+                              onPressed: () async {
+                                final days = DateTime.now()
+                                    .difference(request.end)
+                                    .inDays
+                                    .clamp(0, 9999);
+                                if (days > 0) {
+                                  await RentRequestService()
+                                      .shiftQueuedBookingsForEquipment(
+                                    equipmentId: request.itemId,
+                                    daysLate   : days,
+                                  );
+                                }
+                                if (context.mounted) {
+                                  context.read<RequestBloc>().add(
+                                        RequestStatusUpdated(request.requestId,
+                                            RentRequestStatus.finished),
+                                      );
+                                }
                               },
                             ),
 
@@ -1161,28 +1400,64 @@ _sectionCard(
                                     .get();
                                 final equipment = Equipment.fromFirestore(doc);
                                 if (context.mounted) {
-                                  _showEquipmentConditionDialog(context, request.requestId, equipment);
+                                  _showEquipmentConditionDialog(
+                                    context,
+                                    request.requestId,
+                                    equipment,
+                                    rentalStart: request.start,
+                                    rentalEnd  : request.end,
+                                    ownerId    : request.ownerId,
+                                  );
                                 }
                               },
                             ),
 
                           // Renter: Leave Review
-                          if (isRenter &&
-                              request.status == RentRequestStatus.completed)
-                            _actionButton(
-                              label: 'Leave a Review',
-                              icon: Icons.star_rounded,
-                              color: const Color(0xFFF59E0B),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ReviewPage(
-                                      requestId: request.requestId,
-                                      lenderId: request.ownerId,
-                                      itemId: request.itemId,
+                          if (isRenter && request.status == RentRequestStatus.completed)
+                            FutureBuilder<bool>(
+                              future: _hasLeftReview(request.requestId),
+                              builder: (context, snapshot) {
+                                if (snapshot.data == true) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.amber.shade200),
                                     ),
-                                  ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 22),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'You have already left a review.',
+                                          style: TextStyle(
+                                            color: Colors.amber.shade800,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return _actionButton(
+                                  label: 'Leave a Review',
+                                  icon: Icons.star_rounded,
+                                  color: const Color(0xFFF59E0B),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ReviewPage(
+                                          requestId: request.requestId,
+                                          lenderId: request.ownerId,
+                                          itemId: request.itemId,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -1219,13 +1494,13 @@ _sectionCard(
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
                                 onPressed: () => _showCancelDialog(context,
-                                    request.requestId,
+                                    request,
                                     isRenter: true),
                               ),
                             ),
 
                           // Owner: Cancel
-                          if (isOwner && _canOwnerCancel(request))
+                          if (isOwner && !showApproveDecline && _canOwnerCancel(request))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: _actionButton(
@@ -1234,7 +1509,7 @@ _sectionCard(
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
                                 onPressed: () => _showCancelDialog(context,
-                                    request.requestId,
+                                    request,
                                     isRenter: false),
                               ),
                             ),
@@ -1447,7 +1722,14 @@ _sectionCard(
     );
   }
 
-void _showEquipmentConditionDialog(BuildContext context, String requestId, Equipment equipment) {
+void _showEquipmentConditionDialog(
+  BuildContext context,
+  String requestId,
+  Equipment equipment, {
+  required DateTime rentalStart,
+  required DateTime rentalEnd,
+  required String ownerId,
+}) {
   bool? equipmentGood;
   final commentController = TextEditingController();
   final maintenanceDaysController = TextEditingController();
@@ -1734,6 +2016,21 @@ void _showEquipmentConditionDialog(BuildContext context, String requestId, Equip
                         requestBloc.add(
                             RequestStatusUpdated(requestId, RentRequestStatus.completed));
 
+                        // Log rental usage for maintenance hour tracking.
+                        // Each rental day = 24 hours of assumed machine use.
+                        final startDate = DateTime(rentalStart.year,
+                            rentalStart.month, rentalStart.day);
+                        final endDate = DateTime(rentalEnd.year,
+                            rentalEnd.month, rentalEnd.day);
+                        final rentalDays =
+                            endDate.difference(startDate).inDays + 1;
+                        MaintenanceService().logRentalUsage(
+                          equipmentId  : equipment.id ?? requestId,
+                          ownerId      : ownerId,
+                          equipmentName: equipment.name,
+                          rentalDays   : rentalDays,
+                        );
+
                         // If No + maintenance end date selected → schedule it
                         if (equipmentGood == false && maintenanceEndDate != null) {
                           await _applyMaintenanceFromConditionReport(
@@ -1972,8 +2269,13 @@ Future<void> _sendNotification({
   });
 }
 
-  void _showCancelDialog(BuildContext context, String requestId,
+  void _showCancelDialog(BuildContext context, RentRequest request,
       {required bool isRenter}) {
+    // Case 1: strike if renter cancels after approval.
+    final isPostApproval = isRenter &&
+        (request.status == RentRequestStatus.approved ||
+            request.status == RentRequestStatus.readyForPickup);
+
     final requestBloc = context.read<RequestBloc>();
     showDialog(
       context: context,
@@ -1983,7 +2285,10 @@ Future<void> _sendNotification({
         title: const Text('Cancel Request',
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(isRenter
-            ? 'Are you sure you want to cancel this rental request? This cannot be undone.'
+            ? isPostApproval
+                ? 'Are you sure you want to cancel this approved rental? '
+                  'Cancelling after approval will result in a strike on your account.'
+                : 'Are you sure you want to cancel this rental request? This cannot be undone.'
             : 'Are you sure you want to cancel this request? The renter will be notified.'),
         actions: [
           TextButton(
@@ -1991,13 +2296,28 @@ Future<void> _sendNotification({
             child: const Text('Go Back'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(dialogContext);
               requestBloc.add(RequestStatusUpdated(
-                  requestId, RentRequestStatus.canceled));
+                  request.requestId, RentRequestStatus.canceled));
+
+              // ── Case 1: issue strike for post-approval cancel ────────────
+              if (isPostApproval) {
+                try {
+                  await StrikeService().submitReport(
+                    requestId        : request.requestId,
+                    renterId         : request.renterId,
+                    ownerId          : request.ownerId,
+                    reason           : 'cancel_after_approval',
+                    details          : 'Renter cancelled after the request was approved.',
+                    blockDurationDays: kBlockDurationCancelStrike,
+                  );
+                } catch (e) {
+                  debugPrint('Case 1 strike failed (non-fatal): $e');
+                }
+              }
             },
-            style:
-                ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Yes, Cancel',
                 style: TextStyle(color: Colors.white)),
           ),

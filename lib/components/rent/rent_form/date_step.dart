@@ -7,6 +7,7 @@ import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:bukidbayan_app/widgets/date_picker_field.dart';
 import 'package:bukidbayan_app/widgets/step_header.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class DateStep extends StatefulWidget {
   final Equipment item;
@@ -14,6 +15,7 @@ class DateStep extends StatefulWidget {
   final DateTime? returnDate;
   final Function(DateTime) onStartDatePicked;
   final Function(DateTime) onReturnDatePicked;
+  final Function(double?)? onHectaresChanged;
 
   const DateStep({
     super.key,
@@ -22,6 +24,7 @@ class DateStep extends StatefulWidget {
     this.returnDate,
     required this.onStartDatePicked,
     required this.onReturnDatePicked,
+    this.onHectaresChanged,
   });
 
   @override
@@ -33,10 +36,111 @@ class _DateStepState extends State<DateStep> {
   List<DateTime> _badWeatherDays = [];
   bool isLoadingDates = true;
 
+  final TextEditingController _hectaresController = TextEditingController();
+  String? _hectaresError;
+
+  // ── Per-category rates ───────────────────────────────────────────────────
+  double get _hectaresPerDay {
+    switch (widget.item.category?.toLowerCase()) {
+      case 'hand tractor (kuliglig)':  return 0.5;
+      case 'floating tiller (pagong)': return 1.0;
+      default:                          return 2.0; // tractor, harvester (halimaw)
+    }
+  }
+
+  String get _equipmentLabel {
+    switch (widget.item.category?.toLowerCase()) {
+      case 'harvester (halimaw)':      return 'Harvester (Halimaw)';
+      case 'hand tractor (kuliglig)':  return 'Hand Tractor (Kuliglig)';
+      case 'floating tiller (pagong)': return 'Floating Tiller (Pagong)';
+      default:                          return 'Tractor';
+    }
+  }
+
+  // ── Auto-compute eligibility ─────────────────────────────────────────────
+  bool get _isAutoComputedEquipment {
+    final cat = widget.item.category?.toLowerCase();
+    final isEligibleCategory = cat == 'tractor' ||
+        cat == 'harvester (halimaw)' ||
+        cat == 'hand tractor (kuliglig)' ||
+        cat == 'floating tiller (pagong)';
+    return isEligibleCategory && widget.item.landSizeRequirement;
+  }
+
+  double? get _minHa => double.tryParse(widget.item.landSizeMin ?? '');
+  double? get _maxHa => double.tryParse(widget.item.landSizeMax ?? '');
+
+  double? get _validatedHectares {
+    final val = double.tryParse(_hectaresController.text.trim());
+    if (val == null) return null;
+    final min = _minHa;
+    final max = _maxHa;
+    if (min != null && val < min) return null;
+    if (max != null && val > max) return null;
+    return val;
+  }
+
+  int _daysNeeded(double hectares) =>
+      (hectares / _hectaresPerDay).ceil().clamp(1, 9999);
+
+  DateTime? _computedReturnDate(DateTime start, double hectares) {
+    final days = _daysNeeded(hectares);
+    return start.add(Duration(days: days - 1));
+  }
+
+  void _onHectaresChanged(String value) {
+    final ha = double.tryParse(value.trim());
+    String? error;
+    if (value.trim().isEmpty) {
+      error = null;
+    } else if (ha == null) {
+      error = 'Please enter a valid number.';
+    } else {
+      final min = _minHa;
+      final max = _maxHa;
+      if (min != null && ha < min) {
+        error = 'Minimum land size is ${_formatHa(min)} ha.';
+      } else if (max != null && ha > max) {
+        error = 'Maximum land size is ${_formatHa(max)} ha.';
+      }
+    }
+
+    setState(() => _hectaresError = error);
+
+    if (error == null && ha != null && widget.startDate != null) {
+      final returnDate = _computedReturnDate(widget.startDate!, ha);
+      if (returnDate != null) {
+        widget.onReturnDatePicked(returnDate);
+      }
+    }
+
+    widget.onHectaresChanged?.call(error == null ? ha : null);
+  }
+
+  @override
+  void didUpdateWidget(covariant DateStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.startDate != widget.startDate &&
+        _isAutoComputedEquipment &&
+        _validatedHectares != null) {
+      final returnDate = _computedReturnDate(widget.startDate!, _validatedHectares!);
+      if (returnDate != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onReturnDatePicked(returnDate);
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _hectaresController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
-    print('🔄 DateStep initialized for equipment: ${widget.item.id}');
     _loadBookedDates();
     _loadWeatherDays();
   }
@@ -49,9 +153,7 @@ class _DateStepState extends State<DateStep> {
           .map((d) => DateTime(d.date.year, d.date.month, d.date.day))
           .toList();
       if (mounted) setState(() => _badWeatherDays = bad);
-    } catch (_) {
-      // Weather check is best-effort; silently ignore failures
-    }
+    } catch (_) {}
   }
 
   bool _isDateBadWeather(DateTime date) {
@@ -60,101 +162,68 @@ class _DateStepState extends State<DateStep> {
   }
 
   Future<void> _loadBookedDates() async {
-    print('📅 Loading booked dates...');
-    
-    // ✅ Add null check for item.id
     if (widget.item.id == null) {
-      print('⚠️ Equipment ID is null, skipping booked dates load');
-      if (mounted) {
-        setState(() => isLoadingDates = false);
-      }
+      if (mounted) setState(() => isLoadingDates = false);
       return;
     }
-
     try {
-      final firestoreService = FirestoreService();
-      print('🔍 Fetching booked ranges for equipment: ${widget.item.id}');
-      
-      final ranges = await firestoreService.getBookedDateRanges(widget.item.id!);
-      
-      print('✅ Loaded ${ranges.length} booked date ranges');
-      for (var range in ranges) {
-        print('   📆 ${range['start']} → ${range['end']}');
-      }
-      
+      final ranges = await FirestoreService().getBookedDateRanges(widget.item.id!);
       if (mounted) {
         setState(() {
           bookedRanges = ranges;
           isLoadingDates = false;
         });
-        print('✅ State updated: isLoadingDates = false, bookedRanges.length = ${ranges.length}');
       }
     } catch (e) {
-      print('❌ Error loading booked dates: $e');
-      if (mounted) {
-        setState(() => isLoadingDates = false);
-      }
+      if (mounted) setState(() => isLoadingDates = false);
     }
   }
 
   bool _isDateBooked(DateTime date) {
-    // Normalize date to midnight for comparison
     final checkDate = DateTime(date.year, date.month, date.day);
-    
     for (var range in bookedRanges) {
       final start = DateTime(
-        range['start']!.year,
-        range['start']!.month,
-        range['start']!.day,
-      );
-      final end = DateTime(
-        range['end']!.year,
-        range['end']!.month,
-        range['end']!.day,
-      );
-      
-      // Check if date falls within or equals the booked range
+          range['start']!.year, range['start']!.month, range['start']!.day);
+      final end =
+          DateTime(range['end']!.year, range['end']!.month, range['end']!.day);
       if ((checkDate.isAfter(start) || checkDate.isAtSameMomentAs(start)) &&
           (checkDate.isBefore(end) || checkDate.isAtSameMomentAs(end))) {
-        print('🚫 Date ${_formatDate(date)} is BOOKED (falls in range ${_formatDate(range['start']!)} - ${_formatDate(range['end']!)})');
         return true;
       }
     }
-    
-    print('✅ Date ${_formatDate(date)} is AVAILABLE');
     return false;
   }
 
   DateTime _findFirstAvailableDate(DateTime start, DateTime end) {
-  DateTime current = DateTime(start.year, start.month, start.day);
-
-  while (!current.isAfter(end)) {
-    if (!_isDateBooked(current)) {
-      return current;
+    DateTime current = DateTime(start.year, start.month, start.day);
+    while (!current.isAfter(end)) {
+      if (!_isDateBooked(current)) return current;
+      current = current.add(const Duration(days: 1));
     }
-    current = current.add(const Duration(days: 1));
+    return start;
   }
-
-  return start; // fallback
-}
-
 
   @override
   Widget build(BuildContext context) {
-    final hasAvailabilityDates = widget.item.availableFrom != null && 
-                                  widget.item.availableUntil != null;
-
-    print('🎨 Building DateStep: isLoadingDates=$isLoadingDates, hasAvailabilityDates=$hasAvailabilityDates');
+    final hasAvailabilityDates = widget.item.availableFrom != null &&
+        widget.item.availableUntil != null;
+    final isAutoComputed = _isAutoComputedEquipment;
+    final bool returnIsComputed = isAutoComputed && _validatedHectares != null;
+    final ha = _validatedHectares;
+    final int? daysNeeded =
+        (isAutoComputed && ha != null && widget.startDate != null)
+            ? _daysNeeded(ha)
+            : null;
 
     return Column(
       children: [
         const CustomDivider(),
         StepHeader(
           title: 'Step 1: Iskedyul ng Pag-upa',
-          subtitle: 'Piliin ang petsa at oras ng pickup at return. Ang return ay dapat hindi bababa sa 1 oras mula sa pickup.',
+          subtitle:
+              'Piliin ang petsa at oras ng pickup at return. Ang return ay dapat hindi bababa sa 1 oras mula sa pickup.',
         ),
 
-        // Debug info (remove in production)
         if (isLoadingDates)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -164,23 +233,20 @@ class _DateStepState extends State<DateStep> {
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      'Loading booked dates...',
-                      style: TextStyle(color: Colors.blue.shade900),
-                    ),
+                    Text('Loading booked dates...',
+                        style: TextStyle(color: Colors.blue.shade900)),
                   ],
                 ),
               ),
             ),
           ),
 
-        // Warning if no availability dates
         if (!hasAvailabilityDates)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -191,15 +257,12 @@ class _DateStepState extends State<DateStep> {
                 child: Text(
                   'Hindi available ang equipment na ito - walang availability dates.',
                   style: TextStyle(
-                    color: Colors.red.shade900,
-                    fontWeight: FontWeight.w500,
-                  ),
+                      color: Colors.red.shade900, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
           ),
-        
-        // Show booked dates info
+
         if (bookedRanges.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -215,15 +278,14 @@ class _DateStepState extends State<DateStep> {
                       Text(
                         'May mga petsa na ng naka-book:',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: lightColorScheme.primary,
-                        ),
+                            fontWeight: FontWeight.bold,
+                            color: lightColorScheme.primary),
                       ),
                       const SizedBox(height: 8),
                       ...bookedRanges.map((range) => Text(
-                        '${_formatDate(range['start']!)} - ${_formatDate(range['end']!)}',
-                        style: TextStyle(color: lightColorScheme.primary),
-                      )),
+                            '${_formatDate(range['start']!)} - ${_formatDate(range['end']!)}',
+                            style: TextStyle(color: lightColorScheme.primary),
+                          )),
                     ],
                   ),
                 ),
@@ -231,7 +293,6 @@ class _DateStepState extends State<DateStep> {
             ),
           ),
 
-        // Show bad-weather dates warning
         if (_badWeatherDays.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -252,30 +313,26 @@ class _DateStepState extends State<DateStep> {
                           Text(
                             'Severe weather expected:',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber.shade900,
-                            ),
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber.shade900),
                           ),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      ..._badWeatherDays.map((d) => Text(
-                            _formatDate(d),
-                            style: TextStyle(color: Colors.amber.shade800),
-                          )),
+                      ..._badWeatherDays.map((d) => Text(_formatDate(d),
+                          style: TextStyle(color: Colors.amber.shade800))),
                       const SizedBox(height: 4),
-                      Text(
-                        'These dates are blocked for booking.',
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.amber.shade700),
-                      ),
+                      Text('These dates are blocked for booking.',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.amber.shade700)),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-        
+
+        // ── Date pickers ──────────────────────────────────────────────────
         Row(
           children: [
             Expanded(
@@ -283,41 +340,41 @@ class _DateStepState extends State<DateStep> {
                 label: 'Start / Pickup Date',
                 value: widget.startDate,
                 onTap: isLoadingDates || !hasAvailabilityDates
-                    ? null 
+                    ? null
                     : () async {
-                      print('📅 Opening start date picker');
-                      final now = DateTime.now();
-                      final firestoreService = FirestoreService();
-                      final leadTimeDate = firestoreService.getEarliestBookingDate();
-                      final earliest = widget.item.availableFrom!.isAfter(leadTimeDate)
-                          ? widget.item.availableFrom!
-                          : leadTimeDate;
-                      final last = widget.item.availableUntil!;
-                      final effectiveStart = widget.startDate != null && widget.startDate!.isBefore(earliest)
-                          ? earliest
-                          : widget.startDate;
-                      final initial = effectiveStart ?? _findFirstAvailableDate(earliest, last);
+                        final firestoreService = FirestoreService();
+                        final leadTimeDate =
+                            firestoreService.getEarliestBookingDate();
+                        final earliest =
+                            widget.item.availableFrom!.isAfter(leadTimeDate)
+                                ? widget.item.availableFrom!
+                                : leadTimeDate;
+                        final last = widget.item.availableUntil!;
+                        final effectiveStart = widget.startDate != null &&
+                                widget.startDate!.isBefore(earliest)
+                            ? earliest
+                            : widget.startDate;
+                        final initial = effectiveStart ??
+                            _findFirstAvailableDate(earliest, last);
 
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: initial,
+                          firstDate: earliest,
+                          lastDate: last,
+                          selectableDayPredicate: (date) =>
+                              !_isDateBooked(date) && !_isDateBadWeather(date),
+                        );
 
-                      print('📅 Date range: $earliest → $last');
-
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: initial,
-                        firstDate: earliest,
-                        lastDate: last,
-                        selectableDayPredicate: (date) {
-                          return !_isDateBooked(date) && !_isDateBadWeather(date);
-                        },
-                      );
-
-                      if (picked != null) {
-                        print('✅ User picked start date: $picked');
-                        widget.onStartDatePicked(picked);
-                      } else {
-                        print('❌ User cancelled date picker');
-                      }
-                    },
+                        if (picked != null) {
+                          widget.onStartDatePicked(picked);
+                          if (isAutoComputed && _validatedHectares != null) {
+                            final ret =
+                                _computedReturnDate(picked, _validatedHectares!);
+                            if (ret != null) widget.onReturnDatePicked(ret);
+                          }
+                        }
+                      },
               ),
             ),
             const SizedBox(width: 12),
@@ -325,10 +382,12 @@ class _DateStepState extends State<DateStep> {
               child: DatePickerField(
                 label: 'Return',
                 value: widget.returnDate,
-                onTap: widget.startDate == null || isLoadingDates || !hasAvailabilityDates
+                onTap: returnIsComputed ||
+                        widget.startDate == null ||
+                        isLoadingDates ||
+                        !hasAvailabilityDates
                     ? null
                     : () async {
-                        print('📅 Opening return date picker');
                         final initial = widget.returnDate ?? widget.startDate!;
                         final first = widget.startDate!;
                         final last = widget.item.availableUntil!;
@@ -338,9 +397,8 @@ class _DateStepState extends State<DateStep> {
                           initialDate: initial,
                           firstDate: first,
                           lastDate: last,
-                          selectableDayPredicate: (date) {
-                            return !_isDateBooked(date) && !_isDateBadWeather(date);
-                          },
+                          selectableDayPredicate: (date) =>
+                              !_isDateBooked(date) && !_isDateBadWeather(date),
                         );
 
                         if (picked != null) {
@@ -352,7 +410,6 @@ class _DateStepState extends State<DateStep> {
                             );
                             return;
                           }
-                          print('✅ User picked return date: $picked');
                           widget.onReturnDatePicked(picked);
                         }
                       },
@@ -360,11 +417,156 @@ class _DateStepState extends State<DateStep> {
             ),
           ],
         ),
+
+        // ── Auto-computed equipment: hectare input ────────────────────────
+        if (isAutoComputed && widget.startDate != null) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.agriculture, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Land Area',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 6),
+                    if (_minHa != null || _maxHa != null)
+                      Text(
+                        '(${_minHa != null ? '${_formatHa(_minHa!)} – ' : ''}${_maxHa != null ? '${_formatHa(_maxHa!)} ha' : ''})',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: Colors.grey.shade600),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _hectaresController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Number of Hectares',
+                    suffixText: 'ha',
+                    errorText: _hectaresError,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: _onHectaresChanged,
+                ),
+                const SizedBox(height: 8),
+            
+                if (daysNeeded != null) ...[
+                  Card(
+                    color: lightColorScheme.primaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline,
+                                  size: 16,
+                                  color: lightColorScheme.onPrimaryContainer),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Computed Rental Schedule',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: lightColorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          _scheduleRow(
+                            Icons.today,
+                            'Start date',
+                            _formatDate(widget.startDate!),
+                            lightColorScheme.onPrimaryContainer,
+                          ),
+                          const SizedBox(height: 4),
+                          _scheduleRow(
+                            Icons.event,
+                            'Return date',
+                            _formatDate(widget.returnDate!),
+                            lightColorScheme.onPrimaryContainer,
+                          ),
+                          const Divider(height: 16),
+                          _scheduleRow(
+                            Icons.calendar_month,
+                            'Total days',
+                            '$daysNeeded day${daysNeeded == 1 ? '' : 's'} '
+                                '(${_formatHa(_validatedHectares!)} ha ÷ '
+                                '${_formatHa(_hectaresPerDay)} ha/day)',
+                            lightColorScheme.onPrimaryContainer,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'The return date is automatically set based on '
+                            '${_formatHa(_hectaresPerDay)} hectares covered per day '
+                            'by the $_equipmentLabel, '
+                            'starting from your pickup date '
+                            '(${_formatDate(widget.startDate!)}). '
+                            'Day 1 is your pickup date.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: lightColorScheme.onPrimaryContainer
+                                  .withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+            
+                if (daysNeeded == null && _hectaresController.text.trim().isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Optional: Ilagay ang bilang ng ektarya para awtomatikong makuha ang petsa ng pagbabalik '
+                    '(${_formatHa(_hectaresPerDay)} ha/day). '
+                    'O maaari kang pumili ng return date nang mano-mano.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.month}/${date.day}/${date.year}';
+  Widget _scheduleRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Text('$label: ', style: TextStyle(fontSize: 13, color: color)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
   }
+
+  String _formatDate(DateTime date) =>
+      '${date.month}/${date.day}/${date.year}';
+
+  String _formatHa(double ha) =>
+      ha == ha.truncateToDouble() ? ha.toInt().toString() : ha.toString();
 }

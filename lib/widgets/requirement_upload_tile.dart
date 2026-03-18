@@ -24,7 +24,7 @@ class RequirementUploadTile extends StatelessWidget {
     final canAdd = files.length < maxFiles;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

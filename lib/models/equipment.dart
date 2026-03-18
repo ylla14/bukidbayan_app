@@ -24,6 +24,30 @@ enum EquipmentStatus {
   }
 }
 
+// ── New enum ──────────────────────────────────────────────────────────────
+enum DeliveryMode {
+  pickupOnly,
+  deliveryOnly,
+  both;
+
+  static DeliveryMode fromString(String? value) {
+    switch (value) {
+      case 'pickup_only':   return DeliveryMode.pickupOnly;
+      case 'delivery_only': return DeliveryMode.deliveryOnly;
+      case 'both':          return DeliveryMode.both;
+      default:              return DeliveryMode.both; // safe fallback
+    }
+  }
+
+  String toValue() {
+    switch (this) {
+      case DeliveryMode.pickupOnly:   return 'pickup_only';
+      case DeliveryMode.deliveryOnly: return 'delivery_only';
+      case DeliveryMode.both:         return 'both';
+    }
+  }
+}
+
 class Equipment {
   final String? id;
 
@@ -87,6 +111,30 @@ class Equipment {
 
     final DateTime? maintenanceStart;
   final DateTime? maintenanceEnd;
+  
+  final DeliveryMode deliveryMode; // NEW
+
+  final bool cropConditionRequirement;
+final String? cropCondition;
+// After cropCondition field
+final bool cropShareRequired;
+final double? cropSharePercent; // max 15.0
+
+final bool maintenanceRequired;
+final double maintenanceIntervalHrs;        // default 240
+final double hoursUsedSinceLastMaintenance; // accumulated rental hours
+
+/// Hours remaining before maintenance is due.
+double get remainingMaintenanceHrs =>
+    maintenanceIntervalHrs - hoursUsedSinceLastMaintenance;
+
+/// True when ≤ 48 hours remain but maintenance is not yet overdue.
+bool get isUpcomingMaintenance =>
+    remainingMaintenanceHrs <= 48 && remainingMaintenanceHrs > 0;
+
+/// True when accumulated hours have reached or exceeded the interval.
+bool get isForMaintenance =>
+    hoursUsedSinceLastMaintenance >= maintenanceIntervalHrs;
 
   Equipment({
     this.id,
@@ -109,6 +157,8 @@ class Equipment {
     this.landSizeMin,
     this.landSizeMax,
     this.maxCropHeight,
+    this.cropConditionRequirement = false,
+    this.cropCondition,
     this.operatorIncluded = false,
     this.status = EquipmentStatus.available,
     this.availableFrom,
@@ -129,8 +179,14 @@ class Equipment {
     this.minimumVolumeCavans,
     this.riceOnlyPricePerKg,
     this.ricePlusDarakPricePerKg,
-      this.maintenanceStart,
-  this.maintenanceEnd,
+    this.maintenanceStart,
+    this.maintenanceEnd,
+    this.deliveryMode = DeliveryMode.both,
+    this.cropShareRequired = false,
+this.cropSharePercent,
+this.maintenanceRequired = false,
+this.maintenanceIntervalHrs = 240,
+this.hoursUsedSinceLastMaintenance = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -154,6 +210,8 @@ class Equipment {
       'landSizeMin': landSizeMin,
       'landSizeMax': landSizeMax,
       'maxCropHeight': maxCropHeight,
+      'cropConditionRequirement': cropConditionRequirement,
+      'cropCondition': cropCondition,
       'operatorIncluded': operatorIncluded,
       'status': status.toValue(),
       'availableFrom': availableFrom != null ? Timestamp.fromDate(availableFrom!) : null,
@@ -175,6 +233,12 @@ class Equipment {
       'ricePlusDarakPricePerKg': ricePlusDarakPricePerKg,
         'maintenanceStart': maintenanceStart != null ? Timestamp.fromDate(maintenanceStart!) : null,
   'maintenanceEnd': maintenanceEnd != null ? Timestamp.fromDate(maintenanceEnd!) : null,
+  'deliveryMode': deliveryMode.toValue(),
+  'cropShareRequired': cropShareRequired,
+'cropSharePercent': cropSharePercent,
+'maintenanceRequired': maintenanceRequired,
+'maintenanceIntervalHrs': maintenanceIntervalHrs,
+'hoursUsedSinceLastMaintenance': hoursUsedSinceLastMaintenance,
     };
   }
 
@@ -219,6 +283,10 @@ class Equipment {
       landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true ? data['landSizeMin'] : null,
       landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true ? data['landSizeMax'] : null,
       maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true ? data['maxCropHeight'] : null,
+      cropConditionRequirement: data['cropConditionRequirement'] is bool
+          ? data['cropConditionRequirement']
+          : data['cropConditionRequirement']?.toString().toLowerCase() == 'true',
+      cropCondition: (data['cropCondition'] as String?)?.isNotEmpty == true ? data['cropCondition'] : null,
       operatorIncluded: data['operatorIncluded'] ?? false,
       status: resolvedStatus, // NEW
       availableFrom: data['availableFrom'] != null ? (data['availableFrom'] as Timestamp).toDate() : null,
@@ -240,6 +308,17 @@ class Equipment {
       ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
       maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
   maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
+  deliveryMode: DeliveryMode.fromString(data['deliveryMode']),
+  cropShareRequired: data['cropShareRequired'] is bool
+    ? data['cropShareRequired']
+    : data['cropShareRequired']?.toString().toLowerCase() == 'true',
+cropSharePercent: (data['cropSharePercent'] as num?)?.toDouble(),
+maintenanceRequired: data['maintenanceRequired'] is bool
+    ? data['maintenanceRequired']
+    : data['maintenanceRequired']?.toString().toLowerCase() == 'true',
+maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
+hoursUsedSinceLastMaintenance:
+    (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -280,6 +359,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       landSizeMin: (data['landSizeMin'] as String?)?.isNotEmpty == true ? data['landSizeMin'] : null,
       landSizeMax: (data['landSizeMax'] as String?)?.isNotEmpty == true ? data['landSizeMax'] : null,
       maxCropHeight: (data['maxCropHeight'] as String?)?.isNotEmpty == true ? data['maxCropHeight'] : null,
+      cropConditionRequirement: data['cropConditionRequirement'] is bool
+          ? data['cropConditionRequirement']
+          : data['cropConditionRequirement']?.toString().toLowerCase() == 'true',
+      cropCondition: (data['cropCondition'] as String?)?.isNotEmpty == true ? data['cropCondition'] : null,
       operatorIncluded: data['operatorIncluded'] ?? false,
       status: resolvedStatus, // NEW
       availableFrom: data['availableFrom'] is Timestamp ? (data['availableFrom'] as Timestamp).toDate() : null,
@@ -301,6 +384,17 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       ricePlusDarakPricePerKg: (data['ricePlusDarakPricePerKg'] as num?)?.toDouble(),
       maintenanceStart: data['maintenanceStart'] != null ? (data['maintenanceStart'] as Timestamp).toDate() : null,
   maintenanceEnd: data['maintenanceEnd'] != null ? (data['maintenanceEnd'] as Timestamp).toDate() : null,
+  deliveryMode: DeliveryMode.fromString(data['deliveryMode']),
+  cropShareRequired: data['cropShareRequired'] is bool
+    ? data['cropShareRequired']
+    : data['cropShareRequired']?.toString().toLowerCase() == 'true',
+cropSharePercent: (data['cropSharePercent'] as num?)?.toDouble(),
+maintenanceRequired: data['maintenanceRequired'] is bool
+    ? data['maintenanceRequired']
+    : data['maintenanceRequired']?.toString().toLowerCase() == 'true',
+maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
+hoursUsedSinceLastMaintenance:
+    (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -325,6 +419,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     String? landSizeMin,
     String? landSizeMax,
     String? maxCropHeight,
+    bool? cropConditionRequirement,
+    String? cropCondition,
     EquipmentStatus? status,
     DateTime? availableFrom,
     DateTime? availableUntil,
@@ -345,6 +441,12 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
     double? ricePlusDarakPricePerKg,
       DateTime? maintenanceStart,
   DateTime? maintenanceEnd,
+  DeliveryMode? deliveryMode,
+  bool? cropShareRequired,
+double? cropSharePercent,
+bool? maintenanceRequired,
+double? maintenanceIntervalHrs,
+double? hoursUsedSinceLastMaintenance,
   }) {
     return Equipment(
       id: id,
@@ -368,6 +470,8 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       landSizeMin: landSizeMin ?? this.landSizeMin,
       landSizeMax: landSizeMax ?? this.landSizeMax,
       maxCropHeight: maxCropHeight ?? this.maxCropHeight,
+      cropConditionRequirement: cropConditionRequirement ?? this.cropConditionRequirement,
+      cropCondition: cropCondition ?? this.cropCondition,
       status: status ?? this.status, // NEW
       availableFrom: availableFrom ?? this.availableFrom,
       availableUntil: availableUntil ?? this.availableUntil,
@@ -387,7 +491,14 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       riceOnlyPricePerKg: riceOnlyPricePerKg ?? this.riceOnlyPricePerKg,
       ricePlusDarakPricePerKg: ricePlusDarakPricePerKg ?? this.ricePlusDarakPricePerKg,
         maintenanceStart: maintenanceStart ?? this.maintenanceStart,
-  maintenanceEnd: maintenanceEnd ?? this.maintenanceEnd,
+      maintenanceEnd: maintenanceEnd ?? this.maintenanceEnd,
+      deliveryMode: deliveryMode ?? this.deliveryMode,
+      cropShareRequired: cropShareRequired ?? this.cropShareRequired,
+      cropSharePercent: cropSharePercent ?? this.cropSharePercent,
+      maintenanceRequired: maintenanceRequired ?? this.maintenanceRequired,
+      maintenanceIntervalHrs: maintenanceIntervalHrs ?? this.maintenanceIntervalHrs,
+      hoursUsedSinceLastMaintenance:
+          hoursUsedSinceLastMaintenance ?? this.hoursUsedSinceLastMaintenance,
     );
   }
 }

@@ -32,6 +32,8 @@ class RentRequest {
   // ── Changed: lists of URLs instead of single nullable String ──
   final List<String> landSizeProofPaths;
   final List<String> cropHeightProofPaths;
+  final List<String> cropConditionProofPaths;
+  final double? hectaresEntered; // for tractor bookings
 
   final RentRequestStatus status;
   final String renterId;
@@ -45,6 +47,10 @@ class RentRequest {
   final bool weatherFlag;
   final List<DateTime> weatherFlagDates;
 
+  /// Tracks the last date a late-return strike was issued for this request.
+  /// Used client-side to calculate how many new overdue days need strikes.
+  final DateTime? lastLateStrikeIssuedDate;
+
   final bool? keepDarak;
   final double? estimatedMillingFee;
   final double? latitude;
@@ -53,6 +59,8 @@ class RentRequest {
   final String? farmAddress;
   final double? farmLatitude;
   final double? farmLongitude;
+  final String? phoneNumber;
+
 
   RentRequest({
     required this.requestId,
@@ -64,6 +72,8 @@ class RentRequest {
     required this.end,
     this.landSizeProofPaths = const [],
     this.cropHeightProofPaths = const [],
+    this.cropConditionProofPaths = const [],
+    this.hectaresEntered,
     this.status = RentRequestStatus.pending,
     required this.renterId,
     required this.ownerId,
@@ -82,6 +92,9 @@ class RentRequest {
     this.farmAddress,
     this.farmLatitude,
     this.farmLongitude,
+    this.phoneNumber,
+
+    this.lastLateStrikeIssuedDate,
   });
 
   Map<String, dynamic> toMap() {
@@ -95,6 +108,8 @@ class RentRequest {
       // ── Lists stored as Firestore arrays ──────────────────
       'landSizeProofPaths': landSizeProofPaths,
       'cropHeightProofPaths': cropHeightProofPaths,
+      'cropConditionProofPaths': cropConditionProofPaths,
+      'hectaresEntered': hectaresEntered,
       'status': status.name,
       'renterId': renterId,
       'ownerId': ownerId,
@@ -110,6 +125,11 @@ class RentRequest {
       'farmAddress': farmAddress,
       'farmLatitude': farmLatitude,
       'farmLongitude': farmLongitude,
+      'phoneNumber': phoneNumber,
+
+      'lastLateStrikeIssuedDate': lastLateStrikeIssuedDate != null
+          ? Timestamp.fromDate(lastLateStrikeIssuedDate!)
+          : null,
     };
   }
 
@@ -141,6 +161,10 @@ class RentRequest {
       cropHeightProofPaths: _toStringList(
         map['cropHeightProofPaths'] ?? map['cropHeightProofPath'],
       ),
+      cropConditionProofPaths: _toStringList(
+        map['cropConditionProofPaths'] ?? map['cropConditionProofPath'],
+      ),
+      hectaresEntered: (map['hectaresEntered'] as num?)?.toDouble(),
       status: RentRequestStatus.values.firstWhere(
         (e) => e.name == (map['status'] ?? 'pending'),
         orElse: () => RentRequestStatus.pending,
@@ -169,6 +193,10 @@ class RentRequest {
       farmAddress: map['farmAddress'] as String?,
       farmLatitude: (map['farmLatitude'] as num?)?.toDouble(),
       farmLongitude: (map['farmLongitude'] as num?)?.toDouble(),
+      phoneNumber: map['phoneNumber'] as String?,
+
+      lastLateStrikeIssuedDate:
+          (map['lastLateStrikeIssuedDate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -182,6 +210,7 @@ class RentRequest {
     DateTime? end,
     List<String>? landSizeProofPaths,
     List<String>? cropHeightProofPaths,
+    List<String>? cropConditionProofPaths,
     RentRequestStatus? status,
     String? renterId,
     String? ownerId,
@@ -197,6 +226,10 @@ class RentRequest {
     String? farmAddress,
     double? farmLatitude,
     double? farmLongitude,
+    double? hectaresEntered,
+    String? phoneNumber,
+
+    DateTime? lastLateStrikeIssuedDate,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -208,6 +241,8 @@ class RentRequest {
       end: end ?? this.end,
       landSizeProofPaths: landSizeProofPaths ?? this.landSizeProofPaths,
       cropHeightProofPaths: cropHeightProofPaths ?? this.cropHeightProofPaths,
+      cropConditionProofPaths: cropConditionProofPaths ?? this.cropConditionProofPaths,
+      hectaresEntered: hectaresEntered ?? this.hectaresEntered,
       status: status ?? this.status,
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,
@@ -223,6 +258,9 @@ class RentRequest {
       farmAddress: farmAddress ?? this.farmAddress,
       farmLatitude: farmLatitude ?? this.farmLatitude,
       farmLongitude: farmLongitude ?? this.farmLongitude,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      lastLateStrikeIssuedDate:
+          lastLateStrikeIssuedDate ?? this.lastLateStrikeIssuedDate,
     );
   }
 }

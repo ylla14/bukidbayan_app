@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/components/rent/product_page/product_image_carous
 import 'package:bukidbayan_app/components/rent/product_page/product_specs.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/review.dart';
+import 'package:bukidbayan_app/screens/profile/owner_profile_screen.dart';
 import 'package:bukidbayan_app/screens/rent/all_reviews_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/request_rent_form.dart';
@@ -85,7 +86,7 @@ List<_PhaseTag> _getPhaseTagsForEquipment(Equipment item) {
   }
 
   // Harvesting
-  if (category.contains('harvester') ||
+  if (category.contains('Harvester (Halimaw)') ||
       name.contains('harvest') ||
       name.contains('reaper') ||
       name.contains('combine')) {
@@ -237,6 +238,10 @@ class ProductPage extends StatelessWidget {
           return '/week';
         case 'per month':
           return '/month';
+        case 'per kg':
+          return '/kg';
+        case 'per hectare':
+          return '/ha';
         default:
           return '';
       }
@@ -564,10 +569,6 @@ class ProductPage extends StatelessWidget {
                 ],
 
                 CustomDivider(),
-                ProductSpecs(item: liveItem),
-                CustomDivider(),
-                ProductAvailability(item: liveItem),
-                CustomDivider(),
 
                 // ── Requirements ─────────────────────────────────────────────
                 Padding(
@@ -586,17 +587,16 @@ class ProductPage extends StatelessWidget {
                       if (liveItem.landSizeRequirement)
                         _requirementChip(
                           (liveItem.landSizeMin != null && liveItem.landSizeMax != null)
-                              ? 'Land size requirement: ${liveItem.landSizeMin} – ${liveItem.landSizeMax} sqm'
+                              ? 'Land size: ${liveItem.landSizeMin} – ${liveItem.landSizeMax} hectares'
                               : 'Land size requirement',
                         ),
                       if (liveItem.maxCropHeightRequirement)
                         _requirementChip(
                           liveItem.maxCropHeight != null
-                              ? 'Max crop height: ${liveItem.maxCropHeight} cm'
-                              : 'Max crop height required',
+                              ? 'Max grass height: ${liveItem.maxCropHeight}'
+                              : 'Max grass height required',
                         ),
-                      if (liveItem.minimumVolumeRequired &&
-                          liveItem.minimumVolumeKg != null)
+                      if (liveItem.minimumVolumeRequired && liveItem.minimumVolumeKg != null)
                         _requirementChip(
                           liveItem.minimumVolumeUnit == 'cavans'
                               ? 'Min volume: ${(liveItem.minimumVolumeKg! / 50).toStringAsFixed(0)} cavans'
@@ -604,10 +604,27 @@ class ProductPage extends StatelessWidget {
                               : 'Min volume: ${liveItem.minimumVolumeKg!.toStringAsFixed(0)} kg'
                                   '${liveItem.batchingAllowed ? ' (batching available)' : ''}',
                         ),
+                      if (liveItem.cropConditionRequirement)
+                        _requirementChip(
+                          liveItem.cropCondition != null
+                              ? 'Crop condition: ${liveItem.cropCondition}'
+                              : 'Crop condition required',
+                        ),
+                      if (liveItem.cropShareRequired && liveItem.cropSharePercent != null)
+                        _requirementChip(
+                          'Crop share: ${liveItem.cropSharePercent!.toStringAsFixed(0)}% of harvest',
+                        ),
+                      // Maintenance — always shown since it's always required
+                      _requirementChip(
+                        'Maintenance every ${liveItem.maintenanceIntervalHrs.toStringAsFixed(0)} hrs',
+                      ),
+                      // Fallback — only if nothing else applies (maintenance doesn't count as a "requirement")
                       if (!liveItem.landSizeRequirement &&
                           !liveItem.maxCropHeightRequirement &&
-                          !liveItem.minimumVolumeRequired)
-                        _requirementChip('No specific requirements'),
+                          !liveItem.minimumVolumeRequired &&
+                          !liveItem.cropConditionRequirement &&
+                          !liveItem.cropShareRequired)
+                        _requirementChip('No other specific requirements'),
                     ],
                   ),
                 ),
@@ -615,8 +632,30 @@ class ProductPage extends StatelessWidget {
 
                 // ── Owner 
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _ownerChip(liveItem.ownerName),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Row(
+                    children: [
+                      Expanded(child: _ownerChip(liveItem.ownerName)),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OwnerProfileScreen(ownerId: liveItem.ownerId),
+                          ),
+                        ),
+                        icon: const Icon(Icons.person_outline_rounded, size: 16),
+                        label: const Text('Visit Profile'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: lightColorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 CustomDivider(),
 
@@ -793,9 +832,9 @@ class ProductPage extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      if (liveItem.category?.toLowerCase() == 'harvester')
+                      if (liveItem.cropShareRequired && liveItem.cropSharePercent != null)
                         Text(
-                          '+ 12% of Crop Harvest',
+                          '+ ${liveItem.cropSharePercent!.toStringAsFixed(0)}% of Crop Harvest',
                           style: TextStyle(
                             fontSize: 15,
                             color: lightColorScheme.primary,

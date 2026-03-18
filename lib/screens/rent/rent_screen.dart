@@ -5,6 +5,7 @@ import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
 import 'package:bukidbayan_app/models/crop_preference.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/notification_screen.dart';
+import 'package:bukidbayan_app/screens/rent/drafts_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
@@ -315,39 +316,82 @@ void clearFilters() {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
+            // ── SECTION HEADER ──
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            //   child: Column(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       Text(
+            //         'Mag-Arkila',
+            //         style: TextStyle(
+            //           fontSize: 22,
+            //           fontWeight: FontWeight.bold,
+            //           color: lightColorScheme.primary,
+            //         ),
+            //       ),
+            //       Text(
+            //         'Hanapin ang kagamitang kailangan mo',
+            //         style: TextStyle(
+            //           fontSize: 13,
+            //           color: Colors.grey[500],
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
             /// CREATE & MY EQUIPMENT
             Padding(
               padding: const EdgeInsets.fromLTRB(10.0, 0, 10.0, 0),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: CustomIconButton(
-                      icon: const Icon(Icons.add_box_rounded),
-                      label: const Text('Create'),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const EquipmentListingScreen(),
-                          ),
-                        );
-                      },
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomIconButton(
+                          icon: const Icon(Icons.add_box_rounded),
+                          label: const Text('Create'),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EquipmentListingScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomIconButton(
+                          icon: const Icon(Icons.drafts_outlined),
+                          label: const Text('Drafts'),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const DraftsScreen()),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: CustomIconButton(
-                      icon: const Icon(Icons.shopping_cart_outlined),
-                      label: const Text('My Equipment'),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MyEquipment(),
-                          ),
-                        );
-                      },
-                    ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomIconButton(
+                          icon: const Icon(Icons.shopping_cart_outlined),
+                          label: const Text('My Equipment'),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => MyEquipment()),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -402,7 +446,7 @@ void clearFilters() {
 
 
 
-            const SizedBox(height: 10),
+            // const SizedBox(height: 10),
 
           /// FILTERS SECTION (Category + Price)
           if (searchQuery.isEmpty)
@@ -446,7 +490,7 @@ void clearFilters() {
                   // ),
 
 
-                  const SizedBox(height: 8),
+                  // const SizedBox(height: 8),
 
                   Row(
                     children: [

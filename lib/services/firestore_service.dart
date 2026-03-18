@@ -263,7 +263,6 @@ class FirestoreService {
   Stream<List<Equipment>> getDashboardBrowseEquipmentStream() {
     return _firestore
         .collection('equipment')
-        .where('isAvailable', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -716,7 +715,7 @@ class FirestoreService {
 
   //ver that doesnt skip weekends
   DateTime getEarliestBookingDate() {
-    final date = DateTime.now().add(const Duration(days: 2));
+    final date = DateTime.now().add(const Duration(days: 0));
     return DateTime(date.year, date.month, date.day);
   }
 
