@@ -1332,37 +1332,31 @@ if (showApproveDecline && now.isBefore(request.start))
 
                           // Owner: Confirm Retrieved (Path B — forced retrieval)
                           if (isOwner &&
-                              request.status == RentRequestStatus.retrieving)
-                            _actionButton(
-                              label: 'Confirm Retrieved',
-                              icon: Icons.task_alt_rounded,
-                              color: lightColorScheme.primary,
-                              onPressed: () {
+                            request.status == RentRequestStatus.retrieving)
+                          _actionButton(
+                            label: 'Confirm Retrieved',
+                            icon: Icons.task_alt_rounded,
+                            color: const Color(0xFF10B981),
+                            onPressed: () async {
+                              final days = DateTime.now()
+                                  .difference(request.end)
+                                  .inDays
+                                  .clamp(0, 9999);
+                              if (days > 0) {
+                                await RentRequestService()
+                                    .shiftQueuedBookingsForEquipment(
+                                  equipmentId: request.itemId,
+                                  daysLate: days,
+                                );
+                              }
+                              if (context.mounted) {
                                 context.read<RequestBloc>().add(
                                       RequestStatusUpdated(request.requestId,
                                           RentRequestStatus.finished),
                                     );
-                              color: const Color(0xFF10B981),
-                              onPressed: () async {
-                                final days = DateTime.now()
-                                    .difference(request.end)
-                                    .inDays
-                                    .clamp(0, 9999);
-                                if (days > 0) {
-                                  await RentRequestService()
-                                      .shiftQueuedBookingsForEquipment(
-                                    equipmentId: request.itemId,
-                                    daysLate   : days,
-                                  );
-                                }
-                                if (context.mounted) {
-                                  context.read<RequestBloc>().add(
-                                        RequestStatusUpdated(request.requestId,
-                                            RentRequestStatus.finished),
-                                      );
-                                }
-                              },
-                            ),
+                              }
+                            },
+                          ),
 
                           // Owner: Confirm Return (Path A — renter self-returns)
                           if (isOwner &&
