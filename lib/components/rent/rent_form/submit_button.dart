@@ -269,12 +269,47 @@ class _SubmitButtonState extends State<SubmitButton> {
                   ),
                 ] else ...[
                   const SizedBox(height: 6),
-                  Text(
-                    'Enter your land area above to see the estimated total.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Duration',
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      Text(
+                        '${widget.returnDate.difference(widget.startDate).inDays + 1} day${widget.returnDate.difference(widget.startDate).inDays + 1 == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Estimated Total',
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      Text(
+                        '₱${(basePrice * (widget.returnDate.difference(widget.startDate).inDays + 1)).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '₱${basePrice.toStringAsFixed(2)}/day × ${widget.returnDate.difference(widget.startDate).inDays + 1} days',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
                   ),
                 ],
 
+              // ── All other equipment ───────────────────────────────────
               // ── All other equipment ───────────────────────────────────
               ] else ...[
                 Row(
@@ -317,6 +352,47 @@ class _SubmitButtonState extends State<SubmitButton> {
                         ),
                       ),
                     ],
+                  ),
+                ],
+                if (widget.item.rentalUnit.toLowerCase() == 'per day') ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Duration',
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      Text(
+                        '${widget.returnDate.difference(widget.startDate).inDays + 1} day${widget.returnDate.difference(widget.startDate).inDays + 1 == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Estimated Total',
+                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      Text(
+                        '₱${(basePrice * (widget.returnDate.difference(widget.startDate).inDays + 1)).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '₱${basePrice.toStringAsFixed(2)}/day × ${widget.returnDate.difference(widget.startDate).inDays + 1} days',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
                   ),
                 ],
               ],
@@ -519,6 +595,13 @@ class _SubmitButtonState extends State<SubmitButton> {
               .clamp(1, 9999);
           return widget.item.price * days;
         }
+        // ADD THIS BLOCK before the final return:
+        if (_isAutoComputed && widget.hectaresEntered == null) {
+          final days = widget.returnDate
+              .difference(widget.startDate)
+              .inDays + 1;
+          return widget.item.price * days.clamp(1, 9999);
+        }
         return widget.item.price;
       }();
 
@@ -601,4 +684,42 @@ class _SubmitButtonState extends State<SubmitButton> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
+ 
+  Widget _manualDaysSummary(double basePrice) {
+  final manualDays =
+      widget.returnDate.difference(widget.startDate).inDays + 1;
+  return Column(
+    children: [
+      const SizedBox(height: 6),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Duration',
+              style: TextStyle(fontSize: 15, color: Colors.black54)),
+          Text('$manualDays day${manualDays == 1 ? '' : 's'}',
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+        ],
+      ),
+      const SizedBox(height: 8),
+      const Divider(height: 1),
+      const SizedBox(height: 8),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Estimated Total',
+              style: TextStyle(fontSize: 15, color: Colors.black54)),
+          Text('₱${(basePrice * manualDays).toStringAsFixed(2)}',
+              style: const TextStyle(
+                  fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87)),
+        ],
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: Text('₱${basePrice.toStringAsFixed(2)}/day × $manualDays days',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+      ),
+    ],
+  );
+}
 }

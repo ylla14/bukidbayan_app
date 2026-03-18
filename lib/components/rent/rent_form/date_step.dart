@@ -208,7 +208,7 @@ class _DateStepState extends State<DateStep> {
     final hasAvailabilityDates = widget.item.availableFrom != null &&
         widget.item.availableUntil != null;
     final isAutoComputed = _isAutoComputedEquipment;
-    final bool returnIsComputed = isAutoComputed;
+    final bool returnIsComputed = isAutoComputed && _validatedHectares != null;
     final ha = _validatedHectares;
     final int? daysNeeded =
         (isAutoComputed && ha != null && widget.startDate != null)
@@ -534,11 +534,12 @@ class _DateStepState extends State<DateStep> {
                 ],
             
                 if (daysNeeded == null && _hectaresController.text.trim().isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Ilagay ang bilang ng ektarya para awtomatikong makuha ang petsa ng pagbabalik. '
-                      'Rate: ${_formatHa(_hectaresPerDay)} ha/day.',
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Optional: Ilagay ang bilang ng ektarya para awtomatikong makuha ang petsa ng pagbabalik '
+                    '(${_formatHa(_hectaresPerDay)} ha/day). '
+                    'O maaari kang pumili ng return date nang mano-mano.',
                       style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                     ),
                   ),
