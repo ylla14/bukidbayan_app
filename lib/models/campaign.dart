@@ -59,6 +59,7 @@ class Campaign {
   final String title;
   final String creatorName;
   final String? creatorEmail;
+  final String? creatorUid;
   final String shortBlurb;
   final String description;
 
@@ -117,6 +118,7 @@ class Campaign {
     required this.title,
     required this.creatorName,
     this.creatorEmail,
+    this.creatorUid,
     required this.shortBlurb,
     required this.description,
     required this.isAssetImage,
@@ -159,6 +161,7 @@ class Campaign {
     String? title,
     String? creatorName,
     String? creatorEmail,
+    String? creatorUid,
     String? shortBlurb,
     String? description,
     bool? isAssetImage,
@@ -195,6 +198,7 @@ class Campaign {
       title: title ?? this.title,
       creatorName: creatorName ?? this.creatorName,
       creatorEmail: creatorEmail ?? this.creatorEmail,
+      creatorUid: creatorUid ?? this.creatorUid,
       shortBlurb: shortBlurb ?? this.shortBlurb,
       description: description ?? this.description,
       isAssetImage: isAssetImage ?? this.isAssetImage,
@@ -234,6 +238,7 @@ class Campaign {
       title: json['title'] as String,
       creatorName: json['creatorName'] as String,
       creatorEmail: json['creatorEmail'] as String?,
+      creatorUid: json['creatorUid'] as String?,
       shortBlurb: json['shortBlurb'] as String,
       description: json['description'] as String,
       isAssetImage: json['isAssetImage'] as bool,
@@ -277,11 +282,18 @@ class Campaign {
     );
   }
 
+  /// Returns a Firestore-compatible map (excludes `id` since that's the doc ID).
+  Map<String, dynamic> toFirestore() {
+    final map = toJson()..remove('id');
+    return map;
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
     'creatorName': creatorName,
     'creatorEmail': creatorEmail,
+    'creatorUid': creatorUid,
     'shortBlurb': shortBlurb,
     'description': description,
     'isAssetImage': isAssetImage,
@@ -316,6 +328,7 @@ class Campaign {
 class Pledge {
   final String id;
   final String campaignId;
+  final String? backerUid;
   final String? backerEmail;
   final String? backerName;
   final String? backerPhone;
@@ -327,6 +340,7 @@ class Pledge {
   const Pledge({
     required this.id,
     required this.campaignId,
+    this.backerUid,
     required this.backerEmail,
     this.backerName,
     this.backerPhone,
@@ -339,6 +353,7 @@ class Pledge {
   factory Pledge.fromJson(Map<String, dynamic> json) => Pledge(
     id: json['id'] as String,
     campaignId: json['campaignId'] as String,
+    backerUid: json['backerUid'] as String?,
     backerEmail: json['backerEmail'] as String?,
     backerName: json['backerName'] as String?,
     backerPhone: json['backerPhone'] as String?,
@@ -348,9 +363,16 @@ class Pledge {
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 
+  /// Firestore-compatible map (excludes `id` and `campaignId` — stored as doc/parent IDs).
+  Map<String, dynamic> toFirestore() {
+    final map = toJson()..remove('id')..remove('campaignId');
+    return map;
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'campaignId': campaignId,
+    'backerUid': backerUid,
     'backerEmail': backerEmail,
     'backerName': backerName,
     'backerPhone': backerPhone,
