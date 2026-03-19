@@ -706,21 +706,32 @@ Future<void> _scheduleMaintenance(
     final batch = db.batch();
     final List<Future<void>> notifFutures = [];
 
-    for (final doc in bookingsSnap.docs) {
+    // Sort bookings by start date so cascade shifts propagate in order.
+    final sortedDocs = bookingsSnap.docs.toList()
+      ..sort((a, b) {
+        final aStart = (a.data()['start'] as Timestamp).toDate();
+        final bStart = (b.data()['start'] as Timestamp).toDate();
+        return aStart.compareTo(bStart);
+      });
+
+    // For foreseen maintenance: tracks the last occupied day.
+    // Any booking that starts on or before this date gets pushed to the day after.
+    // Starts at maintenanceEnd so all overlapping bookings shift past it, and
+    // each shifted booking further advances the pointer — creating the cascade.
+    DateTime blockedUntil = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+    final maintenanceEndDay = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+
+    for (final doc in sortedDocs) {
       final request = RentRequest.fromDoc(doc);
-
-      // Only affect bookings that overlap with maintenance window
       final bookingStart = DateTime(request.start.year, request.start.month, request.start.day);
-      final bookingEnd = DateTime(request.end.year, request.end.month, request.end.day);
-      final maintenanceEndDay = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
-
-      final overlaps = bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1)))
-          && bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
-
-      if (!overlaps) continue;
+      final bookingEnd   = DateTime(request.end.year,   request.end.month,   request.end.day);
 
       if (isUnforeseen) {
-        // Cancel all bookings — unforeseen
+        // Unforeseen: cancel only bookings that directly overlap with the maintenance window.
+        final overlaps = bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1)))
+            && bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+        if (!overlaps) continue;
+
         batch.update(doc.reference, {
           'status': RentRequestStatus.canceled.name,
           'declineReason': 'Equipment scheduled for unforeseen maintenance from '
@@ -732,20 +743,25 @@ Future<void> _scheduleMaintenance(
           userId: request.renterId,
           title: '🔧 Booking Cancelled — Maintenance',
           body: 'Your booking for "${equipment.name}" (${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
-              'has been cancelled due to unforeseen maintenance (${durationDays} days). We\'re sorry for the inconvenience.',
+              'has been cancelled due to unforeseen maintenance ($durationDays days). We\'re sorry for the inconvenience.',
           type: 'maintenance_cancel',
           extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
         ));
       } else {
-        // Shift bookings forward
+        // Foreseen: cascade shift.
+        // A booking conflicts if it starts on or before the current blockedUntil pointer —
+        // this catches both direct maintenance overlaps AND bookings that collide with
+        // previously shifted bookings (indirect cascade, e.g. D in B→C→D chains).
+        if (bookingStart.isAfter(blockedUntil)) continue;
+
         final bookingDuration = request.end.difference(request.start);
         final newStart = DateTime(
-          firstDayAfterMaintenance.year,
-          firstDayAfterMaintenance.month,
-          firstDayAfterMaintenance.day,
+          blockedUntil.year,
+          blockedUntil.month,
+          blockedUntil.day,
           request.start.hour,
           request.start.minute,
-        );
+        ).add(const Duration(days: 1));
         final newEnd = newStart.add(bookingDuration);
 
         // Check if shifted booking exceeds equipment's availableUntil
@@ -753,7 +769,8 @@ Future<void> _scheduleMaintenance(
             newEnd.isAfter(equipment.availableUntil!);
 
         if (exceedsAvailability) {
-          // Cancel — shifted dates fall outside availability window
+          // Cancel — shifted dates fall outside availability window.
+          // Do NOT advance blockedUntil: the cancelled slot is freed.
           batch.update(doc.reference, {
             'status': RentRequestStatus.canceled.name,
             'declineReason': 'Your booking could not be rescheduled after maintenance '
@@ -771,7 +788,7 @@ Future<void> _scheduleMaintenance(
             extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
           ));
         } else {
-          // Reschedule
+          // Reschedule and advance the cascade pointer.
           batch.update(doc.reference, {
             'start': Timestamp.fromDate(newStart),
             'end': Timestamp.fromDate(newEnd),
@@ -794,6 +811,9 @@ Future<void> _scheduleMaintenance(
               'newEnd': Timestamp.fromDate(newEnd),
             },
           ));
+
+          // Advance blockedUntil so the next booking cascades off this one's new end.
+          blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
         }
       }
     }
