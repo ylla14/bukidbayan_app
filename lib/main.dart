@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
-import 'package:bukidbayan_app/screens/dashboard/home_screen.dart';
+import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -14,11 +14,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  FirestoreService firestoreService = FirestoreService(); // create instance
-  await firestoreService.validateAllEquipmentAvailability(); // call method
-  await firestoreService
-      .seedEquipmentDropdownOptions(); // seed dropdown options if not yet in Firestore
-  // Fire-and-forget: flag active bookings that overlap severe weather dates
+  FirestoreService firestoreService = FirestoreService();
+  await firestoreService.validateAllEquipmentAvailability();
+  await firestoreService.seedEquipmentDropdownOptions();
+  await AuthService().seedCoopAccount();
   unawaited(WeatherService().runWeatherCheck());
   runApp(const MyApp());
 }

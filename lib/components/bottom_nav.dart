@@ -112,3 +112,13 @@ class _BottomNavState extends State<BottomNav> {
 //     label: 'Profile',
 //   )
 // ];
+
+/// Minimal shell for the co-op account — only the Campaigns screen is shown.
+class CoopBottomNav extends StatelessWidget {
+  const CoopBottomNav({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CrowdfundingScreen(isCoop: true);
+  }
+}

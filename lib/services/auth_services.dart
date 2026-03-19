@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class AuthService {
@@ -185,6 +186,81 @@ class AuthService {
     await _firestore.collection('users').doc(uid).update({
       'phoneNumber': phone,
     });
+  }
+
+  // Co-op account constants
+  static const String coopPhone = '09876543210';
+  static const String coopPassword = 'IAmACoop.';
+
+  /// Seeds the singular co-op account into Firebase Auth + Firestore if it
+  /// doesn't already exist. Safe to call on every app startup.
+  Future<void> seedCoopAccount() async {
+    final coopEmail = _toShadowEmail(coopPhone);
+
+    // Check by phone number only (avoids needing a composite Firestore index)
+    try {
+      final query = await _firestore
+          .collection('users')
+          .where('phoneNumber', isEqualTo: coopPhone)
+          .limit(1)
+          .get();
+      if (query.docs.isNotEmpty) return; // Already seeded
+    } catch (e) {
+      debugPrint('[seedCoopAccount] Firestore check failed: $e');
+      return;
+    }
+
+    // Create or recover the Firebase Auth account
+    UserCredential cred;
+    try {
+      cred = await _auth.createUserWithEmailAndPassword(
+        email: coopEmail,
+        password: coopPassword,
+      );
+      debugPrint('[seedCoopAccount] Auth account created.');
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'email-already-in-use') {
+        debugPrint('[seedCoopAccount] Auth creation failed: ${e.code}');
+        return;
+      }
+      // Auth account exists but Firestore doc is missing — sign in to get UID
+      try {
+        cred = await _auth.signInWithEmailAndPassword(
+          email: coopEmail,
+          password: coopPassword,
+        );
+        debugPrint('[seedCoopAccount] Recovered existing Auth account.');
+      } catch (e2) {
+        debugPrint('[seedCoopAccount] Could not sign in to recover account: $e2');
+        return;
+      }
+    }
+
+    try {
+      await _firestore.collection('users').doc(cred.user!.uid).set({
+        'phoneNumber': coopPhone,
+        'email': coopEmail,
+        'firstName': 'BukidBayan',
+        'lastName': 'Co-op',
+        'accountType': 'coop',
+        'isPhoneUser': true,
+      }, SetOptions(merge: true));
+      debugPrint('[seedCoopAccount] Firestore doc written for uid=${cred.user!.uid}');
+    } catch (e) {
+      debugPrint('[seedCoopAccount] Firestore write failed: $e');
+    } finally {
+      await _auth.signOut();
+    }
+  }
+
+  /// Returns true if the given uid belongs to the co-op account.
+  Future<bool> isCoopAccount(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      return doc.data()?['accountType'] == 'coop';
+    } catch (_) {
+      return false;
+    }
   }
 
   // Logout

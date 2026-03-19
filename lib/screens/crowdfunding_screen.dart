@@ -20,6 +20,9 @@ class CrowdfundingScreen extends StatefulWidget {
   final FirebaseAuth? authOverride;
   final PreferredSizeWidget? appBarOverride;
   final Widget? drawerOverride;
+  /// True when the logged-in user is the co-op account.
+  /// Shows both tabs and create buttons. Prosumers see only the Discover tab.
+  final bool isCoop;
 
   const CrowdfundingScreen({
     super.key,
@@ -27,6 +30,7 @@ class CrowdfundingScreen extends StatefulWidget {
     this.authOverride,
     this.appBarOverride,
     this.drawerOverride,
+    this.isCoop = false,
   });
 
   @override
@@ -360,16 +364,18 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () => _openCreate(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Gumawa'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: lightColorScheme.primary,
-                        foregroundColor: Colors.white,
+                    if (widget.isCoop) ...[
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _openCreate(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Gumawa'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: lightColorScheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -660,16 +666,18 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => _openCreate(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Bago'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: lightColorScheme.primary,
-                      foregroundColor: Colors.white,
+                  if (widget.isCoop) ...[
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () => _openCreate(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Bago'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: lightColorScheme.primary,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),
@@ -772,12 +780,14 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                         const Text(
                           'Gumawa ng unang draft ng kampanya para makapagsimulang mangalap ng pondo.',
                         ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: () => _openCreate(),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Gumawa ng Kampanya'),
-                        ),
+                        if (widget.isCoop) ...[
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: () => _openCreate(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Gumawa ng Kampanya'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -813,6 +823,15 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isCoop) {
+      // Prosumers only see the Discover tab — no tab bar needed.
+      return Scaffold(
+        appBar: widget.appBarOverride ?? const CustomAppBar(),
+        drawer: widget.drawerOverride ?? CustomDrawer(onLogout: logout),
+        body: _buildDiscoverTab(),
+      );
+    }
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
