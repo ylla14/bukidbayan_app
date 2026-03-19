@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/screens/campaign_creation/campaign_creation_screen.dart';
 import 'package:bukidbayan_app/screens/campaign_detail_screen.dart';
+import 'package:bukidbayan_app/screens/campaign_report_screen.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
@@ -271,6 +272,16 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => CampaignDetailScreen(campaignId: campaign.id),
+      ),
+    );
+    await _refresh();
+  }
+
+  Future<void> _openReport(Campaign campaign) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CampaignReportScreen(campaignId: campaign.id),
       ),
     );
     await _refresh();
@@ -572,6 +583,8 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               await _openCreate(draft: campaign);
             } else if (value == 'delete') {
               await _confirmDeleteDraft(campaign);
+            } else if (value == 'report') {
+              await _openReport(campaign);
             }
           },
           itemBuilder: (context) {
@@ -590,6 +603,13 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                   child: Text('Burahin ang Draft'),
                 ),
               ]);
+            } else if (_isEnded(campaign)) {
+              items.add(
+                const PopupMenuItem<String>(
+                  value: 'report',
+                  child: Text('Gumawa ng Ulat'),
+                ),
+              );
             }
 
             return items;

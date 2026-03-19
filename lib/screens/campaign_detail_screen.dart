@@ -4,6 +4,7 @@ import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
 import 'package:bukidbayan_app/widgets/campaign_cover_image.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
@@ -43,6 +44,46 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       _future = service.getCampaignById(widget.campaignId);
     });
     await _future;
+  }
+
+  bool _isCampaignEnded(Campaign campaign) {
+    return campaign.status.startsWith('ended') ||
+        DateTime.now().isAfter(campaign.endDate);
+  }
+
+  bool _isOwnedByCurrentUser(Campaign campaign) {
+    String? email;
+    String? displayName;
+    try {
+      email = FirebaseAuth.instance.currentUser?.email;
+      displayName = FirebaseAuth.instance.currentUser?.displayName;
+    } catch (_) {
+      email = null;
+      displayName = null;
+    }
+
+    if (email != null &&
+        campaign.creatorEmail != null &&
+        campaign.creatorEmail == email) {
+      return true;
+    }
+    if ((campaign.creatorEmail == null || campaign.creatorEmail!.isEmpty) &&
+        displayName != null &&
+        displayName.isNotEmpty &&
+        campaign.creatorName == displayName) {
+      return true;
+    }
+    return false;
+  }
+
+  String? _supportDisabledReason(Campaign campaign) {
+    if (_isCampaignEnded(campaign)) {
+      return 'Tapos na ang campaign na ito.';
+    }
+    if (_isOwnedByCurrentUser(campaign)) {
+      return 'Hindi ka puwedeng mag-support sa sarili mong campaign.';
+    }
+    return null;
   }
 
   Widget _buildGuideCard({
@@ -88,6 +129,23 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   }
 
   void _openBackSheet(Campaign campaign, {RewardTier? preselect}) {
+    final disabledReason = _supportDisabledReason(campaign);
+    if (disabledReason != null) {
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi puwede ngayon',
+        message: disabledReason,
+      );
+      return;
+    }
+
+    String? fallbackName;
+    try {
+      fallbackName = FirebaseAuth.instance.currentUser?.displayName;
+    } catch (_) {
+      fallbackName = null;
+    }
+
     RewardTier? selected =
         preselect ??
         (campaign.rewards.isNotEmpty ? campaign.rewards.first : null);
@@ -95,6 +153,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     final amountCtrl = TextEditingController(
       text: selected == null ? '' : selected.minPledge.toString(),
     );
+    final donorNameCtrl = TextEditingController(text: fallbackName ?? '');
+    final donorPhoneCtrl = TextEditingController();
+    final donorNoteCtrl = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -207,6 +268,32 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    TextField(
+                      controller: donorNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Pangalan ng supporter*',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: donorPhoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Contact number (opsyonal)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: donorNoteCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Mensahe / Tala (opsyonal)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -227,17 +314,31 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               message:
                                   'Ang minimum para sa benepisyong ito ay ${formatPeso(selected!.minPledge)}.',
                             );
-                            return;
-                          }
+                              return;
+                            }
 
-                          try {
-                            await service.backCampaign(
-                              campaignId: campaign.id,
-                              amount: raw,
-                              rewardId: selected?.id,
-                            );
-                            if (mounted) {
-                              Navigator.pop(context);
+                            final donorName = donorNameCtrl.text.trim();
+                            if (donorName.isEmpty) {
+                              showErrorSnackbar(
+                                context: context,
+                                title: 'Kulang ang detalye',
+                                message:
+                                    'Pakilagay ang pangalan ng supporter bago kumpirmahin.',
+                              );
+                              return;
+                            }
+
+                            try {
+                              await service.backCampaign(
+                                campaignId: campaign.id,
+                                amount: raw,
+                                rewardId: selected?.id,
+                                backerName: donorName,
+                                backerPhone: donorPhoneCtrl.text.trim(),
+                                backerNote: donorNoteCtrl.text.trim(),
+                              );
+                              if (mounted) {
+                                Navigator.pop(context);
                             }
                             showConfirmSnackbar(
                               context: context,
@@ -319,6 +420,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
         final progress = c.progress.clamp(0.0, 1.0);
         final progressPercent = (progress * 100).round();
         final safeDaysLeft = c.daysLeft < 0 ? 0 : c.daysLeft;
+        final supportDisabledReason = _supportDisabledReason(c);
+        final canSupport = supportDisabledReason == null;
 
         return Scaffold(
           appBar: AppBar(
@@ -360,6 +463,28 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       'Basahin ang target, benepisyo, at panganib para malinaw ang iyong desisyon.',
                 ),
               ),
+              if (!canSupport)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Card(
+                    color: Colors.grey.shade100,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              supportDisabledReason!,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Card(
@@ -471,10 +596,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               Text(r.notes!),
                             ],
                             const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () => _openBackSheet(c, preselect: r),
+                             SizedBox(
+                               width: double.infinity,
+                               child: OutlinedButton.icon(
+                                onPressed: canSupport
+                                    ? () => _openBackSheet(c, preselect: r)
+                                    : null,
                                 icon: const Icon(Icons.check_circle_outline),
                                 label: const Text('Piliin ang benepisyong ito'),
                               ),
@@ -493,7 +620,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _openBackSheet(c),
+                  onPressed: canSupport ? () => _openBackSheet(c) : null,
                   icon: const Icon(Icons.volunteer_activism_outlined),
                   label: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 4),

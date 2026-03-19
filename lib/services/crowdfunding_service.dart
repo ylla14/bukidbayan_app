@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:bukidbayan_app/models/campaign_report.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,6 +9,12 @@ class CrowdfundingService {
   static const String _legacyCampaignsKey = 'campaigns_v1';
   static const String _pledgesKey = 'pledges_v1';
   static const String _currentUserKey = 'current_user_email'; // from auth
+  static const String _alwaysActiveTestAccountPrefix = '12312312312';
+  static const String _alwaysActiveTestCampaignId =
+      'test_active_campaign_12312312312';
+  static const String _alwaysEndedTestCampaignId =
+      'test_ended_campaign_12312312312';
+  static const String _alwaysEndedTestRewardId = 'test_ended_reward_12312312312';
 
   Future<void> seedIfEmpty() async {
     final prefs = await SharedPreferences.getInstance();
@@ -372,6 +379,366 @@ class CrowdfundingService {
     return false;
   }
 
+  bool _isCampaignEnded(Campaign campaign) {
+    return campaign.status.startsWith('ended') ||
+        DateTime.now().isAfter(campaign.endDate);
+  }
+
+  bool _isAlwaysActiveTestAccount(String? email) {
+    if (email == null || email.isEmpty) return false;
+    return email.toLowerCase().startsWith(
+      _alwaysActiveTestAccountPrefix.toLowerCase(),
+    );
+  }
+
+  Future<void> _ensureAlwaysActiveCampaignForTestAccount({
+    required SharedPreferences prefs,
+    required String? email,
+    required String? displayName,
+  }) async {
+    if (!_isAlwaysActiveTestAccount(email)) return;
+
+    final campaignsJson = prefs.getString(_campaignsKey);
+    final campaigns = (campaignsJson == null || campaignsJson.isEmpty)
+        ? <Campaign>[]
+        : decodeCampaigns(campaignsJson);
+    final pledgesJson = prefs.getString(_pledgesKey);
+    final pledges = (pledgesJson == null || pledgesJson.isEmpty)
+        ? <Pledge>[]
+        : decodePledges(pledgesJson);
+    var campaignsChanged = false;
+    var pledgesChanged = false;
+    final now = DateTime.now();
+
+    final hasOwnedActiveCampaign = campaigns.any(
+      (campaign) =>
+          _isOwnedByUser(campaign, email: email, displayName: displayName) &&
+          campaign.status == 'live' &&
+          !_isCampaignEnded(campaign),
+    );
+    if (!hasOwnedActiveCampaign) {
+      final existingIdx = campaigns.indexWhere(
+        (campaign) => campaign.id == _alwaysActiveTestCampaignId,
+      );
+
+      if (existingIdx >= 0) {
+        final existing = campaigns[existingIdx];
+        campaigns[existingIdx] = existing.copyWith(
+          creatorName:
+              (displayName != null && displayName.isNotEmpty)
+              ? displayName
+              : existing.creatorName,
+          creatorEmail: email,
+          status: 'live',
+          endDate: now.add(const Duration(days: 30)),
+          publishedAt: existing.publishedAt ?? now,
+          lastEditedAt: now,
+        );
+      } else {
+        campaigns.add(
+          Campaign(
+            id: _alwaysActiveTestCampaignId,
+            title: 'Testing Campaign (Auto Active)',
+            creatorName:
+                (displayName != null && displayName.isNotEmpty)
+                ? displayName
+                : 'QA Test Account',
+            creatorEmail: email,
+            shortBlurb:
+                'Auto-maintained campaign for testing active campaign flows.',
+            description:
+                'This campaign is automatically kept active for the designated test account '
+                'so QA can consistently verify active-listing behavior.',
+            isAssetImage: true,
+            image: 'assets/images/farmBg.jpg',
+            category: 'Irrigation',
+            goalAmount: 20000,
+            pledgedAmount: 0,
+            backersCount: 0,
+            endDate: now.add(const Duration(days: 30)),
+            createdAt: now,
+            rewards: const [],
+            status: 'live',
+            publishedAt: now,
+            lastEditedAt: now,
+          ),
+        );
+      }
+      campaignsChanged = true;
+    }
+
+    final hasOwnedEndedCampaign = campaigns.any(
+      (campaign) =>
+          _isOwnedByUser(campaign, email: email, displayName: displayName) &&
+          _isCampaignEnded(campaign),
+    );
+    if (!hasOwnedEndedCampaign) {
+      final existingEndedIdx = campaigns.indexWhere(
+        (campaign) => campaign.id == _alwaysEndedTestCampaignId,
+      );
+      final endedCreatedAt = now.subtract(const Duration(days: 50));
+      final endedPublishedAt = now.subtract(const Duration(days: 45));
+      final endedDate = now.subtract(const Duration(days: 12));
+
+      if (existingEndedIdx >= 0) {
+        final existing = campaigns[existingEndedIdx];
+        campaigns[existingEndedIdx] = existing.copyWith(
+          creatorName:
+              (displayName != null && displayName.isNotEmpty)
+              ? displayName
+              : existing.creatorName,
+          creatorEmail: email,
+          status: 'ended_success',
+          goalAmount: 8000,
+          pledgedAmount: 9000,
+          backersCount: 3,
+          endDate: endedDate,
+          publishedAt: existing.publishedAt ?? endedPublishedAt,
+          lastEditedAt: now,
+          rewards: const [
+            RewardTier(
+              id: _alwaysEndedTestRewardId,
+              title: 'Tester Reward Tier',
+              minPledge: 500,
+              discountType: 'percent',
+              discountValue: 10,
+              usageLimit: 1,
+              validityDays: 60,
+              notes: 'Autogenerated reward tier for report testing.',
+            ),
+          ],
+        );
+      } else {
+        campaigns.add(
+          Campaign(
+            id: _alwaysEndedTestCampaignId,
+            title: 'Testing Campaign (Ended for Report)',
+            creatorName:
+                (displayName != null && displayName.isNotEmpty)
+                ? displayName
+                : 'QA Test Account',
+            creatorEmail: email,
+            shortBlurb:
+                'Autogenerated finished campaign so report generation can be tested anytime.',
+            description:
+                'This campaign is intentionally created as already finished so the designated '
+                'test account can always generate a campaign report without manual setup.',
+            isAssetImage: true,
+            image: 'assets/images/loopyBg.jpg',
+            category: 'Solar/Power',
+            goalAmount: 8000,
+            pledgedAmount: 9000,
+            backersCount: 3,
+            endDate: endedDate,
+            createdAt: endedCreatedAt,
+            rewards: const [
+              RewardTier(
+                id: _alwaysEndedTestRewardId,
+                title: 'Tester Reward Tier',
+                minPledge: 500,
+                discountType: 'percent',
+                discountValue: 10,
+                usageLimit: 1,
+                validityDays: 60,
+                notes: 'Autogenerated reward tier for report testing.',
+              ),
+            ],
+            status: 'ended_success',
+            publishedAt: endedPublishedAt,
+            lastEditedAt: now,
+            specs: const {
+              'Mode': 'QA seed',
+              'Purpose': 'Report generation test',
+              'Lifecycle': 'Finished',
+            },
+            includedItems: const ['Report sample equipment', 'QA checklist'],
+            productionTimeline:
+                'Week 1: Setup, Week 2: Launch, Week 3: Completion.',
+            shippingCoverage: 'Local delivery',
+            shippingCostHandling: 'included',
+            shippingNotes: 'Seeded for testing report flow.',
+            warranty: 'Seeded test warranty details for report display.',
+            spareParts: 'Seeded spare parts details for report display.',
+            risks: 'Seeded risk notes for report display.',
+            safetyNotes: 'Seeded safety notes for report display.',
+          ),
+        );
+      }
+      campaignsChanged = true;
+    }
+
+    final hasEndedCampaignPledges = pledges.any(
+      (pledge) => pledge.campaignId == _alwaysEndedTestCampaignId,
+    );
+    if (!hasEndedCampaignPledges && email != null && email.isNotEmpty) {
+      pledges.addAll([
+        Pledge(
+          id: 'p_test_ended_123_1',
+          campaignId: _alwaysEndedTestCampaignId,
+          backerEmail: '${_alwaysActiveTestAccountPrefix}_backer1@test.local',
+          backerName: 'Test Supporter 1',
+          backerPhone: '09170000001',
+          amount: 3000,
+          rewardId: _alwaysEndedTestRewardId,
+          createdAt: now.subtract(const Duration(days: 40)),
+        ),
+        Pledge(
+          id: 'p_test_ended_123_2',
+          campaignId: _alwaysEndedTestCampaignId,
+          backerEmail: '${_alwaysActiveTestAccountPrefix}_backer2@test.local',
+          backerName: 'Test Supporter 2',
+          backerPhone: '09170000002',
+          amount: 2500,
+          rewardId: _alwaysEndedTestRewardId,
+          createdAt: now.subtract(const Duration(days: 32)),
+        ),
+        Pledge(
+          id: 'p_test_ended_123_3',
+          campaignId: _alwaysEndedTestCampaignId,
+          backerEmail: '${_alwaysActiveTestAccountPrefix}_backer3@test.local',
+          backerName: 'Test Supporter 3',
+          backerPhone: '09170000003',
+          backerNote: 'Seeded donor note for report QA.',
+          amount: 3500,
+          rewardId: null,
+          createdAt: now.subtract(const Duration(days: 20)),
+        ),
+      ]);
+      pledgesChanged = true;
+    }
+
+    if (campaignsChanged) {
+      await prefs.setString(_campaignsKey, encodeCampaigns(campaigns));
+    }
+    if (pledgesChanged) {
+      await prefs.setString(_pledgesKey, encodePledges(pledges));
+    }
+  }
+
+  Future<CampaignReport> generateCampaignReport({
+    required String campaignId,
+    String? userEmail,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await seedIfEmpty();
+
+    final campaignsJson = prefs.getString(_campaignsKey);
+    if (campaignsJson == null || campaignsJson.isEmpty) {
+      throw Exception('No campaigns found.');
+    }
+
+    final campaigns = decodeCampaigns(campaignsJson);
+    final idx = campaigns.indexWhere((c) => c.id == campaignId);
+    if (idx == -1) {
+      throw Exception('Campaign not found.');
+    }
+
+    final campaign = campaigns[idx];
+
+    String? firebaseEmail;
+    String? firebaseDisplayName;
+    try {
+      firebaseEmail = FirebaseAuth.instance.currentUser?.email;
+      firebaseDisplayName = FirebaseAuth.instance.currentUser?.displayName;
+    } catch (_) {
+      firebaseEmail = null;
+      firebaseDisplayName = null;
+    }
+
+    final resolvedEmail =
+        userEmail ?? prefs.getString(_currentUserKey) ?? firebaseEmail;
+    final displayName = firebaseDisplayName;
+
+    final isOwner = _isOwnedByUser(
+      campaign,
+      email: resolvedEmail,
+      displayName: displayName,
+    );
+    if (!isOwner) {
+      throw Exception(
+        'Only the campaign owner can generate a report for this campaign.',
+      );
+    }
+
+    if (!_isCampaignEnded(campaign)) {
+      throw Exception(
+        'Campaign report can only be generated after the campaign has ended.',
+      );
+    }
+
+    final pledgesJson = prefs.getString(_pledgesKey);
+    final pledges = (pledgesJson == null || pledgesJson.isEmpty)
+        ? <Pledge>[]
+        : decodePledges(pledgesJson);
+
+    final campaignPledges = pledges
+        .where((p) => p.campaignId == campaign.id)
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    final pledgeAmountTotal = campaignPledges.fold<int>(
+      0,
+      (sum, p) => sum + p.amount,
+    );
+    final totalPledges = campaignPledges.length;
+    final totalRaised = campaign.pledgedAmount;
+    final firstPledgeAt = totalPledges > 0 ? campaignPledges.first.createdAt : null;
+    final lastPledgeAt = totalPledges > 0 ? campaignPledges.last.createdAt : null;
+    final averagePledge = totalPledges > 0
+        ? pledgeAmountTotal / totalPledges
+        : (campaign.backersCount > 0
+              ? campaign.pledgedAmount / campaign.backersCount
+              : 0.0);
+
+    final rewardBreakdown = campaign.rewards.map((rewardTier) {
+      final related = campaignPledges.where((p) => p.rewardId == rewardTier.id);
+      final amount = related.fold<int>(0, (sum, p) => sum + p.amount);
+      final count = related.length;
+      return CampaignRewardReportItem(
+        rewardTier: rewardTier,
+        pledgeCount: count,
+        totalAmount: amount,
+      );
+    }).toList();
+
+    final noRewardPledges = campaignPledges
+        .where((p) => p.rewardId == null || p.rewardId!.trim().isEmpty)
+        .toList();
+    final noRewardAmount = noRewardPledges.fold<int>(
+      0,
+      (sum, p) => sum + p.amount,
+    );
+    final campaignStart = campaign.publishedAt ?? campaign.createdAt;
+    final campaignDurationDays = max(
+      0,
+      campaign.endDate.difference(campaignStart).inDays,
+    );
+
+    final isSuccessful = campaign.status == 'ended_success'
+        ? true
+        : campaign.status == 'ended_fail'
+        ? false
+        : totalRaised >= campaign.goalAmount;
+
+    return CampaignReport(
+      campaign: campaign,
+      isEnded: true,
+      isSuccessful: isSuccessful,
+      totalRaised: totalRaised,
+      fundingDifference: totalRaised - campaign.goalAmount,
+      totalPledges: totalPledges,
+      totalBackers: campaign.backersCount,
+      averagePledge: averagePledge,
+      firstPledgeAt: firstPledgeAt,
+      lastPledgeAt: lastPledgeAt,
+      campaignDurationDays: campaignDurationDays,
+      pledges: campaignPledges,
+      rewardBreakdown: rewardBreakdown,
+      noRewardPledgeCount: noRewardPledges.length,
+      noRewardAmount: noRewardAmount,
+    );
+  }
+
   Future<List<Campaign>> getMyCampaigns({
     String? userEmail,
     String? status,
@@ -383,6 +750,11 @@ class CrowdfundingService {
         prefs.getString(_currentUserKey) ??
         FirebaseAuth.instance.currentUser?.email;
     final displayName = FirebaseAuth.instance.currentUser?.displayName;
+    await _ensureAlwaysActiveCampaignForTestAccount(
+      prefs: prefs,
+      email: resolvedEmail,
+      displayName: displayName,
+    );
     final campaignsJson = prefs.getString(_campaignsKey);
     if (campaignsJson == null || campaignsJson.isEmpty) return [];
 
@@ -422,6 +794,9 @@ class CrowdfundingService {
     required String campaignId,
     required int amount,
     String? rewardId,
+    String? backerName,
+    String? backerPhone,
+    String? backerNote,
   }) async {
     if (amount <= 0) {
       throw Exception('Amount must be greater than zero.');
@@ -439,6 +814,28 @@ class CrowdfundingService {
     if (idx == -1) throw Exception('Campaign not found.');
 
     final campaign = campaigns[idx];
+
+    String? firebaseEmail;
+    String? firebaseDisplayName;
+    try {
+      firebaseEmail = FirebaseAuth.instance.currentUser?.email;
+      firebaseDisplayName = FirebaseAuth.instance.currentUser?.displayName;
+    } catch (_) {
+      firebaseEmail = null;
+      firebaseDisplayName = null;
+    }
+
+    final email = prefs.getString(_currentUserKey) ?? firebaseEmail;
+    final displayName = firebaseDisplayName;
+    final isOwner = _isOwnedByUser(
+      campaign,
+      email: email,
+      displayName: displayName,
+    );
+    if (isOwner) {
+      throw Exception('You cannot support your own campaign.');
+    }
+
     if (DateTime.now().isAfter(campaign.endDate)) {
       throw Exception('This campaign has already ended.');
     }
@@ -448,20 +845,29 @@ class CrowdfundingService {
         ? <Pledge>[]
         : decodePledges(pledgesJson);
 
-    final email =
-        prefs.getString(_currentUserKey) ??
-        FirebaseAuth.instance.currentUser?.email;
-
     final isNewBacker = email == null
         ? true
         : !pledges.any(
             (p) => p.campaignId == campaignId && p.backerEmail == email,
           );
 
+    final normalizedBackerName = backerName?.trim().isNotEmpty == true
+        ? backerName!.trim()
+        : displayName;
+    final normalizedBackerPhone = backerPhone?.trim().isNotEmpty == true
+        ? backerPhone!.trim()
+        : null;
+    final normalizedBackerNote = backerNote?.trim().isNotEmpty == true
+        ? backerNote!.trim()
+        : null;
+
     final pledge = Pledge(
       id: 'p${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(999)}',
       campaignId: campaignId,
       backerEmail: email,
+      backerName: normalizedBackerName,
+      backerPhone: normalizedBackerPhone,
+      backerNote: normalizedBackerNote,
       amount: amount,
       rewardId: rewardId,
       createdAt: DateTime.now(),

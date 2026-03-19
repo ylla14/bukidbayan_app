@@ -317,6 +317,9 @@ class Pledge {
   final String id;
   final String campaignId;
   final String? backerEmail;
+  final String? backerName;
+  final String? backerPhone;
+  final String? backerNote;
   final int amount;
   final String? rewardId;
   final DateTime createdAt;
@@ -325,6 +328,9 @@ class Pledge {
     required this.id,
     required this.campaignId,
     required this.backerEmail,
+    this.backerName,
+    this.backerPhone,
+    this.backerNote,
     required this.amount,
     required this.rewardId,
     required this.createdAt,
@@ -334,6 +340,9 @@ class Pledge {
     id: json['id'] as String,
     campaignId: json['campaignId'] as String,
     backerEmail: json['backerEmail'] as String?,
+    backerName: json['backerName'] as String?,
+    backerPhone: json['backerPhone'] as String?,
+    backerNote: json['backerNote'] as String?,
     amount: (json['amount'] as num).toInt(),
     rewardId: json['rewardId'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
@@ -343,6 +352,9 @@ class Pledge {
     'id': id,
     'campaignId': campaignId,
     'backerEmail': backerEmail,
+    'backerName': backerName,
+    'backerPhone': backerPhone,
+    'backerNote': backerNote,
     'amount': amount,
     'rewardId': rewardId,
     'createdAt': createdAt.toIso8601String(),

@@ -162,4 +162,60 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('My Listings shows report action for ended campaigns', (
+    tester,
+  ) async {
+    final service = FakeCrowdfundingService(
+      discoverCampaigns: const [],
+      myCampaigns: [
+        _campaign(
+          id: 'e1',
+          title: 'Ended Campaign',
+          category: 'Irrigation',
+          status: 'live',
+          endDate: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_buildHarness(service));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aking Mga Kampanya'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Higit pang aksyon'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gumawa ng Ulat'), findsOneWidget);
+  });
+
+  testWidgets('My Listings hides report action for active campaigns', (
+    tester,
+  ) async {
+    final service = FakeCrowdfundingService(
+      discoverCampaigns: const [],
+      myCampaigns: [
+        _campaign(
+          id: 'l2',
+          title: 'Active Campaign',
+          category: 'Solar/Power',
+          status: 'live',
+          endDate: DateTime.now().add(const Duration(days: 4)),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_buildHarness(service));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aking Mga Kampanya'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Higit pang aksyon'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gumawa ng Ulat'), findsNothing);
+  });
 }
