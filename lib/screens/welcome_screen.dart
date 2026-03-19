@@ -41,7 +41,7 @@ class WelcomeScreen extends StatelessWidget {
 
                 // ── Heading ───────────────────────────────────────────────
                 Text(
-                  'Welcome to\nBukidbayan!',
+                  'Welcome to\nBukidBayan!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 36.0,

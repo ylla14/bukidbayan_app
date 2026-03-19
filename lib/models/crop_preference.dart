@@ -12,22 +12,22 @@ const List<String> allCrops = [
 /// based on the onboarding logic reference table.
 const Map<String, List<String>> cropToolTypes = {
   'Rice (Wet)': [
-    'Floating Tiller', 'Hand Tractor', 'Machine', 'Hand Tool', 'Harvester (Halimaw)', 'Rice Mill',
+    'Floating Tiller', 'Hand Tractor (Kuliglig)', 'Machine', 'Hand Tool', 'Harvester (Halimaw)', 'Rice Mill',
   ],
   'Rice (Dry)': [
-    'Tractor', 'Implements', 'Hand Tractor', 'Machine', 'Hand Tool', 'Harvester (Halimaw)', 'Rice Mill',
+    'Tractor', 'Implements', 'Hand Tractor (Kuliglig)', 'Machine', 'Hand Tool', 'Harvester (Halimaw)', 'Rice Mill',
   ],
   'White Corn': [
-    'Tractor', 'Implements', 'Hand Tractor', 'Machine', 'Hand Tool', 'Harvester (Halimaw)',
+    'Tractor', 'Implements', 'Hand Tractor (Kuliglig)', 'Machine', 'Hand Tool', 'Harvester (Halimaw)',
   ],
   'Squash/Upo': [
-    'Hand Tractor', 'Tractor', 'Implements', 'Machine', 'Hand Tool',
+    'Hand Tractor (Kuliglig)', 'Tractor', 'Implements', 'Machine', 'Hand Tool',
   ],
   'Leafy/Small Vegetables': [
-    'Hand Tractor', 'Machine', 'Hand Tool',
+    'Hand Tractor (Kuliglig)', 'Machine', 'Hand Tool',
   ],
   'Watermelon': [
-    'Tractor', 'Implements', 'Hand Tractor', 'Machine', 'Hand Tool',
+    'Tractor', 'Implements', 'Hand Tractor (Kuliglig)', 'Machine', 'Hand Tool',
   ],
 };
 

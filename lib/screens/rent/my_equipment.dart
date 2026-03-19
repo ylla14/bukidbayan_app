@@ -390,6 +390,26 @@ floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
                           ),
                         ),
                       ),
+
+                      const SizedBox(height: 6),
+
+// Delete Button
+SizedBox(
+  width: 100,
+  child: OutlinedButton.icon(
+    onPressed: () => _deleteEquipment(context, equipment),
+    icon: const Icon(Icons.delete_outline, size: 14),
+    label: const Text('Delete', style: TextStyle(fontSize: 12)),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: Colors.red.shade600,
+      side: BorderSide(color: Colors.red.shade400),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+      ),
+    ),
+  ),
+),
                     ],
                   ),
                 ],
@@ -895,6 +915,116 @@ Future<void> _endMaintenance(
   }
 }
 
+Future<void> _deleteEquipment(
+  BuildContext context,
+  Equipment equipment,
+) async {
+  // ── Step 1: Check for active bookings ──────────────────────────────
+  final activeSnap = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: equipment.id)
+      .where('status', whereIn: ['pending', 'approved', 'onTheWay', 'inProgress', 'readyForPickup'])
+      .get();
+
+  if (activeSnap.docs.isNotEmpty && context.mounted) {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.block, color: Colors.red, size: 20),
+            SizedBox(width: 8),
+            Text('Cannot Delete'),
+          ],
+        ),
+        content: Text(
+          'This equipment has ${activeSnap.docs.length} active '
+          '${activeSnap.docs.length == 1 ? 'booking' : 'bookings'}. '
+          'Please resolve all active bookings before deleting.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+
+  // ── Step 2: Confirm deletion ─────────────────────────────────────────
+  if (!context.mounted) return;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+          SizedBox(width: 8),
+          Text('Delete Equipment'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              style: const TextStyle(color: Colors.black87, fontSize: 14),
+              children: [
+                const TextSpan(text: 'Are you sure you want to delete '),
+                TextSpan(
+                  text: '"${equipment.name}"',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const TextSpan(text: '? This action cannot be undone.'),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red.shade600,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true || !context.mounted) return;
+
+  // ── Step 3: Delete ───────────────────────────────────────────────────
+  try {
+    await _firestoreService.deleteEquipment(equipment.id!);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${equipment.name}" has been deleted.'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting equipment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
 
 }
 

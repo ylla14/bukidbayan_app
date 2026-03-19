@@ -42,9 +42,11 @@ class _DateStepState extends State<DateStep> {
   // ── Per-category rates ───────────────────────────────────────────────────
   double get _hectaresPerDay {
     switch (widget.item.category?.toLowerCase()) {
-      case 'hand tractor (kuliglig)':  return 0.5;
-      case 'floating tiller (pagong)': return 1.0;
-      default:                          return 2.0; // tractor, harvester (halimaw)
+      case 'hand tractor (kuliglig)': 
+      case 'floating tiller (pagong)': 
+      return 1.0;
+      default:                          
+      return 2.0; // tractor, harvester (halimaw)
     }
   }
 

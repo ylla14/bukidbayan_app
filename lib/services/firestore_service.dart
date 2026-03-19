@@ -181,7 +181,7 @@ class FirestoreService {
 
   /// Ensures the three new categories exist in the Firestore categories doc.
   Future<void> ensureNewCategoriesExist() async {
-    const newCategories = ['Hand Tractor', 'Floating Tiller', 'Implements'];
+    const newCategories = ['Hand Tractor (Kuliglig)', 'Floating Tiller', 'Implements'];
     final docRef = _firestore
         .collection('categories')
         .doc('equipment_categories');

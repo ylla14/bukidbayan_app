@@ -14,11 +14,12 @@ class ProductAvailability extends StatelessWidget {
     String? infoMessage;
     if (category == 'tractor' || category == 'harvester (halimaw)') {
       infoMessage = 'Ang kagamitang ito ay kayang magtrabaho ng hanggang 2 ektarya bawat araw.';
-    } else if (category == 'floating tiller (pagong)') {
+    } else if (category == 'floating tiller (pagong)' && category == 'hand tractor (kuliglig)') {
       infoMessage = 'Ang kagamitang ito ay kayang magtrabaho ng hanggang 1 ektarya bawat araw.';
-    } else if (category == 'hand tractor (kuliglig)') {
-      infoMessage = 'Ang kagamitang ito ay kayang magtrabaho ng hanggang 0.5 ektarya bawat araw.';
-    }
+    } 
+    // else if (category == 'hand tractor (kuliglig)') {
+    //   infoMessage = 'Ang kagamitang ito ay kayang magtrabaho ng hanggang 0.5 ektarya bawat araw.';
+    // }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

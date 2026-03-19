@@ -25,7 +25,7 @@ const List<String> rentalUnit = <String>[
   if (category == null) return null;
   final c = category.toLowerCase();
   // Order matters: check 'hand tractor' before plain 'tractor'
-  if (c.contains('hand tractor'))    return (2000, 5000);
+  if (c.contains('hand tractor') || c.contains('kuliglig'))    return (2000, 5000);
   if (c.contains('tractor'))         return (5000, 10000);
   if (c.contains('harvester') || c.contains('halimaw')) return (3500, 8000);
   if (c.contains('floating tiller')) return (2000, 5000);
@@ -687,19 +687,40 @@ String? _currentDraftId;
                                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                                   .toList(),
                           onChanged: isLoadingCategories
-                              ? null
-                              : (val) {
-                                  setState(() {
-                                    selectedCategory = val;
-                                    // Clear price when category changes so validator re-runs
-                                    _equipmentPriceController.clear();
-                                    if (val?.toLowerCase().contains('rice mill') != true) {
-                                      minimumVolumeRequired = null;
-                                      _minimumVolumeController.clear();
-                                      showMinVolumeError = false;
-                                    }
-                                  });
-                                },
+                            ? null
+                            : (val) {
+                                setState(() {
+                                  selectedCategory = val;
+                                  _equipmentPriceController.clear();
+                                  if (val?.toLowerCase().contains('rice mill') != true) {
+                                    minimumVolumeRequired = null;
+                                    _minimumVolumeController.clear();
+                                    showMinVolumeError = false;
+                                  }
+
+                                  // ── Auto-fill land size min/max based on category ──
+                                  final cat = val?.toLowerCase();
+                                  final isAutoCategory = cat == 'tractor' ||
+                                      cat == 'harvester (halimaw)' ||
+                                      cat == 'hand tractor (kuliglig)' ||
+                                      cat == 'floating tiller (pagong)';
+
+                                  if (isAutoCategory) {
+                                    final haPerDay = (cat == 'hand tractor (kuliglig)' ||
+                                            cat == 'floating tiller (pagong)')
+                                        ? 1.0
+                                        : 2.0;
+                                    _landSizeMinController.text = '1';
+                                    _landSizeMaxController.text = (haPerDay * 5).toStringAsFixed(0);
+                                    landSizeRequirement = true; // auto-enable 
+                                    showLandSizeError = false;
+                                  } else {
+                                    // Clear for non-auto categories
+                                    _landSizeMinController.clear();
+                                    _landSizeMaxController.clear();
+                                  }
+                                });
+                              },
                           validator: (v) => v == null ? 'Please select a category' : null,
                         ),
       

@@ -32,7 +32,7 @@ class _PriceFilterSheetState extends State<PriceFilterSheet> {
   DateTimeRange? _dateFilter;
 
   final List<String> _categories = [
-    'Hand Tool', 'Hand Tractor', 'Floating Tiller',
+    'Hand Tool', 'Hand Tractor (Kuliglig)', 'Floating Tiller',
     'Tractor', 'Implements', 'Machine', 'Harvester (Halimaw)', 'Rice Mill',
   ];
 

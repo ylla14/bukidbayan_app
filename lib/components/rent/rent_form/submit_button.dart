@@ -73,7 +73,7 @@ class _SubmitButtonState extends State<SubmitButton> {
   // ── Shared rate helper (mirrors date_step.dart) ─────────────────────────
   double get _hectaresPerDay {
     switch (widget.item.category?.toLowerCase()) {
-      case 'hand tractor (kuliglig)':  return 0.5;
+      case 'hand tractor (kuliglig)': 
       case 'floating tiller (pagong)': return 1.0;
       default:                          return 2.0; // tractor, harvester (halimaw)
     }
