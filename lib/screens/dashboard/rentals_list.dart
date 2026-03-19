@@ -364,13 +364,30 @@ class _RequestCard extends StatelessWidget {
               const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(
-                  "${DateFormat('MMM dd, yyyy').format(request.start)} - ${DateFormat('MMM dd, yyyy').format(request.end)}",
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${DateFormat('MMM dd, yyyy').format(request.start)} - ${DateFormat('MMM dd, yyyy').format(request.end)}",
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    if (request.originalStart != null && request.originalEnd != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          "Orihinal: ${DateFormat('MMM dd, yyyy').format(request.originalStart!)} - ${DateFormat('MMM dd, yyyy').format(request.originalEnd!)}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],

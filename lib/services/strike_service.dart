@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 /// Block durations per case (in days).
-const int kBlockDurationCancelStrike = 7;   // Case 1: 3 cancel-strikes  → 1 week
-const int kBlockDurationMisuse       = 14;  // Case 2/3: misuse/damage   → 2 weeks
+const int kBlockDurationCancelStrike = 7;   // Case 1: 3 cancel-strikes   → 1 week
+const int kBlockDurationMisuse       = 14;  // Case 2/3: misuse/damage    → 2 weeks (immediate)
 const int kBlockDurationLateReturn   = 7;   // Case 4: 3 late-day-strikes → 1 week
 
 class StrikeService {
@@ -11,12 +11,10 @@ class StrikeService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ── Generic report (Cases 1, 2, 3) ────────────────────────────────────────
+  // ── Case 1: Cancel after approval (strike-based) ───────────────────────────
 
-  /// Saves a report, increments the renter's strike count, and optionally
-  /// blocks immediately (for misuse/damage — set [immediateBlock] = true).
-  ///
-  /// [blockDurationDays] controls the suspension length when the block fires.
+  /// Increments the renter's strike count and blocks for [blockDurationDays]
+  /// once 3 strikes are reached. Used for Case 1 (cancel after approval).
   Future<void> submitReport({
     required String requestId,
     required String renterId,
@@ -25,7 +23,6 @@ class StrikeService {
     required String details,
     List<String> evidenceUrls = const [],
     int blockDurationDays = kBlockDurationCancelStrike,
-    bool immediateBlock = false,
   }) async {
     final userRef   = _db.collection('users').doc(renterId);
     final reportRef = _db.collection('reports').doc();
@@ -51,7 +48,7 @@ class StrikeService {
 
       final Map<String, dynamic> userUpdate = {'strikeCount': newStrikes};
 
-      if (immediateBlock || newStrikes >= _maxStrikes) {
+      if (newStrikes >= _maxStrikes) {
         blockedUntil = DateTime.now().add(Duration(days: blockDurationDays));
         userUpdate['blockedUntil'] = Timestamp.fromDate(blockedUntil!);
         nowBlocked = true;
@@ -71,6 +68,50 @@ class StrikeService {
       );
     } catch (e) {
       debugPrint('Strike notification failed (non-fatal): $e');
+    }
+  }
+
+  // ── Cases 2 & 3: Misuse / Damage (immediate ban, no strike count) ──────────
+
+  /// Immediately bans the renter for [kBlockDurationMisuse] days without
+  /// touching their strike count. Used for equipment damage and misuse reports.
+  Future<void> issueMisuseBan({
+    required String requestId,
+    required String renterId,
+    required String ownerId,
+    required String reason,
+    required String details,
+    List<String> evidenceUrls = const [],
+  }) async {
+    final userRef   = _db.collection('users').doc(renterId);
+    final reportRef = _db.collection('reports').doc();
+    final blockedUntil =
+        DateTime.now().add(const Duration(days: kBlockDurationMisuse));
+
+    await _db.runTransaction((tx) async {
+      tx.set(reportRef, {
+        'requestId'   : requestId,
+        'renterId'    : renterId,
+        'ownerId'     : ownerId,
+        'reason'      : reason,
+        'details'     : details,
+        'evidenceUrls': evidenceUrls,
+        'createdAt'   : FieldValue.serverTimestamp(),
+      });
+
+      tx.update(userRef, {
+        'blockedUntil': Timestamp.fromDate(blockedUntil),
+      });
+    });
+
+    try {
+      await _sendBanNotification(
+        renterId     : renterId,
+        reason       : reason,
+        blockedUntil : blockedUntil,
+      );
+    } catch (e) {
+      debugPrint('Misuse ban notification failed (non-fatal): $e');
     }
   }
 
@@ -166,6 +207,29 @@ class StrikeService {
   }
 
   // ── Notifications ──────────────────────────────────────────────────────────
+
+  Future<void> _sendBanNotification({
+    required String renterId,
+    required String reason,
+    required DateTime blockedUntil,
+  }) async {
+    final d = blockedUntil;
+    final unblockDate = '${d.day}/${d.month}/${d.year}';
+    final reasonLabel = _reasonLabel(reason);
+    await _db
+        .collection('notifications')
+        .doc(renterId)
+        .collection('items')
+        .add({
+      'type'     : 'strike',
+      'title'    : 'Temporarily Banned',
+      'body'     : 'Ang iyong account ay pansamantalang sinuspinde sa loob ng '
+          '$kBlockDurationMisuse na araw dahil sa: "$reasonLabel". '
+          'Hindi ka makakapaghiram ng kagamitan hanggang $unblockDate.',
+      'createdAt': FieldValue.serverTimestamp(),
+      'read'     : false,
+    });
+  }
 
   Future<void> _sendStrikeNotification({
     required String renterId,

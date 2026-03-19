@@ -89,11 +89,80 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     final isMaintCancel     = type == 'maintenance_cancel';
                     final isActionCard = isShifted || isMaintReschedule || isMaintCancel;
                     final canCancel = (data['canCancel'] as bool?) ?? false;
+                    final canAccept = (data['canAccept'] as bool?) ?? false;
                     final requestId = data['requestId'] as String?;
+                    final ownerId   = data['ownerId']    as String?;
                     final isRead = (data['read'] as bool?) ?? false;
                     final title = (data['title'] as String?) ?? 'Notification';
                     final body = (data['body'] as String?) ?? '';
                     final createdAt = data['createdAt'] as Timestamp?;
+
+                    Future<void> notifyOwner(String ownerUid, String ownerTitle, String ownerBody) async {
+                      await _firestore
+                          .collection('notifications')
+                          .doc(ownerUid)
+                          .collection('items')
+                          .add({
+                        'type': 'renter_response',
+                        'title': ownerTitle,
+                        'body': ownerBody,
+                        'read': false,
+                        'createdAt': FieldValue.serverTimestamp(),
+                      });
+                    }
+
+                    Future<void> handleAccept() async {
+                      if (!isRead) _markRead(doc.id);
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Accept New Schedule?'),
+                          content: const Text(
+                              'This will confirm the rescheduled booking dates. '
+                              'Your booking will remain approved.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Not Yet'),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Yes, Accept'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && context.mounted) {
+                        await FirebaseFirestore.instance
+                            .collection('rentRequests')
+                            .doc(requestId)
+                            .update({'maintenanceRescheduleAccepted': true});
+                        await _notifCollection?.doc(doc.id).update({
+                          'canCancel': false,
+                          'canAccept': false,
+                        });
+                        if (ownerId != null) {
+                          final renterName = _auth.currentUser?.displayName ?? 'The renter';
+                          await notifyOwner(
+                            ownerId,
+                            '✅ Renter Accepted New Schedule',
+                            '$renterName accepted the rescheduled booking dates.',
+                          );
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('New schedule accepted.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
+                    }
 
                     Future<void> handleCancel() async {
                       if (!isRead) _markRead(doc.id);
@@ -132,9 +201,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           'cancelledDueToShift': true,
                           'declineReason': declineReason,
                         });
-                        await _notifCollection
-                            ?.doc(doc.id)
-                            .update({'canCancel': false});
+                        await _notifCollection?.doc(doc.id).update({
+                          'canCancel': false,
+                          'canAccept': false,
+                        });
+                        if (ownerId != null) {
+                          final renterName = _auth.currentUser?.displayName ?? 'The renter';
+                          await notifyOwner(
+                            ownerId,
+                            '❌ Renter Cancelled Rescheduled Booking',
+                            '$renterName cancelled their booking after it was rescheduled.',
+                          );
+                        }
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -198,23 +276,39 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   style: TextStyle(
                                       fontSize: 13,
                                       color: Colors.orange.shade900)),
-                              if (canCancel && requestId != null) ...[
+                              if ((canCancel || canAccept) && requestId != null) ...[
                                 const SizedBox(height: 10),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    icon: const Icon(Icons.cancel_outlined,
-                                        size: 16),
-                                    label: const Text('Cancel Booking (No Penalty)'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red.shade700,
-                                      side: BorderSide(
-                                          color: Colors.red.shade400),
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8),
-                                    ),
-                                    onPressed: handleCancel,
-                                  ),
+                                Row(
+                                  children: [
+                                    if (canAccept)
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                                          label: const Text('Accept'),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.green.shade700,
+                                            side: BorderSide(color: Colors.green.shade400),
+                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                          ),
+                                          onPressed: handleAccept,
+                                        ),
+                                      ),
+                                    if (canAccept && canCancel)
+                                      const SizedBox(width: 8),
+                                    if (canCancel)
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          icon: const Icon(Icons.cancel_outlined, size: 16),
+                                          label: const Text('Cancel'),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.red.shade700,
+                                            side: BorderSide(color: Colors.red.shade400),
+                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                          ),
+                                          onPressed: handleCancel,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ],

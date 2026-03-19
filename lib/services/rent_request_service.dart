@@ -201,18 +201,23 @@ Future<bool> hasActiveRequestInCategory(
       final newEnd   = end.add(Duration(days: daysLate));
 
       batch.update(doc.reference, {
-        'start': Timestamp.fromDate(newStart),
-        'end'  : Timestamp.fromDate(newEnd),
+        'start'        : Timestamp.fromDate(newStart),
+        'end'          : Timestamp.fromDate(newEnd),
+        'originalStart': Timestamp.fromDate(start),
+        'originalEnd'  : Timestamp.fromDate(end),
         'shiftedDueToLateReturn': true,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       shifted.add(_ShiftedBooking(
-        requestId: doc.id,
-        renterId : data['renterId'] as String,
-        itemName : data['itemName'] as String,
-        newStart : newStart,
-        newEnd   : newEnd,
+        requestId    : doc.id,
+        renterId     : data['renterId'] as String,
+        ownerId      : data['ownerId'] as String,
+        itemName     : data['itemName'] as String,
+        originalStart: start,
+        originalEnd  : end,
+        newStart     : newStart,
+        newEnd       : newEnd,
       ));
     }
 
@@ -234,10 +239,13 @@ Future<bool> hasActiveRequestInCategory(
           'body'      : 'Ang iyong booking para sa "${b.itemName}" ay na-delay ng '
               '$daysLate ${daysLate == 1 ? 'araw' : 'na araw'} dahil sa '
               'late return ng nakaraang nangupahan. '
+              'Orihinal na schedule: ${fmt(b.originalStart)} – ${fmt(b.originalEnd)}. '
               'Bagong schedule: ${fmt(b.newStart)} – ${fmt(b.newEnd)}. '
-              'Maaari mong i-cancel ang booking nang walang penalty.',
+              'Maaari mong i-cancel o tanggapin ang bagong schedule.',
           'requestId' : b.requestId,
+          'ownerId'   : b.ownerId,
           'canCancel' : true,
+          'canAccept' : true,
           'createdAt' : FieldValue.serverTimestamp(),
           'read'      : false,
         });
@@ -251,13 +259,19 @@ Future<bool> hasActiveRequestInCategory(
 class _ShiftedBooking {
   final String requestId;
   final String renterId;
+  final String ownerId;
   final String itemName;
+  final DateTime originalStart;
+  final DateTime originalEnd;
   final DateTime newStart;
   final DateTime newEnd;
   const _ShiftedBooking({
     required this.requestId,
     required this.renterId,
+    required this.ownerId,
     required this.itemName,
+    required this.originalStart,
+    required this.originalEnd,
     required this.newStart,
     required this.newEnd,
   });

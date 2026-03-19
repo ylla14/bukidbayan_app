@@ -178,9 +178,9 @@ class _NdviCardState extends State<NdviCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Mud warning banner ──────────────────────────────────────────
-        if (_soil != null && _soil!.isMuddy) ...[
-          _mudWarningBanner(),
+        // ── Soil moisture recommendation banner ─────────────────────────
+        if (_soil != null) ...[
+          _soilMoistureRecommendation(_soil!),
           const SizedBox(height: 12),
         ],
 
@@ -210,28 +210,41 @@ class _NdviCardState extends State<NdviCard> {
     );
   }
 
-  // ── Mud warning ─────────────────────────────────────────────────────────────
+  // ── Soil moisture recommendation ────────────────────────────────────────────
 
-  Widget _mudWarningBanner() {
+  Widget _soilMoistureRecommendation(SoilData soil) {
+    final muddy = soil.isMuddy;
+    final pct   = soil.moisturePct.toStringAsFixed(1);
+
+    final bgColor     = muddy ? Colors.red.shade50    : Colors.green.shade50;
+    final borderColor = muddy ? Colors.red.shade300   : Colors.green.shade300;
+    final iconColor   = muddy ? Colors.red.shade700   : Colors.green.shade700;
+    final textColor   = muddy ? Colors.red.shade800   : Colors.green.shade800;
+    final icon        = muddy ? Icons.warning_rounded : Icons.check_circle_rounded;
+    final message     = muddy
+        ? 'Soil moisture is $pct% — the soil is muddy. Machine operation '
+          'is not recommended under these conditions.'
+        : 'Soil moisture is $pct% — the soil is not muddy. Conditions '
+          'are suitable for machine operation.';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.orange.shade50,
+        color: bgColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.orange.shade300, width: 1.2),
+        border: Border.all(color: borderColor, width: 1.2),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 18),
+          Icon(icon, color: iconColor, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Soil moisture is above 40% — conditions may be too muddy '
-              'and unfriendly for machine operation.',
+              message,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.orange.shade800,
+                color: textColor,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
               ),
@@ -273,7 +286,7 @@ class _NdviCardState extends State<NdviCard> {
     }
 
     final s = _soil!;
-    final moistureColor = s.isMuddy ? Colors.orange.shade700 : Colors.blueGrey;
+    final moistureColor = s.isMuddy ? Colors.red.shade700 : Colors.green.shade700;
 
     return Row(
       children: [

@@ -2119,7 +2119,7 @@ Future<void> _applyMaintenanceFromConditionReport({
 }) async {
   final durationDays = maintenanceEnd.difference(today).inDays + 1;
   final isUnforeseen = durationDays > 7;
-  final firstDayAfter = maintenanceEnd.add(const Duration(days: 1));
+
 
   try {
     final db = FirebaseFirestore.instance;
@@ -2143,20 +2143,31 @@ Future<void> _applyMaintenanceFromConditionReport({
     final batch = db.batch();
     final List<Future<void>> notifFutures = [];
 
-    for (final doc in bookingsSnap.docs) {
+    // Sort by start date so cascade shifts propagate in order.
+    final sortedDocs = bookingsSnap.docs.toList()
+      ..sort((a, b) {
+        final aStart = (a.data()['start'] as Timestamp).toDate();
+        final bStart = (b.data()['start'] as Timestamp).toDate();
+        return aStart.compareTo(bStart);
+      });
+
+    // For foreseen maintenance: tracks the last occupied day so that
+    // each shifted booking cascades off the previous one's new end date.
+    DateTime blockedUntil = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+    final maintenanceEndDay = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+
+    for (final doc in sortedDocs) {
       final request = RentRequest.fromDoc(doc);
 
       final bookingStart = DateTime(request.start.year, request.start.month, request.start.day);
-      final bookingEnd = DateTime(request.end.year, request.end.month, request.end.day);
-      final maintenanceEndDay = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
-
-      final overlaps =
-          bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
-          bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
-
-      if (!overlaps) continue;
+      final bookingEnd   = DateTime(request.end.year,   request.end.month,   request.end.day);
 
       if (isUnforeseen) {
+        final overlaps =
+            bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
+            bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+        if (!overlaps) continue;
+
         batch.update(doc.reference, {
           'status': RentRequestStatus.canceled.name,
           'declineReason':
@@ -2170,14 +2181,17 @@ Future<void> _applyMaintenanceFromConditionReport({
               '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
               'was cancelled due to unforeseen maintenance ($durationDays days).',
           type: 'maintenance_cancel',
-          extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
+          extra: {'requestId': request.requestId, 'equipmentId': equipment.id, 'ownerId': equipment.ownerId},
         ));
       } else {
+        // Foreseen: cascade shift — conflict if booking starts on or before blockedUntil.
+        if (bookingStart.isAfter(blockedUntil)) continue;
+
         final bookingDuration = request.end.difference(request.start);
         final newStart = DateTime(
-          firstDayAfter.year, firstDayAfter.month, firstDayAfter.day,
+          blockedUntil.year, blockedUntil.month, blockedUntil.day,
           request.start.hour, request.start.minute,
-        );
+        ).add(const Duration(days: 1));
         final newEnd = newStart.add(bookingDuration);
 
         final exceedsAvailability = equipment.availableUntil != null &&
@@ -2195,29 +2209,37 @@ Future<void> _applyMaintenanceFromConditionReport({
             body: 'Your booking for "${equipment.name}" could not be rescheduled after maintenance '
                 'because the new dates exceed the equipment\'s availability window.',
             type: 'maintenance_cancel',
-            extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
+            extra: {'requestId': request.requestId, 'equipmentId': equipment.id, 'ownerId': equipment.ownerId},
           ));
+          // Do NOT advance blockedUntil — cancelled slot is freed.
         } else {
           batch.update(doc.reference, {
-            'start': Timestamp.fromDate(newStart),
-            'end': Timestamp.fromDate(newEnd),
+            'start'         : Timestamp.fromDate(newStart),
+            'end'           : Timestamp.fromDate(newEnd),
+            'originalStart' : Timestamp.fromDate(request.start),
+            'originalEnd'   : Timestamp.fromDate(request.end),
             'maintenanceRescheduled': true,
           });
           notifFutures.add(_sendNotification(
             userId: request.renterId,
             title: '📅 Booking Rescheduled — Maintenance',
-            body: 'Your booking for "${equipment.name}" was moved to '
-                '${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
-                'due to maintenance. You may cancel if the new date doesn\'t work for you.',
+            body: 'Your booking for "${equipment.name}" has been moved from '
+                '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
+                'to ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
+                'due to maintenance. You may cancel or accept the new schedule.',
             type: 'maintenance_reschedule',
             extra: {
               'requestId': request.requestId,
               'equipmentId': equipment.id,
+              'ownerId': equipment.ownerId,
               'canCancel': true,
+              'canAccept': true,
               'newStart': Timestamp.fromDate(newStart),
               'newEnd': Timestamp.fromDate(newEnd),
             },
           ));
+          // Advance the cascade pointer so the next booking shifts off this one's new end.
+          blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
         }
       }
     }

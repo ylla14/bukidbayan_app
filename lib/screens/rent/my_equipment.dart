@@ -810,8 +810,10 @@ Future<void> _scheduleMaintenance(
         } else {
           // Reschedule and advance the cascade pointer.
           batch.update(doc.reference, {
-            'start': Timestamp.fromDate(newStart),
-            'end': Timestamp.fromDate(newEnd),
+            'start'         : Timestamp.fromDate(newStart),
+            'end'           : Timestamp.fromDate(newEnd),
+            'originalStart' : Timestamp.fromDate(request.start),
+            'originalEnd'   : Timestamp.fromDate(request.end),
             'maintenanceRescheduled': true,
           });
 
@@ -821,12 +823,14 @@ Future<void> _scheduleMaintenance(
             body: 'Your booking for "${equipment.name}" has been moved from '
                 '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
                 'to ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
-                'due to scheduled maintenance. You may cancel if the new date doesn\'t work for you.',
+                'due to scheduled maintenance. You may cancel or accept the new schedule.',
             type: 'maintenance_reschedule',
             extra: {
               'requestId': request.requestId,
               'equipmentId': equipment.id,
+              'ownerId': equipment.ownerId,
               'canCancel': true,
+              'canAccept': true,
               'newStart': Timestamp.fromDate(newStart),
               'newEnd': Timestamp.fromDate(newEnd),
             },

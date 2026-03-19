@@ -171,9 +171,9 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
         }
       }
 
-      // 2. Submit report and increment strike via StrikeService
+      // 2. Issue immediate 2-week ban (no strike count) via StrikeService
       final ownerId = FirebaseAuth.instance.currentUser?.uid ?? '';
-      await StrikeService().submitReport(
+      await StrikeService().issueMisuseBan(
         requestId: widget.requestId,
         renterId: widget.renterId,
         ownerId: ownerId,

@@ -51,6 +51,11 @@ class RentRequest {
   /// Used client-side to calculate how many new overdue days need strikes.
   final DateTime? lastLateStrikeIssuedDate;
 
+  /// Original dates before the booking was shifted due to a late return.
+  /// Non-null only on bookings that have been shifted.
+  final DateTime? originalStart;
+  final DateTime? originalEnd;
+
   final bool? keepDarak;
   final double? estimatedMillingFee;
   final double? latitude;
@@ -95,6 +100,8 @@ class RentRequest {
     this.phoneNumber,
 
     this.lastLateStrikeIssuedDate,
+    this.originalStart,
+    this.originalEnd,
   });
 
   Map<String, dynamic> toMap() {
@@ -129,6 +136,12 @@ class RentRequest {
 
       'lastLateStrikeIssuedDate': lastLateStrikeIssuedDate != null
           ? Timestamp.fromDate(lastLateStrikeIssuedDate!)
+          : null,
+      'originalStart': originalStart != null
+          ? Timestamp.fromDate(originalStart!)
+          : null,
+      'originalEnd': originalEnd != null
+          ? Timestamp.fromDate(originalEnd!)
           : null,
     };
   }
@@ -197,6 +210,8 @@ class RentRequest {
 
       lastLateStrikeIssuedDate:
           (map['lastLateStrikeIssuedDate'] as Timestamp?)?.toDate(),
+      originalStart: (map['originalStart'] as Timestamp?)?.toDate(),
+      originalEnd: (map['originalEnd'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -230,6 +245,8 @@ class RentRequest {
     String? phoneNumber,
 
     DateTime? lastLateStrikeIssuedDate,
+    DateTime? originalStart,
+    DateTime? originalEnd,
   }) {
     return RentRequest(
       requestId: requestId ?? this.requestId,
@@ -261,6 +278,8 @@ class RentRequest {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       lastLateStrikeIssuedDate:
           lastLateStrikeIssuedDate ?? this.lastLateStrikeIssuedDate,
+      originalStart: originalStart ?? this.originalStart,
+      originalEnd: originalEnd ?? this.originalEnd,
     );
   }
 }
