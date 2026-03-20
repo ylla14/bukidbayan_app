@@ -7,12 +7,25 @@
 
 import 'package:bukidbayan_app/services/agromonitoring_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+/// Moisture threshold (%) above which conditions are considered muddy,
+/// keyed by equipment category. Defaults to 40% for all other categories.
+const Map<String, double> _moistureThresholds = {
+  'Floating Tiller (Pagong)': 60.0,
+};
+
+double _thresholdFor(String? category) =>
+    _moistureThresholds[category] ?? 40.0;
+
 class NdviCard extends StatefulWidget {
   final String renterId;
-  const NdviCard({super.key, required this.renterId});
+  /// When provided, the card fetches the equipment category and applies
+  /// a category-specific soil moisture threshold.
+  final String? equipmentId;
+  const NdviCard({super.key, required this.renterId, this.equipmentId});
 
   @override
   State<NdviCard> createState() => _NdviCardState();
@@ -23,6 +36,7 @@ class _NdviCardState extends State<NdviCard> {
   final AgromonitoringService _agroService = AgromonitoringService();
 
   bool _isLoading = true;
+  String? _equipmentCategory;
 
   // NDVI
   NdviReading? _latest;
@@ -45,8 +59,22 @@ class _NdviCardState extends State<NdviCard> {
 
   Future<void> _loadFarmData() async {
     try {
-      final userData = await _authService.getUserData(widget.renterId);
-      final polygonId = userData?['farmPolygonId'] as String?;
+      final futures = <Future>[
+        _authService.getUserData(widget.renterId),
+        if (widget.equipmentId != null)
+          FirebaseFirestore.instance
+              .collection('equipment')
+              .doc(widget.equipmentId)
+              .get()
+              .then((d) => d.data()?['category'] as String?)
+              .catchError((_) => null),
+      ];
+
+      final prefetch = await Future.wait(futures);
+      final userData   = prefetch[0] as Map<String, dynamic>?;
+      final category   = widget.equipmentId != null ? prefetch[1] as String? : null;
+
+      final polygonId  = userData?['farmPolygonId'] as String?;
 
       if (polygonId == null) {
         setState(() {
@@ -80,8 +108,9 @@ class _NdviCardState extends State<NdviCard> {
 
       if (!mounted) return;
       setState(() {
-        _latest = results[0] as NdviReading?;
-        _soil = results[1] as SoilData?;
+        _equipmentCategory = category;
+        _latest  = results[0] as NdviReading?;
+        _soil    = results[1] as SoilData?;
         _weather = results[2] as FarmWeather?;
         _isLoading = false;
       });
@@ -213,7 +242,8 @@ class _NdviCardState extends State<NdviCard> {
   // ── Soil moisture recommendation ────────────────────────────────────────────
 
   Widget _soilMoistureRecommendation(SoilData soil) {
-    final muddy = soil.isMuddy;
+    final threshold = _thresholdFor(_equipmentCategory);
+    final muddy = soil.moisturePct > threshold;
     final pct   = soil.moisturePct.toStringAsFixed(1);
 
     final bgColor     = muddy ? Colors.red.shade50    : Colors.green.shade50;
@@ -286,7 +316,9 @@ class _NdviCardState extends State<NdviCard> {
     }
 
     final s = _soil!;
-    final moistureColor = s.isMuddy ? Colors.red.shade700 : Colors.green.shade700;
+    final moistureColor = s.moisturePct > _thresholdFor(_equipmentCategory)
+        ? Colors.red.shade700
+        : Colors.green.shade700;
 
     return Row(
       children: [

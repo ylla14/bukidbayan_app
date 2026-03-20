@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
 import 'package:bukidbayan_app/components/rent/ndvi_card.dart';
@@ -26,6 +27,14 @@ class RequestSentPage extends StatefulWidget {
   @override
   State<RequestSentPage> createState() => _RequestSentPageState();
 }
+
+/// GDrive PDF manual links keyed by equipment category name.
+const Map<String, String> _equipmentManuals = {
+  'Tractor'               : 'https://drive.google.com/file/d/1YaSltUq4k_opJgI4nLuvoJDGQvykPKaL/view?usp=sharing',
+  'Harvester (Halimaw)'   : 'https://drive.google.com/file/d/1D3v2BXKderLv-kTOUmY4nE4hVgjZD_Gf/view?usp=sharing',
+  'Floating Tiller (Pagong)': 'https://drive.google.com/file/d/18ICD5LJTUg9LJLjsqciVypuTSHHNxIKr/view?usp=sharing',
+  'Hand Tractor (Kuliglig)': 'https://drive.google.com/file/d/1Iq4D7xfAoCtS5CqKEQivsHXQu_B-Yn7w/view?usp=sharing',
+};
 
 class _RequestSentPageState extends State<RequestSentPage> {
   /// Prevents issuing late-strikes more than once per screen session.
@@ -782,7 +791,86 @@ Future<bool> _hasLeftReview(String requestId) async {
 
 
                           // ── FARM SATELLITE DATA ──
-                          NdviCard(renterId: request.renterId),
+                          NdviCard(
+                            renterId: request.renterId,
+                            equipmentId: request.itemId,
+                          ),
+
+                          // ── EQUIPMENT MANUAL ──
+                          if (isRenter)
+                            FutureBuilder<String?>(
+                              future: FirebaseFirestore.instance
+                                  .collection('equipment')
+                                  .doc(request.itemId)
+                                  .get()
+                                  .then((d) => d.data()?['category'] as String?),
+                              builder: (context, snap) {
+                                final category = snap.data;
+                                final manualUrl = category != null
+                                    ? _equipmentManuals[category]
+                                    : null;
+                                if (manualUrl == null) return const SizedBox.shrink();
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: const Color(0xFF93C5FD)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.menu_book_rounded,
+                                          color: Color(0xFF2563EB), size: 22),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'EQUIPMENT MANUAL',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF1D4ED8),
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              category!,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: Color(0xFF1E40AF),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () async {
+                                          final uri = Uri.parse(manualUrl);
+                                          if (await canLaunchUrl(uri)) {
+                                            await launchUrl(uri,
+                                                mode: LaunchMode.externalApplication);
+                                          }
+                                        },
+                                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                                        label: const Text('View PDF'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: const Color(0xFF2563EB),
+                                          textStyle: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
 
                           // ── DECLINE REASON ──
                           if (request.status == RentRequestStatus.declined &&
