@@ -4,6 +4,7 @@ import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/components/rent/rent_item_card.dart';
 import 'package:bukidbayan_app/models/crop_preference.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/models/review.dart';
 import 'package:bukidbayan_app/screens/notification_screen.dart';
 import 'package:bukidbayan_app/screens/rent/drafts_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
@@ -765,107 +766,122 @@ void clearFilters() {
                           final isPendingCategory = equipment.category != null &&
                               blockedCategories.contains(equipment.category);
 
-                          return FutureBuilder<String?>(
-                            future: _firestoreService.getUserNameById(equipment.ownerId),
-                            builder: (context, ownerSnapshot) {
-                              final ownerName = ownerSnapshot.data ?? 'Unknown Owner';
+                         return FutureBuilder<String?>(
+  future: _firestoreService.getUserNameById(equipment.ownerId),
+  builder: (context, ownerSnapshot) {
+    final ownerName = ownerSnapshot.data ?? 'Unknown Owner';
 
-                              // PENDING CATEGORY: orange + tap shows message
-                              if (isPendingCategory) {
-                                return Opacity(
-                                  opacity: 0.6,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'You already have an active request for a ${equipment.category}. Complete or cancel it first.',
-                                          ),
-                                          duration: const Duration(seconds: 3),
-                                        ),
-                                      );
-                                    },
-                                    child: RentItemCard(
-                                      title: equipment.name,
-                                      imageUrl: equipment.imageUrls.isNotEmpty
-                                          ? equipment.imageUrls[0]
-                                          : 'assets/images/rent1.jpg',
-                                      price: '₱${equipment.price.toStringAsFixed(0)}',
-                                      ownerName: ownerName,
-                                      rentalUnit: equipment.rentalUnit,
-                                      isAvailable: false,
-                                      isPending: true,
-                                      isRecommended: _recommendedToolTypes.contains(equipment.category),
-                                    ),
-                                  ),
-                                );
-                              }
+    return FutureBuilder<List<Review>>(
+      future: FirestoreService().getReviewsForEquipment(equipment.id!),
+      builder: (context, reviewSnap) {
+        final reviews = reviewSnap.data ?? [];
+        final avgRating = reviews.isEmpty
+            ? null
+            : reviews.map((r) => r.rating).reduce((a, b) => a + b) /
+                reviews.length;
+        final reviewCount = reviews.isEmpty ? null : reviews.length;
 
-                              // 🔴 UNAVAILABLE: greyed + tap shows message
-                              if (!finalAvailability) {
-                                return Opacity(
-                                  opacity: 0.5,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'This equipment is currently unavailable.',
-                                          ),
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                      
-                                      final tempItem = equipment.copyWith(ownerName: ownerName);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ProductPage(item: tempItem),
-                                        ),
-                                      );
-                                    },
-                                    child: RentItemCard(
-                                      title: equipment.name,
-                                      imageUrl: equipment.imageUrls.isNotEmpty
-                                          ? equipment.imageUrls[0]
-                                          : 'assets/images/rent1.jpg',
-                                      price: '₱${equipment.price.toStringAsFixed(0)}',
-                                      ownerName: ownerName,
-                                      rentalUnit: equipment.rentalUnit,
-                                      isAvailable: false,
-                                      isPending: false,
-                                      isRecommended: _recommendedToolTypes.contains(equipment.category),
-                                    ),
-                                  ),
-                                );
-                              }
+        // PENDING CATEGORY: orange + tap shows message
+        if (isPendingCategory) {
+          return Opacity(
+            opacity: 0.6,
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'You already have an active request for a ${equipment.category}. Complete or cancel it first.',
+                    ),
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              },
+              child: RentItemCard(
+                title: equipment.name,
+                imageUrl: equipment.imageUrls.isNotEmpty
+                    ? equipment.imageUrls[0]
+                    : 'assets/images/rent1.jpg',
+                price: '₱${equipment.price.toStringAsFixed(0)}',
+                ownerName: ownerName,
+                rentalUnit: equipment.rentalUnit,
+                isAvailable: false,
+                isPending: true,
+                isRecommended: _recommendedToolTypes.contains(equipment.category),
+                rating: avgRating,
+                reviewCount: reviewCount,
+              ),
+            ),
+          );
+        }
 
-                              // 🟢 AVAILABLE: tappable
-                              return GestureDetector(
-                                onTap: () {
-                                  final tempItem = equipment.copyWith(ownerName: ownerName);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ProductPage(item: tempItem),
-                                    ),
-                                  );
-                                },
-                                child: RentItemCard(
-                                  title: equipment.name,
-                                  imageUrl: equipment.imageUrls.isNotEmpty
-                                      ? equipment.imageUrls[0]
-                                      : 'assets/images/rent1.jpg',
-                                  price: '₱${equipment.price.toStringAsFixed(0)}',
-                                  ownerName: ownerName,
-                                  rentalUnit: equipment.rentalUnit,
-                                  isAvailable: true,
-                                  isPending: false,
-                                  isRecommended: _recommendedToolTypes.contains(equipment.category),
-                                ),
-                              );
-                            },
-                          );
+        // 🔴 UNAVAILABLE: greyed + tap shows message
+        if (!finalAvailability) {
+          return Opacity(
+            opacity: 0.5,
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('This equipment is currently unavailable.'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                final tempItem = equipment.copyWith(ownerName: ownerName);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProductPage(item: tempItem),
+                  ),
+                );
+              },
+              child: RentItemCard(
+                title: equipment.name,
+                imageUrl: equipment.imageUrls.isNotEmpty
+                    ? equipment.imageUrls[0]
+                    : 'assets/images/rent1.jpg',
+                price: '₱${equipment.price.toStringAsFixed(0)}',
+                ownerName: ownerName,
+                rentalUnit: equipment.rentalUnit,
+                isAvailable: false,
+                isPending: false,
+                isRecommended: _recommendedToolTypes.contains(equipment.category),
+                rating: avgRating,
+                reviewCount: reviewCount,
+              ),
+            ),
+          );
+        }
+
+        // 🟢 AVAILABLE: tappable
+        return GestureDetector(
+          onTap: () {
+            final tempItem = equipment.copyWith(ownerName: ownerName);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductPage(item: tempItem),
+              ),
+            );
+          },
+          child: RentItemCard(
+            title: equipment.name,
+            imageUrl: equipment.imageUrls.isNotEmpty
+                ? equipment.imageUrls[0]
+                : 'assets/images/rent1.jpg',
+            price: '₱${equipment.price.toStringAsFixed(0)}',
+            ownerName: ownerName,
+            rentalUnit: equipment.rentalUnit,
+            isAvailable: true,
+            isPending: false,
+            isRecommended: _recommendedToolTypes.contains(equipment.category),
+            rating: avgRating,
+            reviewCount: reviewCount,
+          ),
+        );
+      },
+    );
+  },
+);
                         },
                       );
 

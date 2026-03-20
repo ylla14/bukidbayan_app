@@ -10,6 +10,8 @@ class RentItemCard extends StatelessWidget {
   final bool isAvailable;
   final bool isPending;
   final bool isRecommended;
+  final double? rating;        // NEW
+  final int? reviewCount;      // NEW
 
   const RentItemCard({
     super.key,
@@ -21,6 +23,8 @@ class RentItemCard extends StatelessWidget {
     required this.isAvailable,
     this.isPending = false,
     this.isRecommended = false,
+    this.rating,               // NEW
+    this.reviewCount,          // NEW
   });
 
   bool _isNetworkUrl(String url) =>
@@ -108,10 +112,11 @@ class RentItemCard extends StatelessWidget {
 
                 const SizedBox(height: 4),
 
-                // PRICE ROW
+// PRICE + RATING ROW
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // Price
                     Text(
                       price,
                       style: const TextStyle(
@@ -119,22 +124,45 @@ class RentItemCard extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(width: 4),
                     Text(
                       _getRateSuffix(rentalUnit),
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: Colors.grey[700],
                       ),
                     ),
-                    const SizedBox(width: 6),
+
+                    const Spacer(),
+
+                    // Rating
+                    Icon(
+                      (rating != null && rating! > 0)
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      size: 15,
+                      color: Colors.amber,
+                    ),
+                    const SizedBox(width: 2),
                     Text(
-                      'est.',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[500],
+                      rating != null && rating! > 0
+                          ? rating!.toStringAsFixed(1)
+                          : 'N/A',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
+                    if (reviewCount != null) ...[
+                      const SizedBox(width: 2),
+                      Text(
+                        '(${reviewCount})',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
