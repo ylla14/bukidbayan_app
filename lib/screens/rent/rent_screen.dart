@@ -90,7 +90,8 @@ void _setupAvailabilityListener() {
           
           // Only update for active statuses
           if (itemId != null && 
-              (status == 'approved' || 
+              (status == 'pending' ||  
+               status == 'approved' || 
                status == 'onTheWay' || 
                status == 'inProgress' ||
                status == 'completed' ||
@@ -121,9 +122,8 @@ void _setupAvailabilityListener() {
     final snapshot = await FirebaseFirestore.instance
         .collection('rentRequests')
         .where('renterId', isEqualTo: currentUserId)
-        .where('status', whereIn: ['approved', 'onTheWay', 'inProgress'])
+        .where('status', whereIn: ['pending','approved','readyForPickup', 'pickedUp', 'onTheWay', 'inProgress', 'retrieving', 'returned'])
         .get();
-    
     Set<String> categories = {};
     
     for (var doc in snapshot.docs) {
