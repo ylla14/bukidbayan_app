@@ -17,12 +17,12 @@ const List<String> allCrops = [
 /// based on standard Philippine farming practices and the lowland crop calendar.
 const Map<String, List<String>> cropToolTypes = {
   'Rice (Wet Season)': [
-    'Floating Tiller', // Crucial for flooded muddy paddies during the wet season
+    'Floating Tiller (Pagong)', // Crucial for flooded muddy paddies during the wet season
     'Hand Tractor (Kuliglig)', 
     'Machine', // Threshers, water pumps
     'Hand Tool', // Sickles, bolos
     'Harvester (Halimaw)', 
-    'Rice Mill',
+    'Rice Mill (Gilingan)',
   ],
   'Rice (Dry Season)': [
     'Tractor', // 4-wheel tractors are better suited for dry land prep
@@ -31,7 +31,7 @@ const Map<String, List<String>> cropToolTypes = {
     'Machine', // Water pumps are highly critical during the dry season
     'Hand Tool', 
     'Harvester (Halimaw)', 
-    'Rice Mill',
+    'Rice Mill (Gilingan)',
   ],
   'White Corn': [
     'Tractor', 

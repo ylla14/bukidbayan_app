@@ -33,7 +33,7 @@ class _PriceFilterSheetState extends State<PriceFilterSheet> {
 
   final List<String> _categories = [
     'Hand Tool', 'Hand Tractor (Kuliglig)', 'Floating Tiller (Pagong)',
-    'Tractor', 'Implements', 'Machine', 'Harvester (Halimaw)', 'Rice Mill',
+    'Tractor', 'Implements', 'Machine', 'Harvester (Halimaw)', 'Rice Mill (Gilingan)',
   ];
 
   @override

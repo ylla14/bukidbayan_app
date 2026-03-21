@@ -11,7 +11,7 @@ class CategoryFilterBar extends StatelessWidget {
     required this.onCategorySelected,
     this.categories = const [
     'Hand Tool', 'Hand Tractor (Kuliglig)', 'Floating Tiller (Pagong)',
-    'Tractor', 'Implements', 'Machine', 'Harvester (Halimaw)', 'Rice Mill',
+    'Tractor', 'Implements', 'Machine', 'Harvester (Halimaw)', 'Rice Mill (Gilingan)',
   ],
   });
 
