@@ -53,7 +53,7 @@ class EarningsPdfService {
       'Farmer Name',
       'Farm Location',
       'Equipment',
-      'W/ Operator',
+      'Price Rate',      // NEW — was 'W/ Operator'
       'Rate Unit',
       'Days',
       'Area / Vol.',
@@ -62,40 +62,44 @@ class EarningsPdfService {
 
     // ── Build rows ─────────────────────────────────────────
     final dataRows = rows.map((r) {
-      final req = r.request;
-      final eq = r.equipment;
-      final days = req.end.difference(req.start).inDays.clamp(1, 9999);
-      final withOp = eq?.operatorIncluded ?? false;
+  final req = r.request;
+  final eq = r.equipment;
+  final days = req.end.difference(req.start).inDays.clamp(1, 9999);
 
-      String measurement = '—';
-      if (req.hectaresEntered != null) {
-        measurement = '${req.hectaresEntered!.toStringAsFixed(2)} ha';
-      } else if (req.volumeSubmitted != null) {
-        measurement = '${req.volumeSubmitted!.toStringAsFixed(1)} kg';
-      }
+  // Price rate: ₱X.XX / rentalUnit
+  final priceRate = eq != null
+      ? '${currency.format(eq.price)}'
+      : '—';
 
-      final isPerDay = req.agreedRentalUnit?.toLowerCase().contains('day') == true;
+  String measurement = '—';
+  if (req.hectaresEntered != null) {
+    measurement = '${req.hectaresEntered!.toStringAsFixed(2)} ha';
+  } else if (req.volumeSubmitted != null) {
+    measurement = '${req.volumeSubmitted!.toStringAsFixed(1)} kg';
+  }
 
-      double? totalPayment;
-      if (req.estimatedMillingFee != null && req.estimatedMillingFee! > 0) {
-        totalPayment = req.estimatedMillingFee;
-      } else {
-        totalPayment = req.agreedPrice;
-      }
+  final isPerDay = req.agreedRentalUnit?.toLowerCase().contains('day') == true;
 
-      return [
-        '',
-        dateFormat.format(req.start),
-        req.name,
-        req.farmAddress ?? req.address,
-        req.itemName,
-        withOp ? 'Yes' : 'No',
-        req.agreedRentalUnit ?? '—',
-        isPerDay ? '$days d' : '—',
-        measurement,
-        totalPayment != null ? currency.format(totalPayment) : '—',
-      ];
-    }).toList();
+  double? totalPayment;
+  if (req.estimatedMillingFee != null && req.estimatedMillingFee! > 0) {
+    totalPayment = req.estimatedMillingFee;
+  } else {
+    totalPayment = req.agreedPrice;
+  }
+
+  return [
+    '',                                                          // # (filled later)
+    dateFormat.format(req.start),                               // Date
+    req.name,                                                    // Farmer
+    req.farmAddress ?? req.address,                             // Location
+    req.itemName,                                               // Equipment
+    priceRate,                                                   // Price Rate (NEW)
+    req.agreedRentalUnit ?? '—',                                // Rate Unit
+    isPerDay ? '$days d' : '—',                                 // Days
+    measurement,                                                 // Area/Vol
+    totalPayment != null ? currency.format(totalPayment) : '—', // Payment
+  ];
+}).toList();
 
     // Fill index column
     for (int i = 0; i < dataRows.length; i++) {
@@ -103,8 +107,7 @@ class EarningsPdfService {
     }
 
     // ── Column flex widths ─────────────────────────────────
-    const colWidths = [3, 9, 13, 15, 13, 7, 9, 5, 8, 11];
-
+    const colWidths = [3, 9, 13, 15, 13, 12, 8, 5, 8, 11];
     // ── Check if any filters are active ───────────────────
     final hasFilters = searchQuery != null ||
         equipmentFilter != null ||

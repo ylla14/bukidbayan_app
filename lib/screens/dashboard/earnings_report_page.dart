@@ -793,90 +793,81 @@ class _TransactionTable extends StatelessWidget {
               DataColumn(label: Text('Farmer Name')),
               DataColumn(label: Text('Farm Location')),
               DataColumn(label: Text('Equipment')),
-              DataColumn(label: Text('With Operator?')),
+              DataColumn(label: Text('Price Rate'), numeric: true),  // NEW — replaces W/ Operator
               DataColumn(label: Text('Rate')),
               DataColumn(label: Text('Days Rented')),
               DataColumn(label: Text('Area / Volume')),
               DataColumn(label: Text('Payment'), numeric: true),
             ],
             rows: List.generate(rows.length, (i) {
-              final row = rows[i];
-              final req = row.request;
-              final currency =
-                  NumberFormat.currency(symbol: '₱', decimalDigits: 2);
-              final dateFormat = DateFormat('MMM d, yyyy');
+  final row = rows[i];
+  final req = row.request;
+  final currency = NumberFormat.currency(symbol: '₱', decimalDigits: 2);
+  final dateFormat = DateFormat('MMM d, yyyy');
 
-              return DataRow(
-                cells: [
-                  DataCell(Text('${i + 1}',
-                      style: const TextStyle(color: Colors.grey))),
-                  DataCell(Text(dateFormat.format(req.start))),
-                  DataCell(
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 140),
-                      child: Text(req.name, overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                  DataCell(
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 160),
-                      child: Text(row.farmLocation,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                  DataCell(
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 140),
-                      child: Text(req.itemName, overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                  DataCell(
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: row.withOperator
-                            ? Colors.blue.shade50
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        row.withOperator ? 'Yes' : 'No',
-                        style: TextStyle(
-                          color: row.withOperator
-                              ? Colors.blue.shade700
-                              : Colors.grey.shade600,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(Text(
-                    req.agreedRentalUnit ?? req.itemName,
-                    style: const TextStyle(fontSize: 12),
-                  )),
-                  DataCell(Text(
-                    req.agreedRentalUnit?.toLowerCase().contains('day') == true
-                        ? '${row.daysRented} day${row.daysRented > 1 ? 's' : ''}'
-                        : '—',
-                  )),
-                  DataCell(Text(row.measurementDisplay)),
-                  // Replace the Payment DataCell:
-                  DataCell(
-                    Text(
-                      row.totalPayment != null
-                          ? currency.format(row.totalPayment)
-                          : '—',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }),
+  // Build price rate string: ₱price / rentalUnit
+  final priceRate = row.equipment != null
+      ? '${currency.format(row.equipment!.price)}'
+      : '—';
+
+  return DataRow(
+    cells: [
+      DataCell(Text('${i + 1}', style: const TextStyle(color: Colors.grey))),
+      DataCell(Text(dateFormat.format(req.start))),
+      DataCell(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 140),
+          child: Text(req.name, overflow: TextOverflow.ellipsis),
+        ),
+      ),
+      DataCell(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 160),
+          child: Text(row.farmLocation, overflow: TextOverflow.ellipsis),
+        ),
+      ),
+      DataCell(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 140),
+          child: Text(req.itemName, overflow: TextOverflow.ellipsis),
+        ),
+      ),
+      // NEW: Price Rate cell (replaces W/ Operator)
+      DataCell(
+        Text(
+          priceRate,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.green.shade700,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.right,
+        ),
+      ),
+      DataCell(Text(
+        req.agreedRentalUnit ?? req.itemName,
+        style: const TextStyle(fontSize: 12),
+      )),
+      DataCell(Text(
+        req.agreedRentalUnit?.toLowerCase().contains('day') == true
+            ? '${row.daysRented} day${row.daysRented > 1 ? 's' : ''}'
+            : '—',
+      )),
+      DataCell(Text(row.measurementDisplay)),
+      DataCell(
+        Text(
+          row.totalPayment != null
+              ? currency.format(row.totalPayment)
+              : '—',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.green.shade700,
+          ),
+        ),
+      ),
+    ],
+  );
+}),
           ),
         ),
       ),
