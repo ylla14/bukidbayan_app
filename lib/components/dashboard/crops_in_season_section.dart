@@ -1,6 +1,8 @@
+import 'package:bukidbayan_app/services/crop_calendar_service.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:bukidbayan_app/services/crop_calendar_service.dart';
 
 class CropItem {
   final String name;
@@ -27,6 +29,7 @@ class CropsInSeasonSection extends StatefulWidget {
 
 class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
   final CropCalendarService _cropCalendarService = CropCalendarService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   late String selectedCategory;
   late String currentSeason;
@@ -50,6 +53,22 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
     // Default the active tab to the current season
     selectedCategory = currentSeason;
     _loadCrops();
+    _loadMyFarmCrops();
+  }
+
+  Future<void> _loadMyFarmCrops() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final saved = await _firestoreService.getCropPreferences(uid);
+    if (saved != null && mounted) {
+      setState(() => myFarmCrops = saved.toSet());
+    }
+  }
+
+  Future<void> _saveMyFarmCrops() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await _firestoreService.saveCropPreferences(uid, myFarmCrops.toList());
   }
 
   Future<void> _loadCrops() async {
@@ -160,6 +179,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                     myFarmCrops.add(crop.name);
                   }
                 });
+                _saveMyFarmCrops();
                 Navigator.pop(context);
               },
               child: Text(isAdded ? "Remove" : "Add"),
