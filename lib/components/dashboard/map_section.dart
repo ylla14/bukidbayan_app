@@ -13,9 +13,12 @@ class MapSection extends StatefulWidget {
   final String? currentUserId;
   final FirestoreService? firestoreService;
   final Future<DashboardUserContext?> Function(String? currentUserId)?
-  userContextLoader;
+      userContextLoader;
   final Stream<List<Equipment>> Function()? equipmentStreamBuilder;
   final bool showMapTiles;
+  
+  // NEW: Accept dynamic crops from the UI (like the "My Farm" section)
+  final Set<String> selectedFarmCrops;
 
   const MapSection({
     super.key,
@@ -24,6 +27,7 @@ class MapSection extends StatefulWidget {
     this.userContextLoader,
     this.equipmentStreamBuilder,
     this.showMapTiles = true,
+    this.selectedFarmCrops = const {}, // Default to empty
   });
 
   @override
@@ -36,8 +40,6 @@ class _MapSectionState extends State<MapSection> {
 
   late final FirestoreService _firestoreService;
 
-  late Future<DashboardUserContext?> _userContextFuture;
-
   bool _nearbyOnly = true;
   bool _sortByDistance = true;
   double _radiusKm = 10;
@@ -46,21 +48,18 @@ class _MapSectionState extends State<MapSection> {
   DashboardCoordinateSource _preferredCoordinateSource =
       DashboardCoordinateSource.farm;
 
-
   late Stream<List<Equipment>> _equipmentStream;
-  // Add these fields
-DashboardUserContext? _userContext;
-bool _userContextLoading = true;
-String? _userContextError;
+  DashboardUserContext? _userContext;
+  bool _userContextLoading = true;
+  String? _userContextError;
 
   @override
-@override
-void initState() {
-  super.initState();
-  _firestoreService = widget.firestoreService ?? FirestoreService();
-  _loadUserContext(); // no longer returns a Future we store
-  _initEquipmentStream();
-}
+  void initState() {
+    super.initState();
+    _firestoreService = widget.firestoreService ?? FirestoreService();
+    _loadUserContext(); 
+    _initEquipmentStream();
+  }
 
   void _initEquipmentStream() {
     final builder = widget.equipmentStreamBuilder
@@ -68,107 +67,64 @@ void initState() {
     _equipmentStream = builder();
   }
 
-@override
-void didUpdateWidget(covariant MapSection oldWidget) {
-  super.didUpdateWidget(oldWidget);
-  if (oldWidget.currentUserId != widget.currentUserId ||
-      oldWidget.userContextLoader != widget.userContextLoader) {
-    _loadUserContext();
+  @override
+  void didUpdateWidget(covariant MapSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentUserId != widget.currentUserId ||
+        oldWidget.userContextLoader != widget.userContextLoader) {
+      _loadUserContext();
+    }
+    if (oldWidget.equipmentStreamBuilder != widget.equipmentStreamBuilder) {
+      setState(() => _initEquipmentStream());
+    }
   }
-  if (oldWidget.equipmentStreamBuilder != widget.equipmentStreamBuilder) {
-    setState(() => _initEquipmentStream());
-  }
-}
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _firestoreService = widget.firestoreService ?? FirestoreService();
-  //   _userContextFuture = _loadUserContext();
-  // }
-
-  // @override
-  // void didUpdateWidget(covariant MapSection oldWidget) {
-  //   super.didUpdateWidget(oldWidget);
-  //   if (oldWidget.currentUserId != widget.currentUserId ||
-  //       oldWidget.userContextLoader != widget.userContextLoader) {
-  //     _userContextFuture = _loadUserContext();
-  //   }
-  // }
-
-  // Future<DashboardUserContext?> _loadUserContext() async {
-  //   if (widget.userContextLoader != null) {
-  //     return widget.userContextLoader!(widget.currentUserId);
-  //   }
-
-  //   final userId = widget.currentUserId;
-  //   if (userId == null) return null;
-
-  //   final profileDoc = await _firestoreService.getUserProfile(userId);
-  //   if (!profileDoc.exists) return null;
-
-  //   final data = profileDoc.data() as Map<String, dynamic>?;
-  //   if (data == null) return null;
-
-  //   final cropPreferences =
-  //       await _firestoreService.getCropPreferences(userId) ?? [];
-
-  //   return DashboardUserContext(
-  //     homeAddress: data['address'] as String?,
-  //     farmAddress: data['farmAddress'] as String?,
-  //     homeLatitude: _asDouble(data['latitude']),
-  //     homeLongitude: _asDouble(data['longitude']),
-  //     farmLatitude: _asDouble(data['farmLatitude']),
-  //     farmLongitude: _asDouble(data['farmLongitude']),
-  //     cropPreferences: cropPreferences,
-  //   );
-  // }
 
   Future<void> _loadUserContext() async {
-  if (!mounted) return;
-  setState(() {
-    _userContextLoading = true;
-    _userContextError = null;
-  });
+    if (!mounted) return;
+    setState(() {
+      _userContextLoading = true;
+      _userContextError = null;
+    });
 
-  try {
-    DashboardUserContext? context;
-    if (widget.userContextLoader != null) {
-      context = await widget.userContextLoader!(widget.currentUserId);
-    } else {
-      final userId = widget.currentUserId;
-      if (userId != null) {
-        final profileDoc = await _firestoreService.getUserProfile(userId);
-        if (profileDoc.exists) {
-          final data = profileDoc.data() as Map<String, dynamic>?;
-          if (data != null) {
-            final cropPreferences =
-                await _firestoreService.getCropPreferences(userId) ?? [];
-            context = DashboardUserContext(
-              homeAddress: data['address'] as String?,
-              farmAddress: data['farmAddress'] as String?,
-              homeLatitude: _asDouble(data['latitude']),
-              homeLongitude: _asDouble(data['longitude']),
-              farmLatitude: _asDouble(data['farmLatitude']),
-              farmLongitude: _asDouble(data['farmLongitude']),
-              cropPreferences: cropPreferences,
-            );
+    try {
+      DashboardUserContext? context;
+      if (widget.userContextLoader != null) {
+        context = await widget.userContextLoader!(widget.currentUserId);
+      } else {
+        final userId = widget.currentUserId;
+        if (userId != null) {
+          final profileDoc = await _firestoreService.getUserProfile(userId);
+          if (profileDoc.exists) {
+            final data = profileDoc.data() as Map<String, dynamic>?;
+            if (data != null) {
+              final cropPreferences =
+                  await _firestoreService.getCropPreferences(userId) ?? [];
+              context = DashboardUserContext(
+                homeAddress: data['address'] as String?,
+                farmAddress: data['farmAddress'] as String?,
+                homeLatitude: _asDouble(data['latitude']),
+                homeLongitude: _asDouble(data['longitude']),
+                farmLatitude: _asDouble(data['farmLatitude']),
+                farmLongitude: _asDouble(data['farmLongitude']),
+                cropPreferences: cropPreferences,
+              );
+            }
           }
         }
       }
+      if (!mounted) return;
+      setState(() {
+        _userContext = context;
+        _userContextLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _userContextError = e.toString();
+        _userContextLoading = false;
+      });
     }
-    if (!mounted) return;
-    setState(() {
-      _userContext = context;
-      _userContextLoading = false;
-    });
-  } catch (e) {
-    if (!mounted) return;
-    setState(() {
-      _userContextError = e.toString();
-      _userContextLoading = false;
-    });
   }
-}
 
   static double? _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
@@ -187,91 +143,39 @@ void didUpdateWidget(covariant MapSection oldWidget) {
     });
   }
 
-  // @override
-  // Widget build(BuildContext context) {
-  //   final equipmentStreamBuilder =
-  //       widget.equipmentStreamBuilder ??
-  //       _firestoreService.getDashboardBrowseEquipmentStream;
-
-  //   return FutureBuilder<DashboardUserContext?>(
-  //     future: _userContextFuture,
-  //     builder: (context, userSnapshot) {
-  //       if (userSnapshot.connectionState == ConnectionState.waiting) {
-  //         return _buildLoadingCard(context);
-  //       }
-
-  //       if (userSnapshot.hasError) {
-  //         return _buildErrorCard(context, 'Could not load nearby settings.');
-  //       }
-
-  //       final userContext = userSnapshot.data;
-  //       final userId = widget.currentUserId;
-  //       if (userId == null || userContext == null) {
-  //         return _buildErrorCard(context, 'Sign in to use nearby equipment.');
-  //       }
-
-  //       return StreamBuilder<List<Equipment>>(
-  //         stream: _equipmentStream,
-  //         // stream: equipmentStreamBuilder(),
-  //         builder: (context, equipmentSnapshot) {
-  //           if (equipmentSnapshot.connectionState == ConnectionState.waiting) {
-  //             return _buildLoadingCard(context);
-  //           }
-
-  //           if (equipmentSnapshot.hasError) {
-  //             return _buildErrorCard(
-  //               context,
-  //               'Could not load nearby equipment.',
-  //             );
-  //           }
-
-  //           final allEquipment = equipmentSnapshot.data ?? const <Equipment>[];
-  //           return _buildContent(
-  //             context: context,
-  //             userId: userId,
-  //             userContext: userContext,
-  //             allEquipment: allEquipment,
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
-
   @override
-Widget build(BuildContext context) {
-  if (_userContextLoading) return _buildLoadingCard(context);
-  if (_userContextError != null) {
-    return _buildErrorCard(context, 'Could not load nearby settings.');
+  Widget build(BuildContext context) {
+    if (_userContextLoading) return _buildLoadingCard(context);
+    if (_userContextError != null) {
+      return _buildErrorCard(context, 'Could not load nearby settings.');
+    }
+
+    final userContext = _userContext;
+    final userId = widget.currentUserId;
+    if (userId == null || userContext == null) {
+      return _buildErrorCard(context, 'Sign in to use nearby equipment.');
+    }
+
+    return StreamBuilder<List<Equipment>>(
+      stream: _equipmentStream,
+      builder: (context, equipmentSnapshot) {
+        if (equipmentSnapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingCard(context);
+        }
+        if (equipmentSnapshot.hasError) {
+          return _buildErrorCard(context, 'Could not load nearby equipment.');
+        }
+
+        final allEquipment = equipmentSnapshot.data ?? const <Equipment>[];
+        return _buildContent(
+          context: context,
+          userId: userId,
+          userContext: userContext,
+          allEquipment: allEquipment,
+        );
+      },
+    );
   }
-
-  final userContext = _userContext;
-  final userId = widget.currentUserId;
-  if (userId == null || userContext == null) {
-    return _buildErrorCard(context, 'Sign in to use nearby equipment.');
-  }
-
-  // StreamBuilder is now top-level — never torn down
-  return StreamBuilder<List<Equipment>>(
-    stream: _equipmentStream,
-    builder: (context, equipmentSnapshot) {
-      if (equipmentSnapshot.connectionState == ConnectionState.waiting) {
-        return _buildLoadingCard(context);
-      }
-      if (equipmentSnapshot.hasError) {
-        return _buildErrorCard(context, 'Could not load nearby equipment.');
-      }
-
-      final allEquipment = equipmentSnapshot.data ?? const <Equipment>[];
-      return _buildContent(
-        context: context,
-        userId: userId,
-        userContext: userContext,
-        allEquipment: allEquipment,
-      );
-    },
-  );
-}
 
   Widget _buildContent({
     required BuildContext context,
@@ -287,9 +191,15 @@ Widget build(BuildContext context) {
         : (coordinateOptions.isNotEmpty ? coordinateOptions.first : null);
 
     final origin = _originFromSource(userContext, selectedCoordinateSource);
-    final recommendedCategories = recommendedToolTypes(
-      userContext.cropPreferences,
-    );
+    
+    // NEW: Merge saved preferences with the dynamically selected crops from the UI
+    final combinedCrops = <String>{
+      ...userContext.cropPreferences,
+      ...widget.selectedFarmCrops,
+    }.toList();
+
+    // Generate tool types based on the combined crops
+    final recommendedCategories = recommendedToolTypes(combinedCrops);
 
     Set<String>? allowedCategories;
     if (_activeCropCategory != null) {
@@ -389,7 +299,7 @@ Widget build(BuildContext context) {
         const SizedBox(height: 10),
         _buildNearbyControls(
           context: context,
-          userContext: userContext,
+          activeCrops: combinedCrops, // Pass active crops
           coordinateOptions: coordinateOptions,
           recommendedCategories: recommendedCategories,
           selectedCoordinateSource: selectedCoordinateSource,
@@ -399,6 +309,7 @@ Widget build(BuildContext context) {
           context: context,
           origin: origin,
           nearbyResults: nearbyResults,
+          recommendedCategories: recommendedCategories, // Pass categories for tagging
         ),
       ],
     );
@@ -528,7 +439,7 @@ Widget build(BuildContext context) {
 
   Widget _buildNearbyControls({
     required BuildContext context,
-    required DashboardUserContext userContext,
+    required List<String> activeCrops,
     required List<DashboardCoordinateSource> coordinateOptions,
     required Set<String> recommendedCategories,
     required DashboardCoordinateSource? selectedCoordinateSource,
@@ -670,8 +581,7 @@ Widget build(BuildContext context) {
                   .toList(),
             ),
           ],
-          if (recommendedCategories.isEmpty &&
-              userContext.cropPreferences.isNotEmpty)
+          if (recommendedCategories.isEmpty && activeCrops.isNotEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
@@ -688,6 +598,7 @@ Widget build(BuildContext context) {
     required BuildContext context,
     required LatLng? origin,
     required List<NearbyEquipmentResult> nearbyResults,
+    required Set<String> recommendedCategories, // Added to pass down to cards
   }) {
     if (origin == null && _nearbyOnly) {
       return _buildInfoMessage(
@@ -720,10 +631,15 @@ Widget build(BuildContext context) {
 
     return Column(
       children: [
-        ...visibleResults.map(
-          (result) => _NearbyEquipmentCard(
+        ...visibleResults.map((result) {
+          // Check if this specific equipment's category matches the recommended ones
+          final isRecommended = result.equipment.category != null && 
+                                recommendedCategories.contains(result.equipment.category);
+                                
+          return _NearbyEquipmentCard(
             equipment: result.equipment,
             distanceKm: result.distanceKm,
+            isRecommended: isRecommended, // Pass the tag state
             onTap: () {
               Navigator.push(
                 context,
@@ -732,8 +648,8 @@ Widget build(BuildContext context) {
                 ),
               );
             },
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
@@ -907,11 +823,13 @@ class _NearbyEquipmentCard extends StatelessWidget {
   final Equipment equipment;
   final double? distanceKm;
   final VoidCallback onTap;
+  final bool isRecommended; // New parameter to control the tag visibility
 
   const _NearbyEquipmentCard({
     required this.equipment,
     required this.distanceKm,
     required this.onTap,
+    this.isRecommended = false,
   });
 
   bool _isNetworkUrl(String url) =>
@@ -969,12 +887,46 @@ class _NearbyEquipmentCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      equipment.category ?? 'Uncategorized',
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 12,
-                      ),
+                    // Updated Row to include the Recommended Tag
+                    Row(
+                      children: [
+                        Text(
+                          equipment.category ?? 'Uncategorized',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (isRecommended)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                border: Border.all(color: Colors.green.shade200),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.star_rounded, size: 10, color: Colors.green.shade700),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'Recommended',
+                                    style: TextStyle(
+                                      color: Colors.green.shade800,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
