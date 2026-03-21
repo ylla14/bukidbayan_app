@@ -56,6 +56,7 @@ class _RentScreenState extends State<RentScreen> {
 
   Timer? _availabilityTimer;
   DateTimeRange? dateFilter;
+  Map<String, int> _reviewCountCache = {};
 
 
   @override
@@ -159,6 +160,18 @@ void _setupAvailabilityListener() {
       });
     }
   }
+
+  Future<void> _prefetchReviewCounts(List<Equipment> equipmentList) async {
+  final service = FirestoreService();
+  final futures = equipmentList.map((e) async {
+    if (e.id != null && !_reviewCountCache.containsKey(e.id)) {
+      final reviews = await service.getReviewsForEquipment(e.id!);
+      _reviewCountCache[e.id!] = reviews.length;
+    }
+  });
+  await Future.wait(futures);
+  if (mounted) setState(() {});
+}
 
 @override
 void dispose() {
@@ -678,12 +691,24 @@ void clearFilters() {
                 filteredEquipment.sort((a, b) {
                   final isPendingA = a.category != null && blockedCategories.contains(a.category);
                   final isPendingB = b.category != null && blockedCategories.contains(b.category);
-                  
-                  int priorityA = isPendingA ? 2 : (a.isAvailable ? 1 : 3);
-                  int priorityB = isPendingB ? 2 : (b.isAvailable ? 1 : 3);
-                  
-                  return priorityA.compareTo(priorityB);
+
+                  // Tier 1: available (not pending, not blocked) comes first
+                  int tierA = isPendingA ? 2 : (a.isAvailable ? 1 : 3);
+                  int tierB = isPendingB ? 2 : (b.isAvailable ? 1 : 3);
+
+                  if (tierA != tierB) return tierA.compareTo(tierB);
+
+                  // Tier 2: within same availability tier, sort by review count descending
+                  final reviewsA = _reviewCountCache[a.id] ?? 0;
+                  final reviewsB = _reviewCountCache[b.id] ?? 0;
+                  return reviewsB.compareTo(reviewsA);
                 });
+
+                // Pre-fetch reviews for any items not yet cached
+                final uncached = filteredEquipment.where((e) => e.id != null && !_reviewCountCache.containsKey(e.id!)).toList();
+                if (uncached.isNotEmpty) {
+                  _prefetchReviewCounts(uncached);
+                }
 
                 if (filteredEquipment.isEmpty) {
                   return Center(

@@ -28,7 +28,7 @@ const List<String> rentalUnit = <String>[
   if (c.contains('hand tractor') || c.contains('kuliglig'))    return (2000, 5000);
   if (c.contains('tractor'))         return (5000, 10000);
   if (c.contains('harvester') || c.contains('halimaw')) return (3500, 8000);
-  if (c.contains('floating tiller')) return (2000, 5000);
+  if (c.contains('floating tiller') || c.contains('Pagong')) return (2000, 5000);
   if (c.contains('machine'))         return (500,  5000);
   if (c.contains('hand tool'))       return (50,   1000);
   if (c.contains('implement'))       return (1000, 3000);
