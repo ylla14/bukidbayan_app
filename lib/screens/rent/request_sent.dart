@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
 import 'package:bukidbayan_app/components/rent/ndvi_card.dart';
@@ -34,6 +35,15 @@ const Map<String, String> _equipmentManuals = {
   'Harvester (Halimaw)'   : 'https://drive.google.com/file/d/1D3v2BXKderLv-kTOUmY4nE4hVgjZD_Gf/view?usp=sharing',
   'Floating Tiller (Pagong)': 'https://drive.google.com/file/d/18ICD5LJTUg9LJLjsqciVypuTSHHNxIKr/view?usp=sharing',
   'Hand Tractor (Kuliglig)': 'https://drive.google.com/file/d/1Iq4D7xfAoCtS5CqKEQivsHXQu_B-Yn7w/view?usp=sharing',
+};
+
+/// YouTube tutorial video IDs keyed by equipment category.
+/// Only shown for equipment rented WITHOUT an operator.
+const Map<String, String> _equipmentTutorials = {
+  'Tractor'                 : 'H66et2wlv08',
+  'Hand Tractor (Kuliglig)' : 'gSlqgjwvnkE',
+  'Harvester (Halimaw)'     : 'gSlqgjwvnkE',
+  'Floating Tiller (Pagong)': 'S1VAxvalLBg',
 };
 
 class _RequestSentPageState extends State<RequestSentPage> {
@@ -798,76 +808,94 @@ Future<bool> _hasLeftReview(String requestId) async {
 
                           // ── EQUIPMENT MANUAL ──
                           if (isRenter)
-                            FutureBuilder<String?>(
+                            FutureBuilder<(String?, bool)>(
                               future: FirebaseFirestore.instance
                                   .collection('equipment')
                                   .doc(request.itemId)
                                   .get()
-                                  .then((d) => d.data()?['category'] as String?),
+                                  .then((d) {
+                                    final data = d.data();
+                                    return (
+                                      data?['category'] as String?,
+                                      data?['operatorIncluded'] as bool? ?? false,
+                                    );
+                                  }),
                               builder: (context, snap) {
-                                final category = snap.data;
-                                final manualUrl = category != null
-                                    ? _equipmentManuals[category]
+                                final category         = snap.data?.$1;
+                                final operatorIncluded = snap.data?.$2 ?? false;
+                                final manualUrl  = category != null ? _equipmentManuals[category] : null;
+                                final videoId    = (!operatorIncluded && category != null)
+                                    ? _equipmentTutorials[category]
                                     : null;
-                                if (manualUrl == null) return const SizedBox.shrink();
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF6FF),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFF93C5FD)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.menu_book_rounded,
-                                          color: Color(0xFF2563EB), size: 22),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                if (manualUrl == null && videoId == null) return const SizedBox.shrink();
+                                return Column(
+                                  children: [
+                                    if (manualUrl != null)
+                                      Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEFF6FF),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(color: const Color(0xFF93C5FD)),
+                                        ),
+                                        child: Row(
                                           children: [
-                                            const Text(
-                                              'EQUIPMENT MANUAL',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFF1D4ED8),
-                                                letterSpacing: 0.8,
+                                            const Icon(Icons.menu_book_rounded,
+                                                color: Color(0xFF2563EB), size: 22),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'EQUIPMENT MANUAL',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: Color(0xFF1D4ED8),
+                                                      letterSpacing: 0.8,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    category!,
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Color(0xFF1E40AF),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              category!,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500,
-                                                color: Color(0xFF1E40AF),
+                                            TextButton.icon(
+                                              onPressed: () async {
+                                                final uri = Uri.parse(manualUrl);
+                                                if (await canLaunchUrl(uri)) {
+                                                  await launchUrl(uri,
+                                                      mode: LaunchMode.externalApplication);
+                                                }
+                                              },
+                                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                                              label: const Text('View PDF'),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: const Color(0xFF2563EB),
+                                                textStyle: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      TextButton.icon(
-                                        onPressed: () async {
-                                          final uri = Uri.parse(manualUrl);
-                                          if (await canLaunchUrl(uri)) {
-                                            await launchUrl(uri,
-                                                mode: LaunchMode.externalApplication);
-                                          }
-                                        },
-                                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                                        label: const Text('View PDF'),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: const Color(0xFF2563EB),
-                                          textStyle: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                          ),
-                                        ),
+                                    if (videoId != null)
+                                      _TutorialVideoCard(
+                                        videoId: videoId,
+                                        category: category!,
                                       ),
-                                    ],
-                                  ),
+                                  ],
                                 );
                               },
                             ),
@@ -2575,6 +2603,100 @@ void _openProofViewer(
     ),
   );
 }
- 
+
+} // end of _RequestSentPageState
+
+// ── Equipment tutorial video card ─────────────────────────────────────────────
+// Shown only for equipment rented without an operator.
+
+class _TutorialVideoCard extends StatefulWidget {
+  final String videoId;
+  final String category;
+
+  const _TutorialVideoCard({required this.videoId, required this.category});
+
+  @override
+  State<_TutorialVideoCard> createState() => _TutorialVideoCardState();
+}
+
+class _TutorialVideoCardState extends State<_TutorialVideoCard> {
+  late YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = YoutubePlayerController(
+      initialVideoId: widget.videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: false,
+        mute: false,
+        enableCaption: false,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF93C5FD)),
+        color: const Color(0xFFEFF6FF),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.play_circle_rounded,
+                    color: Color(0xFF2563EB), size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'HOW TO OPERATE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1D4ED8),
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.category,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1E40AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          YoutubePlayer(
+            controller: _controller,
+            showVideoProgressIndicator: true,
+            progressIndicatorColor: const Color(0xFF2563EB),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
