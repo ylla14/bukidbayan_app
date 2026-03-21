@@ -1,6 +1,5 @@
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
 import 'package:bukidbayan_app/components/rent/ndvi_card.dart';
@@ -37,13 +36,13 @@ const Map<String, String> _equipmentManuals = {
   'Hand Tractor (Kuliglig)': 'https://drive.google.com/file/d/1Iq4D7xfAoCtS5CqKEQivsHXQu_B-Yn7w/view?usp=sharing',
 };
 
-/// YouTube tutorial video IDs keyed by equipment category.
+/// YouTube tutorial links keyed by equipment category.
 /// Only shown for equipment rented WITHOUT an operator.
 const Map<String, String> _equipmentTutorials = {
-  'Tractor'                 : 'H66et2wlv08',
-  'Hand Tractor (Kuliglig)' : 'gSlqgjwvnkE',
-  'Harvester (Halimaw)'     : 'gSlqgjwvnkE',
-  'Floating Tiller (Pagong)': 'S1VAxvalLBg',
+  'Tractor'                 : 'https://youtu.be/H66et2wlv08?si=f1wnpzYOi-JXOjIw',
+  'Hand Tractor (Kuliglig)' : 'https://youtu.be/gSlqgjwvnkE?si=5d7dRWxUBljb1yYk',
+  'Harvester (Halimaw)'     : 'https://youtu.be/gSlqgjwvnkE?si=5d7dRWxUBljb1yYk',
+  'Floating Tiller (Pagong)': 'https://youtu.be/S1VAxvalLBg?si=h7xGEpT3chPnuBCJ',
 };
 
 class _RequestSentPageState extends State<RequestSentPage> {
@@ -285,6 +284,70 @@ class _RequestSentPageState extends State<RequestSentPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resourceCard({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required String buttonLabel,
+    required IconData buttonIcon,
+    required String url,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF93C5FD)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF2563EB), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1D4ED8),
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1E40AF),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: Icon(buttonIcon, size: 16),
+            label: Text(buttonLabel),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ),
         ],
@@ -800,106 +863,6 @@ Future<bool> _hasLeftReview(String requestId) async {
                         ),
 
 
-                          // ── FARM SATELLITE DATA ──
-                          NdviCard(
-                            renterId: request.renterId,
-                            equipmentId: request.itemId,
-                          ),
-
-                          // ── EQUIPMENT MANUAL ──
-                          if (isRenter)
-                            FutureBuilder<(String?, bool)>(
-                              future: FirebaseFirestore.instance
-                                  .collection('equipment')
-                                  .doc(request.itemId)
-                                  .get()
-                                  .then((d) {
-                                    final data = d.data();
-                                    return (
-                                      data?['category'] as String?,
-                                      data?['operatorIncluded'] as bool? ?? false,
-                                    );
-                                  }),
-                              builder: (context, snap) {
-                                final category         = snap.data?.$1;
-                                final operatorIncluded = snap.data?.$2 ?? false;
-                                final manualUrl  = category != null ? _equipmentManuals[category] : null;
-                                final videoId    = (!operatorIncluded && category != null)
-                                    ? _equipmentTutorials[category]
-                                    : null;
-                                if (manualUrl == null && videoId == null) return const SizedBox.shrink();
-                                return Column(
-                                  children: [
-                                    if (manualUrl != null)
-                                      Container(
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEFF6FF),
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: const Color(0xFF93C5FD)),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.menu_book_rounded,
-                                                color: Color(0xFF2563EB), size: 22),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  const Text(
-                                                    'EQUIPMENT MANUAL',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: Color(0xFF1D4ED8),
-                                                      letterSpacing: 0.8,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    category!,
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: Color(0xFF1E40AF),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            TextButton.icon(
-                                              onPressed: () async {
-                                                final uri = Uri.parse(manualUrl);
-                                                if (await canLaunchUrl(uri)) {
-                                                  await launchUrl(uri,
-                                                      mode: LaunchMode.externalApplication);
-                                                }
-                                              },
-                                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                                              label: const Text('View PDF'),
-                                              style: TextButton.styleFrom(
-                                                foregroundColor: const Color(0xFF2563EB),
-                                                textStyle: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    if (videoId != null)
-                                      _TutorialVideoCard(
-                                        videoId: videoId,
-                                        category: category!,
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-
                           // ── DECLINE REASON ──
                           if (request.status == RentRequestStatus.declined &&
                               request.declineReason != null)
@@ -1016,9 +979,9 @@ Future<bool> _hasLeftReview(String requestId) async {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'The renter has not returned the equipment. '
-                                    'Queued bookings are shifted forward by 1 day for each day overdue. '
-                                    'The renter receives a strike per day until the equipment is returned.',
+                                    'Hindi pa ibinalik ng nangupahan ang kagamitan. '
+                                    'Ang mga susunod na booking ay inililipat ng 1 araw para sa bawat araw na naantala. '
+                                    'Ang nangupahan ay tumatanggap ng isang paglabag bawat araw hanggang maibalik ang kagamitan.',
                                     style: TextStyle(
                                         color: Colors.red.shade700,
                                         fontSize: 12),
@@ -1135,6 +1098,61 @@ Future<bool> _hasLeftReview(String requestId) async {
                                 ],
                               ),
                             ),
+
+                          // ── EQUIPMENT MANUAL & TUTORIAL ──
+                          if (isRenter)
+                            FutureBuilder<(String?, bool)>(
+                              future: FirebaseFirestore.instance
+                                  .collection('equipment')
+                                  .doc(request.itemId)
+                                  .get()
+                                  .then((d) {
+                                    final data = d.data();
+                                    return (
+                                      data?['category'] as String?,
+                                      data?['operatorIncluded'] as bool? ?? false,
+                                    );
+                                  }),
+                              builder: (context, snap) {
+                                final category         = snap.data?.$1;
+                                final operatorIncluded = snap.data?.$2 ?? false;
+                                // Manual always shown if the category has one.
+                                final manualUrl = category != null ? _equipmentManuals[category] : null;
+                                // Tutorial only shown for equipment without an operator.
+                                final videoId   = (!operatorIncluded && category != null)
+                                    ? _equipmentTutorials[category]
+                                    : null;
+                                if (manualUrl == null && videoId == null) return const SizedBox.shrink();
+                                return Column(
+                                  children: [
+                                    if (manualUrl != null)
+                                      _resourceCard(
+                                        icon: Icons.menu_book_rounded,
+                                        label: 'EQUIPMENT MANUAL',
+                                        subtitle: category!,
+                                        buttonLabel: 'View PDF',
+                                        buttonIcon: Icons.open_in_new_rounded,
+                                        url: manualUrl,
+                                      ),
+                                    if (videoId != null)
+                                      _resourceCard(
+                                        icon: Icons.play_circle_rounded,
+                                        label: 'HOW TO OPERATE',
+                                        subtitle: category!,
+                                        buttonLabel: 'Watch Video',
+                                        buttonIcon: Icons.open_in_new_rounded,
+                                        url: videoId,
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
+
+                          // ── FARM SATELLITE DATA ──
+                          NdviCard(
+                            renterId: request.renterId,
+                            equipmentId: request.itemId,
+                          ),
 
                           // ── ACTION BUTTONS ──
                           const SizedBox(height: 4),
@@ -2287,15 +2305,17 @@ Future<void> _applyMaintenanceFromConditionReport({
         batch.update(doc.reference, {
           'status': RentRequestStatus.canceled.name,
           'declineReason':
-              'Equipment under unforeseen maintenance from ${DateFormat('MMM d').format(today)} '
-              'to ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. We apologize for the inconvenience.',
+              'Ang kagamitan ay naka-schedule para sa hindi inaasahang maintenance mula '
+              '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
+              'Paumanhin sa abala.',
         });
         notifFutures.add(_sendNotification(
           userId: request.renterId,
-          title: '🔧 Booking Cancelled — Maintenance',
-          body: 'Your booking for "${equipment.name}" '
+          title: '🔧 Kinansela ang Booking — Maintenance',
+          body: 'Ang iyong booking para sa "${equipment.name}" '
               '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
-              'was cancelled due to unforeseen maintenance ($durationDays days).',
+              'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw). '
+              'Paumanhin sa abala.',
           type: 'maintenance_cancel',
           extra: {'requestId': request.requestId, 'equipmentId': equipment.id, 'ownerId': equipment.ownerId},
         ));
@@ -2317,13 +2337,14 @@ Future<void> _applyMaintenanceFromConditionReport({
           batch.update(doc.reference, {
             'status': RentRequestStatus.canceled.name,
             'declineReason':
-                'Booking could not be rescheduled after maintenance — new dates exceed availability window.',
+                'Hindi ma-reschedule ang booking pagkatapos ng maintenance — ang bagong mga petsa ay wala na sa availability ng kagamitan.',
           });
           notifFutures.add(_sendNotification(
             userId: request.renterId,
-            title: '🔧 Booking Cancelled — Outside Availability',
-            body: 'Your booking for "${equipment.name}" could not be rescheduled after maintenance '
-                'because the new dates exceed the equipment\'s availability window.',
+            title: '🔧 Kinansela ang Booking — Labas ng Availability',
+            body: 'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
+                'pagkatapos ng maintenance dahil ang bagong mga petsa ay wala na sa '
+                'availability ng kagamitan. Kinansela na ang iyong booking.',
             type: 'maintenance_cancel',
             extra: {'requestId': request.requestId, 'equipmentId': equipment.id, 'ownerId': equipment.ownerId},
           ));
@@ -2338,11 +2359,12 @@ Future<void> _applyMaintenanceFromConditionReport({
           });
           notifFutures.add(_sendNotification(
             userId: request.renterId,
-            title: '📅 Booking Rescheduled — Maintenance',
-            body: 'Your booking for "${equipment.name}" has been moved from '
+            title: '📅 Na-reschedule ang Booking — Maintenance',
+            body: 'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
                 '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
-                'to ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
-                'due to maintenance. You may cancel or accept the new schedule.',
+                'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
+                'dahil sa maintenance. '
+                'Maaari mong kanselahin o tanggapin ang bagong schedule.',
             type: 'maintenance_reschedule',
             extra: {
               'requestId': request.requestId,
@@ -2424,8 +2446,8 @@ Future<void> _sendNotification({
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(isRenter
             ? isPostApproval
-                ? 'Are you sure you want to cancel this approved rental? '
-                  'Cancelling after approval will result in a strike on your account.'
+                ? 'Sigurado ka bang gusto mong kanselahin ang approved na rental na ito? '
+                  'Ang pagkansela pagkatapos ng pag-apruba ay magdudulot ng isang paglabag sa iyong account.'
                 : 'Are you sure you want to cancel this rental request? This cannot be undone.'
             : 'Are you sure you want to cancel this request? The renter will be notified.'),
         actions: [
@@ -2606,97 +2628,4 @@ void _openProofViewer(
 
 } // end of _RequestSentPageState
 
-// ── Equipment tutorial video card ─────────────────────────────────────────────
-// Shown only for equipment rented without an operator.
-
-class _TutorialVideoCard extends StatefulWidget {
-  final String videoId;
-  final String category;
-
-  const _TutorialVideoCard({required this.videoId, required this.category});
-
-  @override
-  State<_TutorialVideoCard> createState() => _TutorialVideoCardState();
-}
-
-class _TutorialVideoCardState extends State<_TutorialVideoCard> {
-  late YoutubePlayerController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = YoutubePlayerController(
-      initialVideoId: widget.videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
-        enableCaption: false,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF93C5FD)),
-        color: const Color(0xFFEFF6FF),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.play_circle_rounded,
-                    color: Color(0xFF2563EB), size: 22),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'HOW TO OPERATE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1D4ED8),
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        widget.category,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF1E40AF),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          YoutubePlayer(
-            controller: _controller,
-            showVideoProgressIndicator: true,
-            progressIndicatorColor: const Color(0xFF2563EB),
-          ),
-        ],
-      ),
-    );
-  }
-}
 

@@ -171,8 +171,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         builder: (ctx) => AlertDialog(
                           title: const Text('Cancel Booking?'),
                           content: const Text(
-                              'This will cancel your rescheduled booking. '
-                              'No strike will be recorded. This cannot be undone.'),
+                              'Ito ay magkakansela ng iyong na-reschedule na booking. '
+                              'Walang paglabag na itatala. Hindi ito maaaring bawiin.'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),

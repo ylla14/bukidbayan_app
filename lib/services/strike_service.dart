@@ -245,12 +245,12 @@ class StrikeService {
     if (nowBlocked && blockedUntil != null) {
       final d = blockedUntil;
       final unblockDate = '${d.day}/${d.month}/${d.year}';
-      body = 'Nakatanggap ka ng strike ($strikeCount/$_maxStrikes) dahil sa: '
+      body = 'Nakatanggap ka ng paglabag ($strikeCount/$_maxStrikes) dahil sa: '
           '"$reasonLabel". Pansamantalang hindi ka makakapaghiram ng kagamitan '
           'hanggang $unblockDate ($blockDurationDays na araw).';
     } else {
-      body = 'Nakatanggap ka ng strike ($strikeCount/$_maxStrikes) dahil sa: '
-          '"$reasonLabel". Sa $_maxStrikes na strikes, '
+      body = 'Nakatanggap ka ng paglabag ($strikeCount/$_maxStrikes) dahil sa: '
+          '"$reasonLabel". Sa $_maxStrikes na paglabag, '
           'maaari kang pansamantalang masuspinde mula sa paghihiram.';
     }
 
@@ -260,7 +260,7 @@ class StrikeService {
         .collection('items')
         .add({
       'type'     : 'strike',
-      'title'    : 'Nakatanggap ka ng Strike',
+      'title'    : 'Nakatanggap ka ng Paglabag',
       'body'     : body,
       'createdAt': FieldValue.serverTimestamp(),
       'read'     : false,

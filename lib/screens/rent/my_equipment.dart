@@ -754,16 +754,18 @@ Future<void> _scheduleMaintenance(
 
         batch.update(doc.reference, {
           'status': RentRequestStatus.canceled.name,
-          'declineReason': 'Equipment scheduled for unforeseen maintenance from '
-              '${DateFormat('MMM d').format(today)} to ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
-              'We apologize for the inconvenience.',
+          'declineReason': 'Ang kagamitan ay naka-schedule para sa hindi inaasahang maintenance mula '
+              '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
+              'Paumanhin sa abala.',
         });
 
         notifFutures.add(_sendNotification(
           userId: request.renterId,
-          title: '🔧 Booking Cancelled — Maintenance',
-          body: 'Your booking for "${equipment.name}" (${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
-              'has been cancelled due to unforeseen maintenance ($durationDays days). We\'re sorry for the inconvenience.',
+          title: '🔧 Kinansela ang Booking — Maintenance',
+          body: 'Ang iyong booking para sa "${equipment.name}" '
+              '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
+              'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw). '
+              'Paumanhin sa abala.',
           type: 'maintenance_cancel',
           extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
         ));
@@ -793,17 +795,18 @@ Future<void> _scheduleMaintenance(
           // Do NOT advance blockedUntil: the cancelled slot is freed.
           batch.update(doc.reference, {
             'status': RentRequestStatus.canceled.name,
-            'declineReason': 'Your booking could not be rescheduled after maintenance '
-                '(ends ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}) because the new dates '
-                'exceed the equipment\'s availability window.',
+            'declineReason': 'Hindi ma-reschedule ang booking pagkatapos ng maintenance '
+                '(nagtatapos ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}) dahil ang bagong '
+                'mga petsa ay lalampas sa availability ng kagamitan.',
           });
 
           notifFutures.add(_sendNotification(
             userId: request.renterId,
-            title: '🔧 Booking Cancelled — Outside Availability',
-            body: 'Your booking for "${equipment.name}" could not be rescheduled after maintenance '
-                'because the new dates (${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d').format(newEnd)}) '
-                'fall outside the equipment\'s availability. Your booking has been cancelled.',
+            title: '🔧 Kinansela ang Booking — Labas ng Availability',
+            body: 'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
+                'pagkatapos ng maintenance dahil ang bagong mga petsa '
+                '(${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d').format(newEnd)}) '
+                'ay wala sa availability ng kagamitan. Kinansela na ang iyong booking.',
             type: 'maintenance_cancel',
             extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
           ));
@@ -819,11 +822,12 @@ Future<void> _scheduleMaintenance(
 
           notifFutures.add(_sendNotification(
             userId: request.renterId,
-            title: '📅 Booking Rescheduled — Maintenance',
-            body: 'Your booking for "${equipment.name}" has been moved from '
+            title: '📅 Na-reschedule ang Booking — Maintenance',
+            body: 'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
                 '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
-                'to ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
-                'due to scheduled maintenance. You may cancel or accept the new schedule.',
+                'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
+                'dahil sa nakatakdang maintenance. '
+                'Maaari mong kanselahin o tanggapin ang bagong schedule.',
             type: 'maintenance_reschedule',
             extra: {
               'requestId': request.requestId,

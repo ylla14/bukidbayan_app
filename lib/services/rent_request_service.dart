@@ -235,7 +235,7 @@ Future<bool> hasActiveRequestInCategory(
             .collection('items')
             .add({
           'type'      : 'booking_shifted',
-          'title'     : 'Booking Schedule Updated',
+          'title'     : '📅 Na-update ang Iyong Schedule',
           'body'      : 'Ang iyong booking para sa "${b.itemName}" ay na-delay ng '
               '$daysLate ${daysLate == 1 ? 'araw' : 'na araw'} dahil sa '
               'late return ng nakaraang nangupahan. '
