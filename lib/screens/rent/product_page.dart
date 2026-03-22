@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bukidbayan_app/components/rent/product_page/product_availability.dart';
 import 'package:bukidbayan_app/components/rent/product_page/product_image_carousel.dart';
 import 'package:bukidbayan_app/components/rent/product_page/product_specs.dart';
@@ -781,126 +783,253 @@ class ProductPage extends StatelessWidget {
           ),
 
           // ── Bottom bar 
-          bottomNavigationBar: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                )
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Price',
-                        style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    if (liveItem.category?.toLowerCase().contains('rice mill') ==
-                        true) ...[
-                      Row(
-                        children: [
-                          Text(
-                            '₱${liveItem.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          const Text(' · Rice Only',
-                              style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            '₱${liveItem.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00'}/kg',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          const Text(' · Rice + Darak',
-                              style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
-                      ),
-                    ] else ...[
-                      Text(
-                        '₱${liveItem.price} ${_getRateSuffix(liveItem.rentalUnit)}',
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      if (liveItem.cropShareRequired && liveItem.cropSharePercent != null)
-                        Text(
-                          '+ ${liveItem.cropSharePercent!.toStringAsFixed(0)}% of Crop Harvest',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: lightColorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                    ],
-                  ],
-                ),
-                const SizedBox(width: 30),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: currentUserId == liveItem.ownerId
-                        ? () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => EquipmentListingScreen(
-                                    existingEquipment: liveItem),
-                              ),
-                            );
-                          }
-                        : liveItem.isAvailable
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => RequestRentForm(item: liveItem),
-                                  ),
-                                );
-                              }
-                            : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: currentUserId == liveItem.ownerId
-                          ? lightColorScheme.primary
-                          : (liveItem.isAvailable
-                              ? lightColorScheme.primary
-                              : Colors.grey),
-                      foregroundColor: lightColorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(currentUserId == liveItem.ownerId
-                            ? 'Edit Listing'
-                            : 'Request to Rent'),
-                        if (!liveItem.isAvailable &&
-                            currentUserId != liveItem.ownerId)
-                          const Text(
-                            'Not available',
-                            style: TextStyle(fontSize: 12, color: Colors.red),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          bottomNavigationBar: _ProductBottomBar(
+  liveItem: liveItem,
+  currentUserId: currentUserId,
+),
         );
       },
+    );
+  }
+}
+
+// ── Add this class at the bottom of product_page.dart ──────────────────────
+
+class _ProductBottomBar extends StatefulWidget {
+  final Equipment liveItem;
+  final String? currentUserId;
+
+  const _ProductBottomBar({
+    required this.liveItem,
+    required this.currentUserId,
+  });
+
+  @override
+  State<_ProductBottomBar> createState() => _ProductBottomBarState();
+}
+
+class _ProductBottomBarState extends State<_ProductBottomBar> {
+  bool _isCategoryBlocked = false;
+  bool _isCheckingCategory = true;
+
+  StreamSubscription<QuerySnapshot>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToActiveRequests();
+  }
+
+  void _listenToActiveRequests() {
+    final uid = widget.currentUserId;
+    if (uid == null || widget.liveItem.category == null) {
+      setState(() => _isCheckingCategory = false);
+      return;
+    }
+
+    _sub = FirebaseFirestore.instance
+        .collection('rentRequests')
+        .where('renterId', isEqualTo: uid)
+        .where('status', whereIn: [
+          'pending', 'approved', 'readyForPickup', 'pickedUp',
+          'onTheWay', 'inProgress', 'retrieving', 'returned'
+        ])
+        .snapshots()
+        .listen((snapshot) async {
+          bool blocked = false;
+
+          for (final doc in snapshot.docs) {
+            final itemId = doc.data()['itemId'] as String?;
+            if (itemId == null) continue;
+
+            final equipDoc = await FirebaseFirestore.instance
+                .collection('equipment')
+                .doc(itemId)
+                .get();
+
+            if (!equipDoc.exists) continue;
+
+            final equipment = Equipment.fromFirestore(equipDoc);
+            if (equipment.category == widget.liveItem.category) {
+              blocked = true;
+              break;
+            }
+          }
+
+          if (mounted) {
+            setState(() {
+              _isCategoryBlocked = blocked;
+              _isCheckingCategory = false;
+            });
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  String _getRateSuffix(String rentRate) {
+    switch (rentRate.toLowerCase()) {
+      case 'per day':    return '/day';
+      case 'per hour':   return '/hour';
+      case 'per week':   return '/week';
+      case 'per month':  return '/month';
+      case 'per kg':     return '/kg';
+      case 'per hectare': return '/ha';
+      default:           return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final liveItem = widget.liveItem;
+    final currentUserId = widget.currentUserId;
+    final isOwner = currentUserId == liveItem.ownerId;
+
+    // Determine button state
+    final bool canRent = !isOwner &&
+        liveItem.isAvailable &&
+        !_isCategoryBlocked &&
+        !_isCheckingCategory;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          )
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // ── Price column ────────────────────────────────────────────────
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Price',
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              if (liveItem.category?.toLowerCase().contains('rice mill') == true) ...[
+                Row(
+                  children: [
+                    Text(
+                      '₱${liveItem.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const Text(' · Rice Only',
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Text(
+                      '₱${liveItem.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00'}/kg',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const Text(' · Rice + Darak',
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
+              ] else ...[
+                Text(
+                  '₱${liveItem.price} ${_getRateSuffix(liveItem.rentalUnit)}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                if (liveItem.cropShareRequired && liveItem.cropSharePercent != null)
+                  Text(
+                    '+ ${liveItem.cropSharePercent!.toStringAsFixed(0)}% of Crop Harvest',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: lightColorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+
+          const SizedBox(width: 30),
+
+          // ── Action button ───────────────────────────────────────────────
+          Expanded(
+            child: ElevatedButton(
+              onPressed: isOwner
+                  ? () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              EquipmentListingScreen(existingEquipment: liveItem),
+                        ),
+                      )
+                  : _isCategoryBlocked
+                      ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'You already have an active request for a '
+                                '${liveItem.category}. Complete or cancel it first.',
+                              ),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      : canRent
+                          ? () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => RequestRentForm(item: liveItem),
+                                ),
+                              )
+                          : null, // unavailable & not blocked — greyed out
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isOwner
+                    ? lightColorScheme.primary
+                    : _isCategoryBlocked
+                        ? Colors.orange
+                        : (liveItem.isAvailable
+                            ? lightColorScheme.primary
+                            : Colors.grey),
+                foregroundColor: lightColorScheme.onPrimary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isOwner
+                        ? 'Edit Listing'
+                        : _isCategoryBlocked
+                            ? 'Already Requested'
+                            : 'Request to Rent',
+                  ),
+                  if (!isOwner && _isCategoryBlocked)
+                    const Text(
+                      'Active request exists',
+                      style: TextStyle(fontSize: 11, color: Colors.white70),
+                    )
+                  else if (!isOwner && !liveItem.isAvailable)
+                    const Text(
+                      'Not available',
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
