@@ -1013,11 +1013,14 @@ class _ProductBottomBarState extends State<_ProductBottomBar> {
                         : _isCategoryBlocked
                             ? 'Already Requested'
                             : 'Request to Rent',
+                            style: TextStyle(
+        color: _isCategoryBlocked ? Colors.black : Colors.white,
+      ),
                   ),
                   if (!isOwner && _isCategoryBlocked)
                     const Text(
                       'Active request exists',
-                      style: TextStyle(fontSize: 11, color: Colors.white70),
+                      style: TextStyle(fontSize: 11, color: Colors.black),
                     )
                   else if (!isOwner && !liveItem.isAvailable)
                     const Text(
