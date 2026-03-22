@@ -384,7 +384,7 @@ class _DateStepState extends State<DateStep> {
               child: DatePickerField(
                 label: 'Return',
                 value: widget.returnDate,
-                onTap: returnIsComputed ||
+                onTap: isAutoComputed || returnIsComputed ||
                         widget.startDate == null ||
                         isLoadingDates ||
                         !hasAvailabilityDates

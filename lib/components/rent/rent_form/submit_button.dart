@@ -10,6 +10,7 @@ import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -636,6 +637,17 @@ class _SubmitButtonState extends State<SubmitButton> {
 
       final newRequestId = await widget.requestService.saveRequest(request);
 
+
+      // ── Notify the equipment owner ──────────────────────────────────────
+      final renterName = FirebaseAuth.instance.currentUser?.displayName
+          ?? widget.name;
+      await _sendOwnerNotification(
+        ownerId    : widget.item.ownerId,
+        requestId  : newRequestId,
+        itemName   : widget.item.name,
+        renterName : renterName,
+      );
+
       print('🔄 Request created, validating equipment availability...');
       await FirestoreService().validateEquipmentAvailabilityWithNotification(
         widget.item.id!,
@@ -721,5 +733,25 @@ class _SubmitButtonState extends State<SubmitButton> {
       ),
     ],
   );
+}
+
+Future<void> _sendOwnerNotification({
+  required String ownerId,
+  required String requestId,
+  required String itemName,
+  required String renterName,
+}) async {
+  await FirebaseFirestore.instance
+      .collection('notifications')
+      .doc(ownerId)
+      .collection('items')
+      .add({
+    'title': '🌾 New Rental Request',
+    'body': '$renterName has requested to rent "$itemName". Tap to review.',
+    'type': 'new_request',
+    'read': false,
+    'requestId': requestId,
+    'createdAt': FieldValue.serverTimestamp(),
+  });
 }
 }
