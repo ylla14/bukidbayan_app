@@ -117,14 +117,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Accept New Schedule?'),
+                          title: const Text('Tanggapin ang Bagong Schedule?'),
                           content: const Text(
-                              'This will confirm the rescheduled booking dates. '
-                              'Your booking will remain approved.'),
+                              'Makukumpirma nito ang na-reschedule na mga petsa ng booking. '
+                              'Mananatiling approved ang iyong booking.'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Not Yet'),
+                              child: const Text('Hindi pa'),
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -132,7 +132,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Yes, Accept'),
+                              child: const Text('Oo, Tanggapin'),
                             ),
                           ],
                         ),
@@ -150,14 +150,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           final renterName = _auth.currentUser?.displayName ?? 'The renter';
                           await notifyOwner(
                             ownerId,
-                            '✅ Renter Accepted New Schedule',
-                            '$renterName accepted the rescheduled booking dates.',
+                            '✅ Tinanggap ng Renter ang Bagong Schedule',
+                            'Tinanggap ni $renterName ang na-reschedule na mga petsa ng booking.',
                           );
                         }
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('New schedule accepted.'),
+                              content: Text('Tinanggap ang bagong schedule.'),
                               backgroundColor: Colors.green,
                             ),
                           );
@@ -170,14 +170,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Cancel Booking?'),
+                          title: const Text('Kanselahin ang Booking?'),
                           content: const Text(
                               'Ito ay magkakansela ng iyong na-reschedule na booking. '
                               'Walang paglabag na itatala. Hindi ito maaaring bawiin.'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Keep It'),
+                              child: const Text('Itago'),
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -185,15 +185,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Yes, Cancel'),
+                              child: const Text('Oo, Kanselahin'),
                             ),
                           ],
                         ),
                       );
                       if (confirm == true && context.mounted) {
                         final declineReason = isMaintReschedule
-                            ? 'Cancelled by renter due to booking reschedule from equipment maintenance.'
-                            : 'Cancelled by renter due to booking delay from a late return.';
+                            ? 'Kinansela ng renter dahil sa pag-reschedule ng booking mula sa maintenance ng kagamitan.'
+                            : 'Kinansela ng renter dahil sa pagkaantala ng booking mula sa mahuling pagbabalik.';
                         await FirebaseFirestore.instance
                             .collection('rentRequests')
                             .doc(requestId)
@@ -210,14 +210,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           final renterName = _auth.currentUser?.displayName ?? 'The renter';
                           await notifyOwner(
                             ownerId,
-                            '❌ Renter Cancelled Rescheduled Booking',
-                            '$renterName cancelled their booking after it was rescheduled.',
+                            '❌ Kinansela ng Renter ang Na-reschedule na Booking',
+                            'Kinansela ni $renterName ang kanilang booking pagkatapos itong ma-reschedule.',
                           );
                         }
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Booking cancelled.'),
+                              content: Text('Kinansela ang booking.'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -285,7 +285,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                       Expanded(
                                         child: OutlinedButton.icon(
                                           icon: const Icon(Icons.check_circle_outline, size: 16),
-                                          label: const Text('Accept'),
+                                          label: const Text('Tanggapin'),
                                           style: OutlinedButton.styleFrom(
                                             foregroundColor: Colors.green.shade700,
                                             side: BorderSide(color: Colors.green.shade400),
@@ -300,7 +300,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                       Expanded(
                                         child: OutlinedButton.icon(
                                           icon: const Icon(Icons.cancel_outlined, size: 16),
-                                          label: const Text('Cancel'),
+                                          label: const Text('Kanselahin'),
                                           style: OutlinedButton.styleFrom(
                                             foregroundColor: Colors.red.shade700,
                                             side: BorderSide(color: Colors.red.shade400),

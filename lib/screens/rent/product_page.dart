@@ -10,6 +10,7 @@ import 'package:bukidbayan_app/screens/rent/all_reviews_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/request_rent_form.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
@@ -811,6 +812,7 @@ class _ProductBottomBar extends StatefulWidget {
 class _ProductBottomBarState extends State<_ProductBottomBar> {
   bool _isCategoryBlocked = false;
   bool _isCheckingCategory = true;
+  DateTime? _accountBlockedUntil;
 
   StreamSubscription<QuerySnapshot>? _sub;
 
@@ -818,7 +820,15 @@ class _ProductBottomBarState extends State<_ProductBottomBar> {
   void initState() {
     super.initState();
     _listenToActiveRequests();
+    _checkAccountBlock();
   }
+
+  Future<void> _checkAccountBlock() async {
+    final uid = widget.currentUserId;
+    if (uid == null) return;
+    final until = await StrikeService().blockedUntil(uid);
+    if (mounted) setState(() => _accountBlockedUntil = until);
+}
 
   void _listenToActiveRequests() {
     final uid = widget.currentUserId;
@@ -890,10 +900,12 @@ class _ProductBottomBarState extends State<_ProductBottomBar> {
     final isOwner = currentUserId == liveItem.ownerId;
 
     // Determine button state
+    final bool isAccountBlocked = _accountBlockedUntil != null;
     final bool canRent = !isOwner &&
         liveItem.isAvailable &&
         !_isCategoryBlocked &&
-        !_isCheckingCategory;
+        !_isCheckingCategory &&
+        !isAccountBlocked;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -969,34 +981,49 @@ class _ProductBottomBarState extends State<_ProductBottomBar> {
                               EquipmentListingScreen(existingEquipment: liveItem),
                         ),
                       )
-                  : _isCategoryBlocked
+                                    : isAccountBlocked
                       ? () {
+                          final d = _accountBlockedUntil!;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'You already have an active request for a '
-                                '${liveItem.category}. Complete or cancel it first.',
+                                'Hindi ka maaaring humiling ng kagamitan hanggang '
+                                '${d.day}/${d.month}/${d.year}.',
                               ),
                               duration: const Duration(seconds: 3),
                             ),
                           );
                         }
-                      : canRent
-                          ? () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => RequestRentForm(item: liveItem),
+                      : _isCategoryBlocked
+                          ? () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Mayroon ka nang aktibong kahilingan para sa '
+                                    '${liveItem.category}. Tapusin o kanselahin muna ito.',
+                                  ),
+                                  duration: const Duration(seconds: 3),
                                 ),
-                              )
-                          : null, // unavailable & not blocked — greyed out
+                              );
+                            }
+                          : canRent
+                              ? () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RequestRentForm(item: liveItem),
+                                    ),
+                                  )
+                              : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: isOwner
                     ? lightColorScheme.primary
-                    : _isCategoryBlocked
-                        ? Colors.orange
-                        : (liveItem.isAvailable
-                            ? lightColorScheme.primary
-                            : Colors.grey),
+                    : isAccountBlocked
+                        ? Colors.red.shade400
+                        : _isCategoryBlocked
+                            ? Colors.orange
+                            : (liveItem.isAvailable
+                                ? lightColorScheme.primary
+                                : Colors.grey),
                 foregroundColor: lightColorScheme.onPrimary,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -1010,21 +1037,30 @@ class _ProductBottomBarState extends State<_ProductBottomBar> {
                   Text(
                     isOwner
                         ? 'Edit Listing'
-                        : _isCategoryBlocked
-                            ? 'Already Requested'
-                            : 'Request to Rent',
-                            style: TextStyle(
-        color: _isCategoryBlocked ? Colors.black : Colors.white,
-      ),
+                        : isAccountBlocked
+                            ? 'Hindi Maaaring Mag-rent'
+                            : _isCategoryBlocked
+                                ? 'May Aktibong Request'
+                                : 'Humiling na Mag-Rent',
+                    style: TextStyle(
+                      color: _isCategoryBlocked && !isAccountBlocked
+                          ? Colors.black
+                          : Colors.white,
+                    ),
                   ),
-                  if (!isOwner && _isCategoryBlocked)
+                  if (!isOwner && isAccountBlocked)
+                    Text(
+                      'Hanggang ${_accountBlockedUntil!.day}/${_accountBlockedUntil!.month}/${_accountBlockedUntil!.year}',
+                      style: const TextStyle(fontSize: 11, color: Colors.white70),
+                    )
+                  else if (!isOwner && _isCategoryBlocked)
                     const Text(
-                      'Active request exists',
+                      'May aktibong request',
                       style: TextStyle(fontSize: 11, color: Colors.black),
                     )
                   else if (!isOwner && !liveItem.isAvailable)
                     const Text(
-                      'Not available',
+                      'Hindi available',
                       style: TextStyle(fontSize: 12, color: Colors.white70),
                     ),
                 ],

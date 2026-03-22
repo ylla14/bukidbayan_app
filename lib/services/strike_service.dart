@@ -222,7 +222,7 @@ class StrikeService {
         .collection('items')
         .add({
       'type'     : 'strike',
-      'title'    : 'Temporarily Banned',
+      'title'    : 'Pansamantalang Nasuspinde',
       'body'     : 'Ang iyong account ay pansamantalang sinuspinde sa loob ng '
           '$kBlockDurationMisuse na araw dahil sa: "$reasonLabel". '
           'Hindi ka makakapaghiram ng kagamitan hanggang $unblockDate.',

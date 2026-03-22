@@ -11,6 +11,7 @@ import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/my_equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/widgets/custom_icon_button.dart';
 import 'package:bukidbayan_app/components/rent/rent_screen/active_filters_chip.dart';
 import 'package:bukidbayan_app/components/rent/rent_screen/category_filter_bar.dart';
@@ -64,6 +65,7 @@ class _RentScreenState extends State<RentScreen> {
 
   Set<String> blockedCategories = {};
   Set<String> _recommendedToolTypes = {};
+  DateTime? _accountBlockedUntil;
 
   Timer? _availabilityTimer;
   DateTimeRange? dateFilter;
@@ -91,6 +93,7 @@ class _RentScreenState extends State<RentScreen> {
     _setupAvailabilityListener();
     _loadBlockedCategories();
     _loadCropPreferences();
+    _checkAccountBlock();
   }
 
   StreamSubscription<QuerySnapshot>? _requestListener;
@@ -185,6 +188,13 @@ class _RentScreenState extends State<RentScreen> {
         blockedCategories = categories;
       });
     }
+  }
+
+  Future<void> _checkAccountBlock() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    final until = await StrikeService().blockedUntil(uid);
+    if (mounted) setState(() => _accountBlockedUntil = until);
   }
 
   Future<void> _loadCropPreferences() async {
@@ -377,6 +387,57 @@ class _RentScreenState extends State<RentScreen> {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
+            // ── ACCOUNT BLOCK BANNER ──────────────────────────────────────
+            if (_accountBlockedUntil != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  border: Border.all(color: Colors.red.shade300),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.block_rounded,
+                      color: Colors.red.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hindi Ka Maaaring Mag-rent',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade800,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Ang iyong account ay pansamantalang nasuspinde. '
+                            'Hindi ka maaaring humiling ng kagamitan hanggang '
+                            '${_accountBlockedUntil!.day}/${_accountBlockedUntil!.month}/${_accountBlockedUntil!.year}.',
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // ── SECTION HEADER ──
             // Padding(
             //   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),

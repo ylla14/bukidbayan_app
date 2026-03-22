@@ -543,10 +543,9 @@ class _SubmitButtonState extends State<SubmitButton> {
             '${blockedUntil.day}/${blockedUntil.month}/${blockedUntil.year}';
         showErrorSnackbar(
           context: context,
-          title: 'Account Suspended',
+          title: 'Hindi Maaaring Mag-request',
           message:
-              'Hindi ka maaaring mag-request ng kagamitan hanggang $unblockDate '
-              'dahil sa 3 strikes sa iyong account.',
+              'Hindi ka maaaring mag-request ng kagamitan hanggang $unblockDate.',
         );
         setState(() => _isSubmitting = false);
         return;
@@ -746,8 +745,8 @@ Future<void> _sendOwnerNotification({
       .doc(ownerId)
       .collection('items')
       .add({
-    'title': '🌾 New Rental Request',
-    'body': '$renterName has requested to rent "$itemName". Tap to review.',
+    'title': '🌾 Bagong Kahilingang Mag-Rental',
+    'body': 'Humiling si $renterName na mag-rent ng "$itemName". I-tap para suriin.',
     'type': 'new_request',
     'read': false,
     'requestId': requestId,

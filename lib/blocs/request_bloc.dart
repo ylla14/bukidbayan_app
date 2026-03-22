@@ -97,9 +97,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.approved:
         await _notify(
           userId: request.renterId,
-          title: '✅ Request Approved!',
-          body:
-              'Your rental request for "$item" has been approved. Get ready for your rental!',
+          title: '✅ Naaprubahan ang Request!',
+          body: 'Ang iyong kahilingan para sa "$item" ay naaprubahan na. Maghanda na para sa iyong rental!',
           type: 'request_approved',
           extra: {'requestId': request.requestId},
         );
@@ -109,10 +108,10 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.declined:
         await _notify(
           userId: request.renterId,
-          title: 'Request Declined',
+          title: 'Tinanggihan ang Request',
           body: declineReason != null
-              ? 'Your rental request for "$item" was declined. Reason: $declineReason'
-              : 'Your rental request for "$item" was declined by the owner.',
+              ? 'Ang iyong kahilingan para sa "$item" ay tinanggihan. Dahilan: $declineReason'
+              : 'Ang iyong kahilingan para sa "$item" ay tinanggihan ng may-ari.',
           type: 'request_declined',
           extra: {'requestId': request.requestId},
         );
@@ -120,20 +119,18 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
 
       // ── Either party cancelled → notify the OTHER party ─────────────────
       case RentRequestStatus.canceled:
-        // Notify renter (owner cancelled) AND owner (renter cancelled).
-        // We send to both — each will only see their own notification feed.
         await Future.wait([
           _notify(
             userId: request.renterId,
-            title: 'Request Cancelled',
-            body: 'Your rental request for "$item" has been cancelled.',
+            title: 'Kinansela ang Request',
+            body: 'Ang iyong kahilingan para sa "$item" ay kinansela na.',
             type: 'request_canceled',
             extra: {'requestId': request.requestId},
           ),
           _notify(
             userId: request.ownerId,
-            title: 'Request Cancelled',
-            body: 'The rental request for "$item" from $renter has been cancelled.',
+            title: 'Kinansela ang Request',
+            body: 'Ang kahilingan para sa "$item" mula kay $renter ay kinansela na.',
             type: 'request_canceled',
             extra: {'requestId': request.requestId},
           ),
@@ -144,9 +141,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.readyForPickup:
         await _notify(
           userId: request.renterId,
-          title: 'Equipment Ready for Pick Up',
-          body:
-              '"$item" is ready for collection. Head over to the owner\'s location to pick it up.',
+          title: 'Handa na ang Kagamitan para Kunin',
+          body: 'Handa na ang "$item" para makuha. Pumunta sa lokasyon ng may-ari para kunin ito.',
           type: 'ready_for_pickup',
           extra: {'requestId': request.requestId},
         );
@@ -156,9 +152,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.pickedUp:
         await _notify(
           userId: request.renterId,
-          title: 'Pick Up Confirmed',
-          body:
-              'The owner has confirmed your pick up of "$item". Your rental is now active!',
+          title: 'Nakumpirma ang Pagkuha',
+          body: 'Nakumpirma ng may-ari ang iyong pagkuha ng "$item". Aktibo na ang iyong rental!',
           type: 'picked_up',
           extra: {'requestId': request.requestId},
         );
@@ -168,9 +163,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.onTheWay:
         await _notify(
           userId: request.renterId,
-          title: 'Equipment On The Way',
-          body:
-              '"$item" is on its way to you. Please confirm receipt once it arrives.',
+          title: 'Papunta Na ang Kagamitan',
+          body: 'Papunta na sa iyo ang "$item". Kumpirmahin ang pagkatanggap kapag dumating na.',
           type: 'on_the_way',
           extra: {'requestId': request.requestId},
         );
@@ -180,8 +174,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.inProgress:
         await _notify(
           userId: request.ownerId,
-          title: 'Rental Now Active',
-          body: '$renter has confirmed receipt of "$item". Rental is in progress.',
+          title: 'Aktibo na ang Rental',
+          body: 'Nakumpirma ni $renter ang pagtanggap ng "$item". Kasalukuyang naka-rental na.',
           type: 'rental_in_progress',
           extra: {'requestId': request.requestId},
         );
@@ -191,9 +185,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.retrieving:
         await _notify(
           userId: request.renterId,
-          title: 'Owner Is On The Way',
-          body:
-              'The owner is coming to retrieve "$item". Please have it ready for return.',
+          title: 'Papunta Na ang May-ari',
+          body: 'Papunta na ang may-ari para kunin ang "$item". Ihanda na ito para ibalik.',
           type: 'retrieving',
           extra: {'requestId': request.requestId},
         );
@@ -203,9 +196,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.returned:
         await _notify(
           userId: request.ownerId,
-          title: 'Equipment Returned',
-          body:
-              '$renter has marked "$item" as returned. Please confirm the return.',
+          title: 'Ibinalik na ang Kagamitan',
+          body: 'Minarkahan ni $renter ang "$item" bilang naibaling na. Kumpirmahin ang pagbabalik.',
           type: 'equipment_returned',
           extra: {'requestId': request.requestId},
         );
@@ -215,9 +207,8 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
       case RentRequestStatus.finished:
         await _notify(
           userId: request.renterId,
-          title: 'Rental Finished',
-          body:
-              'The owner has confirmed the return of "$item". Almost done — awaiting final completion.',
+          title: 'Tapos na ang Rental',
+          body: 'Nakumpirma ng may-ari ang pagbabalik ng "$item". Malapit na matapos — naghihintay ng panghuling kumpirmasyon.',
           type: 'rental_finished',
           extra: {'requestId': request.requestId},
         );
@@ -228,17 +219,15 @@ class RequestBloc extends Bloc<RequestEvent, RequestState> {
         await Future.wait([
           _notify(
             userId: request.renterId,
-            title: 'Rental Completed!',
-            body:
-                'Your rental of "$item" is complete. We\'d love to hear your feedback — leave a review!',
+            title: '🎉 Kumpleto na ang Rental!',
+            body: 'Kumpleto na ang iyong rental ng "$item". Ibahagi ang iyong karanasan — mag-iwan ng review!',
             type: 'rental_completed',
             extra: {'requestId': request.requestId},
           ),
           _notify(
             userId: request.ownerId,
-            title: 'Rental Completed',
-            body:
-                'The rental of "$item" with $renter has been completed successfully.',
+            title: 'Kumpleto na ang Rental',
+            body: 'Matagumpay na natapos ang rental ng "$item" kasama si $renter.',
             type: 'rental_completed',
             extra: {'requestId': request.requestId},
           ),
