@@ -102,9 +102,9 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: lightColorScheme.secondary.withOpacity(0.14),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: lightColorScheme.secondary.withOpacity(0.45)),
+        border: Border.all(color: lightColorScheme.primary.withOpacity(0.28)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,43 +827,57 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final campaignTheme = Theme.of(context).copyWith(
+      scaffoldBackgroundColor: Colors.white,
+      cardTheme: Theme.of(context).cardTheme.copyWith(
+            color: Colors.white,
+            surfaceTintColor: Colors.transparent,
+          ),
+    );
+
     if (!widget.isCoop) {
       // Prosumers only see the Discover tab — no tab bar needed.
-      return Scaffold(
-        appBar: widget.appBarOverride ?? const CustomAppBar(),
-        drawer: widget.drawerOverride ?? CustomDrawer(onLogout: logout),
-        body: _buildDiscoverTab(),
+      return Theme(
+        data: campaignTheme,
+        child: Scaffold(
+          appBar: widget.appBarOverride ?? const CustomAppBar(),
+          drawer: widget.drawerOverride ?? CustomDrawer(onLogout: logout),
+          body: _buildDiscoverTab(),
+        ),
       );
     }
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: widget.appBarOverride ?? const CustomAppBar(),
-        drawer: widget.drawerOverride ?? CustomDrawer(onLogout: logout),
-        body: Column(
-          children: [
-            Material(
-              color: Colors.transparent,
-              child: TabBar(
-                isScrollable: true,
-                labelColor: lightColorScheme.primary,
-                unselectedLabelColor: Colors.black54,
-                indicatorColor: lightColorScheme.primary,
-                indicatorWeight: 3,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-                tabs: const [
-                  Tab(text: 'Tuklasin'),
-                  Tab(text: 'Aking Mga Kampanya'),
-                ],
+    return Theme(
+      data: campaignTheme,
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: widget.appBarOverride ?? const CustomAppBar(),
+          drawer: widget.drawerOverride ?? CustomDrawer(onLogout: logout),
+          body: Column(
+            children: [
+              Material(
+                color: Colors.transparent,
+                child: TabBar(
+                  isScrollable: true,
+                  labelColor: lightColorScheme.primary,
+                  unselectedLabelColor: Colors.black54,
+                  indicatorColor: lightColorScheme.primary,
+                  indicatorWeight: 3,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+                  tabs: const [
+                    Tab(text: 'Tuklasin'),
+                    Tab(text: 'Aking Mga Kampanya'),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [_buildDiscoverTab(), _buildManageTab()],
+              Expanded(
+                child: TabBarView(
+                  children: [_buildDiscoverTab(), _buildManageTab()],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

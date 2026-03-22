@@ -128,9 +128,19 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<CampaignReport>(
-      future: _future,
-      builder: (context, snapshot) {
+    final campaignTheme = Theme.of(context).copyWith(
+      scaffoldBackgroundColor: Colors.white,
+      cardTheme: Theme.of(context).cardTheme.copyWith(
+            color: Colors.white,
+            surfaceTintColor: Colors.transparent,
+          ),
+    );
+
+    return Theme(
+      data: campaignTheme,
+      child: FutureBuilder<CampaignReport>(
+        future: _future,
+        builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -187,7 +197,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
             ? 'Kasalukuyang Ulat'
             : (report.isSuccessful ? 'Matagumpay' : 'Hindi umabot');
         final outcomeColor = isOngoing
-            ? Colors.blue
+            ? lightColorScheme.primary
             : (report.isSuccessful ? Colors.green : Colors.red);
         final targetProgressLabel = report.fundingDifference >= 0
             ? 'Naabot na ang target'
@@ -250,13 +260,15 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                             if (isOngoing)
                               Chip(
                                 label: const Text('Tumatakbo pa'),
-                                backgroundColor: Colors.blue.withOpacity(0.12),
-                                labelStyle: const TextStyle(
-                                  color: Colors.blue,
+                                backgroundColor:
+                                    lightColorScheme.primary.withOpacity(0.12),
+                                labelStyle: TextStyle(
+                                  color: lightColorScheme.primary,
                                   fontWeight: FontWeight.w700,
                                 ),
                                 side: BorderSide(
-                                  color: Colors.blue.withOpacity(0.35),
+                                  color:
+                                      lightColorScheme.primary.withOpacity(0.35),
                                 ),
                               ),
                             Chip(
@@ -298,11 +310,18 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                 if (isOngoing)
                   Card(
                     margin: const EdgeInsets.only(bottom: 12),
-                    color: Colors.blue.shade50,
-                    child: const Padding(
-                      padding: EdgeInsets.all(12),
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: lightColorScheme.primary.withOpacity(0.25),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
                       child: Text(
                         'Interim report ito habang tumatanggap pa ng pledges ang campaign. Maaaring magbago ang totals at metrics hanggang sa pagtatapos.',
+                        style: TextStyle(color: Colors.grey.shade800),
                       ),
                     ),
                   ),
@@ -520,7 +539,8 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
             ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 }

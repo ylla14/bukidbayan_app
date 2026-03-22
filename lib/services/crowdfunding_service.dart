@@ -550,6 +550,23 @@ class CrowdfundingService {
       if (DateTime.now().isAfter(campaign.endDate)) {
         throw Exception('This campaign has already ended.');
       }
+      RewardTier? selectedReward;
+      if (rewardId != null && rewardId.trim().isNotEmpty) {
+        for (final tier in campaign.rewards) {
+          if (tier.id == rewardId) {
+            selectedReward = tier;
+            break;
+          }
+        }
+        if (selectedReward == null) {
+          throw Exception('Selected reward tier is no longer available.');
+        }
+        if (amount < selectedReward.minPledge) {
+          throw Exception(
+            'Amount is below the minimum pledge for this reward tier (${selectedReward.minPledge}).',
+          );
+        }
+      }
 
       final pledge = Pledge(
         id: pledgeId,

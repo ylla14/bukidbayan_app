@@ -477,9 +477,9 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: lightColorScheme.secondary.withOpacity(0.14),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: lightColorScheme.secondary.withOpacity(0.45)),
+        border: Border.all(color: lightColorScheme.primary.withOpacity(0.28)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1260,6 +1260,8 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                                   showModalBottomSheet(
                                     context: context,
                                     isScrollControlled: true,
+                                    useSafeArea: true,
+                                    backgroundColor: Colors.white,
                                     builder: (_) => RewardTierForm(
                                       initialTier: reward,
                                       onSave: (updatedTier) {
@@ -1295,6 +1297,8 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
+                useSafeArea: true,
+                backgroundColor: Colors.white,
                 builder: (_) => RewardTierForm(
                   onSave: (newTier) {
                     setState(() => _rewards.add(newTier));
@@ -1555,8 +1559,22 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    final campaignTheme = Theme.of(context).copyWith(
+      scaffoldBackgroundColor: Colors.white,
+      cardTheme: Theme.of(context).cardTheme.copyWith(
+            color: Colors.white,
+            surfaceTintColor: Colors.transparent,
+          ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+
+    return Theme(
+      data: campaignTheme,
+      child: WillPopScope(
+        onWillPop: () async {
         if (_allowImmediatePop) {
           return true;
         }
@@ -1566,8 +1584,8 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         }
         return true;
       },
-      child: Scaffold(
-        appBar: AppBar(
+        child: Scaffold(
+          appBar: AppBar(
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -1595,7 +1613,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
           centerTitle: true,
           elevation: 0,
         ),
-        body: Column(
+          body: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -1656,7 +1674,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
             ),
           ],
         ),
-        bottomNavigationBar: SafeArea(
+          bottomNavigationBar: SafeArea(
           child: Container(
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: Colors.grey.shade300)),
@@ -1683,7 +1701,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                           : ElevatedButton(
                               onPressed: _isLoading ? null : _publishCampaign,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: lightColorScheme.primary,
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -1712,6 +1730,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),

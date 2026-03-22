@@ -6,6 +6,7 @@ import 'package:bukidbayan_app/widgets/campaign_cover_image.dart';
 import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
   final String campaignId;
@@ -95,9 +96,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: lightColorScheme.secondary.withOpacity(0.14),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: lightColorScheme.secondary.withOpacity(0.45)),
+        border: Border.all(color: lightColorScheme.primary.withOpacity(0.28)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,6 +162,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -169,6 +172,11 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
               suggestedAmounts.add(selected!.minPledge);
             }
             final sortedSuggestions = suggestedAmounts.toList()..sort();
+            final minRequired = selected?.minPledge;
+            final parsedAmount = int.tryParse(amountCtrl.text.trim());
+            final isBelowMinimum = minRequired != null &&
+                parsedAmount != null &&
+                parsedAmount < minRequired;
 
             return Padding(
               padding: EdgeInsets.only(
@@ -225,7 +233,11 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             onTap: () {
                               setModalState(() {
                                 selected = r;
-                                amountCtrl.text = r.minPledge.toString();
+                                final currentAmount =
+                                    int.tryParse(amountCtrl.text.trim()) ?? 0;
+                                amountCtrl.text = currentAmount < r.minPledge
+                                    ? r.minPledge.toString()
+                                    : currentAmount.toString();
                               });
                             },
                           ),
@@ -246,11 +258,14 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             (amount) => ChoiceChip(
                               label: Text(formatPeso(amount)),
                               selected: amountCtrl.text.trim() == amount.toString(),
-                              onSelected: (_) {
-                                setModalState(() {
-                                  amountCtrl.text = amount.toString();
-                                });
-                              },
+                              onSelected:
+                                  minRequired != null && amount < minRequired
+                                      ? null
+                                      : (_) {
+                                          setModalState(() {
+                                            amountCtrl.text = amount.toString();
+                                          });
+                                        },
                             ),
                           )
                           .toList(),
@@ -259,11 +274,16 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     TextField(
                       controller: amountCtrl,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (_) => setModalState(() {}),
                       decoration: InputDecoration(
                         labelText: 'Halaga ng pledge (PHP)',
-                        helperText: selected == null
+                        helperText: minRequired == null
                             ? 'Maglagay ng halagang nais mong ibigay.'
-                            : 'Minimum para sa napiling benepisyo: ${formatPeso(selected!.minPledge)}',
+                            : 'Minimum para sa napiling benepisyo: ${formatPeso(minRequired)}',
+                        errorText: isBelowMinimum
+                            ? 'Dapat hindi bababa sa ${formatPeso(minRequired!)}.'
+                            : null,
                         border: const OutlineInputBorder(),
                       ),
                     ),
@@ -307,38 +327,38 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             );
                             return;
                           }
-                          if (selected != null && raw < selected!.minPledge) {
+                          if (minRequired != null && raw < minRequired) {
                             showErrorSnackbar(
                               context: context,
                               title: 'Masyadong mababa',
                               message:
-                                  'Ang minimum para sa benepisyong ito ay ${formatPeso(selected!.minPledge)}.',
+                                  'Ang minimum para sa benepisyong ito ay ${formatPeso(minRequired)}.',
                             );
-                              return;
-                            }
+                            return;
+                          }
 
-                            final donorName = donorNameCtrl.text.trim();
-                            if (donorName.isEmpty) {
-                              showErrorSnackbar(
-                                context: context,
-                                title: 'Kulang ang detalye',
-                                message:
-                                    'Pakilagay ang pangalan ng supporter bago kumpirmahin.',
-                              );
-                              return;
-                            }
+                          final donorName = donorNameCtrl.text.trim();
+                          if (donorName.isEmpty) {
+                            showErrorSnackbar(
+                              context: context,
+                              title: 'Kulang ang detalye',
+                              message:
+                                  'Pakilagay ang pangalan ng supporter bago kumpirmahin.',
+                            );
+                            return;
+                          }
 
-                            try {
-                              await service.backCampaign(
-                                campaignId: campaign.id,
-                                amount: raw,
-                                rewardId: selected?.id,
-                                backerName: donorName,
-                                backerPhone: donorPhoneCtrl.text.trim(),
-                                backerNote: donorNoteCtrl.text.trim(),
-                              );
-                              if (mounted) {
-                                Navigator.pop(context);
+                          try {
+                            await service.backCampaign(
+                              campaignId: campaign.id,
+                              amount: raw,
+                              rewardId: selected?.id,
+                              backerName: donorName,
+                              backerPhone: donorPhoneCtrl.text.trim(),
+                              backerNote: donorNoteCtrl.text.trim(),
+                            );
+                            if (mounted) {
+                              Navigator.pop(context);
                             }
                             showConfirmSnackbar(
                               context: context,
@@ -370,9 +390,23 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Campaign?>(
-      future: _future,
-      builder: (context, snapshot) {
+    final campaignTheme = Theme.of(context).copyWith(
+      scaffoldBackgroundColor: Colors.white,
+      cardTheme: Theme.of(context).cardTheme.copyWith(
+            color: Colors.white,
+            surfaceTintColor: Colors.transparent,
+          ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+
+    return Theme(
+      data: campaignTheme,
+      child: FutureBuilder<Campaign?>(
+        future: _future,
+        builder: (context, snapshot) {
         final c = snapshot.data;
 
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -631,7 +665,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
             ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 }

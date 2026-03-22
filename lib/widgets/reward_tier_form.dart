@@ -119,10 +119,23 @@ class _RewardTierFormState extends State<RewardTierForm> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    final campaignTheme = Theme.of(context).copyWith(
+      cardTheme: Theme.of(context).cardTheme.copyWith(
+            color: Colors.white,
+            surfaceTintColor: Colors.transparent,
+          ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+
+    return Theme(
+      data: campaignTheme,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -137,8 +150,11 @@ class _RewardTierFormState extends State<RewardTierForm> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary.withOpacity(0.14),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.28),
+                ),
               ),
               child: const Text(
                 'Tip: Gumamit ng malinaw na pangalan at makatotohanang minimum pledge para madaling maintindihan ng supporters.',
@@ -269,6 +285,7 @@ class _RewardTierFormState extends State<RewardTierForm> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
