@@ -9,7 +9,12 @@ class CropItem {
   final List<String> seasons;
   final IconData icon;
   final Color color;
-  final String? imageUrl; 
+  final String? imageUrl;
+  final List<int> plantingMonths;
+  final List<int> harvestingMonths;
+  final String? plantingPhase;
+  final String? harvestingPhase;
+  final String? notes;
 
   CropItem({
     required this.name,
@@ -17,28 +22,59 @@ class CropItem {
     required this.icon,
     required this.color,
     this.imageUrl,
+    this.plantingMonths = const [],
+    this.harvestingMonths = const [],
+    this.plantingPhase,
+    this.harvestingPhase,
+    this.notes,
   });
+
+  bool get isYearRound => seasons.contains('Year Round');
+
+  bool isRelevantInMonth(int month, String currentSeason) {
+    if (isYearRound) return true;
+    if (plantingMonths.contains(month)) return true;
+    if (harvestingMonths.contains(month)) return true;
+    if (plantingMonths.isEmpty &&
+        harvestingMonths.isEmpty &&
+        seasons.contains(currentSeason)) {
+      return true;
+    }
+    return false;
+  }
 }
 
 class CropsInSeasonSection extends StatefulWidget {
-  const CropsInSeasonSection({super.key});
+  final CropCalendarService? cropCalendarService;
+  final DateTime Function()? nowProvider;
+  final String region;
+  final FirestoreService? firestoreService;
+  final String? Function()? currentUserIdProvider;
+
+  const CropsInSeasonSection({
+    super.key,
+    this.cropCalendarService,
+    this.nowProvider,
+    this.region = 'philippines',
+    this.firestoreService,
+    this.currentUserIdProvider,
+  });
 
   @override
   State<CropsInSeasonSection> createState() => _CropsInSeasonSectionState();
 }
 
 class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
-  final CropCalendarService _cropCalendarService = CropCalendarService();
-  final FirestoreService _firestoreService = FirestoreService();
+  late final CropCalendarService _cropCalendarService;
+  late final FirestoreService _firestoreService;
+  late final String? Function() _currentUserIdProvider;
 
   late String selectedCategory;
   late String currentSeason;
-  late String currentMonthName;
-  late int currentMonthIndex;
+  late String currentMonth;
+  late int currentMonthNumber;
   bool _loading = true;
   List<CropItem> allCrops = const [];
-  
-  // Keep track of the crops the user adds to "My Farm"
   Set<String> myFarmCrops = {};
 
   String detectSeason(int month) => _cropCalendarService.detectSeason(month);
@@ -46,48 +82,76 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    currentMonthName = DateFormat('MMMM').format(now);
-    currentMonthIndex = now.month;
+    _cropCalendarService = widget.cropCalendarService ?? CropCalendarService();
+    _firestoreService = widget.firestoreService ?? FirestoreService();
+    _currentUserIdProvider =
+        widget.currentUserIdProvider ?? _defaultCurrentUserIdProvider;
+
+    final now = (widget.nowProvider ?? DateTime.now).call();
+    currentMonthNumber = now.month;
+    currentMonth = DateFormat('MMMM').format(now);
     currentSeason = detectSeason(now.month);
-    // Default the active tab to the current season
-    selectedCategory = currentSeason;
+    selectedCategory = 'Current';
+
     _loadCrops();
     _loadMyFarmCrops();
   }
 
+  static String? _defaultCurrentUserIdProvider() {
+    try {
+      return FirebaseAuth.instance.currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _loadMyFarmCrops() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final saved = await _firestoreService.getCropPreferences(uid);
-    if (saved != null && mounted) {
-      setState(() => myFarmCrops = saved.toSet());
+    final uid = _currentUserIdProvider();
+    if (uid == null || uid.isEmpty) return;
+
+    try {
+      final saved = await _firestoreService.getCropPreferences(uid);
+      if (saved != null && mounted) {
+        setState(() => myFarmCrops = saved.toSet());
+      }
+    } catch (_) {
+      // Avoid blocking section rendering if user preference fetch fails.
     }
   }
 
   Future<void> _saveMyFarmCrops() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    await _firestoreService.saveCropPreferences(uid, myFarmCrops.toList());
+    final uid = _currentUserIdProvider();
+    if (uid == null || uid.isEmpty) return;
+
+    try {
+      await _firestoreService.saveCropPreferences(uid, myFarmCrops.toList());
+    } catch (_) {
+      // Keep UI responsive even when remote save is temporarily unavailable.
+    }
   }
 
   Future<void> _loadCrops() async {
     try {
       final seasonalItems = await _cropCalendarService.getRegionalCrops(
-        region: 'philippines',
+        region: widget.region,
       );
 
       final mapped = seasonalItems
-        .map(
-          (item) => CropItem(
-            name: item.name,
-            seasons: item.seasons,
-            icon: _iconForCrop(item.name),
-            color: _colorForCrop(item.name),
-            imageUrl: item.imageUrl, 
-          ),
-        )
-        .toList(growable: false);
+          .map(
+            (item) => CropItem(
+              name: item.name,
+              seasons: item.seasons,
+              icon: _iconForCrop(item.name),
+              color: _colorForCrop(item.name),
+              imageUrl: item.imageUrl,
+              plantingMonths: item.plantingMonths,
+              harvestingMonths: item.harvestingMonths,
+              plantingPhase: item.plantingPhase,
+              harvestingPhase: item.harvestingPhase,
+              notes: item.notes,
+            ),
+          )
+          .toList(growable: false);
 
       if (!mounted) return;
       setState(() {
@@ -100,117 +164,86 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
     }
   }
 
-  // Helper logic to determine Land Prep or Harvest based on the crop and current month
-  String? _getCropPhase(String name, int month) {
-    final n = name.toLowerCase();
-
-    if (n.contains('rice')) {
-      // Differentiate between Wet and Dry season rice if specified in the name
-      if (n.contains('wet')) {
-        if (month == 6 || month == 7) return 'Land Prep';
-        // As requested: rice in the wet season shouldn't be considered as harvest time and left blank
-        return null;
-      } else if (n.contains('dry')) {
-        if (month == 11 || month == 12 || month == 1) return 'Land Prep';
-        if (month == 3 || month == 4) return 'Harvest Time';
-      } else {
-        // If the item is simply named 'Rice', apply the same logic
-        if (month == 6 || month == 7 || month == 12 || month == 1) return 'Land Prep';
-        if (month == 11) return 'Land Prep'; // Treat November as Dry Season prep only, leaving Wet Harvest blank
-        if (month == 3 || month == 4) return 'Harvest Time';
-      }
-    } else if (n.contains('squash')) {
-      bool isPrep = (month >= 10 && month <= 12);
-      bool isHarvest = (month >= 1 && month <= 3);
-      if (isPrep && isHarvest) return 'Land Prep and Harvest';
-      if (isPrep) return 'Land Prep';
-      if (isHarvest) return 'Harvest Time';
-    } else if (n.contains('tomato')) {
-      bool isPrep = (month >= 10 || month <= 2);
-      bool isHarvest = (month >= 1 && month <= 5);
-      if (isPrep && isHarvest) return 'Land Prep and Harvest';
-      if (isPrep) return 'Land Prep';
-      if (isHarvest) return 'Harvest Time';
-    } else if (n.contains('watermelon')) {
-      bool isPrep = (month >= 10 || month == 1);
-      bool isHarvest = (month >= 1 && month <= 4);
-      if (isPrep && isHarvest) return 'Land Prep and Harvest';
-      if (isPrep) return 'Land Prep';
-      if (isHarvest) return 'Harvest Time';
-    } else if (n.contains('mung bean') || n.contains('peanut') || n.contains('sugarcane')) {
-      bool isPrep = (month >= 10 && month <= 12);
-      bool isHarvest = (month >= 1 && month <= 4);
-      if (isPrep && isHarvest) return 'Land Prep and Harvest';
-      if (isPrep) return 'Land Prep';
-      if (isHarvest) return 'Harvest Time';
-    }
-    
-    return null; // Return null if it's currently in the growing phase without prep/harvest
-  }
-
-  // Handle interacting with a crop card
-  void _handleCropTap(CropItem crop) {
+  Future<void> _handleCropTap(CropItem crop) async {
     final isAdded = myFarmCrops.contains(crop.name);
-    
-    showDialog(
+
+    final shouldToggle = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isAdded ? "Remove Crop" : "Add to My Farm?"),
-          content: Text(isAdded
-              ? "Do you want to remove ${crop.name} from your farm?"
-              : "Would you like to add ${crop.name} to your farm for equipment recommendations?"),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(isAdded ? 'Remove Crop' : 'Add to My Farm?'),
+          content: Text(
+            isAdded
+                ? 'Do you want to remove ${crop.name} from your farm?'
+                : 'Would you like to add ${crop.name} to your farm for equipment recommendations?',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: isAdded ? Colors.red.shade600 : Colors.green.shade600,
+                backgroundColor: isAdded
+                    ? Colors.red.shade600
+                    : Colors.green.shade600,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                setState(() {
-                  if (isAdded) {
-                    myFarmCrops.remove(crop.name);
-                  } else {
-                    myFarmCrops.add(crop.name);
-                  }
-                });
-                _saveMyFarmCrops();
-                Navigator.pop(context);
-              },
-              child: Text(isAdded ? "Remove" : "Add"),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(isAdded ? 'Remove' : 'Add'),
             ),
           ],
         );
       },
     );
+
+    if (shouldToggle != true || !mounted) return;
+
+    setState(() {
+      if (isAdded) {
+        myFarmCrops.remove(crop.name);
+      } else {
+        myFarmCrops.add(crop.name);
+      }
+    });
+    await _saveMyFarmCrops();
   }
 
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
-    final isWet = currentSeason == "Wet Season";
+    final isWet = currentSeason == 'Wet Season';
 
-    // Filtering logic updated to reflect "My Farm"
     final filteredCrops = selectedCategory == 'My Farm'
-        ? allCrops.where((c) => myFarmCrops.contains(c.name)).toList(growable: false)
-        : allCrops.where((c) => c.seasons.contains(selectedCategory)).toList();
+        ? allCrops
+              .where((crop) => myFarmCrops.contains(crop.name))
+              .toList(growable: false)
+        : selectedCategory == 'Current'
+        ? allCrops
+              .where(
+                (crop) =>
+                    crop.isRelevantInMonth(currentMonthNumber, currentSeason),
+              )
+              .toList(growable: false)
+        : selectedCategory == 'Year Round'
+        ? allCrops.where((crop) => crop.isYearRound).toList(growable: false)
+        : allCrops
+              .where((crop) => crop.seasons.contains(selectedCategory))
+              .toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
         Text(
-          "Crops in Season",
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          'Crops in Season',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
-
-        // Current season indicator
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -225,7 +258,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
               ),
               const SizedBox(width: 8),
               Text(
-                "$currentMonthName • $currentSeason",
+                '$currentMonth - $currentSeason',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: isWet ? Colors.blue : Colors.orange,
@@ -235,18 +268,18 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Category filter buttons (Changed "Current" to "My Farm")
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: ["My Farm", "Wet Season", "Dry Season", "Year Round"]
-              .map((c) => _buildCategoryButton(c, primary))
-              .toList(),
+          children: [
+            'Current',
+            'My Farm',
+            'Wet Season',
+            'Dry Season',
+            'Year Round',
+          ].map((category) => _buildCategoryButton(category, primary)).toList(),
         ),
         const SizedBox(height: 20),
-
-        // Crop grid
         _loading
             ? const Padding(
                 padding: EdgeInsets.all(16),
@@ -257,9 +290,9 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Text(
-                    selectedCategory == 'My Farm' 
-                        ? "No crops added to My Farm yet. Tap on a crop to add it!" 
-                        : "No crops available for this category.",
+                    selectedCategory == 'My Farm'
+                        ? 'No crops added to My Farm yet. Tap on a crop to add it.'
+                        : 'No crops available for this category.',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -276,11 +309,11 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                 ),
                 itemBuilder: (context, index) {
                   final crop = filteredCrops[index];
-                  final isYearRound = crop.seasons.contains('Year Round');
+                  final phaseBadge = _phaseBadgeForMonth(
+                    crop,
+                    currentMonthNumber,
+                  );
                   final isAddedToFarm = myFarmCrops.contains(crop.name);
-                  
-                  // Only calculate phase for seasonal crops
-                  final String? phase = isYearRound ? null : _getCropPhase(crop.name, currentMonthIndex);
 
                   return GestureDetector(
                     onTap: () => _handleCropTap(crop),
@@ -289,21 +322,65 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          // Background image
                           crop.imageUrl != null
                               ? Image.network(
                                   crop.imageUrl!,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
-                                      Container(color: crop.color.withOpacity(0.1)),
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Container(color: crop.color.withOpacity(0.1));
-                                  },
+                                      Container(
+                                        color: crop.color.withOpacity(0.1),
+                                      ),
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                        if (loadingProgress == null) {
+                                          return child;
+                                        }
+                                        return Container(
+                                          color: crop.color.withOpacity(0.1),
+                                        );
+                                      },
                                 )
                               : Container(color: crop.color.withOpacity(0.1)),
-
-                          // Dark overlay so text is readable
+                          if (phaseBadge != null)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.55),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  phaseBadge,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (isAddedToFarm)
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
                           Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -316,68 +393,37 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                               ),
                             ),
                           ),
-
-                          // Phase Tag (Land Prep / Harvest Time)
-                          if (phase != null)
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: phase == 'Land Prep and Harvest'
-                                      ? Colors.teal.shade600 // Use a distinct color for overlapping months
-                                      : phase.contains('Harvest') 
-                                          ? Colors.orange.shade600 
-                                          : Colors.blue.shade600,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  phase,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            
-                          // My Farm Indicator Checkmark
-                          if (isAddedToFarm)
-                            Positioned(
-                              top: 8,
-                              left: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.check, color: Colors.white, size: 14),
-                              ),
-                            ),
-
-                          // Crop name at the bottom
                           Positioned(
                             bottom: 10,
                             left: 8,
                             right: 8,
-                            child: Text(
-                              crop.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                              textAlign: TextAlign.center,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  crop.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (selectedCategory == 'Current')
+                                  Text(
+                                    _phaseSummary(crop),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -392,22 +438,15 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
 
   IconData _iconForCrop(String name) {
     final normalized = name.toLowerCase();
-    
-    // Original mappings
     if (normalized.contains('rice')) return Icons.grass;
     if (normalized.contains('corn')) return Icons.agriculture;
     if (normalized.contains('tomato')) return Icons.eco;
     if (normalized.contains('eggplant')) return Icons.local_florist;
-    if (normalized.contains('coconut')) return Icons.park;
     if (normalized.contains('banana')) return Icons.energy_savings_leaf;
-    
-    // New mappings based on our agricultural logic
+    if (normalized.contains('watermelon')) return Icons.water_drop;
     if (normalized.contains('squash')) return Icons.adjust;
     if (normalized.contains('pechay')) return Icons.grass;
     if (normalized.contains('upo')) return Icons.eco;
-    if (normalized.contains('watermelon')) return Icons.water_drop;
-    if (normalized.contains('bean') || normalized.contains('peanut')) return Icons.grain;
-    
     return Icons.spa;
   }
 
@@ -416,12 +455,34 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
       Colors.green,
       Colors.orange,
       Colors.redAccent,
-      Colors.purple,
+      Colors.deepPurple,
       Colors.teal,
       Colors.indigo,
       Colors.brown,
     ];
     return palette[name.hashCode.abs() % palette.length];
+  }
+
+  String? _phaseBadgeForMonth(CropItem crop, int month) {
+    final plantingNow = crop.plantingMonths.contains(month);
+    final harvestingNow = crop.harvestingMonths.contains(month);
+    if (plantingNow && harvestingNow) return 'Plant + Harvest';
+    if (plantingNow) return 'Planting';
+    if (harvestingNow) return 'Harvest';
+    if (crop.isYearRound) return 'Year-round';
+    return null;
+  }
+
+  String _phaseSummary(CropItem crop) {
+    if (crop.isYearRound) {
+      return crop.harvestingPhase ?? 'Available all year';
+    }
+    if (crop.plantingPhase != null && crop.harvestingPhase != null) {
+      return 'Plant: ${crop.plantingPhase} | Harvest: ${crop.harvestingPhase}';
+    }
+    if (crop.plantingPhase != null) return 'Plant: ${crop.plantingPhase}';
+    if (crop.harvestingPhase != null) return 'Harvest: ${crop.harvestingPhase}';
+    return 'Seasonal crop';
   }
 
   Widget _buildCategoryButton(String category, Color primary) {

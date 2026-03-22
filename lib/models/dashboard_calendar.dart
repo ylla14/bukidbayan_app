@@ -1,4 +1,4 @@
-import 'package:bukidbayan_app/models/rent_request.dart';
+﻿import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
 
 enum DashboardCalendarMarker { booking, weatherRisk, season, actionNeeded }
@@ -103,6 +103,7 @@ class DashboardCalendarContext {
   final String season;
   final List<String> seasonalCrops;
   final Map<String, List<String>> cropsBySeason;
+  final Map<int, List<String>> cropsByMonth;
 
   const DashboardCalendarContext({
     required this.userId,
@@ -111,6 +112,7 @@ class DashboardCalendarContext {
     required this.season,
     required this.seasonalCrops,
     this.cropsBySeason = const {},
+    this.cropsByMonth = const {},
   });
 }
 
