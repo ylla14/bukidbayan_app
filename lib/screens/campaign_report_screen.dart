@@ -13,20 +13,13 @@ enum _SupporterSortOption {
   oldestFirst,
 }
 
-enum _SupporterRewardFilter {
-  all,
-  withReward,
-  withoutReward,
-}
+enum _SupporterRewardFilter { all, withReward, withoutReward }
 
 class _InfoRow {
   final String label;
   final String value;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 }
 
 class CampaignReportScreen extends StatefulWidget {
@@ -58,8 +51,9 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
   void initState() {
     super.initState();
     _service = widget.serviceOverride ?? CrowdfundingService();
-    _supporterSearchController =
-        TextEditingController(text: _supporterSearchQuery);
+    _supporterSearchController = TextEditingController(
+      text: _supporterSearchQuery,
+    );
     _future = _service.generateCampaignReport(
       campaignId: widget.campaignId,
       userEmail: widget.userEmailOverride,
@@ -178,10 +172,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
         pledge.backerEmail ?? '',
         pledge.backerPhone ?? '',
         pledge.backerNote ?? '',
-        _rewardTitleForPledge(
-          pledge: pledge,
-          rewardTitleById: rewardTitleById,
-        ),
+        _rewardTitleForPledge(pledge: pledge, rewardTitleById: rewardTitleById),
       ].join(' ').toLowerCase();
 
       return searchable.contains(query);
@@ -229,10 +220,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
         border: TableBorder(
           horizontalInside: BorderSide(color: Colors.grey.shade200),
         ),
-        columnWidths: const {
-          0: FlexColumnWidth(2),
-          1: FlexColumnWidth(3),
-        },
+        columnWidths: const {0: FlexColumnWidth(2), 1: FlexColumnWidth(3)},
         children: [
           for (var i = 0; i < rows.length; i++)
             TableRow(
@@ -257,10 +245,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                     horizontal: 10,
                     vertical: 9,
                   ),
-                  child: Text(
-                    rows[i].value,
-                    textAlign: valueAlign,
-                  ),
+                  child: Text(rows[i].value, textAlign: valueAlign),
                 ),
               ],
             ),
@@ -348,10 +333,14 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
       rewardTitleById: rewardTitleById,
     );
 
-    final filteredTotalAmount =
-        visibleSupporters.fold<int>(0, (sum, pledge) => sum + pledge.amount);
-    final overallTotalAmount =
-        report.pledges.fold<int>(0, (sum, pledge) => sum + pledge.amount);
+    final filteredTotalAmount = visibleSupporters.fold<int>(
+      0,
+      (sum, pledge) => sum + pledge.amount,
+    );
+    final overallTotalAmount = report.pledges.fold<int>(
+      0,
+      (sum, pledge) => sum + pledge.amount,
+    );
     final isFiltered =
         _supporterSearchQuery.trim().isNotEmpty ||
         _supporterRewardFilter != _SupporterRewardFilter.all;
@@ -359,85 +348,105 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: 280,
-              child: DropdownButtonFormField<_SupporterSortOption>(
-                key: const Key('supporter_sort_dropdown'),
-                value: _supporterSort,
-                decoration: const InputDecoration(
-                  labelText: 'Ayusin ang supporters',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: _SupporterSortOption.values
-                    .map(
-                      (option) => DropdownMenuItem(
-                        value: option,
-                        child: Text(_sortOptionLabel(option)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _supporterSort = value);
-                },
-              ),
-            ),
-            SizedBox(
-              width: 210,
-              child: DropdownButtonFormField<_SupporterRewardFilter>(
-                key: const Key('supporter_reward_filter_dropdown'),
-                value: _supporterRewardFilter,
-                decoration: const InputDecoration(
-                  labelText: 'Filter',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: _SupporterRewardFilter.values
-                    .map(
-                      (option) => DropdownMenuItem(
-                        value: option,
-                        child: Text(_rewardFilterLabel(option)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _supporterRewardFilter = value);
-                },
-              ),
-            ),
-            SizedBox(
-              width: 280,
-              child: TextField(
-                key: const Key('supporter_search_field'),
-                controller: _supporterSearchController,
-                decoration: InputDecoration(
-                  labelText: 'Hanap supporter',
-                  hintText: 'Pangalan, email, benepisyo...',
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                  suffixIcon: _supporterSearchQuery.trim().isNotEmpty
-                      ? IconButton(
-                          tooltip: 'I-clear',
-                          onPressed: () {
-                            _supporterSearchController.clear();
-                            setState(() => _supporterSearchQuery = '');
-                          },
-                          icon: const Icon(Icons.close),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            final useSingleColumn = maxWidth < 700;
+            final sortWidth = useSingleColumn ? maxWidth : 280.0;
+            final filterWidth = useSingleColumn ? maxWidth : 210.0;
+            final searchWidth = useSingleColumn ? maxWidth : 280.0;
+
+            return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                SizedBox(
+                  width: sortWidth,
+                  child: DropdownButtonFormField<_SupporterSortOption>(
+                    key: const Key('supporter_sort_dropdown'),
+                    value: _supporterSort,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Ayusin ang supporters',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: _SupporterSortOption.values
+                        .map(
+                          (option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(
+                              _sortOptionLabel(option),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         )
-                      : null,
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _supporterSort = value);
+                    },
+                  ),
                 ),
-                onChanged: (value) {
-                  setState(() => _supporterSearchQuery = value);
-                },
-              ),
-            ),
-          ],
+                SizedBox(
+                  width: filterWidth,
+                  child: DropdownButtonFormField<_SupporterRewardFilter>(
+                    key: const Key('supporter_reward_filter_dropdown'),
+                    value: _supporterRewardFilter,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Filter',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: _SupporterRewardFilter.values
+                        .map(
+                          (option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(
+                              _rewardFilterLabel(option),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _supporterRewardFilter = value);
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: searchWidth,
+                  child: TextField(
+                    key: const Key('supporter_search_field'),
+                    controller: _supporterSearchController,
+                    decoration: InputDecoration(
+                      labelText: 'Hanap supporter',
+                      hintText: 'Pangalan, email, benepisyo...',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      suffixIcon: _supporterSearchQuery.trim().isNotEmpty
+                          ? IconButton(
+                              tooltip: 'I-clear',
+                              onPressed: () {
+                                _supporterSearchController.clear();
+                                setState(() => _supporterSearchQuery = '');
+                              },
+                              icon: const Icon(Icons.close),
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() => _supporterSearchQuery = value);
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 10),
         Text(
@@ -475,14 +484,16 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                     pledge: pledge,
                     rewardTitleById: rewardTitleById,
                   );
-                  final contact = (pledge.backerPhone != null &&
+                  final contact =
+                      (pledge.backerPhone != null &&
                           pledge.backerPhone!.trim().isNotEmpty)
                       ? pledge.backerPhone!.trim()
                       : ((pledge.backerEmail != null &&
-                              pledge.backerEmail!.trim().isNotEmpty)
-                          ? pledge.backerEmail!.trim()
-                          : '-');
-                  final note = (pledge.backerNote != null &&
+                                pledge.backerEmail!.trim().isNotEmpty)
+                            ? pledge.backerEmail!.trim()
+                            : '-');
+                  final note =
+                      (pledge.backerNote != null &&
                           pledge.backerNote!.trim().isNotEmpty)
                       ? pledge.backerNote!.trim()
                       : '-';
@@ -617,9 +628,9 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
     final campaignTheme = Theme.of(context).copyWith(
       scaffoldBackgroundColor: Colors.white,
       cardTheme: Theme.of(context).cardTheme.copyWith(
-            color: Colors.white,
-            surfaceTintColor: Colors.transparent,
-          ),
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
     );
 
     return Theme(
@@ -647,9 +658,10 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        snapshot.error
-                            .toString()
-                            .replaceFirst('Exception: ', ''),
+                        snapshot.error.toString().replaceFirst(
+                          'Exception: ',
+                          '',
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
@@ -690,10 +702,13 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
           final targetProgressLabel = report.fundingDifference >= 0
               ? 'Naabot na ang target'
               : 'Hindi pa abot ang target';
-          final targetProgressColor =
-              report.fundingDifference >= 0 ? Colors.green : Colors.orange;
-          final remainingDays =
-              campaign.endDate.difference(DateTime.now()).inDays.clamp(0, 99999);
+          final targetProgressColor = report.fundingDifference >= 0
+              ? Colors.green
+              : Colors.orange;
+          final remainingDays = campaign.endDate
+              .difference(DateTime.now())
+              .inDays
+              .clamp(0, 99999);
 
           return Scaffold(
             appBar: AppBar(
@@ -748,15 +763,16 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                               if (isOngoing)
                                 Chip(
                                   label: const Text('Tumatakbo pa'),
-                                  backgroundColor:
-                                      lightColorScheme.primary.withOpacity(0.12),
+                                  backgroundColor: lightColorScheme.primary
+                                      .withOpacity(0.12),
                                   labelStyle: TextStyle(
                                     color: lightColorScheme.primary,
                                     fontWeight: FontWeight.w700,
                                   ),
                                   side: BorderSide(
-                                    color:
-                                        lightColorScheme.primary.withOpacity(0.35),
+                                    color: lightColorScheme.primary.withOpacity(
+                                      0.35,
+                                    ),
                                   ),
                                 ),
                               Chip(
@@ -773,15 +789,16 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                               if (isOngoing)
                                 Chip(
                                   label: Text(targetProgressLabel),
-                                  backgroundColor:
-                                      targetProgressColor.withOpacity(0.14),
+                                  backgroundColor: targetProgressColor
+                                      .withOpacity(0.14),
                                   labelStyle: TextStyle(
                                     color: targetProgressColor,
                                     fontWeight: FontWeight.w700,
                                   ),
                                   side: BorderSide(
-                                    color:
-                                        targetProgressColor.withOpacity(0.35),
+                                    color: targetProgressColor.withOpacity(
+                                      0.35,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -815,8 +832,9 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                       ),
                     ),
                   _buildSection(
-                    title:
-                        isOngoing ? 'Kasalukuyang Buod ng Pondo' : 'Buod ng Pondo',
+                    title: isOngoing
+                        ? 'Kasalukuyang Buod ng Pondo'
+                        : 'Buod ng Pondo',
                     children: [
                       _buildInfoTable(
                         rows: [
@@ -883,15 +901,11 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                   ),
                   _buildSection(
                     title: 'Performance ng Benepisyo',
-                    children: [
-                      _buildRewardPerformanceTable(report),
-                    ],
+                    children: [_buildRewardPerformanceTable(report)],
                   ),
                   _buildSection(
                     title: 'Listahan ng Supporters',
-                    children: [
-                      _buildSupportersTable(report),
-                    ],
+                    children: [_buildSupportersTable(report)],
                   ),
                   _buildSection(
                     title: 'Operational Notes',
