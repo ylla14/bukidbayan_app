@@ -579,6 +579,92 @@ Future<void> _sendNotification({
   });
 }
 
+Future<List<_AffectedBooking>> _fetchAffectedBookings({
+  required String equipmentId,
+  required DateTime today,
+  required DateTime maintenanceEnd,
+  required bool isUnforeseen,
+  DateTime? availableUntil,
+}) async {
+  const activeStatuses = ['pending', 'approved', 'readyForPickup'];
+
+  final snap = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: equipmentId)
+      .where('status', whereIn: activeStatuses)
+      .get();
+
+  final maintenanceEndDay =
+      DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+
+  // Sort ascending by start so cascade propagates in order
+  final sortedDocs = snap.docs.toList()
+    ..sort((a, b) {
+      final aStart = (a.data()['start'] as Timestamp).toDate();
+      final bStart = (b.data()['start'] as Timestamp).toDate();
+      return aStart.compareTo(bStart);
+    });
+
+  final results = <_AffectedBooking>[];
+
+  if (isUnforeseen) {
+    // Unforeseen: only direct overlaps are cancelled.
+    for (final doc in sortedDocs) {
+      final request = RentRequest.fromDoc(doc);
+      final bookingStart =
+          DateTime(request.start.year, request.start.month, request.start.day);
+      final bookingEnd =
+          DateTime(request.end.year, request.end.month, request.end.day);
+      final overlaps =
+          bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
+          bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+      if (!overlaps) continue;
+      results.add(_AffectedBooking(
+        renterName: request.name,
+        start: request.start,
+        end: request.end,
+        willBeCancelled: true,
+      ));
+    }
+  } else {
+    // Foreseen: simulate the same cascade used during actual scheduling so
+    // bookings shifted by a prior booking are also included in the preview.
+    DateTime blockedUntil = maintenanceEndDay;
+    for (final doc in sortedDocs) {
+      final request = RentRequest.fromDoc(doc);
+      final bookingStart =
+          DateTime(request.start.year, request.start.month, request.start.day);
+      if (bookingStart.isAfter(blockedUntil)) continue; // Not affected
+
+      final bookingDuration = request.end.difference(request.start);
+      final newStart = DateTime(
+        blockedUntil.year, blockedUntil.month, blockedUntil.day,
+        request.start.hour, request.start.minute,
+      ).add(const Duration(days: 1));
+      final newEnd = newStart.add(bookingDuration);
+
+      final exceedsAvailability =
+          availableUntil != null && newEnd.isAfter(availableUntil);
+
+      results.add(_AffectedBooking(
+        renterName: request.name,
+        start: request.start,
+        end: request.end,
+        willBeCancelled: exceedsAvailability,
+        newStart: exceedsAvailability ? null : newStart,
+        newEnd: exceedsAvailability ? null : newEnd,
+      ));
+
+      if (!exceedsAvailability) {
+        // Advance cascade pointer; cancelled slots don't block the next booking.
+        blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
+      }
+    }
+  }
+
+  return results;
+}
+
 // --------------- CORE LOGIC ---------------
 Future<void> _scheduleMaintenance(
   BuildContext context,
@@ -606,6 +692,16 @@ Future<void> _scheduleMaintenance(
   final durationDays = maintenanceEnd.difference(today).inDays + 1;
   final isUnforeseen = durationDays > 7;
 
+  // ── Step 1.5: Fetch affected bookings before showing the confirm dialog ──
+  final affectedBookings = await _fetchAffectedBookings(
+    equipmentId: equipment.id!,
+    today: today,
+    maintenanceEnd: maintenanceEnd,
+    isUnforeseen: isUnforeseen,
+    availableUntil: equipment.availableUntil,
+  );
+  if (!context.mounted) return;
+
   // ── Step 2: Confirm ──────────────────────────────────────────
   final confirmed = await showDialog<bool>(
     context: context,
@@ -620,60 +716,139 @@ Future<void> _scheduleMaintenance(
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              isUnforeseen ? 'Unforeseen Maintenance' : 'Schedule Maintenance',
+              isUnforeseen ? 'Hindi Inaasahang Maintenance' : 'I-schedule ang Maintenance',
             ),
           ),
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Maintenance period: ${DateFormat('MMM d').format(today)} – ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Panahon ng Maintenance: ${DateFormat('MMM d').format(today)} – ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$durationDays na araw',
+                style: TextStyle(
+                  color: isUnforeseen ? Colors.red : lightColorScheme.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (isUnforeseen)
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: const Text(
+                    'Ang maintenance ay higit sa 7 araw. Lahat ng booking sa panahong ito ay IKAKANSELA.',
+                    style: TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: lightColorScheme.secondary,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: lightColorScheme.primary),
+                  ),
+                  child: Text(
+                    'Ang mga booking sa panahong ito ay ire-reschedule pagkatapos ng maintenance. Ang mga booking na wala na sa availability ng kagamitan ay ikakansela.',
+                    style: TextStyle(color: lightColorScheme.primary, fontSize: 13),
+                  ),
+                ),
+              // ── Affected bookings list ─────────────────────────────────
+              if (affectedBookings.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Mga Apektadong Booking (${affectedBookings.length})',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                ...affectedBookings.map((b) => Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: b.willBeCancelled ? Colors.red.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: b.willBeCancelled ? Colors.red.shade200 : Colors.orange.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        b.willBeCancelled ? Icons.cancel_outlined : Icons.event_repeat,
+                        size: 16,
+                        color: b.willBeCancelled ? Colors.red.shade700 : Colors.orange.shade800,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              b.renterName,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            Text(
+                              '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                            if (!b.willBeCancelled && b.newStart != null && b.newEnd != null) ...[
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(Icons.arrow_forward, size: 12, color: Colors.orange.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
+                                    style: TextStyle(fontSize: 12, color: Colors.orange.shade800, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 2),
+                            Text(
+                              b.willBeCancelled ? 'Ikakansela' : 'Ire-reschedule',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: b.willBeCancelled ? Colors.red.shade700 : Colors.orange.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+              ] else ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Walang booking ang maaapektuhan.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            '$durationDays day${durationDays > 1 ? 's' : ''}',
-            style: TextStyle(
-              color: isUnforeseen ? Colors.red : lightColorScheme.primary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (isUnforeseen)
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: const Text(
-                'Maintenance exceeds 7 days. All bookings within this period will be CANCELLED.',
-                style: TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: lightColorScheme.secondary,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: lightColorScheme.primary),
-              ),
-              child: Text(
-                'Bookings within this period will be rescheduled to after maintenance ends. Bookings that fall outside the equipment\'s availability will be cancelled.',
-                style: TextStyle(color: lightColorScheme.primary, fontSize: 13),
-              ),
-            ),
-        ],
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Cancel'),
+          child: const Text('Kanselahin'),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -681,7 +856,7 @@ Future<void> _scheduleMaintenance(
             foregroundColor: Colors.white,
           ),
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Confirm'),
+          child: const Text('Kumpirmahin'),
         ),
       ],
     ),
@@ -856,8 +1031,8 @@ Future<void> _scheduleMaintenance(
         SnackBar(
           content: Text(
             isUnforeseen
-                ? '⚠️ Maintenance set. Affected bookings have been cancelled.'
-                : '✅ Maintenance scheduled. Affected bookings have been rescheduled.',
+                ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
+                : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
           ),
           backgroundColor: isUnforeseen ? Colors.red : Colors.green,
           duration: const Duration(seconds: 4),
@@ -882,12 +1057,12 @@ Future<void> _endMaintenance(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('End Maintenance'),
-      content: const Text('Mark this equipment as available again?'),
+      title: const Text('Tapusin ang Maintenance'),
+      content: const Text('Markahan ang kagamitan bilang available na?'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Cancel'),
+          child: const Text('Kanselahin'),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -895,7 +1070,7 @@ Future<void> _endMaintenance(
             foregroundColor: Colors.white,
           ),
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Mark Available'),
+          child: const Text('Markahan Bilang Available'),
         ),
       ],
     ),
@@ -970,7 +1145,7 @@ Future<void> _deleteEquipment(
         children: [
           Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
           SizedBox(width: 8),
-          Text('Delete Equipment'),
+          Text('Burahin ang Kagamitan'),
         ],
       ),
       content: Column(
@@ -981,12 +1156,12 @@ Future<void> _deleteEquipment(
             text: TextSpan(
               style: const TextStyle(color: Colors.black87, fontSize: 14),
               children: [
-                const TextSpan(text: 'Are you sure you want to delete '),
+                const TextSpan(text: 'Sigurado ka bang gusto mong burahin ang '),
                 TextSpan(
                   text: '"${equipment.name}"',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const TextSpan(text: '? This action cannot be undone.'),
+                const TextSpan(text: '? Hindi na maaaring bawiin ang pagkilos na ito.'),
               ],
             ),
           ),
@@ -995,7 +1170,7 @@ Future<void> _deleteEquipment(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Cancel'),
+          child: const Text('Kanselahin'),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -1003,7 +1178,7 @@ Future<void> _deleteEquipment(
             foregroundColor: Colors.white,
           ),
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Delete'),
+          child: const Text('Burahin'),
         ),
       ],
     ),
@@ -1034,6 +1209,25 @@ Future<void> _deleteEquipment(
   }
 }
 
+}
+
+// ── Affected-booking data class ──────────────────────────────────────────────
+class _AffectedBooking {
+  final String renterName;
+  final DateTime start;
+  final DateTime end;
+  final bool willBeCancelled;
+  final DateTime? newStart;
+  final DateTime? newEnd;
+
+  const _AffectedBooking({
+    required this.renterName,
+    required this.start,
+    required this.end,
+    required this.willBeCancelled,
+    this.newStart,
+    this.newEnd,
+  });
 }
 
 // ============================================================
@@ -1090,7 +1284,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
               Icon(Icons.build_outlined, color: lightColorScheme.primary, size: 20),
               const SizedBox(width: 8),
               const Text(
-                'Schedule Maintenance',
+                'I-schedule ang Maintenance',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
@@ -1104,7 +1298,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
 
           // Start date (fixed = today)
           _DateRow(
-            label: 'Start Date',
+            label: 'Simula',
             value: DateFormat('EEEE, MMM d, yyyy').format(widget.today),
             icon: Icons.today,
             color: Colors.blue,
@@ -1114,10 +1308,10 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
 
           // End date picker
           _DateRow(
-            label: 'End Date',
+            label: 'Katapusan',
             value: _selectedEnd != null
                 ? DateFormat('EEEE, MMM d, yyyy').format(_selectedEnd!)
-                : 'Tap to select',
+                : 'Pindutin para pumili',
             icon: Icons.event,
             color: Colors.orange,
             isFixed: false,
@@ -1159,8 +1353,8 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                   Expanded(
                     child: Text(
                       _isUnforeseen
-                          ? '$_durationDays days — Unforeseen maintenance. All bookings will be CANCELLED.'
-                          : '$_durationDays day${_durationDays > 1 ? 's' : ''} — Bookings will be rescheduled after maintenance.',
+                          ? '$_durationDays na araw — Hindi Inaasahan. Lahat ng booking ay IKAKANSELA.'
+                          : '$_durationDays na araw — Ang mga booking ay ire-reschedule pagkatapos ng maintenance.',
                       style: TextStyle(
                         color: _isUnforeseen ? Colors.red.shade700 : Colors.orange.shade800,
                         fontSize: 13,
@@ -1179,7 +1373,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: const Text('Kanselahin'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1194,7 +1388,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                         : Colors.orange.shade600,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Confirm'),
+                  child: const Text('Kumpirmahin'),
                 ),
               ),
             ],

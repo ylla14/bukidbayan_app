@@ -1871,6 +1871,7 @@ void _showEquipmentConditionDialog(
 
   // Maintenance state
   DateTime? maintenanceEndDate;
+  List<Map<String, dynamic>>? affectedBookings;
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
@@ -1887,7 +1888,7 @@ void _showEquipmentConditionDialog(
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Text(
-              'Equipment Condition Report',
+              'Ulat ng Kondisyon ng Kagamitan',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
@@ -1896,12 +1897,12 @@ void _showEquipmentConditionDialog(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Please fill out this form before completing the rental.',
+                    'Punan ang form na ito bago tapusin ang rental.',
                     style: TextStyle(fontSize: 13, color: Colors.grey),
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Is the equipment in good condition?',
+                    'Nasa maayos na kondisyon ba ang kagamitan?',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
@@ -1935,7 +1936,7 @@ void _showEquipmentConditionDialog(
                                     size: 20),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Yes',
+                                  'Oo',
                                   style: TextStyle(
                                     color: equipmentGood == true ? Colors.white : Colors.grey.shade700,
                                     fontWeight: FontWeight.bold,
@@ -1968,7 +1969,7 @@ void _showEquipmentConditionDialog(
                                     size: 20),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'No',
+                                  'Hindi',
                                   style: TextStyle(
                                     color: equipmentGood == false ? Colors.white : Colors.grey.shade700,
                                     fontWeight: FontWeight.bold,
@@ -1986,7 +1987,7 @@ void _showEquipmentConditionDialog(
                   if (equipmentGood == false) ...[
                     const SizedBox(height: 16),
                     const Text(
-                      'Describe the issue:',
+                      'Ilarawan ang problema:',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 6),
@@ -1994,7 +1995,7 @@ void _showEquipmentConditionDialog(
                       controller: commentController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText: 'e.g. Broken blade, engine not starting...',
+                        hintText: 'hal. Sirang talim, hindi umaandar ang makina...',
                         hintStyle: const TextStyle(fontSize: 12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         contentPadding: const EdgeInsets.all(10),
@@ -2019,7 +2020,7 @@ void _showEquipmentConditionDialog(
                               Icon(Icons.build_outlined, color: lightColorScheme.primary, size: 16),
                               const SizedBox(width: 6),
                               const Text(
-                                'Schedule Maintenance',
+                                'I-schedule ang Maintenance',
                                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                               ),
                             ],
@@ -2040,9 +2041,9 @@ void _showEquipmentConditionDialog(
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
-                                      'Already in maintenance'
-                                      '${equipment.maintenanceStart != null ? ' from ${DateFormat('MMM d').format(equipment.maintenanceStart!)}' : ''}'
-                                      '${equipment.maintenanceEnd != null ? ' to ${DateFormat('MMM d, yyyy').format(equipment.maintenanceEnd!)}' : ''}.',
+                                      'Kasalukuyang nasa maintenance'
+                                      '${equipment.maintenanceStart != null ? ' mula ${DateFormat('MMM d').format(equipment.maintenanceStart!)}' : ''}'
+                                      '${equipment.maintenanceEnd != null ? ' hanggang ${DateFormat('MMM d, yyyy').format(equipment.maintenanceEnd!)}' : ''}.',
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
@@ -2055,7 +2056,7 @@ void _showEquipmentConditionDialog(
                             )
                           else ...[
                             _buildDateRow(
-                              label: 'Start',
+                              label: 'Simula',
                               value: DateFormat('MMM d, yyyy').format(today),
                               icon: Icons.today,
                               color: lightColorScheme.primary,
@@ -2064,10 +2065,10 @@ void _showEquipmentConditionDialog(
                             ),
                             const SizedBox(height: 8),
                             _buildDateRow(
-                              label: 'End',
+                              label: 'Katapusan',
                               value: maintenanceEndDate != null
                                   ? DateFormat('MMM d, yyyy').format(maintenanceEndDate!)
-                                  : 'Tap to select end date',
+                                  : 'Pindutin para pumili ng petsa',
                               icon: Icons.event,
                               color: lightColorScheme.primary,
                               isFixed: false,
@@ -2077,11 +2078,22 @@ void _showEquipmentConditionDialog(
                                   initialDate: today.add(const Duration(days: 1)),
                                   firstDate: today.add(const Duration(days: 1)),
                                   lastDate: today.add(const Duration(days: 365)),
-                                  helpText: 'Select maintenance end date',
+                                  helpText: 'Pumili ng petsa ng katapusan ng maintenance',
                                 );
                                 if (picked != null) {
-                                  setState(() => maintenanceEndDate = DateTime(
-                                      picked.year, picked.month, picked.day, 23, 59, 59));
+                                  final newEnd = DateTime(
+                                      picked.year, picked.month, picked.day, 23, 59, 59);
+                                  final bookings =
+                                      await _fetchConditionReportAffectedBookings(
+                                    equipmentId: equipment.id!,
+                                    today: today,
+                                    maintenanceEnd: newEnd,
+                                    availableUntil: equipment.availableUntil,
+                                  );
+                                  setState(() {
+                                    maintenanceEndDate = newEnd;
+                                    affectedBookings = bookings;
+                                  });
                                 }
                               },
                             ),
@@ -2112,8 +2124,8 @@ void _showEquipmentConditionDialog(
                                     Flexible(
                                       child: Text(
                                         isUnforeseen
-                                            ? '$durationDays days — Unforeseen. All bookings will be CANCELLED.'
-                                            : '$durationDays day${durationDays > 1 ? 's' : ''} — Bookings will be rescheduled.',
+                                            ? '$durationDays na araw — Hindi Inaasahan. Lahat ng booking ay IKAKANSELA.'
+                                            : '$durationDays na araw — Ang mga booking ay ire-reschedule.',
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
@@ -2126,6 +2138,84 @@ void _showEquipmentConditionDialog(
                                   ],
                                 ),
                               ),
+                              if (affectedBookings != null) ...[
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Mga Apektadong Booking',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                if (affectedBookings!.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      'Walang apektadong booking.',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    ),
+                                  )
+                                else
+                                  ...affectedBookings!.map((b) {
+                                    final isCancelled = b['willBeCancelled'] as bool;
+                                    final newStart = b['newStart'] as DateTime?;
+                                    final newEnd = b['newEnd'] as DateTime?;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                isCancelled ? Icons.cancel_outlined : Icons.update,
+                                                size: 14,
+                                                color: isCancelled
+                                                    ? Colors.red.shade600
+                                                    : Colors.orange.shade700,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text(
+                                                  '${b['renterName']} · '
+                                                  '${DateFormat('MMM d').format(b['start'] as DateTime)} – '
+                                                  '${DateFormat('MMM d, yyyy').format(b['end'] as DateTime)}',
+                                                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                isCancelled ? 'Ikakansela' : 'Ire-reschedule',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isCancelled
+                                                      ? Colors.red.shade600
+                                                      : Colors.orange.shade700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if (!isCancelled && newStart != null && newEnd != null)
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 20, top: 2),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.arrow_forward, size: 12, color: Colors.orange.shade700),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    '${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
+                                                    style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.w500),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                              ],
                             ],
                           ],
                         ],
@@ -2138,7 +2228,7 @@ void _showEquipmentConditionDialog(
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
+                child: const Text('Kanselahin'),
               ),
               ElevatedButton(
                 onPressed: equipmentGood == null
@@ -2177,7 +2267,7 @@ void _showEquipmentConditionDialog(
                       },
                 style: ElevatedButton.styleFrom(backgroundColor: lightColorScheme.primary),
                 child: const Text(
-                  'Submit & Complete',
+                  'Isumite at Tapusin',
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -2242,6 +2332,93 @@ Widget _buildDateRow({
       ),
     ),
   );
+}
+
+// ── Fetches bookings affected by maintenance from the condition report flow ──
+Future<List<Map<String, dynamic>>> _fetchConditionReportAffectedBookings({
+  required String equipmentId,
+  required DateTime today,
+  required DateTime maintenanceEnd,
+  DateTime? availableUntil,
+}) async {
+  const activeStatuses = ['pending', 'approved', 'readyForPickup'];
+  final snap = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: equipmentId)
+      .where('status', whereIn: activeStatuses)
+      .get();
+
+  final maintenanceEndDay =
+      DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+  final durationDays = maintenanceEndDay.difference(today).inDays + 1;
+  final isUnforeseen = durationDays > 7;
+
+  // Sort ascending by start so cascade propagates in order
+  final sortedDocs = snap.docs.toList()
+    ..sort((a, b) {
+      final aStart = (a.data()['start'] as Timestamp).toDate();
+      final bStart = (b.data()['start'] as Timestamp).toDate();
+      return aStart.compareTo(bStart);
+    });
+
+  final results = <Map<String, dynamic>>[];
+
+  if (isUnforeseen) {
+    // Unforeseen: only direct overlaps are cancelled.
+    for (final doc in sortedDocs) {
+      final request = RentRequest.fromDoc(doc);
+      final bookingStart =
+          DateTime(request.start.year, request.start.month, request.start.day);
+      final bookingEnd =
+          DateTime(request.end.year, request.end.month, request.end.day);
+      final overlaps =
+          bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
+          bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+      if (!overlaps) continue;
+      results.add({
+        'renterName': request.name,
+        'start': request.start,
+        'end': request.end,
+        'willBeCancelled': true,
+      });
+    }
+  } else {
+    // Foreseen: simulate the same cascade used during actual scheduling so
+    // bookings shifted by a prior booking are also included in the preview.
+    DateTime blockedUntil = maintenanceEndDay;
+    for (final doc in sortedDocs) {
+      final request = RentRequest.fromDoc(doc);
+      final bookingStart =
+          DateTime(request.start.year, request.start.month, request.start.day);
+      if (bookingStart.isAfter(blockedUntil)) continue; // Not affected
+
+      final bookingDuration = request.end.difference(request.start);
+      final newStart = DateTime(
+        blockedUntil.year, blockedUntil.month, blockedUntil.day,
+        request.start.hour, request.start.minute,
+      ).add(const Duration(days: 1));
+      final newEnd = newStart.add(bookingDuration);
+
+      final exceedsAvailability =
+          availableUntil != null && newEnd.isAfter(availableUntil);
+
+      results.add({
+        'renterName': request.name,
+        'start': request.start,
+        'end': request.end,
+        'willBeCancelled': exceedsAvailability,
+        if (!exceedsAvailability) 'newStart': newStart,
+        if (!exceedsAvailability) 'newEnd': newEnd,
+      });
+
+      if (!exceedsAvailability) {
+        // Advance cascade pointer; cancelled slots don't block the next booking.
+        blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
+      }
+    }
+  }
+
+  return results;
 }
 
 // ── Applies maintenance after condition report (same logic as _scheduleMaintenance) ─
@@ -2390,8 +2567,8 @@ Future<void> _applyMaintenanceFromConditionReport({
         SnackBar(
           content: Text(
             isUnforeseen
-                ? '⚠️ Maintenance set. Affected bookings cancelled.'
-                : '✅ Maintenance scheduled. Bookings rescheduled.',
+                ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
+                : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
           ),
           backgroundColor: isUnforeseen ? Colors.red : Colors.green,
           duration: const Duration(seconds: 4),
