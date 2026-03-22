@@ -791,8 +791,8 @@ Future<bool> _hasLeftReview(String requestId) async {
                                 request.name, const Color(0xFF3B82F6)),
                             _infoTile(Icons.location_on_outlined, 'ADDRESS',
                                 request.address, const Color(0xFF3B82F6)),
-                            _infoTile(Icons.location_on_outlined, 'CONTACY',
-                                request.address, const Color(0xFF3B82F6)),
+                            _infoTile(Icons.location_on_outlined, 'CONTACT',
+                                request.phoneNumber ?? 'Unknown', const Color(0xFF3B82F6)),
 
                             // // ── Land size proofs ──────────────────────────────────
                             // if (request.landSizeProofPaths.isNotEmpty) ...[
