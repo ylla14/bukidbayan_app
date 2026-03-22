@@ -119,6 +119,9 @@ void main() {
           'Dry Season': ['Corn'],
           'Wet Season': ['Rice'],
         },
+        cropsByMonth: const {
+          7: ['Rice (Wet Season)', 'White Corn'],
+        },
       );
 
       final monthData = service.buildMonthData(
@@ -133,7 +136,87 @@ void main() {
         (e) => e.type == DashboardCalendarEventType.season,
       );
       expect(seasonEvent.title, 'Wet Season');
-      expect(seasonEvent.subtitle, contains('Rice'));
+      expect(seasonEvent.subtitle, contains('Rice (Wet Season)'));
+      expect(seasonEvent.subtitle, contains('White Corn'));
+    });
+
+    test(
+      'prefers month-aware crop map over season bucket when both are available',
+      () {
+        final context = DashboardCalendarContext(
+          userId: 'user-1',
+          requests: const [],
+          forecast: const [],
+          season: 'Wet Season',
+          seasonalCrops: ['Rice'],
+          cropsBySeason: const {
+            'Dry Season': ['Tomato'],
+            'Wet Season': ['Rice'],
+          },
+          cropsByMonth: const {
+            1: ['Tomato', 'Watermelon'],
+          },
+        );
+
+        final monthData = service.buildMonthData(
+          month: DateTime(2026, 1, 1),
+          context: context,
+          now: DateTime(2026, 1, 3),
+        );
+        final day = monthData.daysByDate[DateTime(2026, 1, 3)];
+        expect(day, isNotNull);
+
+        final seasonEvent = day!.events.firstWhere(
+          (e) => e.type == DashboardCalendarEventType.season,
+        );
+        expect(seasonEvent.title, 'Dry Season');
+        expect(seasonEvent.subtitle, contains('Tomato'));
+        expect(seasonEvent.subtitle, isNot(contains('Rice')));
+      },
+    );
+
+    test('seasonal planning suggestion uses month-aware crop context', () {
+      final context = DashboardCalendarContext(
+        userId: 'user-1',
+        requests: [
+          _request(
+            requestId: 'req-1',
+            itemName: 'Seeder',
+            renterId: 'user-1',
+            ownerId: 'owner-1',
+            start: DateTime(2026, 1, 5),
+            end: DateTime(2026, 1, 7),
+            status: RentRequestStatus.pending,
+          ),
+        ],
+        forecast: const [],
+        season: 'Dry Season',
+        seasonalCrops: const ['Rice'],
+        cropsBySeason: const {
+          'Dry Season': ['Rice'],
+        },
+        cropsByMonth: const {
+          1: ['Tomato', 'Watermelon'],
+        },
+      );
+
+      final monthData = service.buildMonthData(
+        month: DateTime(2026, 1, 1),
+        context: context,
+        now: DateTime(2026, 1, 5),
+      );
+      final day = monthData.daysByDate[DateTime(2026, 1, 5)];
+
+      expect(day, isNotNull);
+      final seasonalDescriptions = day!.suggestions
+          .where(
+            (s) => s.type == DashboardCalendarSuggestionType.seasonalPlanning,
+          )
+          .map((s) => s.description)
+          .toList(growable: false);
+      expect(seasonalDescriptions, isNotEmpty);
+      expect(seasonalDescriptions.join(' | '), contains('Tomato'));
+      expect(seasonalDescriptions.join(' | '), isNot(contains('Rice')));
     });
   });
 }

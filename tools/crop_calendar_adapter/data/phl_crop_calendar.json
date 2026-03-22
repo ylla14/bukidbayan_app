@@ -1,0 +1,192 @@
+[
+  {
+    "canonicalKey": "rice_wet",
+    "name": "Rice (Wet Season)",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Wet Season"],
+    "plantingMonths": [6, 7],
+    "harvestingMonths": [10, 11],
+    "plantingPhase": "June-July",
+    "harvestingPhase": "October-November",
+    "notes": "Main crop for rainy months; suitable for rain-fed or irrigated systems.",
+    "imageUrl": "https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064316/rice_eix9px.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "rice_dry",
+    "name": "Rice (Dry Season)",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Dry Season"],
+    "plantingMonths": [11, 12, 1],
+    "harvestingMonths": [3, 4],
+    "plantingPhase": "November-January",
+    "harvestingPhase": "March-April",
+    "notes": "Known locally as Palagad; stable irrigation support is recommended.",
+    "imageUrl": "https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064316/rice_eix9px.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "white_corn",
+    "name": "White Corn",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Year Round"],
+    "plantingMonths": [5, 6, 10, 11, 12],
+    "harvestingMonths": [1, 2, 3, 8, 9],
+    "plantingPhase": "May-June or October-December",
+    "harvestingPhase": "August-September or January-March",
+    "notes": "Often rotated between rice cycles for better land use.",
+    "imageUrl": "https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064316/corn_d6al6c.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "squash",
+    "name": "Squash",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Dry Season"],
+    "plantingMonths": [10, 11, 12],
+    "harvestingMonths": [1, 2, 3],
+    "plantingPhase": "October-December",
+    "harvestingPhase": "January-March",
+    "notes": "Performs best in well-drained soil and low waterlogging.",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/b/bb/YellowSquash.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "upo_bottle_gourd",
+    "name": "Upo (Bottle Gourd)",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Year Round"],
+    "plantingMonths": [10, 11, 12, 1],
+    "harvestingMonths": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "plantingPhase": "October-January",
+    "harvestingPhase": "60-80 days after sowing",
+    "notes": "Can be grown year-round but generally peaks in dry months.",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/2/28/Gourds_-_grown_in_the_garden.JPG",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "pechay",
+    "name": "Pechay",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Year Round"],
+    "plantingMonths": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "harvestingMonths": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "plantingPhase": "Any month (best October-December)",
+    "harvestingPhase": "30-45 days after sowing",
+    "notes": "Fast growth cycle and manageable in small plots or containers.",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/6/61/Bokchoy.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "eggplant",
+    "name": "Eggplant",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Year Round"],
+    "plantingMonths": [10, 11, 12, 1, 2, 5, 6],
+    "harvestingMonths": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "plantingPhase": "October-February or May-June",
+    "harvestingPhase": "60-90 days after transplant",
+    "notes": "Resilient crop with tolerance for moderate rain and heat.",
+    "imageUrl": "https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064315/eggplant_mnxhhf.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "tomato",
+    "name": "Tomato",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Dry Season"],
+    "plantingMonths": [10, 11, 12, 1, 2],
+    "harvestingMonths": [1, 2, 3, 4, 5],
+    "plantingPhase": "October-February",
+    "harvestingPhase": "January-May",
+    "notes": "Avoid peak wet months to reduce bacterial wilt risk.",
+    "imageUrl": "https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064317/tomato_vycvfc.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "watermelon",
+    "name": "Watermelon",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Dry Season"],
+    "plantingMonths": [10, 11, 12, 1],
+    "harvestingMonths": [1, 2, 3, 4],
+    "plantingPhase": "October-January",
+    "harvestingPhase": "January-April",
+    "notes": "Dry conditions help improve fruit sugar concentration.",
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/4/40/Watermelons.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  },
+  {
+    "canonicalKey": "banana",
+    "name": "Banana",
+    "country": "PHL",
+    "regions": ["philippines"],
+    "seasons": ["Year Round"],
+    "plantingMonths": [5, 6],
+    "harvestingMonths": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "plantingPhase": "May-June establishment",
+    "harvestingPhase": "Year-round",
+    "notes": "Perennial crop; first harvest is often around 10-12 months.",
+    "imageUrl": "https://res.cloudinary.com/ddgxxpdt9/image/upload/v1773064315/banana_m4uiy8.jpg",
+    "source": {
+      "provider": "GEOGLAM/JRC",
+      "dataset": "Crop Calendars",
+      "license": "CC-BY-4.0",
+      "version": "2026-03-21"
+    }
+  }
+]

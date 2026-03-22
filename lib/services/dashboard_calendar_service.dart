@@ -56,6 +56,7 @@ class DashboardCalendarService implements DashboardCalendarController {
     List<WeatherDay> forecast = const [];
     List<String> seasonalCrops = const [];
     Map<String, List<String>> cropsBySeason = const {};
+    Map<int, List<String>> cropsByMonth = const {};
     final season = _resolvedCropService.detectSeason(_now().month);
 
     var hasRenter = false;
@@ -74,6 +75,7 @@ class DashboardCalendarService implements DashboardCalendarController {
           season: season,
           seasonalCrops: seasonalCrops,
           cropsBySeason: cropsBySeason,
+          cropsByMonth: cropsByMonth,
         ),
       );
     }
@@ -92,10 +94,13 @@ class DashboardCalendarService implements DashboardCalendarController {
           region: region,
         );
         cropsBySeason = _buildCropsBySeason(crops);
-        seasonalCrops = cropsBySeason[season] ?? const [];
+        cropsByMonth = _buildCropsByMonth(crops);
+        seasonalCrops =
+            cropsByMonth[_now().month] ?? cropsBySeason[season] ?? const [];
       } catch (_) {
         seasonalCrops = const [];
         cropsBySeason = const {};
+        cropsByMonth = const {};
       }
       await emit();
     }
@@ -135,8 +140,9 @@ class DashboardCalendarService implements DashboardCalendarController {
     final monthEnd = DateTime(month.year, month.month + 1, 0);
     final today = _dayKey(now ?? _now());
     final monthSeason = _seasonForMonth(monthStart.month);
-    final monthSeasonalCrops = _seasonalCropsForSeason(
-      season: monthSeason,
+    final monthSeasonalCrops = _seasonalCropsForMonth(
+      month: monthStart.month,
+      fallbackSeason: monthSeason,
       context: context,
     );
 
@@ -156,8 +162,9 @@ class DashboardCalendarService implements DashboardCalendarController {
               title: _seasonForMonth(day.month),
               subtitle: _seasonSubtitle(
                 season: _seasonForMonth(day.month),
-                seasonalCrops: _seasonalCropsForSeason(
-                  season: _seasonForMonth(day.month),
+                seasonalCrops: _seasonalCropsForMonth(
+                  month: day.month,
+                  fallbackSeason: _seasonForMonth(day.month),
                   context: context,
                 ),
               ),
@@ -200,8 +207,9 @@ class DashboardCalendarService implements DashboardCalendarController {
       for (final day in _daysInRange(start, end)) {
         if (!_isInMonth(day, monthStart)) continue;
         final daySeason = _seasonForMonth(day.month);
-        final daySeasonalCrops = _seasonalCropsForSeason(
-          season: daySeason,
+        final daySeasonalCrops = _seasonalCropsForMonth(
+          month: day.month,
+          fallbackSeason: daySeason,
           context: context,
         );
 
@@ -258,8 +266,9 @@ class DashboardCalendarService implements DashboardCalendarController {
           request.status == RentRequestStatus.inProgress &&
           _isInMonth(today, monthStart)) {
         final todaySeason = _seasonForMonth(today.month);
-        final todaySeasonalCrops = _seasonalCropsForSeason(
-          season: todaySeason,
+        final todaySeasonalCrops = _seasonalCropsForMonth(
+          month: today.month,
+          fallbackSeason: todaySeason,
           context: context,
         );
         final overdueSuggestions = _buildSuggestionsForDay(
@@ -287,8 +296,9 @@ class DashboardCalendarService implements DashboardCalendarController {
 
     if (daysByDate.containsKey(today)) {
       final todaySeason = _seasonForMonth(today.month);
-      final todaySeasonalCrops = _seasonalCropsForSeason(
-        season: todaySeason,
+      final todaySeasonalCrops = _seasonalCropsForMonth(
+        month: today.month,
+        fallbackSeason: todaySeason,
         context: context,
       );
       final seasonSuggestion = DashboardCalendarSuggestion(
@@ -541,6 +551,18 @@ class DashboardCalendarService implements DashboardCalendarController {
     return const [];
   }
 
+  List<String> _seasonalCropsForMonth({
+    required int month,
+    required String fallbackSeason,
+    required DashboardCalendarContext context,
+  }) {
+    if (context.cropsByMonth.isNotEmpty) {
+      final monthCrops = context.cropsByMonth[month];
+      if (monthCrops != null && monthCrops.isNotEmpty) return monthCrops;
+    }
+    return _seasonalCropsForSeason(season: fallbackSeason, context: context);
+  }
+
   Map<String, List<String>> _buildCropsBySeason(List<CropSeasonItem> crops) {
     final wet = <String>{};
     final dry = <String>{};
@@ -573,6 +595,46 @@ class DashboardCalendarService implements DashboardCalendarController {
       'Wet Season': wetList,
       'Dry Season': dryList,
       'Year Round': yearRoundList,
+    };
+  }
+
+  Map<int, List<String>> _buildCropsByMonth(List<CropSeasonItem> crops) {
+    final monthBuckets = <int, Set<String>>{
+      for (var month = 1; month <= 12; month++) month: <String>{},
+    };
+
+    for (final crop in crops) {
+      final name = crop.name.trim();
+      if (name.isEmpty) continue;
+
+      final months = <int>{};
+
+      if (crop.seasons.contains('Year Round')) {
+        months.addAll(monthBuckets.keys);
+      }
+      months.addAll(crop.plantingMonths);
+      months.addAll(crop.harvestingMonths);
+
+      if (months.isEmpty) {
+        final seasons = crop.seasons.map((s) => s.trim()).toSet();
+        if (seasons.contains('Wet Season')) {
+          months.addAll(const {6, 7, 8, 9, 10, 11});
+        }
+        if (seasons.contains('Dry Season')) {
+          months.addAll(const {12, 1, 2, 3, 4, 5});
+        }
+      }
+
+      for (final month in months) {
+        if (month >= 1 && month <= 12) {
+          monthBuckets[month]!.add(name);
+        }
+      }
+    }
+
+    return {
+      for (final entry in monthBuckets.entries)
+        entry.key: (entry.value.toList(growable: false)..sort()),
     };
   }
 
