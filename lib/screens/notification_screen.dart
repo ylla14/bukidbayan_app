@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/screens/migration_page.dart';
+import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -357,6 +358,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       ),
                       onTap: () async {
                         if (!isRead) _markRead(doc.id);
+                        // ── New-request notification → go straight to the request page ──
+                        if (type == 'new_request' && requestId != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RequestSentPage(requestId: requestId),
+                            ),
+                          );
+                          return;
+                        }
+  
                         await showDialog<void>(
                           context: context,
                           builder: (dlgCtx) => AlertDialog(
