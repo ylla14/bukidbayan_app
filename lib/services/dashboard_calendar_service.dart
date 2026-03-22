@@ -1,5 +1,6 @@
-﻿import 'dart:async';
+import 'dart:async';
 
+import 'package:bukidbayan_app/models/crop_preference.dart';
 import 'package:bukidbayan_app/models/dashboard_calendar.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/services/crop_calendar_service.dart';
@@ -309,9 +310,17 @@ class DashboardCalendarService implements DashboardCalendarController {
             : 'Plan equipment for ${todaySeason.toLowerCase()} crops: '
                   '${todaySeasonalCrops.take(3).join(', ')}.',
         priority: DashboardCalendarSuggestionPriority.low,
-        actionTarget: const DashboardCalendarActionTarget(
-          kind: DashboardCalendarActionKind.openMyRequests,
-          label: 'Open My Requests',
+        actionTarget: DashboardCalendarActionTarget(
+          kind: DashboardCalendarActionKind.openEquipmentCatalog,
+          label: 'Browse Equipment',
+          categoryFilter: _primaryToolCategoryForSeasonalCrops(
+            season: todaySeason,
+            seasonalCrops: todaySeasonalCrops,
+          ),
+          searchQuery: todaySeasonalCrops.isNotEmpty
+              ? todaySeasonalCrops.first
+              : null,
+          recommendedOnly: true,
         ),
       );
       _addSuggestion(
@@ -362,6 +371,11 @@ class DashboardCalendarService implements DashboardCalendarController {
             label: 'Open Request',
             requestId: request.requestId,
           ),
+          secondaryActionTarget: DashboardCalendarActionTarget(
+            kind: DashboardCalendarActionKind.openEquipmentItem,
+            label: 'View Tool',
+            equipmentId: request.itemId,
+          ),
         ),
       );
     }
@@ -370,14 +384,19 @@ class DashboardCalendarService implements DashboardCalendarController {
         request.status == RentRequestStatus.pending &&
         day == requestStart) {
       suggestions.add(
-        const DashboardCalendarSuggestion(
+        DashboardCalendarSuggestion(
           type: DashboardCalendarSuggestionType.incomingRequestReview,
           title: 'Incoming request needs review',
           description: 'Review and approve/decline this rental request.',
           priority: DashboardCalendarSuggestionPriority.medium,
-          actionTarget: DashboardCalendarActionTarget(
+          actionTarget: const DashboardCalendarActionTarget(
             kind: DashboardCalendarActionKind.openIncomingRequests,
             label: 'Open Incoming Requests',
+          ),
+          secondaryActionTarget: DashboardCalendarActionTarget(
+            kind: DashboardCalendarActionKind.openEquipmentItem,
+            label: 'View Tool',
+            equipmentId: request.itemId,
           ),
         ),
       );
@@ -400,6 +419,11 @@ class DashboardCalendarService implements DashboardCalendarController {
             label: 'Open Request',
             requestId: request.requestId,
           ),
+          secondaryActionTarget: DashboardCalendarActionTarget(
+            kind: DashboardCalendarActionKind.openEquipmentItem,
+            label: 'View Tool',
+            equipmentId: request.itemId,
+          ),
         ),
       );
     }
@@ -420,6 +444,11 @@ class DashboardCalendarService implements DashboardCalendarController {
               label: 'Open Request',
               requestId: request.requestId,
             ),
+            secondaryActionTarget: DashboardCalendarActionTarget(
+              kind: DashboardCalendarActionKind.openEquipmentItem,
+              label: 'View Tool',
+              equipmentId: request.itemId,
+            ),
           ),
         );
       }
@@ -435,27 +464,14 @@ class DashboardCalendarService implements DashboardCalendarController {
               label: 'Open Request',
               requestId: request.requestId,
             ),
+            secondaryActionTarget: DashboardCalendarActionTarget(
+              kind: DashboardCalendarActionKind.openEquipmentItem,
+              label: 'View Tool',
+              equipmentId: request.itemId,
+            ),
           ),
         );
       }
-    }
-
-    if (day == today &&
-        request.status == RentRequestStatus.pending &&
-        seasonalCrops.isNotEmpty) {
-      suggestions.add(
-        DashboardCalendarSuggestion(
-          type: DashboardCalendarSuggestionType.seasonalPlanning,
-          title: 'Align booking with $season',
-          description:
-              'Current crops in season: ${seasonalCrops.take(3).join(', ')}.',
-          priority: DashboardCalendarSuggestionPriority.low,
-          actionTarget: const DashboardCalendarActionTarget(
-            kind: DashboardCalendarActionKind.openMyRequests,
-            label: 'Open My Requests',
-          ),
-        ),
-      );
     }
 
     return suggestions;
@@ -538,6 +554,46 @@ class DashboardCalendarService implements DashboardCalendarController {
 
   String _seasonForMonth(int month) {
     return (month >= 6 && month <= 11) ? 'Wet Season' : 'Dry Season';
+  }
+
+  String? _primaryToolCategoryForSeasonalCrops({
+    required String season,
+    required List<String> seasonalCrops,
+  }) {
+    final categories = <String>{};
+
+    for (final crop in seasonalCrops) {
+      for (final key in _cropPreferenceKeysFor(crop, season)) {
+        final mapped = cropToolTypes[key];
+        if (mapped != null) categories.addAll(mapped);
+      }
+    }
+
+    if (categories.isEmpty) return null;
+    return categories.first;
+  }
+
+  List<String> _cropPreferenceKeysFor(String cropName, String season) {
+    final trimmed = cropName.trim();
+    if (trimmed.isEmpty) return const [];
+    if (cropToolTypes.containsKey(trimmed)) return [trimmed];
+
+    final lower = trimmed.toLowerCase();
+    if (lower == 'rice' || lower.contains('rice')) {
+      final riceKey = season == 'Wet Season'
+          ? 'Rice (Wet Season)'
+          : 'Rice (Dry Season)';
+      return [riceKey];
+    }
+    if (lower == 'corn' || lower.contains('corn')) {
+      return const ['White Corn'];
+    }
+    if (lower == 'upo' ||
+        lower.contains('upo') ||
+        lower.contains('bottle gourd')) {
+      return const ['Upo (Bottle Gourd)'];
+    }
+    return const [];
   }
 
   List<String> _seasonalCropsForSeason({

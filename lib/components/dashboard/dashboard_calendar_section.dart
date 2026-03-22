@@ -1,7 +1,11 @@
 import 'package:bukidbayan_app/models/dashboard_calendar.dart';
+import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
+import 'package:bukidbayan_app/screens/rent/product_page.dart';
+import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/dashboard_calendar_service.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -10,6 +14,7 @@ class DashboardCalendarSection extends StatefulWidget {
   final DashboardCalendarController? controller;
   final DateTime? initialMonth;
   final String region;
+  final bool showHeader;
 
   const DashboardCalendarSection({
     super.key,
@@ -17,6 +22,7 @@ class DashboardCalendarSection extends StatefulWidget {
     this.controller,
     this.initialMonth,
     this.region = 'philippines',
+    this.showHeader = true,
   });
 
   @override
@@ -97,19 +103,20 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_month_rounded, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Smart Calendar',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                if (widget.showHeader) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_month_rounded, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Smart Calendar',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 _buildMonthHeader(),
                 const SizedBox(height: 10),
                 _buildWeekdayHeader(),
@@ -373,6 +380,12 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
   }
 
   Widget _buildSuggestionCard(DashboardCalendarSuggestion suggestion) {
+    final actionTargets = <DashboardCalendarActionTarget>[
+      if (suggestion.actionTarget != null) suggestion.actionTarget!,
+      if (suggestion.secondaryActionTarget != null)
+        suggestion.secondaryActionTarget!,
+    ];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
@@ -392,23 +405,32 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
           ),
           const SizedBox(height: 3),
           Text(suggestion.description, style: const TextStyle(fontSize: 12)),
-          if (suggestion.actionTarget != null) ...[
+          if (actionTargets.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton(
-                key: Key(
-                  'dashboard_calendar_action_${suggestion.type.name}_${suggestion.actionTarget!.kind.name}',
-                ),
-                onPressed: () => _handleAction(suggestion.actionTarget!),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-                child: Text(suggestion.actionTarget!.label),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: actionTargets
+                  .asMap()
+                  .entries
+                  .map((entry) {
+                    final index = entry.key;
+                    final actionTarget = entry.value;
+                    return OutlinedButton(
+                      key: Key(
+                        'dashboard_calendar_action_${suggestion.type.name}_${actionTarget.kind.name}_$index',
+                      ),
+                      onPressed: () => _handleAction(actionTarget),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: Text(actionTarget.label),
+                    );
+                  })
+                  .toList(growable: false),
             ),
           ],
         ],
@@ -446,6 +468,41 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
                 const RentalsList(mode: RentalsListMode.incomingRequests),
           ),
         );
+        break;
+      case DashboardCalendarActionKind.openEquipmentCatalog:
+        if (!mounted) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RentScreen(
+              initialSearchQuery: action.searchQuery,
+              initialCategory: action.categoryFilter,
+              initialRecommendedOnly: action.recommendedOnly,
+            ),
+          ),
+        );
+        break;
+      case DashboardCalendarActionKind.openEquipmentItem:
+        final equipmentId = action.equipmentId;
+        if (equipmentId == null || equipmentId.isEmpty) return;
+        try {
+          final equipmentDoc = await FirestoreService().getEquipmentById(
+            equipmentId,
+          );
+          if (!equipmentDoc.exists || !mounted) return;
+          final equipment = Equipment.fromFirestore(equipmentDoc);
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ProductPage(item: equipment)),
+          );
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to open equipment right now.'),
+            ),
+          );
+        }
         break;
     }
   }

@@ -1,4 +1,4 @@
-﻿import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
 
 enum DashboardCalendarMarker { booking, weatherRisk, season, actionNeeded }
@@ -20,17 +20,27 @@ enum DashboardCalendarActionKind {
   openRequest,
   openMyRequests,
   openIncomingRequests,
+  openEquipmentCatalog,
+  openEquipmentItem,
 }
 
 class DashboardCalendarActionTarget {
   final DashboardCalendarActionKind kind;
   final String label;
   final String? requestId;
+  final String? equipmentId;
+  final String? searchQuery;
+  final String? categoryFilter;
+  final bool recommendedOnly;
 
   const DashboardCalendarActionTarget({
     required this.kind,
     required this.label,
     this.requestId,
+    this.equipmentId,
+    this.searchQuery,
+    this.categoryFilter,
+    this.recommendedOnly = false,
   });
 }
 
@@ -54,6 +64,7 @@ class DashboardCalendarSuggestion {
   final String description;
   final DashboardCalendarSuggestionPriority priority;
   final DashboardCalendarActionTarget? actionTarget;
+  final DashboardCalendarActionTarget? secondaryActionTarget;
 
   const DashboardCalendarSuggestion({
     required this.type,
@@ -61,6 +72,7 @@ class DashboardCalendarSuggestion {
     required this.description,
     required this.priority,
     this.actionTarget,
+    this.secondaryActionTarget,
   });
 }
 

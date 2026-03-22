@@ -19,8 +19,49 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isCalendarExpanded = false;
 
   Future<void> logout() async => await _auth.signOut();
+
+  Widget _buildCalendarDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          key: const Key('home_smart_calendar_dropdown'),
+          initiallyExpanded: _isCalendarExpanded,
+          onExpansionChanged: (expanded) {
+            setState(() => _isCalendarExpanded = expanded);
+          },
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          leading: const Icon(Icons.calendar_month_rounded),
+          title: const Text(
+            'Smart Calendar & Suggested Actions',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            _isCalendarExpanded ? 'Tap to collapse' : 'Tap to expand',
+            style: const TextStyle(fontSize: 12),
+          ),
+          children: [
+            DashboardCalendarSection(
+              currentUserId: _auth.currentUser?.uid,
+              showHeader: false,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             ActionButtonsSection(),
             const SizedBox(height: 24),
-            DashboardCalendarSection(currentUserId: _auth.currentUser?.uid),
+            _buildCalendarDropdown(),
             const SizedBox(height: 24),
             MapSection(currentUserId: _auth.currentUser?.uid),
             const SizedBox(height: 20),
