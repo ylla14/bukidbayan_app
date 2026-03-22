@@ -607,10 +607,7 @@ class CrowdfundingService {
       throw Exception(
           'Only the campaign owner can generate a report for this campaign.');
     }
-    if (!_isCampaignEnded(campaign)) {
-      throw Exception(
-          'Campaign report can only be generated after the campaign has ended.');
-    }
+    final isEnded = _isCampaignEnded(campaign);
 
     final pledgesSnap =
         await _pledgesRef(campaignId).orderBy('createdAt').get();
@@ -657,7 +654,7 @@ class CrowdfundingService {
 
     return CampaignReport(
       campaign: campaign,
-      isEnded: true,
+      isEnded: isEnded,
       isSuccessful: isSuccessful,
       totalRaised: totalRaised,
       fundingDifference: totalRaised - campaign.goalAmount,

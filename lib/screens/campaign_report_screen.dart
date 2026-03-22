@@ -176,18 +176,34 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
 
         final campaign = report.campaign;
         final startDate = campaign.publishedAt ?? campaign.createdAt;
+        final isOngoing = !report.isEnded;
         final differenceLabel = report.fundingDifference >= 0
-            ? 'Sobra'
-            : 'Kulang';
+            ? (isOngoing ? 'Lamang sa target' : 'Sobra')
+            : (isOngoing ? 'Kulang pa sa target' : 'Kulang');
         final differenceValue = report.fundingDifference >= 0
             ? report.fundingDifference
             : -report.fundingDifference;
-        final outcomeLabel = report.isSuccessful ? 'Matagumpay' : 'Hindi umabot';
-        final outcomeColor = report.isSuccessful ? Colors.green : Colors.red;
+        final outcomeLabel = isOngoing
+            ? 'Kasalukuyang Ulat'
+            : (report.isSuccessful ? 'Matagumpay' : 'Hindi umabot');
+        final outcomeColor = isOngoing
+            ? Colors.blue
+            : (report.isSuccessful ? Colors.green : Colors.red);
+        final targetProgressLabel = report.fundingDifference >= 0
+            ? 'Naabot na ang target'
+            : 'Hindi pa abot ang target';
+        final targetProgressColor =
+            report.fundingDifference >= 0 ? Colors.green : Colors.orange;
+        final remainingDays =
+            campaign.endDate.difference(DateTime.now()).inDays.clamp(0, 99999);
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Ulat ng Kampanya'),
+            title: Text(
+              isOngoing
+                  ? 'Kasalukuyang Ulat ng Kampanya'
+                  : 'Ulat ng Kampanya',
+            ),
             backgroundColor: lightColorScheme.primary,
             foregroundColor: Colors.white,
             actions: [
@@ -231,6 +247,18 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                           runSpacing: 8,
                           children: [
                             Chip(label: Text(campaign.category)),
+                            if (isOngoing)
+                              Chip(
+                                label: const Text('Tumatakbo pa'),
+                                backgroundColor: Colors.blue.withOpacity(0.12),
+                                labelStyle: const TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                side: BorderSide(
+                                  color: Colors.blue.withOpacity(0.35),
+                                ),
+                              ),
                             Chip(
                               label: Text(outcomeLabel),
                               backgroundColor: outcomeColor.withOpacity(0.14),
@@ -242,18 +270,44 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                                 color: outcomeColor.withOpacity(0.35),
                               ),
                             ),
+                            if (isOngoing)
+                              Chip(
+                                label: Text(targetProgressLabel),
+                                backgroundColor:
+                                    targetProgressColor.withOpacity(0.14),
+                                labelStyle: TextStyle(
+                                  color: targetProgressColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                side: BorderSide(
+                                  color: targetProgressColor.withOpacity(0.35),
+                                ),
+                              ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Nakalap: ${formatPeso(report.totalRaised)} mula sa target na ${formatPeso(campaign.goalAmount)}',
+                          isOngoing
+                              ? 'Nakalap ngayon: ${formatPeso(report.totalRaised)} mula sa target na ${formatPeso(campaign.goalAmount)}'
+                              : 'Nakalap: ${formatPeso(report.totalRaised)} mula sa target na ${formatPeso(campaign.goalAmount)}',
                         ),
                       ],
                     ),
                   ),
                 ),
+                if (isOngoing)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: Colors.blue.shade50,
+                    child: const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text(
+                        'Interim report ito habang tumatanggap pa ng pledges ang campaign. Maaaring magbago ang totals at metrics hanggang sa pagtatapos.',
+                      ),
+                    ),
+                  ),
                 _buildSection(
-                  title: 'Buod ng Pondo',
+                  title: isOngoing ? 'Kasalukuyang Buod ng Pondo' : 'Buod ng Pondo',
                   children: [
                     _buildRow(
                       label: 'Kabuuang nakalap',
@@ -295,6 +349,10 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                     _buildRow(
                       label: 'Tagal (araw)',
                       value: report.campaignDurationDays.toString(),
+                    ),
+                    _buildRow(
+                      label: 'Natitirang araw',
+                      value: remainingDays.toString(),
                     ),
                     _buildRow(
                       label: 'Unang pledge',

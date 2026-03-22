@@ -191,7 +191,7 @@ void main() {
     expect(find.text('Gumawa ng Ulat'), findsOneWidget);
   });
 
-  testWidgets('My Listings hides report action for active campaigns', (
+  testWidgets('My Listings shows interim report action for active campaigns', (
     tester,
   ) async {
     final service = FakeCrowdfundingService(
@@ -216,6 +216,6 @@ void main() {
     await tester.tap(find.byTooltip('Higit pang aksyon'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Gumawa ng Ulat'), findsNothing);
+    expect(find.text('Kasalukuyang Ulat'), findsOneWidget);
   });
 }

@@ -30,10 +30,19 @@ class CampaignReportPdfService {
     final generatedAt = DateFormat(
       'yyyy-MM-dd HH:mm',
     ).format(DateTime.now());
-    final outcome = report.isSuccessful ? 'Successful' : 'Did not reach goal';
+    final isOngoing = !report.isEnded;
+    final outcome = isOngoing
+        ? 'Ongoing (interim report)'
+        : (report.isSuccessful ? 'Successful' : 'Did not reach goal');
     final shortfallOrSurplus = report.fundingDifference >= 0
-        ? 'Surplus: ${_formatCurrency(report.fundingDifference)}'
-        : 'Shortfall: ${_formatCurrency(-report.fundingDifference)}';
+        ? (isOngoing
+            ? 'Ahead of goal by: ${_formatCurrency(report.fundingDifference)}'
+            : 'Surplus: ${_formatCurrency(report.fundingDifference)}')
+        : (isOngoing
+            ? 'Remaining to goal: ${_formatCurrency(-report.fundingDifference)}'
+            : 'Shortfall: ${_formatCurrency(-report.fundingDifference)}');
+    final remainingDays =
+        campaign.endDate.difference(DateTime.now()).inDays.clamp(0, 99999);
 
     doc.addPage(
       pw.MultiPage(
@@ -60,6 +69,13 @@ class CampaignReportPdfService {
             'Generated: $generatedAt',
             style: pw.TextStyle(font: regular, fontSize: 10),
           ),
+          if (isOngoing) ...[
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Note: This is an interim report while the campaign is still running.',
+              style: pw.TextStyle(font: regular, fontSize: 10),
+            ),
+          ],
           pw.SizedBox(height: 12),
           pw.Container(
             width: double.infinity,
@@ -90,7 +106,7 @@ class CampaignReportPdfService {
           ),
           pw.SizedBox(height: 12),
           pw.Text(
-            'Funding Summary',
+            isOngoing ? 'Current Funding Summary' : 'Funding Summary',
             style: pw.TextStyle(font: bold, fontSize: 13),
           ),
           pw.SizedBox(height: 6),
@@ -123,6 +139,10 @@ class CampaignReportPdfService {
           ),
           pw.Bullet(
             text: 'End: ${_formatDate(campaign.endDate)}',
+            style: pw.TextStyle(font: regular, fontSize: 10),
+          ),
+          pw.Bullet(
+            text: 'Days remaining: $remainingDays',
             style: pw.TextStyle(font: regular, fontSize: 10),
           ),
           pw.Bullet(

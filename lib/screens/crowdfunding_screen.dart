@@ -609,11 +609,15 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                   child: Text('Burahin ang Draft'),
                 ),
               ]);
-            } else if (_isEnded(campaign)) {
+            } else {
               items.add(
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'report',
-                  child: Text('Gumawa ng Ulat'),
+                  child: Text(
+                    _isEnded(campaign)
+                        ? 'Gumawa ng Ulat'
+                        : 'Kasalukuyang Ulat',
+                  ),
                 ),
               );
             }

@@ -109,7 +109,7 @@ void main() {
       expect(report.noRewardAmount, 500);
     });
 
-    test('throws when campaign has not ended yet', () async {
+    test('returns interim report when campaign has not ended yet', () async {
       final campaign = _campaign(
         id: 'c_report_2',
         creatorEmail: 'owner@example.com',
@@ -126,17 +126,13 @@ void main() {
       });
 
       final service = CrowdfundingService();
+      final report = await service.generateCampaignReport(campaignId: campaign.id);
 
-      expect(
-        () => service.generateCampaignReport(campaignId: campaign.id),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('only be generated after the campaign has ended'),
-          ),
-        ),
-      );
+      expect(report.campaign.id, campaign.id);
+      expect(report.isEnded, isFalse);
+      expect(report.isSuccessful, isFalse);
+      expect(report.totalRaised, 700);
+      expect(report.fundingDifference, -300);
     });
 
     test('throws when user is not campaign owner', () async {
