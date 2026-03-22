@@ -1623,7 +1623,7 @@ if (showApproveDecline && now.isBefore(request.start))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: _actionButton(
-                                label: 'Cancel Request',
+                                label: 'Kanselahin ang Request',
                                 icon: Icons.cancel_outlined,
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
@@ -1638,7 +1638,7 @@ if (showApproveDecline && now.isBefore(request.start))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: _actionButton(
-                                label: 'Cancel Request',
+                                label: 'Kanselahin ang Request',
                                 icon: Icons.cancel_outlined,
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
@@ -2619,18 +2619,18 @@ Future<void> _sendNotification({
       builder: (dialogContext) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cancel Request',
+        title: const Text('Kanselahin ang Request',
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(isRenter
             ? isPostApproval
                 ? 'Sigurado ka bang gusto mong kanselahin ang approved na rental na ito? '
                   'Ang pagkansela pagkatapos ng pag-apruba ay magdudulot ng isang paglabag sa iyong account.'
-                : 'Are you sure you want to cancel this rental request? This cannot be undone.'
-            : 'Are you sure you want to cancel this request? The renter will be notified.'),
+                : 'Sigurado ka bang gusto mong kanselahin ang rental request na ito? Hindi ito maaaring bawiin.'
+            : 'Sigurado ka bang gusto mong kanselahin ang request na ito? Maabisuhan ang renter.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Go Back'),
+            child: const Text('Bumalik'),
           ),
           ElevatedButton(
             onPressed: () async {

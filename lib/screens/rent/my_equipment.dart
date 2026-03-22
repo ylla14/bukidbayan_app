@@ -20,12 +20,12 @@ class MyEquipment extends StatelessWidget {
         ? EquipmentStatus.underMaintenance
         : EquipmentStatus.available;
     await FirebaseFirestore.instance
-      .collection('equipment')
-      .doc(equipment.id)
-      .update({
-        'status': newStatus.toValue(),
-        'isAvailable': newStatus == EquipmentStatus.available, // keep in sync
-      });
+        .collection('equipment')
+        .doc(equipment.id)
+        .update({
+          'status': newStatus.toValue(),
+          'isAvailable': newStatus == EquipmentStatus.available, // keep in sync
+        });
   }
 
   @override
@@ -83,64 +83,64 @@ class MyEquipment extends StatelessWidget {
         ],
       ),
 
-//       floatingActionButton: Align(
-//   alignment: Alignment.centerRight,
-//   child: FloatingActionButton.small(
-//     onPressed: () {
-//       showModalBottomSheet(
-//         context: context,
-//         builder: (ctx) => Padding(
-//           padding: const EdgeInsets.all(24),
-//           child: Column(
-//             mainAxisSize: MainAxisSize.min,
-//             crossAxisAlignment: CrossAxisAlignment.stretch,
-//             children: [
-//               const Text(
-//                 '🛠 Dev Tools',
-//                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-//               ),
-//               const SizedBox(height: 4),
-//               const Text(
-//                 'These are one-time migration tools. Be careful.',
-//                 style: TextStyle(fontSize: 12, color: Colors.grey),
-//               ),
-//               const SizedBox(height: 16),
-//               ElevatedButton.icon(
-//                 onPressed: () {
-//                   Navigator.pop(ctx);
-//                   migrateEquipmentStatus(context);
-//                 },
-//                 icon: const Icon(Icons.upload),
-//                 label: const Text('Migrate: isAvailable → status'),
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: Colors.blue.shade600,
-//                   foregroundColor: Colors.white,
-//                 ),
-//               ),
-//               const SizedBox(height: 8),
-//               OutlinedButton.icon(
-//                 onPressed: () {
-//                   Navigator.pop(ctx);
-//                   rollbackEquipmentStatus(context);
-//                 },
-//                 icon: const Icon(Icons.undo),
-//                 label: const Text('Rollback: status → isAvailable'),
-//                 style: OutlinedButton.styleFrom(
-//                   foregroundColor: Colors.red.shade600,
-//                   side: BorderSide(color: Colors.red.shade600),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       );
-//     },
-//     backgroundColor: Colors.black.withOpacity(0.15),
-//     elevation: 0,
-//     child: const Icon(Icons.build, size: 16, color: Colors.black45),
-//   ),
-// ),
-// floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+      //       floatingActionButton: Align(
+      //   alignment: Alignment.centerRight,
+      //   child: FloatingActionButton.small(
+      //     onPressed: () {
+      //       showModalBottomSheet(
+      //         context: context,
+      //         builder: (ctx) => Padding(
+      //           padding: const EdgeInsets.all(24),
+      //           child: Column(
+      //             mainAxisSize: MainAxisSize.min,
+      //             crossAxisAlignment: CrossAxisAlignment.stretch,
+      //             children: [
+      //               const Text(
+      //                 '🛠 Dev Tools',
+      //                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      //               ),
+      //               const SizedBox(height: 4),
+      //               const Text(
+      //                 'These are one-time migration tools. Be careful.',
+      //                 style: TextStyle(fontSize: 12, color: Colors.grey),
+      //               ),
+      //               const SizedBox(height: 16),
+      //               ElevatedButton.icon(
+      //                 onPressed: () {
+      //                   Navigator.pop(ctx);
+      //                   migrateEquipmentStatus(context);
+      //                 },
+      //                 icon: const Icon(Icons.upload),
+      //                 label: const Text('Migrate: isAvailable → status'),
+      //                 style: ElevatedButton.styleFrom(
+      //                   backgroundColor: Colors.blue.shade600,
+      //                   foregroundColor: Colors.white,
+      //                 ),
+      //               ),
+      //               const SizedBox(height: 8),
+      //               OutlinedButton.icon(
+      //                 onPressed: () {
+      //                   Navigator.pop(ctx);
+      //                   rollbackEquipmentStatus(context);
+      //                 },
+      //                 icon: const Icon(Icons.undo),
+      //                 label: const Text('Rollback: status → isAvailable'),
+      //                 style: OutlinedButton.styleFrom(
+      //                   foregroundColor: Colors.red.shade600,
+      //                   side: BorderSide(color: Colors.red.shade600),
+      //                 ),
+      //               ),
+      //             ],
+      //           ),
+      //         ),
+      //       );
+      //     },
+      //     backgroundColor: Colors.black.withOpacity(0.15),
+      //     elevation: 0,
+      //     child: const Icon(Icons.build, size: 16, color: Colors.black45),
+      //   ),
+      // ),
+      // floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
     );
   }
 
@@ -233,7 +233,9 @@ class MyEquipment extends StatelessWidget {
                         Text(
                           equipment.category ?? 'No category',
                           style: const TextStyle(
-                              fontSize: 12, color: Colors.black54),
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -246,11 +248,20 @@ class MyEquipment extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: _statusColor(equipment.status).withOpacity(0.1),
+                            color: _statusColor(
+                              equipment.status,
+                            ).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _statusColor(equipment.status).withOpacity(0.4)),
+                            border: Border.all(
+                              color: _statusColor(
+                                equipment.status,
+                              ).withOpacity(0.4),
+                            ),
                           ),
                           child: Text(
                             _statusLabel(equipment.status),
@@ -264,7 +275,10 @@ class MyEquipment extends StatelessWidget {
                         if (equipment.isForMaintenance) ...[
                           const SizedBox(height: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red.shade50,
                               borderRadius: BorderRadius.circular(20),
@@ -273,7 +287,11 @@ class MyEquipment extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.build_rounded, size: 10, color: Colors.red.shade700),
+                                Icon(
+                                  Icons.build_rounded,
+                                  size: 10,
+                                  color: Colors.red.shade700,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'For Maintenance',
@@ -289,7 +307,10 @@ class MyEquipment extends StatelessWidget {
                         ] else if (equipment.isUpcomingMaintenance) ...[
                           const SizedBox(height: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.amber.shade50,
                               borderRadius: BorderRadius.circular(20),
@@ -298,7 +319,11 @@ class MyEquipment extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.warning_amber_rounded, size: 10, color: Colors.amber.shade800),
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 10,
+                                  color: Colors.amber.shade800,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Upcoming Maintenance',
@@ -330,19 +355,23 @@ class MyEquipment extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => EquipmentListingScreen(
-                                    existingEquipment: tempItem),
+                                  existingEquipment: tempItem,
+                                ),
                               ),
                             );
                           },
                           icon: const Icon(Icons.edit_outlined, size: 14),
-                          label: const Text('Edit',
-                              style: TextStyle(fontSize: 12)),
+                          label: const Text(
+                            'Edit',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: lightColorScheme.primary,
-                            side:
-                                BorderSide(color: lightColorScheme.primary),
+                            side: BorderSide(color: lightColorScheme.primary),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 6),
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
                             ),
@@ -350,16 +379,21 @@ class MyEquipment extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      
+
                       // Maintenance Toggle Button
                       SizedBox(
-                        width: 100,
+                        width: 104,
                         child: ElevatedButton.icon(
-                          onPressed: equipment.status == EquipmentStatus.unavailable
+                          onPressed:
+                              equipment.status == EquipmentStatus.unavailable
                               ? null
                               : () async {
-                                  if (equipment.status == EquipmentStatus.available) {
-                                    await _scheduleMaintenance(context, equipment);
+                                  if (equipment.status ==
+                                      EquipmentStatus.available) {
+                                    await _scheduleMaintenance(
+                                      context,
+                                      equipment,
+                                    );
                                   } else {
                                     await _endMaintenance(context, equipment);
                                   }
@@ -377,13 +411,17 @@ class MyEquipment extends StatelessWidget {
                             style: const TextStyle(fontSize: 11),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: equipment.status == EquipmentStatus.unavailable
+                            backgroundColor:
+                                equipment.status == EquipmentStatus.unavailable
                                 ? Colors.grey.shade400
                                 : equipment.status == EquipmentStatus.available
-                                    ? Colors.orange.shade600
-                                    : Colors.green.shade600,
+                                ? Colors.orange.shade600
+                                : Colors.green.shade600,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
                             ),
@@ -393,23 +431,29 @@ class MyEquipment extends StatelessWidget {
 
                       const SizedBox(height: 6),
 
-// Delete Button
-SizedBox(
-  width: 100,
-  child: OutlinedButton.icon(
-    onPressed: () => _deleteEquipment(context, equipment),
-    icon: const Icon(Icons.delete_outline, size: 14),
-    label: const Text('Delete', style: TextStyle(fontSize: 12)),
-    style: OutlinedButton.styleFrom(
-      foregroundColor: Colors.red.shade600,
-      side: BorderSide(color: Colors.red.shade400),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-      ),
-    ),
-  ),
-),
+                      // Delete Button
+                      SizedBox(
+                        width: 100,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _deleteEquipment(context, equipment),
+                          icon: const Icon(Icons.delete_outline, size: 14),
+                          label: const Text(
+                            'Delete',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red.shade600,
+                            side: BorderSide(color: Colors.red.shade400),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -426,530 +470,249 @@ SizedBox(
       width: 72,
       height: 72,
       color: Colors.grey.shade200,
-      child: const Icon(Icons.image_not_supported,
-          color: Colors.grey, size: 28),
+      child: const Icon(
+        Icons.image_not_supported,
+        color: Colors.grey,
+        size: 28,
+      ),
     );
   }
 
-String _statusLabel(EquipmentStatus status) {
-  switch (status) {
-    case EquipmentStatus.available: return 'Available';
-    case EquipmentStatus.underMaintenance: return 'Under Maintenance';
-    case EquipmentStatus.unavailable: return 'Unavailable';
-  }
-}
-
-Color _statusColor(EquipmentStatus status) {
-  switch (status) {
-    case EquipmentStatus.available: return Colors.green.shade700;
-    case EquipmentStatus.underMaintenance: return Colors.orange.shade700;
-    case EquipmentStatus.unavailable: return Colors.grey.shade600;
-  }
-}
-
-
-
-// Run this to migrate all equipment docs from isAvailable (bool) to status (string)
-Future<void> migrateEquipmentStatus(BuildContext context) async {
-
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Run Migration?'),
-      content: const Text(
-        'This will add a "status" field to all equipment docs that are missing it, based on their old "isAvailable" value. Safe to run multiple times.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Run'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm != true) return;
-
-  final snapshot = await FirebaseFirestore.instance
-      .collection('equipment')
-      .get();
-
-  int updated = 0;
-  int skipped = 0;
-
-  for (final doc in snapshot.docs) {
-    final data = doc.data();
-
-    // Skip if already migrated
-    if (data['status'] != null) {
-      skipped++;
-      continue;
-    }
-
-    final oldIsAvailable = data['isAvailable'] is bool
-        ? data['isAvailable']
-        : data['isAvailable']?.toString().toLowerCase() == 'true';
-
-    final newStatus = oldIsAvailable == true
-        ? EquipmentStatus.available.toValue()
-        : EquipmentStatus.unavailable.toValue();
-
-    await doc.reference.update({'status': newStatus});
-    updated++;
-  }
-
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Migration done. Updated: $updated, Skipped (already migrated): $skipped')),
-    );
-  }
-}
-
-// Reverse: removes "status" field and restores "isAvailable" bool — use only if you need to rollback
-Future<void> rollbackEquipmentStatus(BuildContext context) async {  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Rollback Migration?'),
-      content: const Text(
-        'This will remove the "status" field and restore "isAvailable" (bool) on all equipment docs. Only use this to undo the migration.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Rollback'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm != true) return;
-
-  final snapshot = await FirebaseFirestore.instance
-      .collection('equipment')
-      .get();
-
-  int updated = 0;
-
-  for (final doc in snapshot.docs) {
-    final data = doc.data();
-    final status = data['status'];
-
-    if (status == null) continue;
-
-    final isAvailable = status == EquipmentStatus.available.toValue();
-
-    await doc.reference.update({
-      'isAvailable': isAvailable,
-      'status': FieldValue.delete(),
-    });
-    updated++;
-  }
-
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Rollback done. Restored isAvailable on $updated docs.')),
-    );
-  }
-}
-// --------------- HELPER: send in-app notification ---------------
-Future<void> _sendNotification({
-  required String userId,
-  required String title,
-  required String body,
-  required String type,
-  Map<String, dynamic> extra = const {},
-}) async {
-  await FirebaseFirestore.instance
-      .collection('notifications')
-      .doc(userId)
-      .collection('items')
-      .add({
-    'title': title,
-    'body': body,
-    'type': type,
-    'read': false,
-    'createdAt': FieldValue.serverTimestamp(),
-    ...extra,
-  });
-}
-
-Future<List<_AffectedBooking>> _fetchAffectedBookings({
-  required String equipmentId,
-  required DateTime today,
-  required DateTime maintenanceEnd,
-  required bool isUnforeseen,
-  DateTime? availableUntil,
-}) async {
-  const activeStatuses = ['pending', 'approved', 'readyForPickup'];
-
-  final snap = await FirebaseFirestore.instance
-      .collection('rentRequests')
-      .where('itemId', isEqualTo: equipmentId)
-      .where('status', whereIn: activeStatuses)
-      .get();
-
-  final maintenanceEndDay =
-      DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
-
-  // Sort ascending by start so cascade propagates in order
-  final sortedDocs = snap.docs.toList()
-    ..sort((a, b) {
-      final aStart = (a.data()['start'] as Timestamp).toDate();
-      final bStart = (b.data()['start'] as Timestamp).toDate();
-      return aStart.compareTo(bStart);
-    });
-
-  final results = <_AffectedBooking>[];
-
-  if (isUnforeseen) {
-    // Unforeseen: only direct overlaps are cancelled.
-    for (final doc in sortedDocs) {
-      final request = RentRequest.fromDoc(doc);
-      final bookingStart =
-          DateTime(request.start.year, request.start.month, request.start.day);
-      final bookingEnd =
-          DateTime(request.end.year, request.end.month, request.end.day);
-      final overlaps =
-          bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
-          bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
-      if (!overlaps) continue;
-      results.add(_AffectedBooking(
-        renterName: request.name,
-        start: request.start,
-        end: request.end,
-        willBeCancelled: true,
-      ));
-    }
-  } else {
-    // Foreseen: simulate the same cascade used during actual scheduling so
-    // bookings shifted by a prior booking are also included in the preview.
-    DateTime blockedUntil = maintenanceEndDay;
-    for (final doc in sortedDocs) {
-      final request = RentRequest.fromDoc(doc);
-      final bookingStart =
-          DateTime(request.start.year, request.start.month, request.start.day);
-      if (bookingStart.isAfter(blockedUntil)) continue; // Not affected
-
-      final bookingDuration = request.end.difference(request.start);
-      final newStart = DateTime(
-        blockedUntil.year, blockedUntil.month, blockedUntil.day,
-        request.start.hour, request.start.minute,
-      ).add(const Duration(days: 1));
-      final newEnd = newStart.add(bookingDuration);
-
-      final exceedsAvailability =
-          availableUntil != null && newEnd.isAfter(availableUntil);
-
-      results.add(_AffectedBooking(
-        renterName: request.name,
-        start: request.start,
-        end: request.end,
-        willBeCancelled: exceedsAvailability,
-        newStart: exceedsAvailability ? null : newStart,
-        newEnd: exceedsAvailability ? null : newEnd,
-      ));
-
-      if (!exceedsAvailability) {
-        // Advance cascade pointer; cancelled slots don't block the next booking.
-        blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
-      }
+  String _statusLabel(EquipmentStatus status) {
+    switch (status) {
+      case EquipmentStatus.available:
+        return 'Available';
+      case EquipmentStatus.underMaintenance:
+        return 'Under Maintenance';
+      case EquipmentStatus.unavailable:
+        return 'Unavailable';
     }
   }
 
-  return results;
-}
+  Color _statusColor(EquipmentStatus status) {
+    switch (status) {
+      case EquipmentStatus.available:
+        return Colors.green.shade700;
+      case EquipmentStatus.underMaintenance:
+        return Colors.orange.shade700;
+      case EquipmentStatus.unavailable:
+        return Colors.grey.shade600;
+    }
+  }
 
-// --------------- CORE LOGIC ---------------
-Future<void> _scheduleMaintenance(
-  BuildContext context,
-  Equipment equipment,
-) async {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-
-  // ── Step 1: Pick maintenance end date ──────────────────────
-  final picked = await showModalBottomSheet<DateTime>(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (ctx) => _MaintenanceDatePicker(
-      equipmentName: equipment.name,
-      today: today,
-    ),
-  );
-
-  if (picked == null || !context.mounted) return;
-
-  final maintenanceEnd = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
-  final durationDays = maintenanceEnd.difference(today).inDays + 1;
-  final isUnforeseen = durationDays > 7;
-
-  // ── Step 1.5: Fetch affected bookings before showing the confirm dialog ──
-  final affectedBookings = await _fetchAffectedBookings(
-    equipmentId: equipment.id!,
-    today: today,
-    maintenanceEnd: maintenanceEnd,
-    isUnforeseen: isUnforeseen,
-    availableUntil: equipment.availableUntil,
-  );
-  if (!context.mounted) return;
-
-  // ── Step 2: Confirm ──────────────────────────────────────────
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-     title: Row(
-        children: [
-          Icon(
-            isUnforeseen ? Icons.warning_amber_rounded : Icons.build_outlined,
-            color: isUnforeseen ? Colors.red : Colors.orange,
-            size: 20,
+  // Run this to migrate all equipment docs from isAvailable (bool) to status (string)
+  Future<void> migrateEquipmentStatus(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Run Migration?'),
+        content: const Text(
+          'This will add a "status" field to all equipment docs that are missing it, based on their old "isAvailable" value. Safe to run multiple times.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              isUnforeseen ? 'Hindi Inaasahang Maintenance' : 'I-schedule ang Maintenance',
-            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Run'),
           ),
         ],
       ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Panahon ng Maintenance: ${DateFormat('MMM d').format(today)} – ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '$durationDays na araw',
-                style: TextStyle(
-                  color: isUnforeseen ? Colors.red : lightColorScheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (isUnforeseen)
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: const Text(
-                    'Ang maintenance ay higit sa 7 araw. Lahat ng booking sa panahong ito ay IKAKANSELA.',
-                    style: TextStyle(color: Colors.red, fontSize: 13),
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: lightColorScheme.secondary,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: lightColorScheme.primary),
-                  ),
-                  child: Text(
-                    'Ang mga booking sa panahong ito ay ire-reschedule pagkatapos ng maintenance. Ang mga booking na wala na sa availability ng kagamitan ay ikakansela.',
-                    style: TextStyle(color: lightColorScheme.primary, fontSize: 13),
-                  ),
-                ),
-              // ── Affected bookings list ─────────────────────────────────
-              if (affectedBookings.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Mga Apektadong Booking (${affectedBookings.length})',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 6),
-                ...affectedBookings.map((b) => Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: b.willBeCancelled ? Colors.red.shade50 : Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: b.willBeCancelled ? Colors.red.shade200 : Colors.orange.shade300,
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        b.willBeCancelled ? Icons.cancel_outlined : Icons.event_repeat,
-                        size: 16,
-                        color: b.willBeCancelled ? Colors.red.shade700 : Colors.orange.shade800,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              b.renterName,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                            ),
-                            Text(
-                              '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                            if (!b.willBeCancelled && b.newStart != null && b.newEnd != null) ...[
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  Icon(Icons.arrow_forward, size: 12, color: Colors.orange.shade700),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
-                                    style: TextStyle(fontSize: 12, color: Colors.orange.shade800, fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 2),
-                            Text(
-                              b.willBeCancelled ? 'Ikakansela' : 'Ire-reschedule',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: b.willBeCancelled ? Colors.red.shade700 : Colors.orange.shade800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-              ] else ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'Walang booking ang maaapektuhan.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-              ],
-            ],
+    );
+
+    if (confirm != true) return;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('equipment')
+        .get();
+
+    int updated = 0;
+    int skipped = 0;
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+
+      // Skip if already migrated
+      if (data['status'] != null) {
+        skipped++;
+        continue;
+      }
+
+      final oldIsAvailable = data['isAvailable'] is bool
+          ? data['isAvailable']
+          : data['isAvailable']?.toString().toLowerCase() == 'true';
+
+      final newStatus = oldIsAvailable == true
+          ? EquipmentStatus.available.toValue()
+          : EquipmentStatus.unavailable.toValue();
+
+      await doc.reference.update({'status': newStatus});
+      updated++;
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Migration done. Updated: $updated, Skipped (already migrated): $skipped',
           ),
         ),
+      );
+    }
+  }
+
+  // Reverse: removes "status" field and restores "isAvailable" bool — use only if you need to rollback
+  Future<void> rollbackEquipmentStatus(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rollback Migration?'),
+        content: const Text(
+          'This will remove the "status" field and restore "isAvailable" (bool) on all equipment docs. Only use this to undo the migration.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Rollback'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Kanselahin'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isUnforeseen ? Colors.red : lightColorScheme.primary,
-            foregroundColor: Colors.white,
+    );
+
+    if (confirm != true) return;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('equipment')
+        .get();
+
+    int updated = 0;
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final status = data['status'];
+
+      if (status == null) continue;
+
+      final isAvailable = status == EquipmentStatus.available.toValue();
+
+      await doc.reference.update({
+        'isAvailable': isAvailable,
+        'status': FieldValue.delete(),
+      });
+      updated++;
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Rollback done. Restored isAvailable on $updated docs.',
           ),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Kumpirmahin'),
         ),
-      ],
-    ),
-  );
+      );
+    }
+  }
 
-  if (confirmed != true || !context.mounted) return;
+  // --------------- HELPER: send in-app notification ---------------
+  Future<void> _sendNotification({
+    required String userId,
+    required String title,
+    required String body,
+    required String type,
+    Map<String, dynamic> extra = const {},
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(userId)
+        .collection('items')
+        .add({
+          'title': title,
+          'body': body,
+          'type': type,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          ...extra,
+        });
+  }
 
-  // ── Step 3: Show loading ─────────────────────────────────────
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
-  );
+  Future<List<_AffectedBooking>> _fetchAffectedBookings({
+    required String equipmentId,
+    required DateTime today,
+    required DateTime maintenanceEnd,
+    required bool isUnforeseen,
+    DateTime? availableUntil,
+  }) async {
+    const activeStatuses = ['pending', 'approved', 'readyForPickup'];
 
-  try {
-    final db = FirebaseFirestore.instance;
-    final firstDayAfterMaintenance = maintenanceEnd.add(const Duration(days: 1));
-    firstDayAfterMaintenance; // used below for shifting
-
-    // ── Step 4: Update equipment in Firestore ───────────────────
-    await db.collection('equipment').doc(equipment.id).update({
-      'status': EquipmentStatus.underMaintenance.toValue(),
-      'isAvailable': false,
-      'maintenanceStart': Timestamp.fromDate(today),
-      'maintenanceEnd': Timestamp.fromDate(maintenanceEnd),
-    });
-
-    // ── Step 5: Find affected bookings ───────────────────────────
-    // Active statuses that can be shifted or cancelled
-    const activeStatuses = [
-      'pending',
-      'approved',
-      'readyForPickup',
-    ];
-
-    final bookingsSnap = await db
+    final snap = await FirebaseFirestore.instance
         .collection('rentRequests')
-        .where('itemId', isEqualTo: equipment.id)
+        .where('itemId', isEqualTo: equipmentId)
         .where('status', whereIn: activeStatuses)
         .get();
 
-    final batch = db.batch();
-    final List<Future<void>> notifFutures = [];
+    final maintenanceEndDay = DateTime(
+      maintenanceEnd.year,
+      maintenanceEnd.month,
+      maintenanceEnd.day,
+    );
 
-    // Sort bookings by start date so cascade shifts propagate in order.
-    final sortedDocs = bookingsSnap.docs.toList()
+    // Sort ascending by start so cascade propagates in order
+    final sortedDocs = snap.docs.toList()
       ..sort((a, b) {
         final aStart = (a.data()['start'] as Timestamp).toDate();
         final bStart = (b.data()['start'] as Timestamp).toDate();
         return aStart.compareTo(bStart);
       });
 
-    // For foreseen maintenance: tracks the last occupied day.
-    // Any booking that starts on or before this date gets pushed to the day after.
-    // Starts at maintenanceEnd so all overlapping bookings shift past it, and
-    // each shifted booking further advances the pointer — creating the cascade.
-    DateTime blockedUntil = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
-    final maintenanceEndDay = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+    final results = <_AffectedBooking>[];
 
-    for (final doc in sortedDocs) {
-      final request = RentRequest.fromDoc(doc);
-      final bookingStart = DateTime(request.start.year, request.start.month, request.start.day);
-      final bookingEnd   = DateTime(request.end.year,   request.end.month,   request.end.day);
-
-      if (isUnforeseen) {
-        // Unforeseen: cancel only bookings that directly overlap with the maintenance window.
-        final overlaps = bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1)))
-            && bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+    if (isUnforeseen) {
+      // Unforeseen: only direct overlaps are cancelled.
+      for (final doc in sortedDocs) {
+        final request = RentRequest.fromDoc(doc);
+        final bookingStart = DateTime(
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
+        final overlaps =
+            bookingStart.isBefore(
+              maintenanceEndDay.add(const Duration(days: 1)),
+            ) &&
+            bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
         if (!overlaps) continue;
-
-        batch.update(doc.reference, {
-          'status': RentRequestStatus.canceled.name,
-          'declineReason': 'Ang kagamitan ay naka-schedule para sa hindi inaasahang maintenance mula '
-              '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
-              'Paumanhin sa abala.',
-        });
-
-        notifFutures.add(_sendNotification(
-          userId: request.renterId,
-          title: '🔧 Kinansela ang Booking — Maintenance',
-          body: 'Ang iyong booking para sa "${equipment.name}" '
-              '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
-              'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw). '
-              'Paumanhin sa abala.',
-          type: 'maintenance_cancel',
-          extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
-        ));
-      } else {
-        // Foreseen: cascade shift.
-        // A booking conflicts if it starts on or before the current blockedUntil pointer —
-        // this catches both direct maintenance overlaps AND bookings that collide with
-        // previously shifted bookings (indirect cascade, e.g. D in B→C→D chains).
-        if (bookingStart.isAfter(blockedUntil)) continue;
+        results.add(
+          _AffectedBooking(
+            renterName: request.name,
+            start: request.start,
+            end: request.end,
+            willBeCancelled: true,
+          ),
+        );
+      }
+    } else {
+      // Foreseen: simulate the same cascade used during actual scheduling so
+      // bookings shifted by a prior booking are also included in the preview.
+      DateTime blockedUntil = maintenanceEndDay;
+      for (final doc in sortedDocs) {
+        final request = RentRequest.fromDoc(doc);
+        final bookingStart = DateTime(
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        if (bookingStart.isAfter(blockedUntil)) continue; // Not affected
 
         final bookingDuration = request.end.difference(request.start);
         final newStart = DateTime(
@@ -961,254 +724,669 @@ Future<void> _scheduleMaintenance(
         ).add(const Duration(days: 1));
         final newEnd = newStart.add(bookingDuration);
 
-        // Check if shifted booking exceeds equipment's availableUntil
-        final exceedsAvailability = equipment.availableUntil != null &&
-            newEnd.isAfter(equipment.availableUntil!);
+        final exceedsAvailability =
+            availableUntil != null && newEnd.isAfter(availableUntil);
 
-        if (exceedsAvailability) {
-          // Cancel — shifted dates fall outside availability window.
-          // Do NOT advance blockedUntil: the cancelled slot is freed.
-          batch.update(doc.reference, {
-            'status': RentRequestStatus.canceled.name,
-            'declineReason': 'Hindi ma-reschedule ang booking pagkatapos ng maintenance '
-                '(nagtatapos ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}) dahil ang bagong '
-                'mga petsa ay lalampas sa availability ng kagamitan.',
-          });
+        results.add(
+          _AffectedBooking(
+            renterName: request.name,
+            start: request.start,
+            end: request.end,
+            willBeCancelled: exceedsAvailability,
+            newStart: exceedsAvailability ? null : newStart,
+            newEnd: exceedsAvailability ? null : newEnd,
+          ),
+        );
 
-          notifFutures.add(_sendNotification(
-            userId: request.renterId,
-            title: '🔧 Kinansela ang Booking — Labas ng Availability',
-            body: 'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
-                'pagkatapos ng maintenance dahil ang bagong mga petsa '
-                '(${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d').format(newEnd)}) '
-                'ay wala sa availability ng kagamitan. Kinansela na ang iyong booking.',
-            type: 'maintenance_cancel',
-            extra: {'requestId': request.requestId, 'equipmentId': equipment.id},
-          ));
-        } else {
-          // Reschedule and advance the cascade pointer.
-          batch.update(doc.reference, {
-            'start'         : Timestamp.fromDate(newStart),
-            'end'           : Timestamp.fromDate(newEnd),
-            'originalStart' : Timestamp.fromDate(request.start),
-            'originalEnd'   : Timestamp.fromDate(request.end),
-            'maintenanceRescheduled': true,
-          });
-
-          notifFutures.add(_sendNotification(
-            userId: request.renterId,
-            title: '📅 Na-reschedule ang Booking — Maintenance',
-            body: 'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
-                '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
-                'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
-                'dahil sa nakatakdang maintenance. '
-                'Maaari mong kanselahin o tanggapin ang bagong schedule.',
-            type: 'maintenance_reschedule',
-            extra: {
-              'requestId': request.requestId,
-              'equipmentId': equipment.id,
-              'ownerId': equipment.ownerId,
-              'canCancel': true,
-              'canAccept': true,
-              'newStart': Timestamp.fromDate(newStart),
-              'newEnd': Timestamp.fromDate(newEnd),
-            },
-          ));
-
-          // Advance blockedUntil so the next booking cascades off this one's new end.
+        if (!exceedsAvailability) {
+          // Advance cascade pointer; cancelled slots don't block the next booking.
           blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
         }
       }
     }
 
-    await batch.commit();
-    await Future.wait(notifFutures);
-
-    if (context.mounted) Navigator.pop(context); // dismiss loading
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isUnforeseen
-                ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
-                : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
-          ),
-          backgroundColor: isUnforeseen ? Colors.red : Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
-  } catch (e) {
-    if (context.mounted) Navigator.pop(context); // dismiss loading
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
+    return results;
   }
-}
 
-// End maintenance (mark as available)
-Future<void> _endMaintenance(
-  BuildContext context,
-  Equipment equipment,
-) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Tapusin ang Maintenance'),
-      content: const Text('Markahan ang kagamitan bilang available na?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Kanselahin'),
+  // --------------- CORE LOGIC ---------------
+  Future<void> _scheduleMaintenance(
+    BuildContext context,
+    Equipment equipment,
+  ) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // ── Step 1: Pick maintenance end date ──────────────────────
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) =>
+          _MaintenanceDatePicker(equipmentName: equipment.name, today: today),
+    );
+
+    if (picked == null || !context.mounted) return;
+
+    final maintenanceEnd = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      23,
+      59,
+      59,
+    );
+    final durationDays = maintenanceEnd.difference(today).inDays + 1;
+    final isUnforeseen = durationDays > 7;
+
+    // ── Step 1.5: Fetch affected bookings before showing the confirm dialog ──
+    final affectedBookings = await _fetchAffectedBookings(
+      equipmentId: equipment.id!,
+      today: today,
+      maintenanceEnd: maintenanceEnd,
+      isUnforeseen: isUnforeseen,
+      availableUntil: equipment.availableUntil,
+    );
+    if (!context.mounted) return;
+
+    // ── Step 2: Confirm ──────────────────────────────────────────
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              isUnforeseen ? Icons.warning_amber_rounded : Icons.build_outlined,
+              color: isUnforeseen ? Colors.red : Colors.orange,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                isUnforeseen
+                    ? 'Hindi Inaasahang Maintenance'
+                    : 'I-schedule ang Maintenance',
+              ),
+            ),
+          ],
         ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade600,
-            foregroundColor: Colors.white,
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Panahon ng Maintenance: ${DateFormat('MMM d').format(today)} – ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$durationDays na araw',
+                  style: TextStyle(
+                    color: isUnforeseen ? Colors.red : lightColorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (isUnforeseen)
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: const Text(
+                      'Ang maintenance ay higit sa 7 araw. Lahat ng booking sa panahong ito ay IKAKANSELA.',
+                      style: TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: lightColorScheme.secondary,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: lightColorScheme.primary),
+                    ),
+                    child: Text(
+                      'Ang mga booking sa panahong ito ay ire-reschedule pagkatapos ng maintenance. Ang mga booking na wala na sa availability ng kagamitan ay ikakansela.',
+                      style: TextStyle(
+                        color: lightColorScheme.primary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                // ── Affected bookings list ─────────────────────────────────
+                if (affectedBookings.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Mga Apektadong Booking (${affectedBookings.length})',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ...affectedBookings.map(
+                    (b) => Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: b.willBeCancelled
+                            ? Colors.red.shade50
+                            : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: b.willBeCancelled
+                              ? Colors.red.shade200
+                              : Colors.orange.shade300,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            b.willBeCancelled
+                                ? Icons.cancel_outlined
+                                : Icons.event_repeat,
+                            size: 16,
+                            color: b.willBeCancelled
+                                ? Colors.red.shade700
+                                : Colors.orange.shade800,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  b.renterName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                if (!b.willBeCancelled &&
+                                    b.newStart != null &&
+                                    b.newEnd != null) ...[
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 12,
+                                        color: Colors.orange.shade700,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.orange.shade800,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 2),
+                                Text(
+                                  b.willBeCancelled
+                                      ? 'Ikakansela'
+                                      : 'Ire-reschedule',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: b.willBeCancelled
+                                        ? Colors.red.shade700
+                                        : Colors.orange.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Walang booking ang maaapektuhan.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ],
+              ],
+            ),
           ),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Markahan Bilang Available'),
         ),
-      ],
-    ),
-  );
-
-  if (confirmed != true) return;
-
-  await FirebaseFirestore.instance.collection('equipment').doc(equipment.id).update({
-    'status': EquipmentStatus.available.toValue(),
-    'isAvailable': true,
-    'maintenanceStart': null,
-    'maintenanceEnd': null,
-  });
-
-  // Reset the usage counter so the interval starts fresh after maintenance.
-  await MaintenanceService().resetMaintenanceHours(equipment.id!);
-
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ Equipment is now available.'),
-        backgroundColor: Colors.green,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kanselahin'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isUnforeseen
+                  ? Colors.red
+                  : lightColorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Kumpirmahin'),
+          ),
+        ],
       ),
     );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // ── Step 3: Show loading ─────────────────────────────────────
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final db = FirebaseFirestore.instance;
+      final firstDayAfterMaintenance = maintenanceEnd.add(
+        const Duration(days: 1),
+      );
+      firstDayAfterMaintenance; // used below for shifting
+
+      // ── Step 4: Update equipment in Firestore ───────────────────
+      await db.collection('equipment').doc(equipment.id).update({
+        'status': EquipmentStatus.underMaintenance.toValue(),
+        'isAvailable': false,
+        'maintenanceStart': Timestamp.fromDate(today),
+        'maintenanceEnd': Timestamp.fromDate(maintenanceEnd),
+      });
+
+      // ── Step 5: Find affected bookings ───────────────────────────
+      // Active statuses that can be shifted or cancelled
+      const activeStatuses = ['pending', 'approved', 'readyForPickup'];
+
+      final bookingsSnap = await db
+          .collection('rentRequests')
+          .where('itemId', isEqualTo: equipment.id)
+          .where('status', whereIn: activeStatuses)
+          .get();
+
+      final batch = db.batch();
+      final List<Future<void>> notifFutures = [];
+
+      // Sort bookings by start date so cascade shifts propagate in order.
+      final sortedDocs = bookingsSnap.docs.toList()
+        ..sort((a, b) {
+          final aStart = (a.data()['start'] as Timestamp).toDate();
+          final bStart = (b.data()['start'] as Timestamp).toDate();
+          return aStart.compareTo(bStart);
+        });
+
+      // For foreseen maintenance: tracks the last occupied day.
+      // Any booking that starts on or before this date gets pushed to the day after.
+      // Starts at maintenanceEnd so all overlapping bookings shift past it, and
+      // each shifted booking further advances the pointer — creating the cascade.
+      DateTime blockedUntil = DateTime(
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
+      final maintenanceEndDay = DateTime(
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
+
+      for (final doc in sortedDocs) {
+        final request = RentRequest.fromDoc(doc);
+        final bookingStart = DateTime(
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
+
+        if (isUnforeseen) {
+          // Unforeseen: cancel only bookings that directly overlap with the maintenance window.
+          final overlaps =
+              bookingStart.isBefore(
+                maintenanceEndDay.add(const Duration(days: 1)),
+              ) &&
+              bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+          if (!overlaps) continue;
+
+          batch.update(doc.reference, {
+            'status': RentRequestStatus.canceled.name,
+            'declineReason':
+                'Ang kagamitan ay naka-schedule para sa hindi inaasahang maintenance mula '
+                '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
+                'Paumanhin sa abala.',
+          });
+
+          notifFutures.add(
+            _sendNotification(
+              userId: request.renterId,
+              title: '🔧 Kinansela ang Booking — Maintenance',
+              body:
+                  'Ang iyong booking para sa "${equipment.name}" '
+                  '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
+                  'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw). '
+                  'Paumanhin sa abala.',
+              type: 'maintenance_cancel',
+              extra: {
+                'requestId': request.requestId,
+                'equipmentId': equipment.id,
+              },
+            ),
+          );
+        } else {
+          // Foreseen: cascade shift.
+          // A booking conflicts if it starts on or before the current blockedUntil pointer —
+          // this catches both direct maintenance overlaps AND bookings that collide with
+          // previously shifted bookings (indirect cascade, e.g. D in B→C→D chains).
+          if (bookingStart.isAfter(blockedUntil)) continue;
+
+          final bookingDuration = request.end.difference(request.start);
+          final newStart = DateTime(
+            blockedUntil.year,
+            blockedUntil.month,
+            blockedUntil.day,
+            request.start.hour,
+            request.start.minute,
+          ).add(const Duration(days: 1));
+          final newEnd = newStart.add(bookingDuration);
+
+          // Check if shifted booking exceeds equipment's availableUntil
+          final exceedsAvailability =
+              equipment.availableUntil != null &&
+              newEnd.isAfter(equipment.availableUntil!);
+
+          if (exceedsAvailability) {
+            // Cancel — shifted dates fall outside availability window.
+            // Do NOT advance blockedUntil: the cancelled slot is freed.
+            batch.update(doc.reference, {
+              'status': RentRequestStatus.canceled.name,
+              'declineReason':
+                  'Hindi ma-reschedule ang booking pagkatapos ng maintenance '
+                  '(nagtatapos ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}) dahil ang bagong '
+                  'mga petsa ay lalampas sa availability ng kagamitan.',
+            });
+
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '🔧 Kinansela ang Booking — Labas ng Availability',
+                body:
+                    'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
+                    'pagkatapos ng maintenance dahil ang bagong mga petsa '
+                    '(${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d').format(newEnd)}) '
+                    'ay wala sa availability ng kagamitan. Kinansela na ang iyong booking.',
+                type: 'maintenance_cancel',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                },
+              ),
+            );
+          } else {
+            // Reschedule and advance the cascade pointer.
+            batch.update(doc.reference, {
+              'start': Timestamp.fromDate(newStart),
+              'end': Timestamp.fromDate(newEnd),
+              'originalStart': Timestamp.fromDate(request.start),
+              'originalEnd': Timestamp.fromDate(request.end),
+              'maintenanceRescheduled': true,
+            });
+
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '📅 Na-reschedule ang Booking — Maintenance',
+                body:
+                    'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
+                    '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
+                    'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
+                    'dahil sa nakatakdang maintenance. '
+                    'Maaari mong kanselahin o tanggapin ang bagong schedule.',
+                type: 'maintenance_reschedule',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                  'ownerId': equipment.ownerId,
+                  'canCancel': true,
+                  'canAccept': true,
+                  'newStart': Timestamp.fromDate(newStart),
+                  'newEnd': Timestamp.fromDate(newEnd),
+                },
+              ),
+            );
+
+            // Advance blockedUntil so the next booking cascades off this one's new end.
+            blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
+          }
+        }
+      }
+
+      await batch.commit();
+      await Future.wait(notifFutures);
+
+      if (context.mounted) Navigator.pop(context); // dismiss loading
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isUnforeseen
+                  ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
+                  : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
+            ),
+            backgroundColor: isUnforeseen ? Colors.red : Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context); // dismiss loading
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
-}
 
-Future<void> _deleteEquipment(
-  BuildContext context,
-  Equipment equipment,
-) async {
-  // ── Step 1: Check for active bookings ──────────────────────────────
-  final activeSnap = await FirebaseFirestore.instance
-      .collection('rentRequests')
-      .where('itemId', isEqualTo: equipment.id)
-      .where('status', whereIn: ['pending', 'approved', 'onTheWay', 'inProgress', 'readyForPickup'])
-      .get();
+  // End maintenance (mark as available)
+  Future<void> _endMaintenance(
+    BuildContext context,
+    Equipment equipment,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tapusin ang Maintenance'),
+        content: const Text('Markahan ang kagamitan bilang available na?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kanselahin'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade600,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Markahan Bilang Available'),
+          ),
+        ],
+      ),
+    );
 
-  if (activeSnap.docs.isNotEmpty && context.mounted) {
-    await showDialog(
+    if (confirmed != true) return;
+
+    await FirebaseFirestore.instance
+        .collection('equipment')
+        .doc(equipment.id)
+        .update({
+          'status': EquipmentStatus.available.toValue(),
+          'isAvailable': true,
+          'maintenanceStart': null,
+          'maintenanceEnd': null,
+        });
+
+    // Reset the usage counter so the interval starts fresh after maintenance.
+    await MaintenanceService().resetMaintenanceHours(equipment.id!);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Equipment is now available.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteEquipment(
+    BuildContext context,
+    Equipment equipment,
+  ) async {
+    // ── Step 1: Check for active bookings ──────────────────────────────
+    final activeSnap = await FirebaseFirestore.instance
+        .collection('rentRequests')
+        .where('itemId', isEqualTo: equipment.id)
+        .where(
+          'status',
+          whereIn: [
+            'pending',
+            'approved',
+            'onTheWay',
+            'inProgress',
+            'readyForPickup',
+          ],
+        )
+        .get();
+
+    if (activeSnap.docs.isNotEmpty && context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.block, color: Colors.red, size: 20),
+              SizedBox(width: 8),
+              Text('Cannot Delete'),
+            ],
+          ),
+          content: Text(
+            'This equipment has ${activeSnap.docs.length} active '
+            '${activeSnap.docs.length == 1 ? 'booking' : 'bookings'}. '
+            'Please resolve all active bookings before deleting.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // ── Step 2: Confirm deletion ─────────────────────────────────────────
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.block, color: Colors.red, size: 20),
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
             SizedBox(width: 8),
-            Text('Cannot Delete'),
+            Flexible(child: Text('Burahin ang Kagamitan')),
           ],
         ),
-        content: Text(
-          'This equipment has ${activeSnap.docs.length} active '
-          '${activeSnap.docs.length == 1 ? 'booking' : 'bookings'}. '
-          'Please resolve all active bookings before deleting.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                style: const TextStyle(color: Colors.black87, fontSize: 14),
+                children: [
+                  const TextSpan(
+                    text: 'Sigurado ka bang gusto mong burahin ang ',
+                  ),
+                  TextSpan(
+                    text: '"${equipment.name}"',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(
+                    text: '? Hindi na maaaring bawiin ang pagkilos na ito.',
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kanselahin'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Burahin'),
           ),
         ],
       ),
     );
-    return;
-  }
 
-  // ── Step 2: Confirm deletion ─────────────────────────────────────────
-  if (!context.mounted) return;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Row(
-        children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
-          SizedBox(width: 8),
-          Flexible(child: Text('Burahin ang Kagamitan')),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RichText(
-            text: TextSpan(
-              style: const TextStyle(color: Colors.black87, fontSize: 14),
-              children: [
-                const TextSpan(text: 'Sigurado ka bang gusto mong burahin ang '),
-                TextSpan(
-                  text: '"${equipment.name}"',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const TextSpan(text: '? Hindi na maaaring bawiin ang pagkilos na ito.'),
-              ],
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Kanselahin'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
+    if (confirmed != true || !context.mounted) return;
+
+    // ── Step 3: Delete ───────────────────────────────────────────────────
+    try {
+      await _firestoreService.deleteEquipment(equipment.id!);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"${equipment.name}" has been deleted.'),
             backgroundColor: Colors.red.shade600,
-            foregroundColor: Colors.white,
           ),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Burahin'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirmed != true || !context.mounted) return;
-
-  // ── Step 3: Delete ───────────────────────────────────────────────────
-  try {
-    await _firestoreService.deleteEquipment(equipment.id!);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('"${equipment.name}" has been deleted.'),
-          backgroundColor: Colors.red.shade600,
-        ),
-      );
-    }
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error deleting equipment: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting equipment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-}
-
 }
 
 // ── Affected-booking data class ──────────────────────────────────────────────
@@ -1250,8 +1428,9 @@ class _MaintenanceDatePicker extends StatefulWidget {
 class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
   DateTime? _selectedEnd;
 
-  int get _durationDays =>
-      _selectedEnd == null ? 0 : _selectedEnd!.difference(widget.today).inDays + 1;
+  int get _durationDays => _selectedEnd == null
+      ? 0
+      : _selectedEnd!.difference(widget.today).inDays + 1;
 
   bool get _isUnforeseen => _durationDays > 7;
 
@@ -1271,7 +1450,8 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
           // Handle bar
           Center(
             child: Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
@@ -1281,7 +1461,11 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.build_outlined, color: lightColorScheme.primary, size: 20),
+              Icon(
+                Icons.build_outlined,
+                color: lightColorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               const Text(
                 'I-schedule ang Maintenance',
@@ -1336,16 +1520,22 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: _isUnforeseen ? Colors.red.shade50 : Colors.orange.shade50,
+                color: _isUnforeseen
+                    ? Colors.red.shade50
+                    : Colors.orange.shade50,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: _isUnforeseen ? Colors.red.shade300 : Colors.orange.shade300,
+                  color: _isUnforeseen
+                      ? Colors.red.shade300
+                      : Colors.orange.shade300,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _isUnforeseen ? Icons.warning_amber_rounded : Icons.info_outline,
+                    _isUnforeseen
+                        ? Icons.warning_amber_rounded
+                        : Icons.info_outline,
                     color: _isUnforeseen ? Colors.red : Colors.orange.shade700,
                     size: 18,
                   ),
@@ -1356,7 +1546,9 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                           ? '$_durationDays na araw — Hindi Inaasahan. Lahat ng booking ay IKAKANSELA.'
                           : '$_durationDays na araw — Ang mga booking ay ire-reschedule pagkatapos ng maintenance.',
                       style: TextStyle(
-                        color: _isUnforeseen ? Colors.red.shade700 : Colors.orange.shade800,
+                        color: _isUnforeseen
+                            ? Colors.red.shade700
+                            : Colors.orange.shade800,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1505,8 +1697,11 @@ class _OverdueReturnsSection extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded,
-                        color: Colors.red.shade600, size: 20),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red.shade600,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Unreturned Equipment (${overdue.length})',
@@ -1524,23 +1719,31 @@ class _OverdueReturnsSection extends StatelessWidget {
                 final days = now.difference(r.end).inDays;
                 return ListTile(
                   dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                  leading: Icon(Icons.agriculture_rounded,
-                      color: Colors.red.shade400, size: 22),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 2,
+                  ),
+                  leading: Icon(
+                    Icons.agriculture_rounded,
+                    color: Colors.red.shade400,
+                    size: 22,
+                  ),
                   title: Text(
                     r.itemName,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   subtitle: Text(
                     'Renter: ${r.name}  •  Due: ${DateFormat('MMM dd').format(r.end)}',
-                    style:
-                        TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
                   ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red.shade600,
                       borderRadius: BorderRadius.circular(20),
@@ -1550,16 +1753,16 @@ class _OverdueReturnsSection extends StatelessWidget {
                           ? 'Due today'
                           : '$days ${days == 1 ? 'day' : 'days'} late',
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          RequestSentPage(requestId: r.requestId),
+                      builder: (_) => RequestSentPage(requestId: r.requestId),
                     ),
                   ),
                 );

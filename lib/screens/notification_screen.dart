@@ -19,10 +19,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   CollectionReference? get _notifCollection {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return null;
-    return _firestore
-        .collection('notifications')
-        .doc(uid)
-        .collection('items');
+    return _firestore.collection('notifications').doc(uid).collection('items');
   }
 
   Future<void> _markRead(String docId) async {
@@ -84,32 +81,39 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     final doc = docs[index];
                     final data = doc.data() as Map<String, dynamic>;
                     final type = (data['type'] as String?) ?? '';
-                    final isWeather  = type == 'weather_alert';
-                    final isShifted  = type == 'booking_shifted';
+                    final isWeather = type == 'weather_alert';
+                    final isShifted = type == 'booking_shifted';
                     final isMaintReschedule = type == 'maintenance_reschedule';
-                    final isMaintCancel     = type == 'maintenance_cancel';
-                    final isActionCard = isShifted || isMaintReschedule || isMaintCancel;
+                    final isMaintCancel = type == 'maintenance_cancel';
+                    final isActionCard =
+                        isShifted || isMaintReschedule || isMaintCancel;
                     final canCancel = (data['canCancel'] as bool?) ?? false;
                     final canAccept = (data['canAccept'] as bool?) ?? false;
                     final requestId = data['requestId'] as String?;
-                    final ownerId   = data['ownerId']    as String?;
+                    final ownerId = data['ownerId'] as String?;
                     final isRead = (data['read'] as bool?) ?? false;
                     final title = (data['title'] as String?) ?? 'Notification';
                     final body = (data['body'] as String?) ?? '';
                     final createdAt = data['createdAt'] as Timestamp?;
+                    final newStart = (data['newStart'] as Timestamp?)?.toDate();
+                    final newEnd   = (data['newEnd']   as Timestamp?)?.toDate();
 
-                    Future<void> notifyOwner(String ownerUid, String ownerTitle, String ownerBody) async {
+                    Future<void> notifyOwner(
+                      String ownerUid,
+                      String ownerTitle,
+                      String ownerBody,
+                    ) async {
                       await _firestore
                           .collection('notifications')
                           .doc(ownerUid)
                           .collection('items')
                           .add({
-                        'type': 'renter_response',
-                        'title': ownerTitle,
-                        'body': ownerBody,
-                        'read': false,
-                        'createdAt': FieldValue.serverTimestamp(),
-                      });
+                            'type': 'renter_response',
+                            'title': ownerTitle,
+                            'body': ownerBody,
+                            'read': false,
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
                     }
 
                     Future<void> handleAccept() async {
@@ -119,8 +123,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         builder: (ctx) => AlertDialog(
                           title: const Text('Tanggapin ang Bagong Schedule?'),
                           content: const Text(
-                              'Makukumpirma nito ang na-reschedule na mga petsa ng booking. '
-                              'Mananatiling approved ang iyong booking.'),
+                            'Makukumpirma nito ang na-reschedule na mga petsa ng booking. '
+                            'Mananatiling approved ang iyong booking.',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
@@ -138,6 +143,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       );
                       if (confirm == true && context.mounted) {
+                        DateTime? originalStart;
+                        DateTime? originalEnd;
+                        if (requestId != null) {
+                          final reqSnap = await FirebaseFirestore.instance
+                              .collection('rentRequests')
+                              .doc(requestId)
+                              .get();
+                          final rd = reqSnap.data();
+                          originalStart = (rd?['originalStart'] as Timestamp?)?.toDate();
+                          originalEnd   = (rd?['originalEnd']   as Timestamp?)?.toDate();
+                        }
                         await FirebaseFirestore.instance
                             .collection('rentRequests')
                             .doc(requestId)
@@ -147,11 +163,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           'canAccept': false,
                         });
                         if (ownerId != null) {
-                          final renterName = _auth.currentUser?.displayName ?? 'The renter';
+                          final renterName =
+                              _auth.currentUser?.displayName ?? 'Ang renter';
+                          String dateDetails = '';
+                          if (originalStart != null && originalEnd != null &&
+                              newStart != null && newEnd != null) {
+                            String fmt(DateTime d) => '${d.month}/${d.day}/${d.year}';
+                            dateDetails =
+                                '\n\nOrihinal na petsa: ${fmt(originalStart)} – ${fmt(originalEnd)}'
+                                '\nBagong petsa: ${fmt(newStart)} – ${fmt(newEnd)}';
+                          }
                           await notifyOwner(
                             ownerId,
                             '✅ Tinanggap ng Renter ang Bagong Schedule',
-                            'Tinanggap ni $renterName ang na-reschedule na mga petsa ng booking.',
+                            'Tinanggap ni $renterName ang na-reschedule na mga petsa ng booking.$dateDetails',
                           );
                         }
                         if (context.mounted) {
@@ -172,12 +197,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         builder: (ctx) => AlertDialog(
                           title: const Text('Kanselahin ang Booking?'),
                           content: const Text(
-                              'Ito ay magkakansela ng iyong na-reschedule na booking. '
-                              'Walang paglabag na itatala. Hindi ito maaaring bawiin.'),
+                            'Ito ay magkakansela ng iyong na-reschedule na booking. '
+                            'Walang paglabag na itatala. Hindi ito maaaring bawiin.',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Itago'),
+                              child: const Text('Hindi pa'),
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -191,6 +217,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       );
                       if (confirm == true && context.mounted) {
+                        DateTime? originalStart;
+                        DateTime? originalEnd;
+                        if (requestId != null) {
+                          final reqSnap = await FirebaseFirestore.instance
+                              .collection('rentRequests')
+                              .doc(requestId)
+                              .get();
+                          final rd = reqSnap.data();
+                          originalStart = (rd?['originalStart'] as Timestamp?)?.toDate();
+                          originalEnd   = (rd?['originalEnd']   as Timestamp?)?.toDate();
+                        }
                         final declineReason = isMaintReschedule
                             ? 'Kinansela ng renter dahil sa pag-reschedule ng booking mula sa maintenance ng kagamitan.'
                             : 'Kinansela ng renter dahil sa pagkaantala ng booking mula sa mahuling pagbabalik.';
@@ -198,20 +235,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             .collection('rentRequests')
                             .doc(requestId)
                             .update({
-                          'status': 'canceled',
-                          'cancelledDueToShift': true,
-                          'declineReason': declineReason,
-                        });
+                              'status': 'canceled',
+                              'cancelledDueToShift': true,
+                              'declineReason': declineReason,
+                            });
                         await _notifCollection?.doc(doc.id).update({
                           'canCancel': false,
                           'canAccept': false,
                         });
                         if (ownerId != null) {
-                          final renterName = _auth.currentUser?.displayName ?? 'The renter';
+                          final renterName =
+                              _auth.currentUser?.displayName ?? 'Ang renter';
+                          String dateDetails = '';
+                          if (originalStart != null && originalEnd != null &&
+                              newStart != null && newEnd != null) {
+                            String fmt(DateTime d) => '${d.month}/${d.day}/${d.year}';
+                            dateDetails =
+                                '\n\nOrihinal na petsa: ${fmt(originalStart)} – ${fmt(originalEnd)}'
+                                '\nNa-reschedule na petsa: ${fmt(newStart)} – ${fmt(newEnd)}';
+                          }
                           await notifyOwner(
                             ownerId,
                             '❌ Kinansela ng Renter ang Na-reschedule na Booking',
-                            'Kinansela ni $renterName ang kanilang booking pagkatapos itong ma-reschedule.',
+                            'Kinansela ni $renterName ang kanilang booking pagkatapos itong ma-reschedule.$dateDetails',
                           );
                         }
                         if (context.mounted) {
@@ -229,8 +275,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     if (isActionCard) {
                       final icon = (isShifted || isMaintReschedule)
                           ? (isShifted
-                              ? Icons.schedule_rounded
-                              : Icons.build_rounded)
+                                ? Icons.schedule_rounded
+                                : Icons.build_rounded)
                           : Icons.build_rounded;
 
                       return Container(
@@ -249,8 +295,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(icon,
-                                      color: Colors.orange.shade700, size: 18),
+                                  Icon(
+                                    icon,
+                                    color: Colors.orange.shade700,
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -267,29 +316,42 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   Text(
                                     _timeAgo(createdAt),
                                     style: TextStyle(
-                                        color: Colors.orange.shade700,
-                                        fontSize: 11),
+                                      color: Colors.orange.shade700,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              Text(body,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.orange.shade900)),
-                              if ((canCancel || canAccept) && requestId != null) ...[
+                              Text(
+                                body,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.orange.shade900,
+                                ),
+                              ),
+                              if ((canCancel || canAccept) &&
+                                  requestId != null) ...[
                                 const SizedBox(height: 10),
                                 Row(
                                   children: [
                                     if (canAccept)
                                       Expanded(
                                         child: OutlinedButton.icon(
-                                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                                          icon: const Icon(
+                                            Icons.check_circle_outline,
+                                            size: 16,
+                                          ),
                                           label: const Text('Tanggapin'),
                                           style: OutlinedButton.styleFrom(
-                                            foregroundColor: Colors.green.shade700,
-                                            side: BorderSide(color: Colors.green.shade400),
-                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                            foregroundColor:
+                                                Colors.green.shade700,
+                                            side: BorderSide(
+                                              color: Colors.green.shade400,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
                                           ),
                                           onPressed: handleAccept,
                                         ),
@@ -299,12 +361,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                     if (canCancel)
                                       Expanded(
                                         child: OutlinedButton.icon(
-                                          icon: const Icon(Icons.cancel_outlined, size: 16),
+                                          icon: const Icon(
+                                            Icons.cancel_outlined,
+                                            size: 16,
+                                          ),
                                           label: const Text('Kanselahin'),
                                           style: OutlinedButton.styleFrom(
-                                            foregroundColor: Colors.red.shade700,
-                                            side: BorderSide(color: Colors.red.shade400),
-                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                            foregroundColor:
+                                                Colors.red.shade700,
+                                            side: BorderSide(
+                                              color: Colors.red.shade400,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
                                           ),
                                           onPressed: handleCancel,
                                         ),
@@ -324,7 +394,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           ? null
                           : lightColorScheme.primary.withValues(alpha: 0.05),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       leading: CircleAvatar(
                         backgroundColor: isWeather
                             ? Colors.amber.shade100
@@ -341,8 +412,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       title: Text(
                         title,
                         style: TextStyle(
-                          fontWeight:
-                              isRead ? FontWeight.normal : FontWeight.bold,
+                          fontWeight: isRead
+                              ? FontWeight.normal
+                              : FontWeight.bold,
                           fontSize: 15,
                         ),
                       ),
@@ -353,8 +425,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       ),
                       trailing: Text(
                         _timeAgo(createdAt),
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
                       onTap: () async {
                         if (!isRead) _markRead(doc.id);
@@ -363,12 +437,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => RequestSentPage(requestId: requestId),
+                              builder: (_) =>
+                                  RequestSentPage(requestId: requestId),
                             ),
                           );
                           return;
                         }
-  
+
                         await showDialog<void>(
                           context: context,
                           builder: (dlgCtx) => AlertDialog(
