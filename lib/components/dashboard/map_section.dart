@@ -13,10 +13,11 @@ class MapSection extends StatefulWidget {
   final String? currentUserId;
   final FirestoreService? firestoreService;
   final Future<DashboardUserContext?> Function(String? currentUserId)?
-      userContextLoader;
+  userContextLoader;
   final Stream<List<Equipment>> Function()? equipmentStreamBuilder;
   final bool showMapTiles;
-  
+  final ValueChanged<Equipment>? onEquipmentTap;
+
   // NEW: Accept dynamic crops from the UI (like the "My Farm" section)
   final Set<String> selectedFarmCrops;
 
@@ -27,6 +28,7 @@ class MapSection extends StatefulWidget {
     this.userContextLoader,
     this.equipmentStreamBuilder,
     this.showMapTiles = true,
+    this.onEquipmentTap,
     this.selectedFarmCrops = const {}, // Default to empty
   });
 
@@ -37,8 +39,10 @@ class MapSection extends StatefulWidget {
 class _MapSectionState extends State<MapSection> {
   static const LatLng _fallbackCenter = LatLng(14.2470, 121.1367);
   static const List<double> _radiusOptionsKm = [5, 10, 20];
+  static const Distance _distanceCalculator = Distance(roundResult: false);
 
   late final FirestoreService _firestoreService;
+  final MapController _mapController = MapController();
 
   bool _nearbyOnly = true;
   bool _sortByDistance = true;
@@ -52,18 +56,23 @@ class _MapSectionState extends State<MapSection> {
   DashboardUserContext? _userContext;
   bool _userContextLoading = true;
   String? _userContextError;
+  bool _mapReady = false;
+  bool _mapUserInteracted = false;
+  bool _mapFitQueued = false;
+  String? _lastFitSignature;
 
   @override
   void initState() {
     super.initState();
     _firestoreService = widget.firestoreService ?? FirestoreService();
-    _loadUserContext(); 
+    _loadUserContext();
     _initEquipmentStream();
   }
 
   void _initEquipmentStream() {
-    final builder = widget.equipmentStreamBuilder
-        ?? _firestoreService.getDashboardBrowseEquipmentStream;
+    final builder =
+        widget.equipmentStreamBuilder ??
+        _firestoreService.getDashboardBrowseEquipmentStream;
     _equipmentStream = builder();
   }
 
@@ -132,6 +141,78 @@ class _MapSectionState extends State<MapSection> {
     return null;
   }
 
+  String? _fitSignature({
+    required LatLng? origin,
+    required bool nearbyOnly,
+    required double radiusKm,
+  }) {
+    if (origin == null || !nearbyOnly) return null;
+    return '${origin.latitude.toStringAsFixed(6)},'
+        '${origin.longitude.toStringAsFixed(6)},'
+        '${radiusKm.toStringAsFixed(1)}';
+  }
+
+  CameraFit _cameraFitForRadius({
+    required LatLng origin,
+    required double radiusKm,
+  }) {
+    final meters = radiusKm * 1000;
+    final north = _distanceCalculator.offset(origin, meters, 0);
+    final south = _distanceCalculator.offset(origin, meters, 180);
+    final east = _distanceCalculator.offset(origin, meters, 90);
+    final west = _distanceCalculator.offset(origin, meters, 270);
+
+    return CameraFit.bounds(
+      bounds: LatLngBounds.fromPoints([north, south, east, west]),
+      padding: const EdgeInsets.all(18),
+      minZoom: 3,
+      maxZoom: 17,
+    );
+  }
+
+  void _scheduleMapFit({
+    required LatLng? origin,
+    required bool nearbyOnly,
+    required double radiusKm,
+    bool force = false,
+  }) {
+    if (!_mapReady) return;
+
+    final signature = _fitSignature(
+      origin: origin,
+      nearbyOnly: nearbyOnly,
+      radiusKm: radiusKm,
+    );
+    if (signature == null) return;
+
+    if (!force && _lastFitSignature == signature) return;
+    if (!force && _mapFitQueued) return;
+
+    _mapFitQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapFitQueued = false;
+      if (!mounted || !_mapReady) return;
+      if (origin == null || !nearbyOnly) return;
+      final didFit = _mapController.fitCamera(
+        _cameraFitForRadius(origin: origin, radiusKm: radiusKm),
+      );
+      if (didFit) {
+        _lastFitSignature = signature;
+      }
+    });
+  }
+
+  void _openEquipmentDetail(BuildContext context, Equipment equipment) {
+    if (widget.onEquipmentTap != null) {
+      widget.onEquipmentTap!(equipment);
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProductPage(item: equipment)),
+    );
+  }
+
   void _resetNearbyState() {
     setState(() {
       _nearbyOnly = true;
@@ -140,6 +221,8 @@ class _MapSectionState extends State<MapSection> {
       _showCropRecommendedOnly = false;
       _activeCropCategory = null;
       _preferredCoordinateSource = DashboardCoordinateSource.farm;
+      _mapUserInteracted = false;
+      _lastFitSignature = null;
     });
   }
 
@@ -191,7 +274,7 @@ class _MapSectionState extends State<MapSection> {
         : (coordinateOptions.isNotEmpty ? coordinateOptions.first : null);
 
     final origin = _originFromSource(userContext, selectedCoordinateSource);
-    
+
     // NEW: Merge saved preferences with the dynamically selected crops from the UI
     final combinedCrops = <String>{
       ...userContext.cropPreferences,
@@ -309,7 +392,8 @@ class _MapSectionState extends State<MapSection> {
           context: context,
           origin: origin,
           nearbyResults: nearbyResults,
-          recommendedCategories: recommendedCategories, // Pass categories for tagging
+          recommendedCategories:
+              recommendedCategories, // Pass categories for tagging
         ),
       ],
     );
@@ -323,6 +407,11 @@ class _MapSectionState extends State<MapSection> {
     required double radiusKm,
   }) {
     final mapCenter = origin ?? _fallbackCenter;
+    final initialCameraFit = (origin != null && nearbyOnly)
+        ? _cameraFitForRadius(origin: origin, radiusKm: radiusKm)
+        : null;
+
+    _scheduleMapFit(origin: origin, nearbyOnly: nearbyOnly, radiusKm: radiusKm);
 
     return Container(
       height: 220,
@@ -340,11 +429,31 @@ class _MapSectionState extends State<MapSection> {
       child: Stack(
         children: [
           FlutterMap(
+            mapController: _mapController,
             options: MapOptions(
               initialCenter: mapCenter,
               initialZoom: 12,
+              initialCameraFit: initialCameraFit,
+              minZoom: 3,
+              maxZoom: 18,
+              onMapReady: () {
+                _mapReady = true;
+                _scheduleMapFit(
+                  origin: origin,
+                  nearbyOnly: nearbyOnly,
+                  radiusKm: radiusKm,
+                  force: true,
+                );
+              },
+              onPositionChanged: (_, hasGesture) {
+                if (hasGesture && mounted && !_mapUserInteracted) {
+                  setState(() {
+                    _mapUserInteracted = true;
+                  });
+                }
+              },
               interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.none,
+                flags: InteractiveFlag.all,
               ),
             ),
             children: [
@@ -381,17 +490,24 @@ class _MapSectionState extends State<MapSection> {
                     ),
                     ...markerResults.map((result) {
                       final style = _equipmentMarkerStyle(result.equipment);
+                      final categoryLabel =
+                          result.equipment.category ?? 'Equipment';
                       return Marker(
                         point: LatLng(
                           result.equipment.latitude!,
                           result.equipment.longitude!,
                         ),
-                        width: 40,
-                        height: 40,
+                        width: 44,
+                        height: 44,
                         child: Tooltip(
-                          message:
-                              result.equipment.category ?? 'Equipment tool',
-                          child: _EquipmentMapMarker(style: style),
+                          message: '${result.equipment.name} ($categoryLabel)',
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              _openEquipmentDetail(context, result.equipment);
+                            },
+                            child: _EquipmentMapMarker(style: style),
+                          ),
                         ),
                       );
                     }),
@@ -428,6 +544,43 @@ class _MapSectionState extends State<MapSection> {
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          if (origin != null && nearbyOnly)
+            Positioned(
+              right: 8,
+              bottom: 8,
+              child: Material(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    _mapUserInteracted = false;
+                    _scheduleMapFit(
+                      origin: origin,
+                      nearbyOnly: nearbyOnly,
+                      radiusKm: radiusKm,
+                      force: true,
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      children: [
+                        Icon(Icons.center_focus_strong_rounded, size: 14),
+                        SizedBox(width: 6),
+                        Text(
+                          'Recenter',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -469,6 +622,10 @@ class _MapSectionState extends State<MapSection> {
                       onChanged: (value) {
                         setState(() {
                           _nearbyOnly = value;
+                          if (value) {
+                            _mapUserInteracted = false;
+                            _lastFitSignature = null;
+                          }
                         });
                       },
                     ),
@@ -633,20 +790,16 @@ class _MapSectionState extends State<MapSection> {
       children: [
         ...visibleResults.map((result) {
           // Check if this specific equipment's category matches the recommended ones
-          final isRecommended = result.equipment.category != null && 
-                                recommendedCategories.contains(result.equipment.category);
-                                
+          final isRecommended =
+              result.equipment.category != null &&
+              recommendedCategories.contains(result.equipment.category);
+
           return _NearbyEquipmentCard(
             equipment: result.equipment,
             distanceKm: result.distanceKm,
             isRecommended: isRecommended, // Pass the tag state
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProductPage(item: result.equipment),
-                ),
-              );
+              _openEquipmentDetail(context, result.equipment);
             },
           );
         }),
@@ -907,12 +1060,18 @@ class _NearbyEquipmentCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade50,
-                                border: Border.all(color: Colors.green.shade200),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.star_rounded, size: 10, color: Colors.green.shade700),
+                                  Icon(
+                                    Icons.star_rounded,
+                                    size: 10,
+                                    color: Colors.green.shade700,
+                                  ),
                                   const SizedBox(width: 2),
                                   Text(
                                     'Recommended',

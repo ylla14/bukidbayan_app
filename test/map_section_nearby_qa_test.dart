@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/dashboard/map_section.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -41,6 +42,76 @@ void main() {
       expect(find.text('Farm'), findsOneWidget);
       expect(find.text('Home'), findsOneWidget);
       expect(find.text('Far Harvester'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('map supports interaction gestures', (tester) async {
+      await tester.pumpWidget(
+        _buildHarness(
+          userContext: const DashboardUserContext(
+            homeAddress: 'Home',
+            farmAddress: 'Farm',
+            homeLatitude: 14.25,
+            homeLongitude: 121.13,
+            farmLatitude: 14.2470,
+            farmLongitude: 121.1367,
+            cropPreferences: [],
+          ),
+          equipment: [
+            _equipment(
+              id: 'nearby',
+              name: 'Nearby Tractor',
+              latitude: 14.2478,
+              longitude: 121.1369,
+            ),
+          ],
+        ),
+      );
+
+      await _pumpMapSection(tester);
+
+      final map = tester.widget<FlutterMap>(find.byType(FlutterMap));
+      expect(map.options.interactionOptions.flags, isNot(InteractiveFlag.none));
+      expect(map.options.minZoom, equals(3));
+      expect(map.options.maxZoom, equals(18));
+      expect(find.text('Recenter'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('tapping equipment marker triggers equipment action', (
+      tester,
+    ) async {
+      Equipment? selectedEquipment;
+      await tester.pumpWidget(
+        _buildHarness(
+          userContext: const DashboardUserContext(
+            homeAddress: 'Home',
+            farmAddress: 'Farm',
+            homeLatitude: 14.25,
+            homeLongitude: 121.13,
+            farmLatitude: 14.2470,
+            farmLongitude: 121.1367,
+            cropPreferences: [],
+          ),
+          equipment: [
+            _equipment(
+              id: 'nearby',
+              name: 'Nearby Tractor',
+              latitude: 14.2478,
+              longitude: 121.1369,
+            ),
+          ],
+          onEquipmentTap: (equipment) {
+            selectedEquipment = equipment;
+          },
+        ),
+      );
+
+      await _pumpMapSection(tester);
+      await tester.tap(find.byTooltip('Nearby Tractor (Tractor)'));
+      await _pumpMapSection(tester);
+
+      expect(selectedEquipment?.id, equals('nearby'));
       expect(tester.takeException(), isNull);
     });
 
@@ -119,6 +190,7 @@ void main() {
 Widget _buildHarness({
   required DashboardUserContext userContext,
   required List<Equipment> equipment,
+  ValueChanged<Equipment>? onEquipmentTap,
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -130,6 +202,7 @@ Widget _buildHarness({
             userContextLoader: (_) async => userContext,
             equipmentStreamBuilder: () => Stream.value(equipment),
             showMapTiles: false,
+            onEquipmentTap: onEquipmentTap,
           ),
         ),
       ),
