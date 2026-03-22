@@ -302,6 +302,10 @@ class DashboardCalendarService implements DashboardCalendarController {
         fallbackSeason: todaySeason,
         context: context,
       );
+      final primaryToolCategory = _primaryToolCategoryForSeasonalCrops(
+        season: todaySeason,
+        seasonalCrops: todaySeasonalCrops,
+      );
       final seasonSuggestion = DashboardCalendarSuggestion(
         type: DashboardCalendarSuggestionType.seasonalPlanning,
         title: 'Seasonal planning',
@@ -313,13 +317,9 @@ class DashboardCalendarService implements DashboardCalendarController {
         actionTarget: DashboardCalendarActionTarget(
           kind: DashboardCalendarActionKind.openEquipmentCatalog,
           label: 'Browse Equipment',
-          categoryFilter: _primaryToolCategoryForSeasonalCrops(
-            season: todaySeason,
-            seasonalCrops: todaySeasonalCrops,
-          ),
-          searchQuery: todaySeasonalCrops.isNotEmpty
-              ? todaySeasonalCrops.first
-              : null,
+          categoryFilter: primaryToolCategory,
+          // Keep search focused on mapped tool category, not crop name.
+          searchQuery: primaryToolCategory,
           recommendedOnly: true,
         ),
       );
