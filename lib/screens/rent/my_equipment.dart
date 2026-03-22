@@ -83,64 +83,64 @@ class MyEquipment extends StatelessWidget {
         ],
       ),
 
-      floatingActionButton: Align(
-  alignment: Alignment.centerRight,
-  child: FloatingActionButton.small(
-    onPressed: () {
-      showModalBottomSheet(
-        context: context,
-        builder: (ctx) => Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                '🛠 Dev Tools',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'These are one-time migration tools. Be careful.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  migrateEquipmentStatus(context);
-                },
-                icon: const Icon(Icons.upload),
-                label: const Text('Migrate: isAvailable → status'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  rollbackEquipmentStatus(context);
-                },
-                icon: const Icon(Icons.undo),
-                label: const Text('Rollback: status → isAvailable'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade600,
-                  side: BorderSide(color: Colors.red.shade600),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-    backgroundColor: Colors.black.withOpacity(0.15),
-    elevation: 0,
-    child: const Icon(Icons.build, size: 16, color: Colors.black45),
-  ),
-),
-floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+//       floatingActionButton: Align(
+//   alignment: Alignment.centerRight,
+//   child: FloatingActionButton.small(
+//     onPressed: () {
+//       showModalBottomSheet(
+//         context: context,
+//         builder: (ctx) => Padding(
+//           padding: const EdgeInsets.all(24),
+//           child: Column(
+//             mainAxisSize: MainAxisSize.min,
+//             crossAxisAlignment: CrossAxisAlignment.stretch,
+//             children: [
+//               const Text(
+//                 '🛠 Dev Tools',
+//                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+//               ),
+//               const SizedBox(height: 4),
+//               const Text(
+//                 'These are one-time migration tools. Be careful.',
+//                 style: TextStyle(fontSize: 12, color: Colors.grey),
+//               ),
+//               const SizedBox(height: 16),
+//               ElevatedButton.icon(
+//                 onPressed: () {
+//                   Navigator.pop(ctx);
+//                   migrateEquipmentStatus(context);
+//                 },
+//                 icon: const Icon(Icons.upload),
+//                 label: const Text('Migrate: isAvailable → status'),
+//                 style: ElevatedButton.styleFrom(
+//                   backgroundColor: Colors.blue.shade600,
+//                   foregroundColor: Colors.white,
+//                 ),
+//               ),
+//               const SizedBox(height: 8),
+//               OutlinedButton.icon(
+//                 onPressed: () {
+//                   Navigator.pop(ctx);
+//                   rollbackEquipmentStatus(context);
+//                 },
+//                 icon: const Icon(Icons.undo),
+//                 label: const Text('Rollback: status → isAvailable'),
+//                 style: OutlinedButton.styleFrom(
+//                   foregroundColor: Colors.red.shade600,
+//                   side: BorderSide(color: Colors.red.shade600),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       );
+//     },
+//     backgroundColor: Colors.black.withOpacity(0.15),
+//     elevation: 0,
+//     child: const Icon(Icons.build, size: 16, color: Colors.black45),
+//   ),
+// ),
+// floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
     );
   }
 
@@ -1145,7 +1145,7 @@ Future<void> _deleteEquipment(
         children: [
           Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
           SizedBox(width: 8),
-          Text('Burahin ang Kagamitan'),
+          Flexible(child: Text('Burahin ang Kagamitan')),
         ],
       ),
       content: Column(
