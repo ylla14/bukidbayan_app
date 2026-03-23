@@ -12,6 +12,7 @@ import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/maintenance_service.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/services/strike_service.dart';
+import 'package:bukidbayan_app/services/weather_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -1156,6 +1157,60 @@ Future<bool> _hasLeftReview(String requestId) async {
 
                           // ── ACTION BUTTONS ──
                           const SizedBox(height: 4),
+
+                          // ── Weather postpone button ──
+                          if (isOwner &&
+                              (request.status == RentRequestStatus.approved ||
+                               request.status == RentRequestStatus.readyForPickup ||
+                               request.status == RentRequestStatus.onTheWay) &&
+                              DateTime(request.start.year, request.start.month, request.start.day) ==
+                                  DateTime(now.year, now.month, now.day))
+                            FutureBuilder<bool>(
+                              future: WeatherService()
+                                  .getOrFetchForecast(requestLocationPermission: false)
+                                  .then((forecast) {
+                                    final today = DateTime.now();
+                                    final todayDay = DateTime(today.year, today.month, today.day);
+                                    for (final d in forecast) {
+                                      if (DateTime(d.date.year, d.date.month, d.date.day) == todayDay) {
+                                        return d.isBadWeather;
+                                      }
+                                    }
+                                    return false;
+                                  }),
+                              builder: (ctx, snap) {
+                                final isBad = snap.data == true;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: ElevatedButton.icon(
+                                    onPressed: isBad
+                                        ? () => _postponeForWeather(context, request)
+                                        : null,
+                                    icon: Icon(
+                                      isBad
+                                          ? Icons.thunderstorm_outlined
+                                          : Icons.wb_sunny_outlined,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      isBad
+                                          ? 'Ipagpaliban — Masamang Panahon'
+                                          : 'Ipagpaliban (Maayos ang Panahon)',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isBad
+                                          ? Colors.blue.shade600
+                                          : Colors.grey.shade400,
+                                      foregroundColor: Colors.white,
+                                      minimumSize: const Size(double.infinity, 48),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
 
                           // Owner: Approve / Decline
                           // Owner: Approve / Decline
@@ -2581,6 +2636,167 @@ Future<void> _applyMaintenanceFromConditionReport({
         SnackBar(content: Text('Maintenance error: $e'), backgroundColor: Colors.red),
       );
     }
+  }
+}
+
+// --------------- HELPER: postpone booking due to bad weather ---------------
+Future<void> _postponeForWeather(
+    BuildContext context, RentRequest affectedRequest) async {
+  final today = DateTime.now();
+  final todayDay = DateTime(today.year, today.month, today.day);
+
+  // Fetch all upcoming bookings for this equipment that start today or later.
+  const shiftStatuses = ['pending', 'approved', 'readyForPickup'];
+  final snap = await FirebaseFirestore.instance
+      .collection('rentRequests')
+      .where('itemId', isEqualTo: affectedRequest.itemId)
+      .where('status', whereIn: shiftStatuses)
+      .get();
+
+  final upcoming = snap.docs
+      .map((d) => RentRequest.fromDoc(d))
+      .where((r) {
+        final startDay = DateTime(r.start.year, r.start.month, r.start.day);
+        return !startDay.isBefore(todayDay);
+      })
+      .toList()
+    ..sort((a, b) => a.start.compareTo(b.start));
+
+  if (!context.mounted) return;
+
+  final fmt = DateFormat('MMM d');
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Ipagpaliban Dahil sa Masamang Panahon?'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ang lahat ng booking mula ngayon para sa kagamitang ito ay ililipat ng isang araw. '
+                'Makakatanggap ang mga renter ng abiso at maaari nilang tanggapin o kanselahin.',
+              ),
+              if (upcoming.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Mga Apektadong Booking:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                ...upcoming.map((r) {
+                  final newStart = r.start.add(const Duration(days: 1));
+                  final newEnd = r.end.add(const Duration(days: 1));
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.person_outline,
+                            size: 14, color: Colors.black54),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(r.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13)),
+                              Text(
+                                'Dati: ${fmt.format(r.start)} – ${fmt.format(r.end)}',
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.black54),
+                              ),
+                              Text(
+                                'Bago: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue.shade700,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Huwag'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue.shade600,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Oo, Ipagpaliban'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm != true || !context.mounted) return;
+
+  final db = FirebaseFirestore.instance;
+  final futures = <Future>[];
+
+  for (final r in upcoming) {
+    final newStart = r.start.add(const Duration(days: 1));
+    final newEnd = r.end.add(const Duration(days: 1));
+
+    futures.add(
+      db.collection('rentRequests').doc(r.requestId).update({
+        'start': Timestamp.fromDate(newStart),
+        'end': Timestamp.fromDate(newEnd),
+        'weatherPostponed': true,
+        'originalStart': Timestamp.fromDate(r.start),
+        'originalEnd': Timestamp.fromDate(r.end),
+      }),
+    );
+
+    futures.add(
+      db.collection('notifications').doc(r.renterId).collection('items').add({
+        'type': 'maintenance_reschedule',
+        'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
+        'body': 'Ang iyong booking para sa "${affectedRequest.itemName}" '
+            '(${fmt.format(r.start)} – ${fmt.format(r.end)}) '
+            'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
+            'Bagong petsa: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
+        'requestId': r.requestId,
+        'equipmentId': affectedRequest.itemId,
+        'ownerId': affectedRequest.ownerId,
+        'canCancel': true,
+        'canAccept': true,
+        'newStart': Timestamp.fromDate(newStart),
+        'newEnd': Timestamp.fromDate(newEnd),
+        'originalStart': Timestamp.fromDate(r.start),
+        'originalEnd': Timestamp.fromDate(r.end),
+        'createdAt': FieldValue.serverTimestamp(),
+        'read': false,
+      }),
+    );
+  }
+
+  await Future.wait(futures);
+
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Na-postpone ang mga booking ng isang araw dahil sa masamang panahon.'),
+        backgroundColor: Colors.blue,
+      ),
+    );
   }
 }
 

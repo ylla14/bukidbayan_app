@@ -227,14 +227,14 @@ class _NdviCardState extends State<NdviCard> {
         const SizedBox(height: 8),
         _buildWeatherSection(),
 
-        const SizedBox(height: 14),
-        const Divider(height: 1),
-        const SizedBox(height: 14),
-
-        // ── NDVI section ─────────────────────────────────────────────────
-        _sectionHeader(Icons.satellite_alt_rounded, 'NDVI  ·  Satellite (may be delayed)'),
-        const SizedBox(height: 8),
-        _buildNdviSection(),
+        // NDVI section hidden — free API tier does not support NDVI retrieval.
+        // Re-enable when a paid Agromonitoring plan is active.
+        // const SizedBox(height: 14),
+        // const Divider(height: 1),
+        // const SizedBox(height: 14),
+        // _sectionHeader(Icons.satellite_alt_rounded, 'NDVI  ·  Satellite (may be delayed)'),
+        // const SizedBox(height: 8),
+        // _buildNdviSection(),
       ],
     );
   }
@@ -252,10 +252,10 @@ class _NdviCardState extends State<NdviCard> {
     final textColor   = muddy ? Colors.red.shade800   : Colors.green.shade800;
     final icon        = muddy ? Icons.warning_rounded : Icons.check_circle_rounded;
     final message     = muddy
-        ? 'Soil moisture is $pct% — the soil is muddy. Machine operation '
-          'is not recommended under these conditions.'
-        : 'Soil moisture is $pct% — the soil is not muddy. Conditions '
-          'are suitable for machine operation.';
+        ? 'Ang moisture ng lupa ay $pct% — maputik ang lupa. Hindi inirerekomenda ang '
+          'operasyon ng makinarya sa mga kondisyong ito.'
+        : 'Ang moisture ng lupa ay $pct% — hindi maputik ang lupa. Angkop ang mga '
+          'kondisyon para sa operasyon ng makinarya.';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
