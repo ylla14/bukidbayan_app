@@ -506,7 +506,7 @@ class _RentScreenState extends State<RentScreen> {
                       Expanded(
                         child: CustomIconButton(
                           icon: const Icon(Icons.shopping_cart_outlined),
-                          label: const Text('My Equipment'),
+                          label: const Text('Aking Equipment'),
                           onPressed: () {
                             Navigator.push(
                               context,

@@ -62,8 +62,8 @@ class _RentalsListState extends State<RentalsList> {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   String get _title => widget.mode == RentalsListMode.myRequests
-      ? 'My Rental Requests'
-      : 'Requests for My Equipment';
+      ? 'Aking Rental Requests'
+      : 'Requests sa aking Kagamitan';
 
   Color _statusColor(RentRequestStatus status) {
     switch (status) {

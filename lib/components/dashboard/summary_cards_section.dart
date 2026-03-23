@@ -171,40 +171,40 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
       scores.add(_rainScore(rain));
 
       if (temp >= 35) {
-        signals.add('High heat expected (${temp.toStringAsFixed(1)}C).');
+        signals.add('Inaasahang matinding init (${temp.toStringAsFixed(1)}C).');
       } else if (temp <= 20) {
-        signals.add('Cool conditions (${temp.toStringAsFixed(1)}C).');
+        signals.add('Malamig na kondisyon (${temp.toStringAsFixed(1)}C).');
       } else {
-        signals.add('Temperature is within a workable range.');
+        signals.add('Ang temperatura ay nasa katanggap-tanggap na antas.');
       }
 
       if (rain >= 70) {
         signals.add(
-          'High rain chance (${rain.round()}%) may disrupt field work.',
+          'Mataas na tsansa ng ulan (${rain.round()}%) na maaaring makasagabal sa trabaho sa bukid.',
         );
       } else if (rain >= 45) {
         signals.add(
-          'Moderate rain chance (${rain.round()}%) - plan with caution.',
+          'Katamtamang tsansa ng ulan (${rain.round()}%) - mag-ingat sa pagpaplano.',
         );
       } else {
-        signals.add('Rain chance is relatively low (${rain.round()}%).');
+        signals.add('Ang tsansa ng ulan ay medyo mababa (${rain.round()}%).');
       }
     } else {
-      signals.add('Weather forecast is currently unavailable.');
+      signals.add('Hindi available ang weather forecast sa ngayon.');
     }
 
     if (_soil != null) {
       final moisture = _soil!.moisturePct;
       scores.add(_moistureScore(moisture));
       if (moisture > 40) {
-        signals.add('Soil is muddy (${moisture.toStringAsFixed(1)}%).');
+        signals.add('Maputik ang lupa (${moisture.toStringAsFixed(1)}%).');
       } else if (moisture < 20) {
-        signals.add('Soil is dry (${moisture.toStringAsFixed(1)}%).');
+        signals.add('Tuyo ang lupa (${moisture.toStringAsFixed(1)}%).');
       } else {
-        signals.add('Soil moisture is in a workable band.');
+        signals.add('Ang moisture ng lupa ay nasa angkop na antas.');
       }
     } else {
-      signals.add('Soil moisture data is unavailable (no farm polygon).');
+      signals.add('Hindi available ang datos ng kahalumigmigan ng lupa (walang farm polygon).');
     }
 
     final readinessScore = scores.isEmpty
@@ -213,13 +213,13 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
 
     if (_myCrops.isEmpty) {
       return _ToolReadinessInsight(
-        statusLabel: 'Needs setup',
+        statusLabel: 'Kailangang i-setup',
         statusColor: Colors.blueGrey,
         statusIcon: Icons.info_outline_rounded,
         season: season,
-        headline: 'Add your crops to unlock tool timing insights.',
+        headline: 'Idagdag ang iyong mga pananim para ma-unlock ang mga insight sa timing ng kagamitan.',
         summary:
-            'Set your crops in the Crops in Season section so readiness can be matched to your farm.',
+            'Itakda ang iyong mga pananim sa seksyon ng Mga Pananim sa Panahon para makatugma sa iyong bukid.',
         signals: signals,
       );
     }
@@ -229,64 +229,64 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
 
     if (_myToolCategories.isEmpty) {
       return _ToolReadinessInsight(
-        statusLabel: 'No tools',
+        statusLabel: 'Walang kagamitan',
         statusColor: Colors.orange,
         statusIcon: Icons.build_circle_outlined,
         season: season,
-        headline: 'No owned tool categories were found yet.',
+        headline: 'Wala pang nahanap na kategorya ng kagamitan.',
         summary:
-            'For your crops (${_previewList(_myCrops)}), recommended tools include ${_previewList(recommended)}.',
+            'Para sa iyong mga pananim (${_previewList(_myCrops)}), kasama sa mga inirerekomendang kagamitan ang ${_previewList(recommended)}.',
         signals: signals,
       );
     }
 
     if (matchingTools.isEmpty) {
       return _ToolReadinessInsight(
-        statusLabel: 'No match',
+        statusLabel: 'Walang tugma',
         statusColor: Colors.orange,
         statusIcon: Icons.link_off_rounded,
         season: season,
-        headline: 'Current tools do not directly match your crop mix.',
+        headline: 'Ang mga kasalukuyang kagamitan ay hindi direktang tugma sa iyong mga pananim.',
         summary:
-            'Your crops: ${_previewList(_myCrops)}. Owned tools: ${_previewList(_myToolCategories)}. Suggested: ${_previewList(recommended)}.',
+            'Iyong mga pananim: ${_previewList(_myCrops)}. Mga kagamitan: ${_previewList(_myToolCategories)}. Mungkahi: ${_previewList(recommended)}.',
         signals: signals,
       );
     }
 
     if (readinessScore >= 75) {
       return _ToolReadinessInsight(
-        statusLabel: 'Great timing',
+        statusLabel: 'Magandang oras',
         statusColor: Colors.green,
         statusIcon: Icons.check_circle_rounded,
         season: season,
-        headline: 'This looks like a strong window to use your matched tools.',
+        headline: 'Mukhang magandang pagkakataon para gamitin ang iyong mga naitugmang kagamitan.',
         summary:
-            'Matched tools for your crops (${_previewList(_myCrops)}): ${_previewList(matchingTools)}.',
+            'Mga naitugmang kagamitan para sa iyong mga pananim (${_previewList(_myCrops)}): ${_previewList(matchingTools)}.',
         signals: signals,
       );
     }
 
     if (readinessScore >= 50) {
       return _ToolReadinessInsight(
-        statusLabel: 'Use caution',
+        statusLabel: 'Mag-ingat',
         statusColor: Colors.orange,
         statusIcon: Icons.warning_amber_rounded,
         season: season,
-        headline: 'You can proceed, but field conditions need caution.',
+        headline: 'Maaari kang magpatuloy, ngunit kailangan ng pag-iingat sa kondisyon ng bukid.',
         summary:
-            'Matched tools: ${_previewList(matchingTools)}. Monitor weather and soil before deploying.',
+            'Mga naitugmang kagamitan: ${_previewList(matchingTools)}. Subaybayan ang panahon at lupa bago gamitin.',
         signals: signals,
       );
     }
 
     return _ToolReadinessInsight(
-      statusLabel: 'Not ideal',
+      statusLabel: 'Hindi angkop',
       statusColor: Colors.red,
       statusIcon: Icons.cancel_rounded,
       season: season,
-      headline: 'This is not an ideal window for tool operation.',
+      headline: 'Hindi ito ang pinakamainam na pagkakataon para gamitin ang mga kagamitan.',
       summary:
-          'Matched tools exist (${_previewList(matchingTools)}), but conditions are currently risky.',
+          'May mga naitugmang kagamitan (${_previewList(matchingTools)}), ngunit ang kondisyon ay peligroso sa ngayon.',
       signals: signals,
     );
   }
@@ -347,7 +347,7 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
           Text(insight.summary, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
           Text(
-            'Season: ${insight.season}',
+            'Panahon: ${insight.season}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Colors.black54,
               fontWeight: FontWeight.w600,
@@ -395,10 +395,10 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
         : '--%';
     final tempLabel = _today != null
         ? (_today!.tempMaxC >= 35
-              ? 'Feels very hot'
+              ? 'Napakaainit'
               : _today!.tempMaxC >= 30
-              ? 'Feels hot'
-              : 'Comfortable')
+              ? 'Mainit'
+              : 'Komportable')
         : 'No data';
     final rainLabel = _today?.description ?? 'No data';
 
@@ -406,7 +406,7 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
     final moistureValue = hasSoil ? '${_soil!.moisturePct.round()}%' : '--';
     final moistureLabel = hasSoil
         ? _moistureLabel(_soil!.moisturePct)
-        : 'No farm registered';
+        : 'Walang nairehistrong bukid';
     final isMuddy = hasSoil && _soil!.isMuddy;
     final insight = _buildToolReadinessInsight();
 
@@ -419,7 +419,7 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
             children: [
               DashboardSummaryCard(
                 icon: Icons.thermostat,
-                title: 'Temperature',
+                title: 'Temperatura',
                 value: tempValue,
                 subtitle: tempLabel,
                 backgroundColor: const Color(0xFFFFF3E0),
@@ -428,7 +428,7 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
               const SizedBox(width: 12),
               DashboardSummaryCard(
                 icon: Icons.water_drop,
-                title: 'Rain Chance',
+                title: 'Tsansa ng Ulan',
                 value: rainValue,
                 subtitle: rainLabel,
                 backgroundColor: const Color(0xFFE3F2FD),
@@ -439,7 +439,7 @@ class _SummaryCardsSectionState extends State<SummaryCardsSection> {
                 icon: isMuddy
                     ? Icons.warning_amber_rounded
                     : Icons.grass_rounded,
-                title: 'Soil Moisture',
+                title: 'Moisture ng Lupa',
                 value: moistureValue,
                 subtitle: moistureLabel,
                 backgroundColor: isMuddy

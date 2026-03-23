@@ -15,7 +15,7 @@ class ActionButtonsSection extends StatelessWidget {
       children: [
         // Section label
         Text(
-          "Quick Actions",
+          "Mabilis na Aksyon",
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -28,7 +28,7 @@ class ActionButtonsSection extends StatelessWidget {
             Expanded(
               child: _ActionCard(
                 icon: Icons.add_box_rounded,
-                label: "My Rental\nRequests",
+                label: "Aking Rental\nRequests",
                 color: lightColorScheme.primary,
                 onTap: () => Navigator.push(
                   context,
@@ -42,7 +42,7 @@ class ActionButtonsSection extends StatelessWidget {
             Expanded(
               child: _ActionCard(
                 icon: Icons.inbox_rounded,
-                label: "Incoming\nRequests",
+                label: "Paparating na\nRequests",
                 color: lightColorScheme.primary,
                 onTap: () => Navigator.push(
                   context,
@@ -60,7 +60,7 @@ class ActionButtonsSection extends StatelessWidget {
         // Full-width earnings button
         _ActionCard(
           icon: Icons.payments_rounded,
-          label: "Total Earnings from Completed Rentals",
+          label: "Kabuuang Kita mula sa Natapos na Renta",
           color: lightColorScheme.primary,
           onTap: () => Navigator.push(
             context,

@@ -7,9 +7,9 @@ class GreetingSection extends StatelessWidget {
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return "Magandang Umaga";
+    if (hour < 17) return "Magandang Tanghali";
+    return "Magandang Gabi";
   }
 
   @override
@@ -28,9 +28,10 @@ class GreetingSection extends StatelessWidget {
           children: [
             Text(
               "${_getGreeting()}, $name",
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.bold,
+      fontSize: 19, // adjust as needed
+    ),
             ),
             const SizedBox(height: 4),
             Text(

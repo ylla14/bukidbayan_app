@@ -35,7 +35,7 @@ class MyEquipment extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'My Equipment',
+          'Aking Equipment',
           style: TextStyle(color: lightColorScheme.onPrimary),
         ),
         flexibleSpace: Container(

@@ -51,7 +51,7 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
       return _buildCard(
         child: const Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Sign in to view your smart calendar.'),
+          child: Text('Mag-sign in para makita ang iyong matalinong kalendaryo.'),
         ),
       );
     }
@@ -72,7 +72,7 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
           return _buildCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('Unable to load calendar: ${snapshot.error}'),
+              child: Text('Hindi ma-load ang kalendaryo: ${snapshot.error}'),
             ),
           );
         }
@@ -82,7 +82,7 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
           return _buildCard(
             child: const Padding(
               padding: EdgeInsets.all(16),
-              child: Text('No calendar data yet.'),
+              child: Text('Wala pang datos sa kalendaryo.'),
             ),
           );
         }
@@ -329,7 +329,7 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Selected day: $formattedDate',
+            'Napiling araw: $formattedDate',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -358,18 +358,18 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
             ),
           ] else
             const Text(
-              'No events for this day.',
+              'Walang mga kaganapan para sa araw na ito.',
               style: TextStyle(fontSize: 12.5),
             ),
           const SizedBox(height: 10),
           const Text(
-            'Suggested actions',
+            'Mga Mungkahing Aksyon',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           if (suggestions.isEmpty)
             const Text(
-              'No actions needed.',
+              'Walang kailangang aksyon.',
               style: TextStyle(fontSize: 12, color: Colors.black54),
             )
           else
@@ -499,7 +499,7 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Unable to open equipment right now.'),
+              content: Text('Hindi ma-buksan ang kagamitan sa ngayon.'),
             ),
           );
         }
