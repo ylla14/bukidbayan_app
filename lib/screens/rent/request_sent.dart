@@ -83,22 +83,22 @@ class _RequestSentPageState extends State<RequestSentPage> {
         return const Color(0xFFF59E0B);
       case RentRequestStatus.approved:
         return const Color(0xFF3B82F6);
-      case RentRequestStatus.readyForPickup: // ✅
-      case RentRequestStatus.pickedUp:       // ✅
-      case RentRequestStatus.onTheWay:
+      case RentRequestStatus.readyForPickup:
+      case RentRequestStatus.onTheWay: 
+        return const Color(0xFFF59E0B);
+      case RentRequestStatus.pickedUp:      
       case RentRequestStatus.inProgress:
-        return const Color(0xFF8B5CF6);
       case RentRequestStatus.retrieving:
       case RentRequestStatus.returned:
-        return const Color(0xFF06B6D4);
       case RentRequestStatus.finished:
       case RentRequestStatus.completed:
-        return const Color(0xFF10B981);
+        return lightColorScheme.primary;
       case RentRequestStatus.declined:
       case RentRequestStatus.canceled:
-        return const Color(0xFFEF4444);
+        return lightColorScheme.error;
     }
   }
+
 
   IconData _statusIcon(RentRequestStatus status) {
     switch (status) {
@@ -1297,7 +1297,7 @@ if (showApproveDecline && now.isBefore(request.start))
                               _actionButton(
                                 label: 'Mark as Ready for Pick Up',
                                 icon: Icons.store_rounded,
-                                color: const Color(0xFF0EA5E9),
+                                color: const Color(0xFF3B82F6),
                                 onPressed: () {
                                   context.read<RequestBloc>().add(
                                     RequestStatusUpdated(request.requestId, RentRequestStatus.readyForPickup),
@@ -1470,7 +1470,7 @@ if (showApproveDecline && now.isBefore(request.start))
                           _actionButton(
                             label: 'Confirm Retrieved',
                             icon: Icons.task_alt_rounded,
-                            color: const Color(0xFF10B981),
+                            color: lightColorScheme.primary,
                             onPressed: () async {
                               final days = DateTime.now()
                                   .difference(request.end)

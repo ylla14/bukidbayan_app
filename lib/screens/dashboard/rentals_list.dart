@@ -67,18 +67,18 @@ class _RentalsListState extends State<RentalsList> {
 
   Color _statusColor(RentRequestStatus status) {
     switch (status) {
-      case RentRequestStatus.pending:        return const Color(0xFFE67E22);
-      case RentRequestStatus.approved:       return const Color(0xFF2980B9);
-      case RentRequestStatus.readyForPickup:
+      case RentRequestStatus.pending:        return const Color(0xFFF59E0B);
+      case RentRequestStatus.approved:       return const Color(0xFF3B82F6);
+      case RentRequestStatus.onTheWay:   
+      case RentRequestStatus.readyForPickup: return const Color(0xFFF59E0B);
       case RentRequestStatus.pickedUp:
-      case RentRequestStatus.onTheWay:       return const Color(0xFF5C6BC0);
       case RentRequestStatus.inProgress:
-      case RentRequestStatus.retrieving:     return const Color(0xFF7B1FA2);
-      case RentRequestStatus.returned:       return const Color(0xFF00897B);
+      case RentRequestStatus.retrieving:     
+      case RentRequestStatus.returned:     
       case RentRequestStatus.finished:
-      case RentRequestStatus.completed:      return const Color(0xFF2E7D32);
+      case RentRequestStatus.completed:      return lightColorScheme.primary; // Forest Green (Active Brand Color)
       case RentRequestStatus.declined:
-      case RentRequestStatus.canceled:       return const Color(0xFFC0392B);
+      case RentRequestStatus.canceled:       return lightColorScheme.error;
     }
   }
 

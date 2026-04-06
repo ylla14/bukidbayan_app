@@ -415,8 +415,8 @@ class MyEquipment extends StatelessWidget {
                                 equipment.status == EquipmentStatus.unavailable
                                 ? Colors.grey.shade400
                                 : equipment.status == EquipmentStatus.available
-                                ? Colors.orange.shade600
-                                : Colors.green.shade600,
+                                ? Color(0xFFF59E0B)
+                                : lightColorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
