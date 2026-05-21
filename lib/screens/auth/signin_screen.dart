@@ -24,7 +24,6 @@ class _SignInScreenState extends State<SignInScreen> {
   bool rememberPassword = true;
   bool _isPasswordHidden = true;
   bool _isSigningIn = false;
-  bool _isCoopLogin = false;
 
   @override
   Widget build(BuildContext context) {
@@ -82,62 +81,8 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 36),
 
-                  // ── Co-op Checkbox ────────────────────────────────────────
-                  GestureDetector(
-                    onTap: () => setState(() => _isCoopLogin = !_isCoopLogin),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: _isCoopLogin
-                            ? lightColorScheme.primary.withValues(alpha: 0.08)
-                            : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _isCoopLogin
-                              ? lightColorScheme.primary.withValues(alpha: 0.5)
-                              : Colors.black12,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: _isCoopLogin,
-                              onChanged: (v) => setState(() => _isCoopLogin = v!),
-                              activeColor: lightColorScheme.primary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Icon(
-                            Icons.groups_rounded,
-                            size: 20,
-                            color: _isCoopLogin ? lightColorScheme.primary : Colors.black45,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Sign in as Co-op Account',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: _isCoopLogin ? lightColorScheme.primary : Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Identifier Field (hidden for co-op) ───────────────────
-                  if (!_isCoopLogin) ...[
-                    Align(
+                  // ── Identifier Field ──────────────────────────────────────
+                  Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Email or Phone Number',
@@ -154,7 +99,6 @@ class _SignInScreenState extends State<SignInScreen> {
                       keyboardType: TextInputType.text,
                       style: const TextStyle(fontSize: 17),
                       validator: (value) {
-                        if (_isCoopLogin) return null;
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email or phone number';
                         }
@@ -202,8 +146,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 22),
-                  ],
+                  const SizedBox(height: 22),
 
                   // ── Password Field ────────────────────────────────────────
                   Align(
@@ -397,9 +340,7 @@ class _SignInScreenState extends State<SignInScreen> {
                               setState(() => _isSigningIn = true);
 
                               try {
-                                final identifier = _isCoopLogin
-                                    ? AuthService.coopPhone
-                                    : identifierController.text;
+                                final identifier = identifierController.text;
 
                                 final user = await authService.login(
                                   identifier,
