@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/components/crop_preference_dialog.dart';
+import 'package:bukidbayan_app/screens/admin/admin_screen.dart';
 import 'package:bukidbayan_app/screens/crowdfunding_screen.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
@@ -70,7 +71,7 @@ class _BottomNavState extends State<BottomNav> {
             label: 'Equipment',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.volunteer_activism), // 🤝 Crowdfunding
+            icon: Icon(Icons.volunteer_activism), // Crowdfunding
             label: 'Campaigns',
           ),
           BottomNavigationBarItem(
@@ -79,19 +80,6 @@ class _BottomNavState extends State<BottomNav> {
           ),
         ],
       ),
-
-      // body: screens[currentIndex],
-      // bottomNavigationBar: NavigationBar(
-      //   animationDuration: const Duration(seconds: 1),
-      //   selectedIndex: currentIndex,
-      //   onDestinationSelected: (index){
-      //     setState(() {
-      //       currentIndex = index;
-      //     });
-      //   },
-      //   backgroundColor: lightColorScheme.primary,
-      //   destinations: _navBarItems,
-      // ),
     );
   }
 }
@@ -113,12 +101,48 @@ class _BottomNavState extends State<BottomNav> {
 //   )
 // ];
 
-/// Minimal shell for the co-op account — only the Campaigns screen is shown.
-class CoopBottomNav extends StatelessWidget {
+/// Minimal shell for the co-op account — shows Admin Dashboard instead of regular navigation.
+class CoopBottomNav extends StatefulWidget {
   const CoopBottomNav({super.key});
 
   @override
+  State<CoopBottomNav> createState() => _CoopBottomNavState();
+}
+
+class _CoopBottomNavState extends State<CoopBottomNav> {
+  int currentIndex = 0;
+
+  final List<Widget> coopScreens = [
+    CrowdfundingScreen(isCoop: true),
+    AdminScreen(isCoop: true),
+  ];
+
+  @override
   Widget build(BuildContext context) {
-    return CrowdfundingScreen(isCoop: true);
+    return Scaffold(
+      body: coopScreens[currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: currentIndex,
+        onTap: (index) {
+          setState(() {
+            currentIndex = index;
+          });
+        },
+        backgroundColor: lightColorScheme.primary,
+        unselectedItemColor: Colors.white54,
+        selectedItemColor: Colors.white,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.volunteer_activism),
+            label: 'Campaigns',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.admin_panel_settings),
+            label: 'Admin',
+          ),
+        ],
+      ),
+    );
   }
 }
