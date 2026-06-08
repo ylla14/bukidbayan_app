@@ -7,6 +7,7 @@ import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/maintenance_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -976,6 +977,38 @@ class _MyEquipmentState extends State<MyEquipment> {
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.amber.shade800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            // Retirement suggestion badge
+                            if (equipment.damageReportCount >= StrikeService.kDamageRetirementThreshold) ...[
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.deepOrange.shade50,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                      color: Colors.deepOrange.shade300),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.archive_outlined,
+                                        size: 10,
+                                        color: Colors.deepOrange.shade700),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Isuggest ang Pagreretiro',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.deepOrange.shade700,
                                       ),
                                     ),
                                   ],

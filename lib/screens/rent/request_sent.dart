@@ -1665,8 +1665,9 @@ if (showApproveDecline && now.isBefore(request.start))
                                     builder: (_) => ReportRenterPage(
                                       requestId: request.requestId,
                                       renterId: request.renterId,
-                                      renterName: request.name,   
+                                      renterName: request.name,
                                       itemName: request.itemName,
+                                      equipmentId: request.itemId,
                                     ),
                                   ),
                                 );

@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
+import 'package:bukidbayan_app/services/maintenance_service.dart';
 import 'package:bukidbayan_app/services/strike_service.dart';
+import 'package:intl/intl.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -18,6 +20,7 @@ class ReportRenterPage extends StatefulWidget {
   final String renterId;
   final String renterName;
   final String itemName;
+  final String equipmentId;
 
   const ReportRenterPage({
     super.key,
@@ -25,6 +28,7 @@ class ReportRenterPage extends StatefulWidget {
     required this.renterId,
     required this.renterName,
     required this.itemName,
+    required this.equipmentId,
   });
 
   @override
@@ -179,6 +183,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
         ownerId: ownerId,
         reason: _selectedReason!,
         details: _detailsController.text.trim(),
+        equipmentId: widget.equipmentId,
         evidenceUrls: evidenceUrls,
       );
 
@@ -194,10 +199,11 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
 
   void _showSuccessDialog() {
     final cs = Theme.of(context).colorScheme;
+    final isDamageReport = StrikeService.kDamageReasons.contains(_selectedReason);
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
         content: Column(
@@ -233,17 +239,69 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
                 height: 1.5,
               ),
             ),
+            if (isDamageReport) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.build_outlined,
+                        size: 16, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Gusto mo bang i-schedule ang kagamitan para sa maintenance?',
+                        style: TextStyle(
+                            fontSize: 12.5, color: Colors.orange.shade800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
+            if (isDamageReport)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.build_rounded, size: 16),
+                  label: const Text(
+                    'I-schedule ang Maintenance',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(dialogCtx);
+                    Navigator.pop(context);
+                    _showMaintenancePrompt(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            if (isDamageReport) const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogCtx);
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: cs.primary,
-                  foregroundColor: cs.onPrimary,
+                  backgroundColor:
+                      isDamageReport ? Colors.grey.shade200 : cs.primary,
+                  foregroundColor:
+                      isDamageReport ? cs.onSurface : cs.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -260,6 +318,237 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _showMaintenancePrompt(BuildContext ctx) async {
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: ctx,
+      initialDate: today.add(const Duration(days: 1)),
+      firstDate: today.add(const Duration(days: 1)),
+      lastDate: today.add(const Duration(days: 365)),
+      helpText: 'Piliin ang Katapusan ng Maintenance',
+    );
+    if (picked == null || !ctx.mounted) return;
+
+    final maintenanceEnd =
+        DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
+    final durationDays = maintenanceEnd.difference(today).inDays + 1;
+    final isUnforeseen = durationDays > 7;
+
+    final svc = MaintenanceService();
+    final affected = await svc.fetchAffectedBookings(
+      equipmentId: widget.equipmentId,
+      today: today,
+      maintenanceEnd: maintenanceEnd,
+      isUnforeseen: isUnforeseen,
+    );
+    if (!ctx.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              isUnforeseen ? Icons.warning_amber_rounded : Icons.build_outlined,
+              color: isUnforeseen ? Colors.red : Colors.orange,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(isUnforeseen
+                  ? 'Hindi Inaasahang Maintenance'
+                  : 'I-schedule ang Maintenance'),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Panahon ng Maintenance: ${DateFormat('MMM d').format(today)} – ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$durationDays na araw',
+                  style: TextStyle(
+                    color: isUnforeseen ? Colors.red : Colors.orange.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isUnforeseen
+                        ? Colors.red.shade50
+                        : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isUnforeseen
+                          ? Colors.red.shade200
+                          : Colors.orange.shade300,
+                    ),
+                  ),
+                  child: Text(
+                    isUnforeseen
+                        ? 'Ang maintenance ay higit sa 7 araw. Lahat ng booking sa panahong ito ay IKAKANSELA.'
+                        : 'Ang mga booking sa panahong ito ay ire-reschedule pagkatapos ng maintenance.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isUnforeseen
+                          ? Colors.red.shade700
+                          : Colors.orange.shade800,
+                    ),
+                  ),
+                ),
+                if (affected.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Mga Apektadong Booking (${affected.length})',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  ...affected.map((b) => Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: b.willBeCancelled
+                              ? Colors.red.shade50
+                              : Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: b.willBeCancelled
+                                ? Colors.red.shade200
+                                : Colors.orange.shade300,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              b.willBeCancelled
+                                  ? Icons.cancel_outlined
+                                  : Icons.event_repeat,
+                              size: 16,
+                              color: b.willBeCancelled
+                                  ? Colors.red.shade700
+                                  : Colors.orange.shade800,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(b.renterName,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13)),
+                                  Text(
+                                    '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade700),
+                                  ),
+                                  if (!b.willBeCancelled &&
+                                      b.newStart != null &&
+                                      b.newEnd != null) ...[
+                                    const SizedBox(height: 2),
+                                    Row(children: [
+                                      Icon(Icons.arrow_forward,
+                                          size: 12,
+                                          color: Colors.orange.shade700),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.orange.shade800,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ]),
+                                  ],
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    b.willBeCancelled
+                                        ? 'Ikakansela'
+                                        : 'Ire-reschedule',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: b.willBeCancelled
+                                          ? Colors.red.shade700
+                                          : Colors.orange.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  const Text('Walang booking ang maaapektuhan.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey)),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx, false),
+            child: const Text('Kanselahin'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  isUnforeseen ? Colors.red : Colors.orange.shade600,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dCtx, true),
+            child: const Text('Kumpirmahin'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !ctx.mounted) return;
+
+    showDialog(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await svc.scheduleMaintenanceForEquipment(
+        equipmentId: widget.equipmentId,
+        equipmentName: widget.itemName,
+        today: today,
+        maintenanceEnd: maintenanceEnd,
+      );
+      if (ctx.mounted) Navigator.pop(ctx);
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(isUnforeseen
+              ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
+              : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.'),
+          backgroundColor: isUnforeseen ? Colors.red : Colors.green,
+          duration: const Duration(seconds: 4),
+        ));
+      }
+    } catch (e) {
+      if (ctx.mounted) Navigator.pop(ctx);
+      if (ctx.mounted) _showSnack('Hindi na-schedule ang maintenance. Subukan muli.');
+    }
   }
 
   void _showSnack(String msg) {
