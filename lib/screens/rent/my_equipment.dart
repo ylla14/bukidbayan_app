@@ -1551,7 +1551,7 @@ class _MyEquipmentState extends State<MyEquipment> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+              child: const Text('Kanselahin')), // BLT123: TL ENG
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor:
@@ -1559,7 +1559,7 @@ class _MyEquipmentState extends State<MyEquipment> {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Kumpirmahin'),
+            child: const Text('Kumpirmahin'), // BLT123: TL ENG
           ),
         ],
       ),
@@ -1732,7 +1732,7 @@ class _MyEquipmentState extends State<MyEquipment> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+              child: const Text('Kanselahin')), // BLT123: TL ENG
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade600,
@@ -1839,7 +1839,7 @@ class _MyEquipmentState extends State<MyEquipment> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+              child: const Text('Kanselahin')), // BLT123: TL ENG
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
@@ -2207,7 +2207,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Kanselahin'),
+                  child: const Text('Kanselahin'), // BLT123: TL ENG
                 ),
               ),
               const SizedBox(width: 12),
@@ -2222,7 +2222,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                         : Colors.orange.shade600,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Kumpirmahin'),
+                  child: const Text('Kumpirmahin'), // BLT123: TL ENG
                 ),
               ),
             ],
@@ -2467,14 +2467,14 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Huwag')),
+              child: const Text('Huwag')), // BLT123: TL ENG
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade600,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Oo, Ipagpaliban'),
+            child: const Text('Oo, Ipagpaliban'), // BLT123: TL ENG
           ),
         ],
       ),

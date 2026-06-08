@@ -129,7 +129,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Hindi pa'),
+                              child: const Text('Hindi pa'), // BLT123: TL ENG
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -137,7 +137,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Oo, Tanggapin'),
+                              child: const Text('Oo, Tanggapin'), // BLT123: TL ENG
                             ),
                           ],
                         ),
@@ -203,7 +203,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Hindi pa'),
+                              child: const Text('Hindi pa'), // BLT123: TL ENG
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -211,7 +211,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 foregroundColor: Colors.white,
                               ),
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Oo, Kanselahin'),
+                              child: const Text('Oo, Kanselahin'), // BLT123: TL ENG
                             ),
                           ],
                         ),
@@ -342,7 +342,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                             Icons.check_circle_outline,
                                             size: 16,
                                           ),
-                                          label: const Text('Tanggapin'),
+                                          label: const Text('Tanggapin'), // BLT123: TL ENG
                                           style: OutlinedButton.styleFrom(
                                             foregroundColor:
                                                 Colors.green.shade700,
@@ -365,7 +365,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                             Icons.cancel_outlined,
                                             size: 16,
                                           ),
-                                          label: const Text('Kanselahin'),
+                                          label: const Text('Kanselahin'), // BLT123: TL ENG
                                           style: OutlinedButton.styleFrom(
                                             foregroundColor:
                                                 Colors.red.shade700,

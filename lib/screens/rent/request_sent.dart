@@ -1679,7 +1679,7 @@ if (showApproveDecline && now.isBefore(request.start))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: _actionButton(
-                                label: 'Kanselahin ang Request',
+                                label: 'Kanselahin ang Request', // BLT123: TL ENG
                                 icon: Icons.cancel_outlined,
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
@@ -1694,7 +1694,7 @@ if (showApproveDecline && now.isBefore(request.start))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: _actionButton(
-                                label: 'Kanselahin ang Request',
+                                label: 'Kanselahin ang Request', // BLT123: TL ENG
                                 icon: Icons.cancel_outlined,
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
@@ -1883,7 +1883,7 @@ if (showApproveDecline && now.isBefore(request.start))
                     otherController.dispose();
                     Navigator.pop(dialogContext);
                   },
-                  child: const Text('Kanselahin'),
+                  child: const Text('Kanselahin'), // BLT123: TL ENG
                 ),
                 ElevatedButton(
                   onPressed: selectedReason == null
@@ -1901,7 +1901,7 @@ if (showApproveDecline && now.isBefore(request.start))
                         },
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red),
-                  child: const Text('Tanggihan',
+                  child: const Text('Tanggihan', // BLT123: TL ENG
                       style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -2284,7 +2284,7 @@ void _showEquipmentConditionDialog(
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Kanselahin'),
+                child: const Text('Kanselahin'), // BLT123: TL ENG
               ),
               ElevatedButton(
                 onPressed: equipmentGood == null
@@ -2323,7 +2323,7 @@ void _showEquipmentConditionDialog(
                       },
                 style: ElevatedButton.styleFrom(backgroundColor: lightColorScheme.primary),
                 child: const Text(
-                  'Isumite at Tapusin',
+                  'Isumite at Tapusin', // BLT123: TL ENG
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -2732,7 +2732,7 @@ Future<void> _postponeForWeather(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Huwag'),
+          child: const Text('Huwag'), // BLT123: TL ENG
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -2740,7 +2740,7 @@ Future<void> _postponeForWeather(
             foregroundColor: Colors.white,
           ),
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Oo, Ipagpaliban'),
+          child: const Text('Oo, Ipagpaliban'), // BLT123: TL ENG
         ),
       ],
     ),
@@ -2847,7 +2847,7 @@ Future<void> _sendNotification({
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Bumalik'),
+            child: const Text('Bumalik'), // BLT123: TL ENG
           ),
           ElevatedButton(
             onPressed: () async {

@@ -183,7 +183,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Kanselahin'),
+              child: const Text('Kanselahin'), // BLT123: TL ENG
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -193,7 +193,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.pop(context, true),
-              child: Text(isAdded ? 'Alisin' : 'Idagdag'),
+              child: Text(isAdded ? 'Alisin' : 'Idagdag'), // BLT123: TL ENG
             ),
           ],
         );

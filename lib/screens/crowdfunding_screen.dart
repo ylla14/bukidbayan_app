@@ -301,7 +301,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Kanselahin'),
+                child: const Text('Kanselahin'), // BLT123: TL ENG
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
@@ -602,7 +602,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               items.addAll(const [
                 PopupMenuItem<String>(
                   value: 'edit',
-                  child: Text('I-edit ang Draft'),
+                  child: Text('I-edit ang Draft'), // BLT123: TL ENG
                 ),
                 PopupMenuItem<String>(
                   value: 'delete',
@@ -744,7 +744,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                   ),
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.ended,
-                    label: Text('Tapos na'),
+                    label: Text('Tapos na'), // BLT123: TL ENG
                   ),
                 ],
                 selected: {_listingFilter},
