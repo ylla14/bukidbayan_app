@@ -76,7 +76,7 @@ class StrikeService {
   /// Immediately bans the renter for [kBlockDurationMisuse] days without
   /// touching their strike count. Used for equipment damage and misuse reports.
   static const kDamageReasons = {'damaged_equipment', 'missing_parts', 'misuse'};
-  static const kDamageRetirementThreshold = 3;
+  static const kDamageRetirementThreshold = 5;
 
   Future<void> issueMisuseBan({
     required String requestId,
