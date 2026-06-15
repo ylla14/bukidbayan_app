@@ -127,51 +127,54 @@ CampaignReport _buildReport() {
 }
 
 void main() {
-  testWidgets('supporter table defaults to highest amount and supports sorting/filtering', (tester) async {
-    final report = _buildReport();
-    final service = FakeCampaignReportService(report);
+  testWidgets(
+    'supporter table defaults to highest amount and supports sorting/filtering',
+    (tester) async {
+      final report = _buildReport();
+      final service = FakeCampaignReportService(report);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CampaignReportScreen(
-          campaignId: report.campaign.id,
-          serviceOverride: service,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CampaignReportScreen(
+            campaignId: report.campaign.id,
+            serviceOverride: service,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('supporter_sort_dropdown')),
-      250,
-    );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('supporter_sort_dropdown')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
 
-    final highestDefaultY = tester.getTopLeft(find.text('Malaking Donor')).dy;
-    final lowestDefaultY = tester.getTopLeft(find.text('Munting Donor')).dy;
-    expect(highestDefaultY, lessThan(lowestDefaultY));
+      final highestDefaultY = tester.getTopLeft(find.text('Malaking Donor')).dy;
+      final lowestDefaultY = tester.getTopLeft(find.text('Munting Donor')).dy;
+      expect(highestDefaultY, lessThan(lowestDefaultY));
 
-    await tester.tap(find.byKey(const Key('supporter_sort_dropdown')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Halaga: pinakamababa -> pinakamalaki').last);
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('supporter_sort_dropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Halaga: pinakamababa -> pinakamalaki').last);
+      await tester.pumpAndSettle();
 
-    final highestAfterSortY = tester.getTopLeft(find.text('Malaking Donor')).dy;
-    final lowestAfterSortY = tester.getTopLeft(find.text('Munting Donor')).dy;
-    expect(lowestAfterSortY, lessThan(highestAfterSortY));
+      final highestAfterSortY = tester
+          .getTopLeft(find.text('Malaking Donor'))
+          .dy;
+      final lowestAfterSortY = tester.getTopLeft(find.text('Munting Donor')).dy;
+      expect(lowestAfterSortY, lessThan(highestAfterSortY));
 
-    await tester.enterText(
-      find.byKey(const Key('supporter_search_field')),
-      'Munting',
-    );
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('supporter_search_field')),
+        'Munting',
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Munting Donor'), findsOneWidget);
-    expect(find.text('Malaking Donor'), findsNothing);
-    expect(find.text('Gitnang Donor'), findsNothing);
-    expect(find.byKey(const Key('supporter_totals_label')), findsOneWidget);
-    expect(
-      find.text(formatPeso(200)),
-      findsWidgets,
-    );
-  });
+      expect(find.text('Munting Donor'), findsOneWidget);
+      expect(find.text('Malaking Donor'), findsNothing);
+      expect(find.text('Gitnang Donor'), findsNothing);
+      expect(find.byKey(const Key('supporter_totals_label')), findsOneWidget);
+      expect(find.text(formatPeso(200)), findsWidgets);
+    },
+  );
 }

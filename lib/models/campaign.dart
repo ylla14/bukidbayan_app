@@ -336,6 +336,10 @@ class Pledge {
   final int amount;
   final String? rewardId;
   final DateTime createdAt;
+  final String? paymentAttemptId;
+  final String? provider;
+  final String? providerPaymentId;
+  final DateTime? paidAt;
 
   const Pledge({
     required this.id,
@@ -348,6 +352,10 @@ class Pledge {
     required this.amount,
     required this.rewardId,
     required this.createdAt,
+    this.paymentAttemptId,
+    this.provider,
+    this.providerPaymentId,
+    this.paidAt,
   });
 
   factory Pledge.fromJson(Map<String, dynamic> json) => Pledge(
@@ -361,11 +369,19 @@ class Pledge {
     amount: (json['amount'] as num).toInt(),
     rewardId: json['rewardId'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
+    paymentAttemptId: json['paymentAttemptId'] as String?,
+    provider: json['provider'] as String?,
+    providerPaymentId: json['providerPaymentId'] as String?,
+    paidAt: json['paidAt'] != null
+        ? DateTime.parse(json['paidAt'] as String)
+        : null,
   );
 
   /// Firestore-compatible map (excludes `id` and `campaignId` — stored as doc/parent IDs).
   Map<String, dynamic> toFirestore() {
-    final map = toJson()..remove('id')..remove('campaignId');
+    final map = toJson()
+      ..remove('id')
+      ..remove('campaignId');
     return map;
   }
 
@@ -380,6 +396,10 @@ class Pledge {
     'amount': amount,
     'rewardId': rewardId,
     'createdAt': createdAt.toIso8601String(),
+    'paymentAttemptId': paymentAttemptId,
+    'provider': provider,
+    'providerPaymentId': providerPaymentId,
+    'paidAt': paidAt?.toIso8601String(),
   };
 }
 

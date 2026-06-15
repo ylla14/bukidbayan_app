@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bukidbayan_app/screens/crowdfunding_payment_return_screen.dart';
 import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
@@ -25,6 +26,31 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
+    final name = settings.name;
+    if (name == null || name.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(name);
+    if (uri == null) {
+      return null;
+    }
+
+    if (uri.path == CrowdfundingPaymentReturnScreen.routePath) {
+      return MaterialPageRoute(
+        settings: settings,
+        builder: (_) => CrowdfundingPaymentReturnScreen(
+          campaignId: uri.queryParameters['campaignId'],
+          attemptId: uri.queryParameters['attemptId'],
+          paymentStatusHint: uri.queryParameters['paymentStatus'],
+        ),
+      );
+    }
+
+    return null;
+  }
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -34,6 +60,7 @@ class MyApp extends StatelessWidget {
         // '/home': (context) =>  HomeScreen(),
         // add more screens here as needed
       },
+      onGenerateRoute: _onGenerateRoute,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,

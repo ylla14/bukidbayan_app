@@ -5,7 +5,16 @@ import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class CrowdfundingService {
-  final _db = FirebaseFirestore.instance;
+  CrowdfundingService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : _firestoreOverride = firestore,
+      _authOverride = auth;
+
+  final FirebaseFirestore? _firestoreOverride;
+  final FirebaseAuth? _authOverride;
+  static const Set<String> _seedCampaignIds = {'c1', 'c2', 'c3', 'c4'};
+
+  FirebaseFirestore get _db => _firestoreOverride ?? FirebaseFirestore.instance;
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
 
   CollectionReference<Map<String, dynamic>> get _campaigns =>
       _db.collection('campaigns');
@@ -13,9 +22,9 @@ class CrowdfundingService {
   CollectionReference<Map<String, dynamic>> _pledgesRef(String campaignId) =>
       _campaigns.doc(campaignId).collection('pledges');
 
-  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
-  String? get _email => FirebaseAuth.instance.currentUser?.email;
-  String? get _displayName => FirebaseAuth.instance.currentUser?.displayName;
+  String? get _uid => _auth.currentUser?.uid;
+  String? get _email => _auth.currentUser?.email;
+  String? get _displayName => _auth.currentUser?.displayName;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -25,7 +34,8 @@ class CrowdfundingService {
   Pledge _pledgeFromDoc(
     DocumentSnapshot<Map<String, dynamic>> doc,
     String campaignId,
-  ) => Pledge.fromJson({...doc.data()!, 'id': doc.id, 'campaignId': campaignId});
+  ) =>
+      Pledge.fromJson({...doc.data()!, 'id': doc.id, 'campaignId': campaignId});
 
   bool _isOwnedByUser(
     Campaign campaign, {
@@ -71,7 +81,8 @@ class CrowdfundingService {
       id: 'c1',
       title: 'Community Greenhouse for Urban Farmers',
       creatorName: 'BukidBayan Co-op',
-      shortBlurb: 'A shared greenhouse so more families can grow food sustainably.',
+      shortBlurb:
+          'A shared greenhouse so more families can grow food sustainably.',
       description:
           'We are building a small greenhouse with basic irrigation, seedlings, and training. '
           'Funds will cover materials, tools, and starter kits for community members.',
@@ -106,7 +117,8 @@ class CrowdfundingService {
           '1-year manufacturer warranty on all materials. Co-op provides ongoing maintenance support.',
       spareParts:
           'Replacement polycarbonate panels, drip lines, and valve parts stocked at co-op office.',
-      risks: 'Weather delays during construction. Alternative: Indoor seedling setup if greenhouse cannot be built.',
+      risks:
+          'Weather delays during construction. Alternative: Indoor seedling setup if greenhouse cannot be built.',
       safetyNotes:
           'PPE required during assembly. Training provided for irrigation system maintenance.',
       rewards: const [
@@ -177,12 +189,14 @@ class CrowdfundingService {
           'Week 1: Procurement and site assessment, Week 2-3: Installation of panels and tank, Week 4: Pump setup and testing, Week 5: Training and handover',
       shippingCoverage: 'Nationwide delivery',
       shippingCostHandling: 'included',
-      shippingNotes: 'Delivered to farm site. Professional installation included.',
+      shippingNotes:
+          'Delivered to farm site. Professional installation included.',
       warranty:
           '5-year manufacturer warranty on solar panels. 2-year warranty on pump and components.',
       spareParts:
           'Replacement pump available from local agricultural suppliers. Panel repair kits stocked.',
-      risks: 'Weather delays in installation. Fallback: temporary generator rental during setup.',
+      risks:
+          'Weather delays in installation. Fallback: temporary generator rental during setup.',
       safetyNotes:
           'Electrical safety training provided. PPE required. High-voltage warning signs installed.',
       rewards: const [
@@ -212,7 +226,8 @@ class CrowdfundingService {
       id: 'c3',
       title: 'Local Food Hub: Buy Direct from Farmers',
       creatorName: 'Bayan Market',
-      shortBlurb: 'A small online + pickup system for fresher produce and fairer prices.',
+      shortBlurb:
+          'A small online + pickup system for fresher produce and fairer prices.',
       description:
           'We want to set up a basic ordering site, pickup point signage, and onboarding materials '
           'so partner farmers can sell directly to consumers.',
@@ -228,7 +243,8 @@ class CrowdfundingService {
       publishedAt: now.subtract(const Duration(days: 2)),
       equipmentType: 'Other',
       specs: const {
-        'Platform': 'Simple online ordering system compatible with mobile and desktop',
+        'Platform':
+            'Simple online ordering system compatible with mobile and desktop',
         'Inventory': 'Real-time tracking of farmer inventory and pricing',
         'Payment': 'Cash and digital payment options at pickup',
       },
@@ -242,11 +258,14 @@ class CrowdfundingService {
           'Week 1: Platform development finalization, Week 2: Farmer recruitment and training, Week 3: Pickup point setup, Week 4: Soft launch and testing',
       shippingCoverage: 'Pickup',
       shippingCostHandling: 'included',
-      shippingNotes: 'Customers pick up at designated co-op location. Hub operates Saturdays 6am-10am.',
+      shippingNotes:
+          'Customers pick up at designated co-op location. Hub operates Saturdays 6am-10am.',
       warranty:
           'Platform support and maintenance included for first year. Dedicated support team available.',
-      spareParts: 'Signage and display materials can be reprinted as needed from local printers.',
-      risks: 'Low farmer adoption initially. Mitigation: Guaranteed market for first 50 farmers.',
+      spareParts:
+          'Signage and display materials can be reprinted as needed from local printers.',
+      risks:
+          'Low farmer adoption initially. Mitigation: Guaranteed market for first 50 farmers.',
       safetyNotes:
           'Food handling best practices training required for all handlers. Cold storage available.',
       rewards: const [
@@ -276,7 +295,8 @@ class CrowdfundingService {
       id: 'c4',
       title: 'Organic Seed Bank Initiative',
       creatorName: 'Farming Collective',
-      shortBlurb: 'Preserve heirloom and native crop varieties through community seed banking.',
+      shortBlurb:
+          'Preserve heirloom and native crop varieties through community seed banking.',
       description:
           'Our goal is to create a safe, climate-controlled seed storage facility and conduct workshops '
           'on seed saving techniques. This preserves biodiversity and helps farmers become more self-sufficient.',
@@ -292,9 +312,11 @@ class CrowdfundingService {
       publishedAt: now.subtract(const Duration(days: 8)),
       equipmentType: 'Other',
       specs: const {
-        'Storage': 'Temperature and humidity controlled seed vault (15-20C, 30-40% humidity)',
+        'Storage':
+            'Temperature and humidity controlled seed vault (15-20C, 30-40% humidity)',
         'Capacity': 'Storage for 10000+ seed varieties',
-        'Testing Equipment': 'Seed germination testing kits and documentation system',
+        'Testing Equipment':
+            'Seed germination testing kits and documentation system',
       },
       includedItems: const [
         'Climate-controlled storage unit',
@@ -307,12 +329,16 @@ class CrowdfundingService {
           'Week 1-2: Facility setup and equipment installation, Week 3: Collection drives with local farmers, Week 4: Cataloging and storage, Week 5: Launch first workshop',
       shippingCoverage: 'Local delivery',
       shippingCostHandling: 'included',
-      shippingNotes: 'Facility located at central co-op location. Seeds distributed via workshops.',
+      shippingNotes:
+          'Facility located at central co-op location. Seeds distributed via workshops.',
       warranty:
           'Equipment warranty through manufacturers. 2-year seed viability guarantee for stored seeds.',
-      spareParts: 'Replacement storage containers and preservation supplies available quarterly.',
-      risks: 'Seed sourcing delays possible. Mitigation: Partner with 5 regional seed savers.',
-      safetyNotes: 'Proper storage handling training required. PPE provided for seed collection activities.',
+      spareParts:
+          'Replacement storage containers and preservation supplies available quarterly.',
+      risks:
+          'Seed sourcing delays possible. Mitigation: Partner with 5 regional seed savers.',
+      safetyNotes:
+          'Proper storage handling training required. PPE provided for seed collection activities.',
       rewards: const [
         RewardTier(
           id: 'r1',
@@ -332,7 +358,8 @@ class CrowdfundingService {
           discountValue: 150,
           usageLimit: 3,
           validityDays: 120,
-          notes: 'Hands-on training session on proper seed collection and storage.',
+          notes:
+              'Hands-on training session on proper seed collection and storage.',
         ),
         RewardTier(
           id: 'r3',
@@ -342,7 +369,8 @@ class CrowdfundingService {
           discountValue: 20,
           usageLimit: 2,
           validityDays: 365,
-          notes: 'Full year access to our seed bank library and monthly seed shares.',
+          notes:
+              'Full year access to our seed bank library and monthly seed shares.',
         ),
       ],
     ),
@@ -352,11 +380,13 @@ class CrowdfundingService {
 
   /// Public discover list — excludes drafts.
   Future<List<Campaign>> getCampaigns() async {
-    await seedIfEmpty();
     final snap = await _campaigns
         .where('status', whereIn: ['live', 'ended_success', 'ended_fail'])
         .get();
-    return snap.docs.map(_fromDoc).toList();
+    return snap.docs
+        .map(_fromDoc)
+        .where((campaign) => !_seedCampaignIds.contains(campaign.id))
+        .toList();
   }
 
   /// Fetches a single campaign by ID. Drafts are only returned to their owner.
@@ -378,8 +408,10 @@ class CrowdfundingService {
     final uid = _uid;
     if (uid == null) return [];
 
-    Query<Map<String, dynamic>> query =
-        _campaigns.where('creatorUid', isEqualTo: uid);
+    Query<Map<String, dynamic>> query = _campaigns.where(
+      'creatorUid',
+      isEqualTo: uid,
+    );
     if (status != null) query = query.where('status', isEqualTo: status);
 
     final snap = await query.get();
@@ -527,10 +559,9 @@ class CrowdfundingService {
     // Check for existing pledge outside the transaction (acceptable trade-off)
     final existingSnap = uid == null
         ? null
-        : await _pledgesRef(campaignId)
-            .where('backerUid', isEqualTo: uid)
-            .limit(1)
-            .get();
+        : await _pledgesRef(
+            campaignId,
+          ).where('backerUid', isEqualTo: uid).limit(1).get();
     final isNewBacker = uid == null || (existingSnap?.docs.isEmpty ?? true);
 
     final pledgeId =
@@ -543,8 +574,12 @@ class CrowdfundingService {
       if (!snap.exists) throw Exception('Campaign not found.');
       final campaign = _fromDoc(snap);
 
-      if (_isOwnedByUser(campaign,
-          uid: uid, email: email, displayName: displayName)) {
+      if (_isOwnedByUser(
+        campaign,
+        uid: uid,
+        email: email,
+        displayName: displayName,
+      )) {
         throw Exception('You cannot support your own campaign.');
       }
       if (DateTime.now().isAfter(campaign.endDate)) {
@@ -576,10 +611,12 @@ class CrowdfundingService {
         backerName: backerName?.trim().isNotEmpty == true
             ? backerName!.trim()
             : displayName,
-        backerPhone:
-            backerPhone?.trim().isNotEmpty == true ? backerPhone!.trim() : null,
-        backerNote:
-            backerNote?.trim().isNotEmpty == true ? backerNote!.trim() : null,
+        backerPhone: backerPhone?.trim().isNotEmpty == true
+            ? backerPhone!.trim()
+            : null,
+        backerNote: backerNote?.trim().isNotEmpty == true
+            ? backerNote!.trim()
+            : null,
         amount: amount,
         rewardId: rewardId,
         createdAt: DateTime.now(),
@@ -587,8 +624,9 @@ class CrowdfundingService {
 
       tx.update(campaignRef, {
         'pledgedAmount': campaign.pledgedAmount + amount,
-        'backersCount':
-            isNewBacker ? campaign.backersCount + 1 : campaign.backersCount,
+        'backersCount': isNewBacker
+            ? campaign.backersCount + 1
+            : campaign.backersCount,
       });
       tx.set(pledgeRef, pledge.toFirestore());
     });
@@ -622,29 +660,35 @@ class CrowdfundingService {
 
     if (!_isOwnedByUser(campaign, email: userEmail)) {
       throw Exception(
-          'Only the campaign owner can generate a report for this campaign.');
+        'Only the campaign owner can generate a report for this campaign.',
+      );
     }
     final isEnded = _isCampaignEnded(campaign);
 
-    final pledgesSnap =
-        await _pledgesRef(campaignId).orderBy('createdAt').get();
+    final pledgesSnap = await _pledgesRef(
+      campaignId,
+    ).orderBy('createdAt').get();
     final campaignPledges = pledgesSnap.docs
         .map((d) => _pledgeFromDoc(d, campaignId))
         .toList();
 
-    final pledgeAmountTotal =
-        campaignPledges.fold<int>(0, (s, p) => s + p.amount);
+    final pledgeAmountTotal = campaignPledges.fold<int>(
+      0,
+      (s, p) => s + p.amount,
+    );
     final totalPledges = campaignPledges.length;
     final totalRaised = campaign.pledgedAmount;
-    final firstPledgeAt =
-        totalPledges > 0 ? campaignPledges.first.createdAt : null;
-    final lastPledgeAt =
-        totalPledges > 0 ? campaignPledges.last.createdAt : null;
+    final firstPledgeAt = totalPledges > 0
+        ? campaignPledges.first.createdAt
+        : null;
+    final lastPledgeAt = totalPledges > 0
+        ? campaignPledges.last.createdAt
+        : null;
     final averagePledge = totalPledges > 0
         ? pledgeAmountTotal / totalPledges
         : (campaign.backersCount > 0
-            ? campaign.pledgedAmount / campaign.backersCount
-            : 0.0);
+              ? campaign.pledgedAmount / campaign.backersCount
+              : 0.0);
 
     final rewardBreakdown = campaign.rewards.map((tier) {
       final related = campaignPledges.where((p) => p.rewardId == tier.id);
@@ -660,14 +704,16 @@ class CrowdfundingService {
         .toList();
 
     final campaignStart = campaign.publishedAt ?? campaign.createdAt;
-    final campaignDurationDays =
-        campaign.endDate.difference(campaignStart).inDays.clamp(0, 99999);
+    final campaignDurationDays = campaign.endDate
+        .difference(campaignStart)
+        .inDays
+        .clamp(0, 99999);
 
     final isSuccessful = campaign.status == 'ended_success'
         ? true
         : campaign.status == 'ended_fail'
-            ? false
-            : totalRaised >= campaign.goalAmount;
+        ? false
+        : totalRaised >= campaign.goalAmount;
 
     return CampaignReport(
       campaign: campaign,
@@ -708,7 +754,9 @@ class CrowdfundingService {
       errors.add('Ang maikling buod ay dapat hindi bababa sa 10 character');
     }
     if (campaign.description.isEmpty || campaign.description.length < 50) {
-      errors.add('Ang buong paglalarawan ay dapat hindi bababa sa 50 character');
+      errors.add(
+        'Ang buong paglalarawan ay dapat hindi bababa sa 50 character',
+      );
     }
     if (campaign.specs.isEmpty || campaign.specs.length < 3) {
       errors.add('Kailangan ang hindi bababa sa 3 detalye ng kagamitan');
@@ -716,7 +764,9 @@ class CrowdfundingService {
     if (campaign.includedItems.isEmpty ||
         campaign.includedItems.join().isEmpty ||
         campaign.includedItems.join().length < 10) {
-      errors.add('Ang saklaw ng bibilhin ay dapat hindi bababa sa 10 character');
+      errors.add(
+        'Ang saklaw ng bibilhin ay dapat hindi bababa sa 10 character',
+      );
     }
     if (campaign.goalAmount < 1000) {
       errors.add('Ang target na pondo ay dapat hindi bababa sa ₱1,000');
@@ -728,7 +778,8 @@ class CrowdfundingService {
         campaign.productionTimeline!.isEmpty ||
         campaign.productionTimeline!.length < 10) {
       errors.add(
-          'Ang timeline ng pagpapatupad ay dapat hindi bababa sa 10 character');
+        'Ang timeline ng pagpapatupad ay dapat hindi bababa sa 10 character',
+      );
     }
     if (campaign.rewards.isEmpty) {
       errors.add('Kailangan ang hindi bababa sa isang antas ng benepisyo');
@@ -739,11 +790,13 @@ class CrowdfundingService {
         }
         if (reward.minPledge <= 0) {
           errors.add(
-              'Kailangang higit sa zero ang minimum na pledge ng bawat benepisyo');
+            'Kailangang higit sa zero ang minimum na pledge ng bawat benepisyo',
+          );
         }
         if (reward.discountValue <= 0) {
           errors.add(
-              'Kailangang higit sa zero ang halaga ng diskuwento ng bawat benepisyo');
+            'Kailangang higit sa zero ang halaga ng diskuwento ng bawat benepisyo',
+          );
         }
       }
     }
@@ -758,12 +811,16 @@ class CrowdfundingService {
     if (campaign.warranty == null ||
         campaign.warranty!.isEmpty ||
         campaign.warranty!.length < 10) {
-      errors.add('Ang warranty at suporta ay dapat hindi bababa sa 10 character');
+      errors.add(
+        'Ang warranty at suporta ay dapat hindi bababa sa 10 character',
+      );
     }
     if (campaign.spareParts == null ||
         campaign.spareParts!.isEmpty ||
         campaign.spareParts!.length < 10) {
-      errors.add('Ang plano sa spare parts ay dapat hindi bababa sa 10 character');
+      errors.add(
+        'Ang plano sa spare parts ay dapat hindi bababa sa 10 character',
+      );
     }
     if (campaign.risks == null ||
         campaign.risks!.isEmpty ||
@@ -774,7 +831,8 @@ class CrowdfundingService {
         campaign.safetyNotes!.isEmpty ||
         campaign.safetyNotes!.length < 10) {
       errors.add(
-          'Ang paalala sa kaligtasan ay dapat hindi bababa sa 10 character');
+        'Ang paalala sa kaligtasan ay dapat hindi bababa sa 10 character',
+      );
     }
 
     return errors;

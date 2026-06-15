@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bukidbayan Payment Return</title>
+</head>
+<body>
+  <p>Inaayos ang pagbabalik sa Bukidbayan secure payment status...</p>
+  <script>
+    (function () {
+      var basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
+      var query = window.location.search || '';
+      var target =
+        window.location.origin +
+        basePath +
+        '#/crowdfunding/payment-return' +
+        query;
+
+      window.location.replace(target);
+    })();
+  </script>
+</body>
+</html>

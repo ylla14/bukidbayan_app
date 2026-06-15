@@ -12,6 +12,19 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == ownerId;
     }
 
+    function isCampaignOwnerFromData(data) {
+      return isAuthenticated() && (
+        (data.creatorUid != null && data.creatorUid == request.auth.uid) ||
+        (data.creatorEmail != null &&
+          request.auth.token.email != null &&
+          data.creatorEmail == request.auth.token.email)
+      );
+    }
+
+    function campaignDoc(campaignId) {
+      return get(/databases/$(database)/documents/campaigns/$(campaignId));
+    }
+
     // Equipment collection rules
     match /equipment/{equipmentId} {
       // Anyone can read available equipment (for browsing)
@@ -130,6 +143,52 @@ service cloud.firestore {
 
       // Users cannot delete their own profile (use Cloud Functions)
       allow delete: if false;
+    }
+
+    match /campaigns/{campaignId} {
+      allow read: if resource.data.status != 'draft'
+                  || isCampaignOwnerFromData(resource.data);
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.creatorUid == request.auth.uid
+                    && request.resource.data.pledgedAmount == 0
+                    && request.resource.data.backersCount == 0;
+
+      allow update: if isCampaignOwnerFromData(resource.data)
+                    && request.resource.data.creatorUid == resource.data.creatorUid
+                    && request.resource.data.pledgedAmount == resource.data.pledgedAmount
+                    && request.resource.data.backersCount == resource.data.backersCount;
+
+      allow delete: if isCampaignOwnerFromData(resource.data)
+                    && resource.data.status == 'draft';
+    }
+
+    match /campaigns/{campaignId}/pledges/{pledgeId} {
+      allow read: if isAuthenticated()
+                  && (
+                    resource.data.backerUid == request.auth.uid
+                    || isCampaignOwnerFromData(campaignDoc(campaignId).data)
+                  );
+
+      allow create, update, delete: if false;
+    }
+
+    match /campaigns/{campaignId}/payment_attempts/{attemptId} {
+      allow read: if isAuthenticated()
+                  && (
+                    resource.data.createdByUid == request.auth.uid
+                    || isCampaignOwnerFromData(campaignDoc(campaignId).data)
+                  );
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.createdByUid == request.auth.uid
+                    && request.resource.data.provider == 'paymongo_checkout'
+                    && request.resource.data.status == 'created'
+                    && request.resource.data.currency == 'PHP'
+                    && request.resource.data.amount is int
+                    && request.resource.data.amount > 0;
+
+      allow update, delete: if false;
     }
   }
 }

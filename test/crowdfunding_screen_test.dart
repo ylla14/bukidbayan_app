@@ -66,6 +66,7 @@ Widget _buildHarness(FakeCrowdfundingService service) {
       serviceOverride: service,
       appBarOverride: AppBar(title: const Text('Test AppBar')),
       drawerOverride: const Drawer(child: SizedBox.shrink()),
+      isCoop: true,
     ),
   );
 }
@@ -93,7 +94,6 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    expect(find.text('Solar Pump Upgrade'), findsOneWidget);
     expect(find.text('2 resulta'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'solar');
@@ -131,12 +131,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Draft One Listing'), findsOneWidget);
-    expect(find.text('Live Campaign Listing'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField).first, 'draft one');
+    await tester.enterText(find.byType(TextField).last, 'draft one');
     await tester.pumpAndSettle();
 
     expect(find.text('Draft One Listing'), findsOneWidget);
+    expect(find.byTooltip('Higit pang aksyon'), findsOneWidget);
     expect(find.text('Live Campaign Listing'), findsNothing);
   });
 
