@@ -8,9 +8,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
-// Sandbox secret key — safe to include in client for test-mode only (no real money risk).
 const _kPayMongoBase = 'https://api.paymongo.com';
-const _kPayMongoSecretKey = 'sk_test_YhazvLT31mPz4QhpHsrwAMA1';
+// Injected at build time via --dart-define=PAYMONGO_SECRET_KEY=sk_test_...
+// Never commit the actual key value here.
+const _kPayMongoSecretKey = String.fromEnvironment('PAYMONGO_SECRET_KEY');
 
 // Firebase Hosting URL where paymongo-return.html is served.
 const _kReturnBase =
