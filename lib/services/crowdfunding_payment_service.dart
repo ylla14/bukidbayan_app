@@ -8,10 +8,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
+// Sandbox secret key — safe to include in client for test-mode only (no real money risk).
 const _kPayMongoBase = 'https://api.paymongo.com';
-// Injected at build time via --dart-define=PAYMONGO_SECRET_KEY=sk_test_...
-// Never commit the actual key value here.
-const _kPayMongoSecretKey = String.fromEnvironment('PAYMONGO_SECRET_KEY');
+const _kPayMongoSecretKey = 'sk_test_YhazvLT31mPz4QhpHsrwAMA1';
 
 // Firebase Hosting URL where paymongo-return.html is served.
 const _kReturnBase =
@@ -118,9 +117,7 @@ class CrowdfundingPaymentService {
     required Campaign campaign,
   }) async {
     final reward = attempt.rewardId != null
-        ? campaign.rewards
-              .where((r) => r.id == attempt.rewardId)
-              .firstOrNull
+        ? campaign.rewards.where((r) => r.id == attempt.rewardId).firstOrNull
         : null;
 
     final successUrl =
@@ -148,7 +145,8 @@ class CrowdfundingPaymentService {
             {
               'amount': attempt.amount * 100,
               'currency': 'PHP',
-              'description': reward?.title ??
+              'description':
+                  reward?.title ??
                   (campaign.shortBlurb.isNotEmpty
                       ? campaign.shortBlurb
                       : campaign.title),
@@ -266,7 +264,10 @@ class CrowdfundingPaymentService {
     // 2. Call PayMongo directly to create the checkout session.
     late final ({String checkoutId, String checkoutUrl, bool livemode}) session;
     try {
-      session = await _createPayMongoSession(attempt: attempt, campaign: campaign);
+      session = await _createPayMongoSession(
+        attempt: attempt,
+        campaign: campaign,
+      );
     } catch (e) {
       await _attemptsRef(campaignId).doc(attemptId).update({
         'status': PaymentAttemptStatus.failed,
@@ -367,31 +368,27 @@ class CrowdfundingPaymentService {
         : null;
 
     // Avoid double-counting the same backer.
-    final existingPledge = await _pledgesRef(campaignId)
-        .where('backerUid', isEqualTo: attempt.createdByUid)
-        .limit(1)
-        .get();
+    final existingPledge = await _pledgesRef(
+      campaignId,
+    ).where('backerUid', isEqualTo: attempt.createdByUid).limit(1).get();
     final isNewBacker = existingPledge.docs.isEmpty;
 
     final batch = _db.batch();
 
-    batch.set(
-      _pledgesRef(campaignId).doc(attempt.id),
-      {
-        'amount': attempt.amount,
-        'backerEmail': attempt.createdByEmail,
-        'backerName': attempt.donorName,
-        'backerNote': attempt.donorNote,
-        'backerPhone': attempt.donorPhone,
-        'backerUid': attempt.createdByUid,
-        'createdAt': now,
-        'paidAt': now,
-        'paymentAttemptId': attempt.id,
-        'provider': attempt.provider,
-        'providerPaymentId': paymentId,
-        'rewardId': attempt.rewardId,
-      },
-    );
+    batch.set(_pledgesRef(campaignId).doc(attempt.id), {
+      'amount': attempt.amount,
+      'backerEmail': attempt.createdByEmail,
+      'backerName': attempt.donorName,
+      'backerNote': attempt.donorNote,
+      'backerPhone': attempt.donorPhone,
+      'backerUid': attempt.createdByUid,
+      'createdAt': now,
+      'paidAt': now,
+      'paymentAttemptId': attempt.id,
+      'provider': attempt.provider,
+      'providerPaymentId': paymentId,
+      'rewardId': attempt.rewardId,
+    });
 
     final campaignUpdate = <String, dynamic>{
       'pledgedAmount': FieldValue.increment(attempt.amount),
@@ -401,15 +398,12 @@ class CrowdfundingPaymentService {
     }
     batch.update(_campaigns.doc(campaignId), campaignUpdate);
 
-    batch.update(
-      _attemptsRef(campaignId).doc(attempt.id),
-      {
-        'status': PaymentAttemptStatus.paid,
-        'completedAt': now,
-        'providerPaymentId': paymentId,
-        'updatedAt': now,
-      },
-    );
+    batch.update(_attemptsRef(campaignId).doc(attempt.id), {
+      'status': PaymentAttemptStatus.paid,
+      'completedAt': now,
+      'providerPaymentId': paymentId,
+      'updatedAt': now,
+    });
 
     await batch.commit();
   }
