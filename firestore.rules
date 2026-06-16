@@ -154,10 +154,16 @@ service cloud.firestore {
                     && request.resource.data.pledgedAmount == 0
                     && request.resource.data.backersCount == 0;
 
+      // Owner can edit campaign details but not financial counters.
       allow update: if isCampaignOwnerFromData(resource.data)
                     && request.resource.data.creatorUid == resource.data.creatorUid
                     && request.resource.data.pledgedAmount == resource.data.pledgedAmount
                     && request.resource.data.backersCount == resource.data.backersCount;
+
+      // Sandbox: authenticated backers may increment pledgedAmount / backersCount only.
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['pledgedAmount', 'backersCount']);
 
       allow delete: if isCampaignOwnerFromData(resource.data)
                     && resource.data.status == 'draft';
@@ -170,7 +176,11 @@ service cloud.firestore {
                     || isCampaignOwnerFromData(campaignDoc(campaignId).data)
                   );
 
-      allow create, update, delete: if false;
+      // Sandbox: authenticated backer creates their own pledge after client-side verification.
+      allow create: if isAuthenticated()
+                    && request.resource.data.backerUid == request.auth.uid;
+
+      allow update, delete: if false;
     }
 
     match /campaigns/{campaignId}/payment_attempts/{attemptId} {
@@ -188,7 +198,11 @@ service cloud.firestore {
                     && request.resource.data.amount is int
                     && request.resource.data.amount > 0;
 
-      allow update, delete: if false;
+      // Sandbox: creator may update their own attempt (checkout URL, status, finalization).
+      allow update: if isAuthenticated()
+                    && resource.data.createdByUid == request.auth.uid;
+
+      allow delete: if false;
     }
   }
 }

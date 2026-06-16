@@ -1,5 +1,4 @@
 import 'package:bukidbayan_app/models/campaign.dart';
-import 'package:bukidbayan_app/models/payment_attempt.dart';
 import 'package:bukidbayan_app/services/crowdfunding_payment_service.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -393,35 +392,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                         donorNote: donorNoteCtrl.text.trim(),
                                       );
 
-                                  setModalState(() {
-                                    checkoutStatusMessage =
-                                        'Kinukuha ang checkout link mula sa backend...';
-                                  });
-
-                                  final checkoutAttempt = await paymentService
-                                      .waitForCheckoutReady(
-                                        campaignId: campaign.id,
-                                        attemptId: attempt.id,
-                                      );
-
-                                  if (checkoutAttempt.status ==
-                                          PaymentAttemptStatus.failed ||
-                                      checkoutAttempt.status ==
-                                          PaymentAttemptStatus.cancelled ||
-                                      checkoutAttempt.status ==
-                                          PaymentAttemptStatus.expired) {
-                                    throw Exception(
-                                      checkoutAttempt.failureReason ??
-                                          'Hindi naihanda ang secure checkout.',
-                                    );
-                                  }
-
                                   final checkoutUrl =
-                                      checkoutAttempt.providerCheckoutUrl;
+                                      attempt.providerCheckoutUrl;
                                   if (checkoutUrl == null ||
                                       checkoutUrl.isEmpty) {
                                     throw Exception(
-                                      'Walang checkout link na ibinalik ang backend.',
+                                      'Hindi nagawa ang checkout session. Subukan muli.',
                                     );
                                   }
 
@@ -444,7 +420,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                     context: this.context,
                                     title: 'Checkout handa na',
                                     message:
-                                        'Binuksan ang secure checkout. Mabibilang lang ang suporta mo kapag nakumpirma na ng backend ang bayad.',
+                                        'Binuksan ang PayMongo checkout. Bumalik sa app pagkatapos ng bayad para makita ang kumpirmasyon.',
                                   );
                                 } catch (e) {
                                   setModalState(() {
