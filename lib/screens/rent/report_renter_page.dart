@@ -141,7 +141,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
                 backgroundColor: cs.surface,
                 child: Icon(Icons.photo_library_outlined, color: cs.primary),
               ),
-              title: const Text('Pumili mula sa Gallery'), // BLT123: TL ENG
+              title: const Text('Select from Gallery'),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -271,7 +271,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.build_rounded, size: 16),
                   label: const Text(
-                    'I-schedule ang Maintenance', // BLT123: TL ENG
+                    'Schedule Maintenance',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   onPressed: () {
@@ -309,7 +309,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
                   elevation: 0,
                 ),
                 child: const Text(
-                  'Tapos Na', // BLT123: TL ENG
+                  'Done',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                 ),
               ),
@@ -506,7 +506,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dCtx, false),
-            child: const Text('Kanselahin'), // BLT123: TL ENG
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -515,7 +515,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(dCtx, true),
-            child: const Text('Kumpirmahin'), // BLT123: TL ENG
+            child: const Text('Confirm'),
           ),
         ],
       ),
@@ -1037,7 +1037,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
                 )
               : const Icon(Icons.flag_rounded, size: 20),
           label: Text(
-            _isSubmitting ? 'Isinusumite…' : 'Isumite ang Reklamo', // BLT123: TL ENG
+            _isSubmitting ? 'Submitting…' : 'Submit Report',
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,

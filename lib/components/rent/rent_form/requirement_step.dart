@@ -119,7 +119,7 @@ class RequirementStep extends StatelessWidget {
             // ── Photo from gallery ──────────────────────────
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Pumili ng Larawan mula sa Gallery'), // BLT123: TL ENG
+              title: const Text('Select Image from Gallery'),
               onTap: () async {
                 Navigator.pop(context);
                 try {
@@ -138,7 +138,7 @@ class RequirementStep extends StatelessWidget {
             if (allowVideo)
               ListTile(
                 leading: const Icon(Icons.video_library_outlined),
-                title: const Text('Pumili ng Video mula sa Gallery'), // BLT123: TL ENG
+                title: const Text('Select Video from Gallery'),
                 onTap: () async {
                   Navigator.pop(context);
                   try {

@@ -730,7 +730,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                 OutlinedButton.icon(
                   onPressed: () => _pickCustomPhoto(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Pumili ng Larawan'), // BLT123: TL ENG
+                  label: const Text('Select Image'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => _pickCustomPhoto(ImageSource.camera),
@@ -989,7 +989,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                     });
                   }
                 },
-                child: const Text('Idagdag'), // BLT123: TL ENG
+                child: const Text('Add'),
               ),
             ],
           ),
@@ -1134,7 +1134,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
               title: Text(
                 _selectedEndDate != null
                     ? '${_selectedEndDate!.toLocal().toString().split(' ')[0]} (${_selectedEndDate!.difference(DateTime.now()).inDays} days)'
-                    : 'Pumili ng petsa', // BLT123: TL ENG
+                    : 'Select date',
               ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
@@ -1255,7 +1255,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                           PopupMenuButton(
                             itemBuilder: (_) => [
                               PopupMenuItem(
-                                child: const Text('I-edit'), // BLT123: TL ENG
+                                child: const Text('Edit'),
                                 onTap: () {
                                   showModalBottomSheet(
                                     context: context,
@@ -1688,7 +1688,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _currentStep > 0 ? _previousStep : null,
-                        child: const Text('Bumalik'), // BLT123: TL ENG
+                        child: const Text('Back'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1696,7 +1696,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                       child: _currentStep < 7
                           ? ElevatedButton(
                               onPressed: _isLoading ? null : _nextStep,
-                              child: const Text('Susunod'), // BLT123: TL ENG
+                              child: const Text('Next'),
                             )
                           : ElevatedButton(
                               onPressed: _isLoading ? null : _publishCampaign,
@@ -1725,7 +1725,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                       backgroundColor: Colors.grey.shade400,
                     ),
                     icon: const Icon(Icons.save_outlined),
-                    label: const Text('I-save ang Draft'), // BLT123: TL ENG
+                    label: const Text('Save Draft'),
                   ),
                 ),
               ],

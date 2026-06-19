@@ -375,7 +375,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           }
                         },
                         icon: const Icon(Icons.volunteer_activism_outlined),
-                        label: const Text('Kumpirmahin ang pledge'), // BLT123: TL ENG
+                        label: const Text('Confirm pledge'),
                       ),
                     ),
                   ],
@@ -436,7 +436,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     ElevatedButton.icon(
                       onPressed: _reload,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Subukan ulit'), // BLT123: TL ENG
+                      label: const Text('Try again'),
                     ),
                   ],
                 ),
@@ -637,7 +637,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                     ? () => _openBackSheet(c, preselect: r)
                                     : null,
                                 icon: const Icon(Icons.check_circle_outline),
-                                label: const Text('Piliin ang benepisyong ito'), // BLT123: TL ENG
+                                label: const Text('Select this reward'),
                               ),
                             ),
                           ],
