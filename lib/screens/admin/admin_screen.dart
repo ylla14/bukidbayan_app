@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/admin/admin_card.dart';
 import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
+import 'package:bukidbayan_app/screens/admin/admin_equipment_screen.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -229,9 +230,10 @@ class _AdminScreenState extends State<AdminScreen> {
                   title: 'Analytics & Reports',
                   description: 'View detailed statistics and reports',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming soon: Analytics'),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AdminEquipmentScreen(),
                       ),
                     );
                   },
