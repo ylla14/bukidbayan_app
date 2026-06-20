@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
+import 'package:bukidbayan_app/scripts/migrate_equipment.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
@@ -18,6 +19,9 @@ void main() async {
   await firestoreService.validateAllEquipmentAvailability();
   await firestoreService.seedEquipmentDropdownOptions();
   await AuthService().seedCoopAccount();
+
+  await migrateDamageReportCount();
+  
   unawaited(WeatherService().runWeatherCheck());
   runApp(const MyApp());
 }

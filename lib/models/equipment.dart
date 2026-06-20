@@ -63,6 +63,7 @@ class Equipment {
   final String? attachments;
   final String? fuelType;
   final String? defects;
+  final int damageReportCount;
 
   final double price;
   final String rentalUnit;
@@ -148,6 +149,7 @@ bool get isForMaintenance =>
     this.attachments,
     this.fuelType,
     this.defects,
+    this.damageReportCount = 0,
     required this.price,
     required this.rentalUnit,
     this.rentRate = '',
@@ -201,6 +203,7 @@ this.hoursUsedSinceLastMaintenance = 0,
       'attachments': attachments,
       'fuelType': fuelType,
       'defects': defects,
+      'damageReportCount': damageReportCount,
       'price': price,
       'rentalUnit': rentalUnit,
       'rentRate': rentRate,
@@ -270,6 +273,7 @@ this.hoursUsedSinceLastMaintenance = 0,
       condition: data['condition'] ?? '',
       attachments: data['attachments'],
       defects: data['defects'],
+      damageReportCount: (data['damageReportCount'] as int?) ?? 0,
       price: (data['price'] ?? 0).toDouble(),
       rentalUnit: data['rentalUnit'] ?? 'Per Day',
       rentRate: data['rentRate'] ?? '',
@@ -346,6 +350,7 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       attachments: (data['attachments'] as String?)?.isNotEmpty == true ? data['attachments'] : null,
       fuelType: (data['fuelType'] as String?)?.isNotEmpty == true ? data['fuelType'] : null,
       defects: (data['defects'] as String?)?.isNotEmpty == true ? data['defects'] : null,
+      damageReportCount: (data['damageReportCount'] as int?) ?? 0,
       price: (data['price'] ?? 0).toDouble(),
       rentalUnit: data['rentalUnit'] ?? 'Per Day',
       rentRate: data['rentRate'] ?? '',
@@ -409,6 +414,7 @@ hoursUsedSinceLastMaintenance:
     String? attachments,
     String? fuelType,
     String? defects,
+    int? damageReportCount,
     double? price,
     String? rentalUnit,
     String? rentRate,
@@ -460,6 +466,7 @@ double? hoursUsedSinceLastMaintenance,
       attachments: attachments ?? this.attachments,
       fuelType: fuelType ?? this.fuelType,
       defects: defects ?? this.defects,
+      damageReportCount: damageReportCount ?? this.damageReportCount,
       price: price ?? this.price,
       rentalUnit: rentalUnit ?? this.rentalUnit,
       rentRate: rentRate ?? this.rentRate,

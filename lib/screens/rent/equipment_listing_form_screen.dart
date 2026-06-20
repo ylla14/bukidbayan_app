@@ -499,7 +499,7 @@ String? _currentDraftId;
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Bumalik sa Form',
+                child: const Text('Back to Form',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               ),
             ),

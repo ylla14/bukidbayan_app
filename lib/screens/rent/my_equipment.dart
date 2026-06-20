@@ -7,6 +7,7 @@ import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/maintenance_service.dart';
+import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -77,7 +78,7 @@ extension EquipmentSortOptionLabel on EquipmentSortOption {
 
 class _FilterState {
   final EquipmentSortOption sortOption;
-  final EquipmentStatus? statusFilter; // null = all
+  final EquipmentStatus? statusFilter;
   final bool onlyForMaintenance;
   final bool onlyUpcomingMaintenance;
 
@@ -106,11 +107,10 @@ class _FilterState {
   }
 }
 
-// Sentinel for nullable copyWith trick
 const Object _sentinel = Object();
 
 // ─────────────────────────────────────────────
-// Main widget (now StatefulWidget)
+// Main widget
 // ─────────────────────────────────────────────
 
 class MyEquipment extends StatefulWidget {
@@ -125,15 +125,8 @@ class _MyEquipmentState extends State<MyEquipment> {
 
   _FilterState _filter = const _FilterState();
 
-  // itemId → average rating, populated eagerly once equipment list loads
   final Map<String, double> _ratingCache = {};
-
-  // Tracks IDs we've already kicked off a fetch for (avoids duplicate calls
-  // when the equipment stream re-emits without new items).
   final Set<String> _ratingFetchedIds = {};
-
-  // Stream subscription for the equipment list so we can eagerly pre-fetch
-  // ratings whenever a new item appears.
   StreamSubscription<QuerySnapshot>? _equipmentSub;
 
   @override
@@ -148,9 +141,6 @@ class _MyEquipmentState extends State<MyEquipment> {
     super.dispose();
   }
 
-  /// Listens to the same equipment stream and batch-fetches ratings for any
-  /// item ID we haven't seen yet.  Uses a single query per owner (all reviews
-  /// whose itemId is in the current list) rather than N individual queries.
   void _subscribeToEquipmentForRatings() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -166,17 +156,12 @@ class _MyEquipmentState extends State<MyEquipment> {
           .toList();
 
       if (ids.isEmpty) return;
-
-      // Mark as in-flight immediately so re-emits don't spawn duplicates.
       _ratingFetchedIds.addAll(ids);
-
-      // Firestore 'whereIn' is capped at 30 per call – chunk if needed.
       _fetchRatingsForIds(ids);
     });
   }
 
   Future<void> _fetchRatingsForIds(List<String> ids) async {
-    // Split into chunks of 30 (Firestore whereIn limit).
     const chunkSize = 30;
     final chunks = <List<String>>[];
     for (var i = 0; i < ids.length; i += chunkSize) {
@@ -191,14 +176,12 @@ class _MyEquipmentState extends State<MyEquipment> {
             .where('itemId', whereIn: chunk)
             .get();
 
-        // Group reviews by itemId and compute averages.
         final grouped = <String, List<double>>{};
         for (final doc in snap.docs) {
           final review = Review.fromDoc(doc);
           grouped.putIfAbsent(review.itemId, () => []).add(review.rating);
         }
 
-        // Items with no reviews get 0.
         for (final id in chunk) {
           final ratings = grouped[id];
           _ratingCache[id] = ratings == null || ratings.isEmpty
@@ -208,7 +191,6 @@ class _MyEquipmentState extends State<MyEquipment> {
                       .toStringAsFixed(1));
         }
       } catch (_) {
-        // On error just leave the cache empty for these IDs.
         for (final id in chunk) {
           _ratingCache.putIfAbsent(id, () => 0);
         }
@@ -216,21 +198,16 @@ class _MyEquipmentState extends State<MyEquipment> {
     });
 
     await Future.wait(futures);
-    if (mounted) setState(() {}); // re-render with populated ratings
+    if (mounted) setState(() {});
   }
 
-  // ── Sorting + filtering logic ─────────────────────────────────
+  // ── Sorting + filtering ───────────────────────────────────────
   List<Equipment> _applyFilterAndSort(List<Equipment> list) {
     var result = List<Equipment>.from(list);
 
-    // Status filter
     if (_filter.statusFilter != null) {
-      result = result
-          .where((e) => e.status == _filter.statusFilter)
-          .toList();
+      result = result.where((e) => e.status == _filter.statusFilter).toList();
     }
-
-    // Maintenance filters
     if (_filter.onlyForMaintenance) {
       result = result.where((e) => e.isForMaintenance).toList();
     }
@@ -238,7 +215,6 @@ class _MyEquipmentState extends State<MyEquipment> {
       result = result.where((e) => e.isUpcomingMaintenance).toList();
     }
 
-    // Sort
     result.sort((a, b) {
       switch (_filter.sortOption) {
         case EquipmentSortOption.nameAZ:
@@ -250,13 +226,9 @@ class _MyEquipmentState extends State<MyEquipment> {
         case EquipmentSortOption.priceHigh:
           return b.price.compareTo(a.price);
         case EquipmentSortOption.ratingHigh:
-          final rA = _ratingCache[a.id] ?? 0;
-          final rB = _ratingCache[b.id] ?? 0;
-          return rB.compareTo(rA);
+          return (_ratingCache[b.id] ?? 0).compareTo(_ratingCache[a.id] ?? 0);
         case EquipmentSortOption.ratingLow:
-          final rA = _ratingCache[a.id] ?? 0;
-          final rB = _ratingCache[b.id] ?? 0;
-          return rA.compareTo(rB);
+          return (_ratingCache[a.id] ?? 0).compareTo(_ratingCache[b.id] ?? 0);
         case EquipmentSortOption.maintenanceHours:
           return b.hoursUsedSinceLastMaintenance
               .compareTo(a.hoursUsedSinceLastMaintenance);
@@ -270,13 +242,13 @@ class _MyEquipmentState extends State<MyEquipment> {
     return result;
   }
 
-  // ── Sort bottom sheet ─────────────────────────────────────────
+  // ── Sort/Filter bottom sheet ──────────────────────────────────
   void _showSortSheet() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // lets us cap height manually
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         return StatefulBuilder(
@@ -287,15 +259,15 @@ class _MyEquipmentState extends State<MyEquipment> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ── Fixed header ──────────────────────────────
+                  // ── Header ────────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Center(
                           child: Container(
-                            width: 40,
+                            width: 36,
                             height: 4,
                             decoration: BoxDecoration(
                               color: Colors.grey.shade300,
@@ -304,23 +276,42 @@ class _MyEquipmentState extends State<MyEquipment> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'Ayusin at I-filter',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: lightColorScheme.primary,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: lightColorScheme.primary
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.tune_rounded,
+                                  color: lightColorScheme.primary, size: 18),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Ayusin at I-filter',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: lightColorScheme.primary,
+                                  ),
+                                ),
+                                Text(
+                                  'Piliin kung paano ipapakita ang iyong mga kagamitan.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Pumili kung paano ipapakita ang iyong mga kagamitan.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         const Divider(height: 1),
                       ],
                     ),
@@ -329,40 +320,28 @@ class _MyEquipmentState extends State<MyEquipment> {
                   // ── Scrollable body ───────────────────────────
                   Flexible(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Sort
-                          const Text(
-                            'PAGKAKASUNOD-SUNOD',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black54,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          _sheetSectionLabel('PAGKAKASUNOD-SUNOD'),
+                          const SizedBox(height: 10),
                           Wrap(
                             spacing: 8,
-                            runSpacing: 6,
+                            runSpacing: 8,
                             children: EquipmentSortOption.values.map((opt) {
                               final selected = _filter.sortOption == opt;
                               return ChoiceChip(
-                                avatar: Icon(
-                                  opt.icon,
-                                  size: 14,
-                                  color: selected
-                                      ? Colors.white
-                                      : lightColorScheme.primary,
-                                ),
+                                avatar: Icon(opt.icon,
+                                    size: 14,
+                                    color: selected
+                                        ? Colors.white
+                                        : lightColorScheme.primary),
                                 label: Text(opt.label),
                                 selected: selected,
-                                onSelected: (_) {
-                                  setSheetState(() => _filter =
-                                      _filter.copyWith(sortOption: opt));
-                                },
+                                onSelected: (_) => setSheetState(
+                                    () => _filter =
+                                        _filter.copyWith(sortOption: opt)),
                                 selectedColor: lightColorScheme.primary,
                                 labelStyle: TextStyle(
                                   fontSize: 12,
@@ -388,27 +367,16 @@ class _MyEquipmentState extends State<MyEquipment> {
                               );
                             }).toList(),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
                           const Divider(height: 1),
-                          const SizedBox(height: 12),
-
-                          // Status
-                          const Text(
-                            'KATAYUAN',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black54,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 16),
+                          _sheetSectionLabel('KATAYUAN'),
+                          const SizedBox(height: 10),
                           Wrap(
                             spacing: 8,
-                            runSpacing: 6,
+                            runSpacing: 8,
                             children: [
                               _statusChip(
-                                ctx: ctx,
                                 setSheetState: setSheetState,
                                 value: null,
                                 label: 'Lahat',
@@ -416,46 +384,33 @@ class _MyEquipmentState extends State<MyEquipment> {
                                 color: Colors.blueGrey,
                               ),
                               _statusChip(
-                                ctx: ctx,
                                 setSheetState: setSheetState,
                                 value: EquipmentStatus.available,
                                 label: 'Available',
                                 icon: Icons.check_circle_outline,
-                                color: Colors.green,
+                                color: Colors.green.shade600,
                               ),
                               _statusChip(
-                                ctx: ctx,
                                 setSheetState: setSheetState,
                                 value: EquipmentStatus.unavailable,
                                 label: 'Unavailable',
                                 icon: Icons.cancel_outlined,
-                                color: Colors.grey,
+                                color: Colors.grey.shade600,
                               ),
                               _statusChip(
-                                ctx: ctx,
                                 setSheetState: setSheetState,
                                 value: EquipmentStatus.underMaintenance,
                                 label: 'Maintenance',
                                 icon: Icons.build_outlined,
-                                color: Colors.orange,
+                                color: Colors.orange.shade700,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
                           const Divider(height: 1),
-                          const SizedBox(height: 12),
-
-                          // Maintenance flags
-                          const Text(
-                            'MAINTENANCE FLAGS',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black54,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 16),
+                          _sheetSectionLabel('MAINTENANCE FLAGS'),
+                          const SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
@@ -489,7 +444,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                     ),
                   ),
 
-                  // ── Pinned buttons (always visible) ───────────
+                  // ── Pinned action buttons ──────────────────────
                   const Divider(height: 1),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
@@ -502,15 +457,15 @@ class _MyEquipmentState extends State<MyEquipment> {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {
-                              setSheetState(
-                                  () => _filter = const _FilterState());
-                            },
+                            onPressed: () => setSheetState(
+                                () => _filter = const _FilterState()),
                             style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey.shade400),
+                              side: BorderSide(color: Colors.grey.shade300),
                               foregroundColor: Colors.black54,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                  borderRadius: BorderRadius.circular(10)),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
                             ),
                             child: const Text('I-reset'),
                           ),
@@ -520,14 +475,16 @@ class _MyEquipmentState extends State<MyEquipment> {
                           flex: 2,
                           child: ElevatedButton(
                             onPressed: () {
-                              setState(() {}); // rebuild parent
+                              setState(() {});
                               Navigator.pop(ctx);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: lightColorScheme.primary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                  borderRadius: BorderRadius.circular(10)),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
                             ),
                             child: const Text('Ilapat'),
                           ),
@@ -544,8 +501,19 @@ class _MyEquipmentState extends State<MyEquipment> {
     );
   }
 
+  Widget _sheetSectionLabel(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Colors.grey.shade500,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+
   Widget _statusChip({
-    required BuildContext ctx,
     required StateSetter setSheetState,
     required EquipmentStatus? value,
     required String label,
@@ -554,14 +522,11 @@ class _MyEquipmentState extends State<MyEquipment> {
   }) {
     final selected = _filter.statusFilter == value;
     return ChoiceChip(
-      avatar: Icon(icon,
-          size: 14, color: selected ? Colors.white : color),
+      avatar: Icon(icon, size: 14, color: selected ? Colors.white : color),
       label: Text(label),
       selected: selected,
-      onSelected: (_) {
-        setSheetState(
-            () => _filter = _filter.copyWith(statusFilter: value));
-      },
+      onSelected: (_) => setSheetState(
+          () => _filter = _filter.copyWith(statusFilter: value)),
       selectedColor: color,
       labelStyle: TextStyle(
         fontSize: 12,
@@ -571,9 +536,7 @@ class _MyEquipmentState extends State<MyEquipment> {
       backgroundColor: Colors.grey.shade100,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? color : Colors.grey.shade300,
-        ),
+        side: BorderSide(color: selected ? color : Colors.grey.shade300),
       ),
       showCheckmark: false,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -591,13 +554,12 @@ class _MyEquipmentState extends State<MyEquipment> {
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: value ? color.withOpacity(0.1) : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
+          color: value ? color.withOpacity(0.08) : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: value ? color : Colors.grey.shade300,
-          ),
+              color: value ? color : Colors.grey.shade300),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -610,8 +572,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                 style: TextStyle(
                   fontSize: 12,
                   color: value ? color : Colors.black54,
-                  fontWeight:
-                      value ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: value ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ),
@@ -628,19 +589,6 @@ class _MyEquipmentState extends State<MyEquipment> {
       _filter.onlyUpcomingMaintenance ||
       _filter.sortOption != EquipmentSortOption.newest;
 
-  Future<void> _toggleMaintenance(Equipment equipment) async {
-    final newStatus = equipment.status == EquipmentStatus.available
-        ? EquipmentStatus.underMaintenance
-        : EquipmentStatus.available;
-    await FirebaseFirestore.instance
-        .collection('equipment')
-        .doc(equipment.id)
-        .update({
-      'status': newStatus.toValue(),
-      'isAvailable': newStatus == EquipmentStatus.available,
-    });
-  }
-
   // ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -650,7 +598,10 @@ class _MyEquipmentState extends State<MyEquipment> {
       appBar: AppBar(
         title: Text(
           'Aking Equipment',
-          style: TextStyle(color: lightColorScheme.onPrimary),
+          style: TextStyle(
+            color: lightColorScheme.onPrimary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -661,7 +612,6 @@ class _MyEquipmentState extends State<MyEquipment> {
         ),
         centerTitle: true,
         actions: [
-          // Sort/Filter button in AppBar
           Stack(
             alignment: Alignment.center,
             children: [
@@ -689,11 +639,10 @@ class _MyEquipmentState extends State<MyEquipment> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         children: [
           // ── Overdue returns banner ────────────────────────────
           _OverdueReturnsSection(ownerId: uid),
-          const SizedBox(height: 8),
 
           // ── Active filter chips row ───────────────────────────
           if (_hasActiveFilters) ...[
@@ -701,7 +650,7 @@ class _MyEquipmentState extends State<MyEquipment> {
               filter: _filter,
               onClear: () => setState(() => _filter = const _FilterState()),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
           ],
 
           // ── Equipment list ────────────────────────────────────
@@ -712,45 +661,38 @@ class _MyEquipmentState extends State<MyEquipment> {
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 60),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(
-                    child: Text('No equipment listed yet.'));
+                return _EmptyState(
+                  icon: Icons.agriculture_rounded,
+                  title: 'Walang kagamitan pa',
+                  subtitle:
+                      'Mag-lista ng iyong unang kagamitan para magsimulang mag-rent out.',
+                );
               }
 
               final rawList = snapshot.data!.docs
                   .map((doc) => Equipment.fromFirestore(doc))
                   .toList();
 
-              // Ratings are fetched eagerly via _subscribeToEquipmentForRatings()
-              // in initState – no extra call needed here.
               final filteredList = _applyFilterAndSort(rawList);
 
               if (filteredList.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40),
-                    child: Column(
-                      children: [
-                        Icon(Icons.filter_list_off,
-                            size: 48,
-                            color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Walang kagamitan na nagtutugma sa filter.',
-                          style: TextStyle(color: Colors.grey.shade500),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () =>
-                              setState(() => _filter = const _FilterState()),
-                          child: const Text('I-clear ang Filter'),
-                        ),
-                      ],
-                    ),
+                return _EmptyState(
+                  icon: Icons.filter_list_off,
+                  title: 'Walang nagtutugmang kagamitan',
+                  subtitle: 'Subukang baguhin ang iyong filter.',
+                  action: TextButton(
+                    onPressed: () =>
+                        setState(() => _filter = const _FilterState()),
+                    child: const Text('I-clear ang Filter'),
                   ),
                 );
               }
@@ -758,21 +700,18 @@ class _MyEquipmentState extends State<MyEquipment> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Result count
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
                       '${filteredList.length} kagamitan',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: Colors.grey.shade500,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  ...filteredList
-                      .map((eq) => buildEquipmentCard(context, eq))
-                      .toList(),
+                  ...filteredList.map((eq) => buildEquipmentCard(context, eq)),
                 ],
               );
             },
@@ -782,6 +721,9 @@ class _MyEquipmentState extends State<MyEquipment> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // Equipment card (improved)
+  // ─────────────────────────────────────────────────────────────
   Widget buildEquipmentCard(BuildContext context, Equipment equipment) {
     return FutureBuilder<String?>(
       future: _firestoreService.getUserNameById(equipment.ownerId),
@@ -818,319 +760,214 @@ class _MyEquipmentState extends State<MyEquipment> {
           status: equipment.status,
         );
 
-        // Rating for this card
         final avgRating = _ratingCache[equipment.id] ?? -1;
+        final hasBadge = avgRating >= 0 ||
+            equipment.isForMaintenance ||
+            equipment.isUpcomingMaintenance ||
+            equipment.damageReportCount >=
+                StrikeService.kDamageRetirementThreshold;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ── Card ─────────────────────────────────────────────
             GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductPage(item: tempItem),
-                  ),
-                );
-              },
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ProductPage(item: tempItem)),
+              ),
               child: Card(
-                elevation: 3,
-                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 2,
+                margin: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Thumbnail
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: equipment.imageUrls.isNotEmpty
-                            ? Image.network(
-                                equipment.imageUrls.first,
-                                width: 72,
-                                height: 72,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _placeholderImage(),
-                              )
-                            : _placeholderImage(),
-                      ),
-                      const SizedBox(width: 12),
-
-                      // Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              equipment.name,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              equipment.category ?? 'No category',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '₱${equipment.price} / ${equipment.rentalUnit}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: lightColorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-
-                            // Status badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: _statusColor(equipment.status)
-                                    .withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: _statusColor(equipment.status)
-                                      .withOpacity(0.4),
-                                ),
-                              ),
-                              child: Text(
-                                _statusLabel(equipment.status),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: _statusColor(equipment.status),
-                                ),
-                              ),
-                            ),
-
-                            // Rating badge (shown if cached)
-                            if (avgRating >= 0) ...[
-                              const SizedBox(height: 4),
-                              _RatingBadge(rating: avgRating),
-                            ],
-
-                            // Maintenance badges
-                            if (equipment.isForMaintenance) ...[
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade50,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                      color: Colors.red.shade300),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.build_rounded,
-                                        size: 10,
-                                        color: Colors.red.shade700),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'For Maintenance',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.red.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ] else if (equipment.isUpcomingMaintenance) ...[
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.shade50,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                      color: Colors.amber.shade400),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.warning_amber_rounded,
-                                        size: 10,
-                                        color: Colors.amber.shade800),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Upcoming Maintenance',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.amber.shade800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ],
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ── Banner image ────────────────────────────
+                    Stack(
+                      children: [
+                        SizedBox(
+                          height: 160,
+                          child: equipment.imageUrls.isNotEmpty
+                              ? Image.network(
+                                  equipment.imageUrls.first,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _bannerPlaceholder(),
+                                )
+                              : _bannerPlaceholder(),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        // Status pill overlay
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: _StatusPill(status: equipment.status),
+                        ),
+                      ],
+                    ),
 
-                      // Action Buttons
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    // ── Content ─────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(
-                            width: 90,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => EquipmentListingScreen(
-                                      existingEquipment: tempItem,
-                                    ),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.edit_outlined, size: 14),
-                              label: const Text('Edit',
-                                  style: TextStyle(fontSize: 12)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: lightColorScheme.primary,
-                                side: BorderSide(
-                                    color: lightColorScheme.primary),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 6),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6)),
-                              ),
+                          Text(
+                            equipment.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            equipment.category ?? 'No category',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
                             ),
                           ),
                           const SizedBox(height: 6),
-                          SizedBox(
-                            width: 116,
-                            child: ElevatedButton.icon(
-                              onPressed:
-                                  equipment.status ==
-                                          EquipmentStatus.unavailable
-                                      ? null
-                                      : () async {
-                                          if (equipment.status ==
-                                              EquipmentStatus.available) {
-                                            await _scheduleMaintenance(
-                                                context, equipment);
-                                          } else {
-                                            await _endMaintenance(
-                                                context, equipment);
-                                          }
-                                        },
-                              icon: Icon(
-                                equipment.status == EquipmentStatus.available
-                                    ? Icons.build_outlined
-                                    : Icons.check_circle_outline,
-                                size: 14,
+                          Text(
+                            '₱${equipment.price} / ${equipment.rentalUnit}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: lightColorScheme.primary,
+                            ),
+                          ),
+
+                          // ── Badge row ────────────────────────
+                          if (hasBadge) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                if (avgRating >= 0)
+                                  _RatingBadge(rating: avgRating),
+                                if (equipment.isForMaintenance)
+                                  _BadgePill(
+                                    label: 'For Maintenance',
+                                    icon: Icons.build_rounded,
+                                    textColor: Colors.red.shade700,
+                                    bgColor: Colors.red.shade50,
+                                    borderColor: Colors.red.shade200,
+                                  ),
+                                if (!equipment.isForMaintenance &&
+                                    equipment.isUpcomingMaintenance)
+                                  _BadgePill(
+                                    label: 'Upcoming Maintenance',
+                                    icon: Icons.warning_amber_rounded,
+                                    textColor: Colors.amber.shade800,
+                                    bgColor: Colors.amber.shade50,
+                                    borderColor: Colors.amber.shade300,
+                                  ),
+                                if (equipment.damageReportCount >=
+                                    StrikeService.kDamageRetirementThreshold)
+                                  _BadgePill(
+                                    label: 'Suggest Retirement',
+                                    icon: Icons.archive_outlined,
+                                    textColor: Colors.deepOrange.shade700,
+                                    bgColor: Colors.deepOrange.shade50,
+                                    borderColor: Colors.deepOrange.shade200,
+                                  ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                        ],
+                      ),
+                    ),
+
+                    // ── Action strip ────────────────────────────
+                    const Divider(height: 1),
+                    IntrinsicHeight(
+                      child: Row(
+                        children: [
+                          _CardAction(
+                            icon: Icons.edit_outlined,
+                            label: 'Edit',
+                            color: lightColorScheme.primary,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EquipmentListingScreen(
+                                    existingEquipment: tempItem),
                               ),
-                              label: Text(
+                            ),
+                          ),
+                          const VerticalDivider(width: 1, thickness: 1),
+                          _CardAction(
+                            icon: equipment.status == EquipmentStatus.available
+                                ? Icons.build_outlined
+                                : Icons.check_circle_outline,
+                            label:
                                 equipment.status == EquipmentStatus.available
                                     ? 'Maintenance'
                                     : 'Set Available',
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: equipment.status ==
-                                        EquipmentStatus.unavailable
-                                    ? Colors.grey.shade400
-                                    : equipment.status ==
-                                            EquipmentStatus.available
-                                        ? const Color(0xFFF59E0B)
-                                        : lightColorScheme.primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 6),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6)),
-                              ),
-                            ),
+                            color: equipment.status ==
+                                    EquipmentStatus.unavailable
+                                ? Colors.grey.shade400
+                                : equipment.status == EquipmentStatus.available
+                                    ? const Color(0xFFF59E0B)
+                                    : Colors.green.shade600,
+                            enabled: equipment.status !=
+                                EquipmentStatus.unavailable,
+                            onTap: () async {
+                              if (equipment.status ==
+                                  EquipmentStatus.available) {
+                                await _scheduleMaintenance(context, equipment);
+                              } else {
+                                await _endMaintenance(context, equipment);
+                              }
+                            },
                           ),
-                          const SizedBox(height: 6),
-                          SizedBox(
-                            width: 100,
-                            child: OutlinedButton.icon(
-                              onPressed: () =>
-                                  _deleteEquipment(context, equipment),
-                              icon: const Icon(Icons.delete_outline, size: 14),
-                              label: const Text('Delete',
-                                  style: TextStyle(fontSize: 12)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red.shade600,
-                                side: BorderSide(color: Colors.red.shade400),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 6),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6)),
-                              ),
-                            ),
+                          const VerticalDivider(width: 1, thickness: 1),
+                          _CardAction(
+                            icon: Icons.delete_outline,
+                            label: 'Delete',
+                            color: Colors.red.shade500,
+                            onTap: () => _deleteEquipment(context, equipment),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
+
+            // ── Weather postpone (attaches to card bottom) ───────
             if (equipment.id != null)
               _WeatherPostponeSection(equipment: equipment),
+
+            const SizedBox(height: 14),
           ],
         );
       },
     );
   }
 
-  Widget _placeholderImage() {
+  Widget _bannerPlaceholder() {
     return Container(
-      width: 72,
-      height: 72,
-      color: Colors.grey.shade200,
-      child: const Icon(Icons.image_not_supported,
-          color: Colors.grey, size: 28),
+      height: 160,
+      color: Colors.grey.shade100,
+      child: Center(
+        child: Icon(Icons.agriculture_rounded,
+            color: Colors.grey.shade400, size: 48),
+      ),
     );
   }
 
-  String _statusLabel(EquipmentStatus status) {
-    switch (status) {
-      case EquipmentStatus.available:
-        return 'Available';
-      case EquipmentStatus.underMaintenance:
-        return 'Under Maintenance';
-      case EquipmentStatus.unavailable:
-        return 'Unavailable';
-    }
-  }
-
-  Color _statusColor(EquipmentStatus status) {
-    switch (status) {
-      case EquipmentStatus.available:
-        return Colors.green.shade700;
-      case EquipmentStatus.underMaintenance:
-        return Colors.orange.shade700;
-      case EquipmentStatus.unavailable:
-        return Colors.grey.shade600;
-    }
-  }
-
-  // ── Migration helpers (kept, dev-use only) ────────────────────
+  // ── Migration helpers (dev-use only) ──────────────────────────
   Future<void> migrateEquipmentStatus(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1210,8 +1047,8 @@ class _MyEquipmentState extends State<MyEquipment> {
     }
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('Rollback done. Restored isAvailable on $updated docs.')));
+          content: Text(
+              'Rollback done. Restored isAvailable on $updated docs.')));
     }
   }
 
@@ -1329,7 +1166,7 @@ class _MyEquipmentState extends State<MyEquipment> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) =>
           _MaintenanceDatePicker(equipmentName: equipment.name, today: today),
     );
@@ -1337,8 +1174,7 @@ class _MyEquipmentState extends State<MyEquipment> {
 
     final maintenanceEnd =
         DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
-    final durationDays =
-        maintenanceEnd.difference(today).inDays + 1;
+    final durationDays = maintenanceEnd.difference(today).inDays + 1;
     final isUnforeseen = durationDays > 7;
 
     final affectedBookings = await _fetchAffectedBookings(
@@ -1385,8 +1221,9 @@ class _MyEquipmentState extends State<MyEquipment> {
                 Text(
                   '$durationDays na araw',
                   style: TextStyle(
-                    color:
-                        isUnforeseen ? Colors.red : lightColorScheme.primary,
+                    color: isUnforeseen
+                        ? Colors.red
+                        : lightColorScheme.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1593,8 +1430,7 @@ class _MyEquipmentState extends State<MyEquipment> {
           notifFutures.add(_sendNotification(
             userId: request.renterId,
             title: '🔧 Kinansela ang Booking — Maintenance',
-            body:
-                'Ang iyong booking para sa "${equipment.name}" '
+            body: 'Ang iyong booking para sa "${equipment.name}" '
                 '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
                 'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw).',
             type: 'maintenance_cancel',
@@ -1626,8 +1462,7 @@ class _MyEquipmentState extends State<MyEquipment> {
             notifFutures.add(_sendNotification(
               userId: request.renterId,
               title: '🔧 Kinansela ang Booking — Labas ng Availability',
-              body:
-                  'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
+              body: 'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
                   'pagkatapos ng maintenance. Kinansela na ang iyong booking.',
               type: 'maintenance_cancel',
               extra: {
@@ -1646,8 +1481,7 @@ class _MyEquipmentState extends State<MyEquipment> {
             notifFutures.add(_sendNotification(
               userId: request.renterId,
               title: '📅 Na-reschedule ang Booking — Maintenance',
-              body:
-                  'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
+              body: 'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
                   '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
                   'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
               type: 'maintenance_reschedule',
@@ -1661,8 +1495,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                 'newEnd': Timestamp.fromDate(newEnd),
               },
             ));
-            blockedUntil =
-                DateTime(newEnd.year, newEnd.month, newEnd.day);
+            blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
           }
         }
       }
@@ -1788,12 +1621,10 @@ class _MyEquipmentState extends State<MyEquipment> {
                 style: const TextStyle(color: Colors.black87, fontSize: 14),
                 children: [
                   const TextSpan(
-                      text:
-                          'Sigurado ka bang gusto mong burahin ang '),
+                      text: 'Sigurado ka bang gusto mong burahin ang '),
                   TextSpan(
                     text: '"${equipment.name}"',
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const TextSpan(
                       text:
@@ -1840,7 +1671,156 @@ class _MyEquipmentState extends State<MyEquipment> {
 }
 
 // ─────────────────────────────────────────────
-// Rating badge widget
+// Status pill (floats over banner image)
+// ─────────────────────────────────────────────
+
+class _StatusPill extends StatelessWidget {
+  final EquipmentStatus status;
+  const _StatusPill({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final String label;
+
+    switch (status) {
+      case EquipmentStatus.available:
+        bg = Colors.green.shade600;
+        label = 'Available';
+        break;
+      case EquipmentStatus.underMaintenance:
+        bg = Colors.orange.shade600;
+        label = 'Under Maintenance';
+        break;
+      case EquipmentStatus.unavailable:
+        bg = Colors.grey.shade600;
+        label = 'Unavailable';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Generic badge pill
+// ─────────────────────────────────────────────
+
+class _BadgePill extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color textColor;
+  final Color bgColor;
+  final Color borderColor;
+
+  const _BadgePill({
+    required this.label,
+    required this.icon,
+    required this.textColor,
+    required this.bgColor,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Card action button (bottom strip)
+// ─────────────────────────────────────────────
+
+class _CardAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  const _CardAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = enabled ? color : Colors.grey.shade400;
+    return Expanded(
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: effectiveColor),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: effectiveColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Rating badge
 // ─────────────────────────────────────────────
 
 class _RatingBadge extends StatelessWidget {
@@ -1851,16 +1831,12 @@ class _RatingBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasRating = rating > 0;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: hasRating
-            ? Colors.amber.shade50
-            : Colors.grey.shade100,
+        color: hasRating ? Colors.amber.shade50 : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: hasRating
-              ? Colors.amber.shade400
-              : Colors.grey.shade300,
+          color: hasRating ? Colors.amber.shade400 : Colors.grey.shade300,
         ),
       ),
       child: Row(
@@ -1868,15 +1844,15 @@ class _RatingBadge extends StatelessWidget {
         children: [
           Icon(
             Icons.star_rounded,
-            size: 12,
-            color: hasRating ? Colors.amber.shade700 : Colors.grey,
+            size: 13,
+            color: hasRating ? Colors.amber.shade600 : Colors.grey,
           ),
           const SizedBox(width: 3),
           Text(
             hasRating ? rating.toStringAsFixed(1) : 'No ratings yet',
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color:
                   hasRating ? Colors.amber.shade800 : Colors.grey.shade500,
             ),
@@ -1888,7 +1864,7 @@ class _RatingBadge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-// Active filter bar (shown below AppBar)
+// Active filter bar
 // ─────────────────────────────────────────────
 
 class _ActiveFilterBar extends StatelessWidget {
@@ -1908,31 +1884,21 @@ class _ActiveFilterBar extends StatelessWidget {
         color: lightColorScheme.primary,
       ));
     }
-
     if (filter.statusFilter != null) {
-      final label = () {
-        switch (filter.statusFilter!) {
-          case EquipmentStatus.available:
-            return 'Available';
-          case EquipmentStatus.unavailable:
-            return 'Unavailable';
-          case EquipmentStatus.underMaintenance:
-            return 'Maintenance';
-        }
-      }();
+      final label = switch (filter.statusFilter!) {
+        EquipmentStatus.available => 'Available',
+        EquipmentStatus.unavailable => 'Unavailable',
+        EquipmentStatus.underMaintenance => 'Maintenance',
+      };
       chips.add(_chip(
-          label: label,
-          icon: Icons.circle,
-          color: Colors.blueGrey));
+          label: label, icon: Icons.circle, color: Colors.blueGrey));
     }
-
     if (filter.onlyForMaintenance) {
       chips.add(_chip(
           label: 'For Maintenance',
           icon: Icons.build_rounded,
           color: Colors.red));
     }
-
     if (filter.onlyUpcomingMaintenance) {
       chips.add(_chip(
           label: 'Upcoming Maint.',
@@ -1952,7 +1918,8 @@ class _ActiveFilterBar extends StatelessWidget {
           onTap: onClear,
           child: Container(
             margin: const EdgeInsets.only(left: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: Colors.red.shade50,
               borderRadius: BorderRadius.circular(20),
@@ -1967,7 +1934,7 @@ class _ActiveFilterBar extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 11,
                         color: Colors.red.shade600,
-                        fontWeight: FontWeight.w500)),
+                        fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -1982,7 +1949,7 @@ class _ActiveFilterBar extends StatelessWidget {
       required Color color}) {
     return Container(
       margin: const EdgeInsets.only(right: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
@@ -1998,6 +1965,62 @@ class _ActiveFilterBar extends StatelessWidget {
                   fontSize: 11,
                   color: color,
                   fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Empty state widget
+// ─────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget? action;
+
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.action,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 60),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 40, color: Colors.grey.shade400),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            textAlign: TextAlign.center,
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 12),
+            action!,
+          ],
         ],
       ),
     );
@@ -2068,7 +2091,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
         children: [
           Center(
             child: Container(
-              width: 40,
+              width: 36,
               height: 4,
               decoration: BoxDecoration(
                 color: Colors.grey.shade300,
@@ -2079,18 +2102,33 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.build_outlined,
-                  color: lightColorScheme.primary, size: 20),
-              const SizedBox(width: 8),
-              const Text('I-schedule ang Maintenance',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: lightColorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.build_outlined,
+                    color: lightColorScheme.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'I-schedule ang Maintenance',
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    widget.equipmentName,
+                    style: TextStyle(
+                        color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(widget.equipmentName,
-              style: TextStyle(
-                  color: Colors.grey.shade600, fontSize: 13)),
           const SizedBox(height: 20),
           _DateRow(
             label: 'Simula',
@@ -2099,7 +2137,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
             color: Colors.blue,
             isFixed: true,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _DateRow(
             label: 'Katapusan',
             value: _selectedEnd != null
@@ -2116,22 +2154,19 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                 lastDate: widget.today.add(const Duration(days: 365)),
                 helpText: 'Select maintenance end date',
               );
-              if (picked != null) {
-                setState(() => _selectedEnd = picked);
-              }
+              if (picked != null) setState(() => _selectedEnd = picked);
             },
           ),
           if (_selectedEnd != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: _isUnforeseen
                     ? Colors.red.shade50
                     : Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: _isUnforeseen
                       ? Colors.red.shade300
@@ -2174,6 +2209,11 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
                   child: const Text('Kanselahin'),
                 ),
               ),
@@ -2188,6 +2228,9 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                         ? Colors.red
                         : Colors.orange.shade600,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                   child: const Text('Kumpirmahin'),
                 ),
@@ -2228,14 +2271,20 @@ class _DateRow extends StatelessWidget {
           color: isFixed ? Colors.grey.shade50 : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isFixed
-                ? Colors.grey.shade300
-                : color.withOpacity(0.5),
+            color:
+                isFixed ? Colors.grey.shade300 : color.withOpacity(0.5),
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 18),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 16),
+            ),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2253,9 +2302,7 @@ class _DateRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isFixed
-                        ? Colors.grey.shade600
-                        : Colors.black87,
+                    color: isFixed ? Colors.grey.shade600 : Colors.black87,
                   ),
                 ),
               ],
@@ -2379,16 +2426,14 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Ang lahat ng nakatalagang booking mula ngayon ay ililipat ng isang araw.',
-                ),
+                    'Ang lahat ng nakatalagang booking mula ngayon ay ililipat ng isang araw.'),
                 if (upcoming.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Text('Mga Apektadong Booking:',
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   ...upcoming.map((r) {
-                    final newStart =
-                        r.start.add(const Duration(days: 1));
+                    final newStart = r.start.add(const Duration(days: 1));
                     final newEnd = r.end.add(const Duration(days: 1));
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 6),
@@ -2409,8 +2454,7 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
                                 Text(
                                   'Dati: ${fmt.format(r.start)} – ${fmt.format(r.end)}',
                                   style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black54),
+                                      fontSize: 12, color: Colors.black54),
                                 ),
                                 Text(
                                   'Bago: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
@@ -2472,8 +2516,7 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
           .add({
         'type': 'maintenance_reschedule',
         'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
-        'body':
-            'Ang iyong booking para sa "${widget.equipment.name}" '
+        'body': 'Ang iyong booking para sa "${widget.equipment.name}" '
             '(${fmt2.format(r.start)} – ${fmt2.format(r.end)}) '
             'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
             'Bagong petsa: ${fmt2.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
@@ -2512,41 +2555,46 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
       return const SizedBox.shrink();
     }
     return Container(
-      margin: const EdgeInsets.only(top: 0, bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(10),
-          bottomRight: Radius.circular(10),
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade700, Colors.blue.shade500],
         ),
-        border: Border.all(color: Colors.blue.shade300),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(14),
+          bottomRight: Radius.circular(14),
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.thunderstorm_outlined,
-              color: Colors.blue.shade700, size: 18),
+          const Icon(Icons.thunderstorm_outlined,
+              color: Colors.white70, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${_todayBookings.length} booking ngayon na apektado ng masamang panahon.',
-              style:
-                  TextStyle(fontSize: 12, color: Colors.blue.shade800),
+              '${_todayBookings.length} booking today affected by bad weather.',
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500),
             ),
           ),
           const SizedBox(width: 8),
-          ElevatedButton(
+          TextButton(
             onPressed: _postpone,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade600,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 6),
-              textStyle: const TextStyle(fontSize: 11),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.blue.shade700,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              textStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6)),
+                  borderRadius: BorderRadius.circular(8)),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('Ipagpaliban'),
+            child: const Text('Postpone'),
           ),
         ],
       ),
@@ -2582,74 +2630,120 @@ class _OverdueReturnsSection extends StatelessWidget {
         if (overdue.isEmpty) return const SizedBox.shrink();
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 4),
+          margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.red.shade50,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.red.shade300),
+            border: Border.all(color: Colors.red.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.07),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+              // Red header strip
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade600,
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(13)),
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded,
-                        color: Colors.red.shade600, size: 20),
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.white, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      'Unreturned Equipment (${overdue.length})',
-                      style: TextStyle(
+                      'Unreturned Equipment  •  ${overdue.length}',
+                      style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: Colors.red.shade800,
-                        fontSize: 14,
+                        color: Colors.white,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
-              ...overdue.map((r) {
+              // Row list
+              ...overdue.asMap().entries.map((entry) {
+                final i = entry.key;
+                final r = entry.value;
                 final days = now.difference(r.end).inDays;
-                return ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 2),
-                  leading: Icon(Icons.agriculture_rounded,
-                      color: Colors.red.shade400, size: 22),
-                  title: Text(r.itemName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
-                  subtitle: Text(
-                    'Renter: ${r.name}  •  Due: ${DateFormat('MMM dd').format(r.end)}',
-                    style: TextStyle(
-                        color: Colors.grey.shade600, fontSize: 11),
-                  ),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade600,
-                      borderRadius: BorderRadius.circular(20),
+                return Column(
+                  children: [
+                    if (i > 0)
+                      const Divider(height: 1, indent: 14, endIndent: 14),
+                    InkWell(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              RequestSentPage(requestId: r.requestId),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.agriculture_rounded,
+                                  color: Colors.red.shade400, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(r.itemName,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${r.name}  •  Due ${DateFormat('MMM dd').format(r.end)}',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                        fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade600,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                days == 0
+                                    ? 'Due today'
+                                    : '$days ${days == 1 ? 'day' : 'days'} late',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      days == 0
-                          ? 'Due today'
-                          : '$days ${days == 1 ? 'day' : 'days'} late',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          RequestSentPage(requestId: r.requestId),
-                    ),
-                  ),
+                  ],
                 );
               }),
             ],

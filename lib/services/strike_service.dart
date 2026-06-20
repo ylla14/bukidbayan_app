@@ -75,12 +75,16 @@ class StrikeService {
 
   /// Immediately bans the renter for [kBlockDurationMisuse] days without
   /// touching their strike count. Used for equipment damage and misuse reports.
+  static const kDamageReasons = {'damaged_equipment', 'missing_parts', 'misuse'};
+  static const kDamageRetirementThreshold = 5;
+
   Future<void> issueMisuseBan({
     required String requestId,
     required String renterId,
     required String ownerId,
     required String reason,
     required String details,
+    String? equipmentId,
     List<String> evidenceUrls = const [],
   }) async {
     final userRef   = _db.collection('users').doc(renterId);
@@ -102,6 +106,12 @@ class StrikeService {
       tx.update(userRef, {
         'blockedUntil': Timestamp.fromDate(blockedUntil),
       });
+
+      if (equipmentId != null && kDamageReasons.contains(reason)) {
+        tx.update(_db.collection('equipment').doc(equipmentId), {
+          'damageReportCount': FieldValue.increment(1),
+        });
+      }
     });
 
     try {

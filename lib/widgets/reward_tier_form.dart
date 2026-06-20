@@ -271,14 +271,14 @@ class _RewardTierFormState extends State<RewardTierForm> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: widget.onCancel,
-                    child: const Text('Kanselahin'),
+                    child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _submit,
-                    child: const Text('I-save ang Benepisyo'),
+                    child: const Text('Save Reward'),
                   ),
                 ),
               ],

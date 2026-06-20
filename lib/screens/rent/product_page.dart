@@ -1038,10 +1038,10 @@ class _ProductBottomBarState extends State<_ProductBottomBar> {
                     isOwner
                         ? 'Edit Listing'
                         : isAccountBlocked
-                            ? 'Hindi Maaaring Mag-rent'
+                            ? 'Cannot Rent'
                             : _isCategoryBlocked
                                 ? 'May Aktibong Request'
-                                : 'Humiling na Mag-Rent',
+                                : 'Request to Rent',
                     style: TextStyle(
                       color: _isCategoryBlocked && !isAccountBlocked
                           ? Colors.black
