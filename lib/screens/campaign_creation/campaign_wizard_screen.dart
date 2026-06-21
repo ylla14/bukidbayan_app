@@ -1137,12 +1137,27 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                     : 'Pumili ng petsa',
               ),
               trailing: const Icon(Icons.calendar_today),
+              // onTap: () async {
+              //   final picked = await showDatePicker(
+              //     context: context,
+              //     initialDate: _selectedEndDate ?? DateTime.now(),
+              //     firstDate: DateTime.now(),
+              //     lastDate: DateTime.now().add(const Duration(days: 365)),
+              //   );
+              //   if (picked != null) {
+              //     setState(() => _selectedEndDate = picked);
+              //   }
+              // },
               onTap: () async {
+                final now = DateTime.now();
+                final safeInitial = (_selectedEndDate != null && _selectedEndDate!.isAfter(now))
+                    ? _selectedEndDate!
+                    : now;
                 final picked = await showDatePicker(
                   context: context,
-                  initialDate: _selectedEndDate ?? DateTime.now(),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                  initialDate: safeInitial,
+                  firstDate: now,
+                  lastDate: now.add(const Duration(days: 365)),
                 );
                 if (picked != null) {
                   setState(() => _selectedEndDate = picked);
@@ -1702,6 +1717,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                               onPressed: _isLoading ? null : _publishCampaign,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: lightColorScheme.primary,
+                                foregroundColor: Colors.white,  // add this
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -1709,6 +1725,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
+                                        color: Colors.white,  // keep spinner white too
                                       ),
                                     )
                                   : const Text('I-publish'),
