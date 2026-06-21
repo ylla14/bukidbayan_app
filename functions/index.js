@@ -295,14 +295,12 @@ async function finalizePaidAttempt({
   }
 
   const attempt = {id: attemptSnap.id, ...attemptSnap.data()};
-  const existingPledgeForBacker = attempt.createdByUid
-      ? await db
+  const existingBackerPledgeQuery = attempt.createdByUid
+      ? db
           .collection(`campaigns/${campaignId}/pledges`)
           .where('backerUid', '==', attempt.createdByUid)
           .limit(1)
-          .get()
       : null;
-  const isNewBacker = !existingPledgeForBacker || existingPledgeForBacker.empty;
 
   await db.runTransaction(async (transaction) => {
     const [
@@ -316,6 +314,9 @@ async function finalizePaidAttempt({
       transaction.get(attemptRef),
       transaction.get(pledgeRef),
     ]);
+    const existingBackerPledgeDoc = existingBackerPledgeQuery
+        ? await transaction.get(existingBackerPledgeQuery)
+        : null;
 
     if (eventDoc.exists) {
       return;
@@ -349,6 +350,8 @@ async function finalizePaidAttempt({
 
     const campaign = campaignDoc.data();
     const paidAt = processedAt;
+    const isNewBacker =
+        !existingBackerPledgeDoc || existingBackerPledgeDoc.empty;
     const nextPledgedAmount = Number(campaign?.pledgedAmount || 0) + Number(attempt.amount || 0);
     const nextBackersCount = Number(campaign?.backersCount || 0) + (isNewBacker ? 1 : 0);
 

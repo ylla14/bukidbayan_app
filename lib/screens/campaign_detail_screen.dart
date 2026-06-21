@@ -59,16 +59,22 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   }
 
   bool _isOwnedByCurrentUser(Campaign campaign) {
+    String? uid;
     String? email;
     String? displayName;
     try {
+      uid = FirebaseAuth.instance.currentUser?.uid;
       email = FirebaseAuth.instance.currentUser?.email;
       displayName = FirebaseAuth.instance.currentUser?.displayName;
     } catch (_) {
+      uid = null;
       email = null;
       displayName = null;
     }
 
+    if (uid != null && campaign.creatorUid == uid) {
+      return true;
+    }
     if (email != null &&
         campaign.creatorEmail != null &&
         campaign.creatorEmail == email) {
@@ -104,7 +110,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: lightColorScheme.primary.withOpacity(0.28)),
+        border: Border.all(
+          color: lightColorScheme.primary.withValues(alpha: 0.28),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +356,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         return Card(
                           elevation: 0,
                           color: isSelected
-                              ? lightColorScheme.secondary.withOpacity(0.35)
+                              ? lightColorScheme.secondary.withValues(
+                                  alpha: 0.35,
+                                )
                               : Colors.white,
                           child: ListTile(
                             title: Text(
@@ -448,10 +458,14 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: lightColorScheme.primary.withOpacity(0.08),
+                          color: lightColorScheme.primary.withValues(
+                            alpha: 0.08,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: lightColorScheme.primary.withOpacity(0.18),
+                            color: lightColorScheme.primary.withValues(
+                              alpha: 0.18,
+                            ),
                           ),
                         ),
                         child: Text(
