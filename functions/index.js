@@ -89,6 +89,24 @@ async function markAttemptFailed(attemptRef, reason, extra = {}) {
   );
 }
 
+function getValidPaymongoImageUrls(campaign) {
+  const image = typeof campaign.image === 'string' ? campaign.image.trim() : '';
+  if (!image || campaign.isAssetImage) {
+    return [];
+  }
+
+  try {
+    const url = new URL(image);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return [url.toString()];
+    }
+  } catch (_) {
+    return [];
+  }
+
+  return [];
+}
+
 function buildCheckoutPayload({attempt, campaign, config}) {
   const reward =
       Array.isArray(campaign.rewards) &&
@@ -123,8 +141,7 @@ function buildCheckoutPayload({attempt, campaign, config}) {
             amount: attempt.amount * 100,
             currency: attempt.currency,
             description: reward?.title || campaign.shortBlurb || campaign.title,
-            images:
-              campaign.isAssetImage || !campaign.image ? [] : [campaign.image],
+            images: getValidPaymongoImageUrls(campaign),
             name: campaign.title,
             quantity: 1,
           },

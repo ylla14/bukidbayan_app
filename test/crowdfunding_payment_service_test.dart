@@ -162,5 +162,71 @@ void main() {
         'https://checkout.paymongo.com/cs_test_123',
       );
     });
+
+    test(
+      'watches the latest attempt for the current user on a campaign',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth(uid: 'watcher-uid');
+        final campaign = _campaign(
+          id: 'c_latest_attempt',
+          creatorUid: 'owner-uid',
+          creatorEmail: 'owner@example.com',
+        );
+        final service = CrowdfundingPaymentService(
+          firestore: firestore,
+          auth: auth,
+        );
+
+        await _seedCampaign(firestore, campaign);
+
+        await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .collection('payment_attempts')
+            .doc('older')
+            .set(
+              PaymentAttempt(
+                id: 'older',
+                campaignId: campaign.id,
+                createdByUid: 'watcher-uid',
+                donorName: 'Older Attempt',
+                amount: 500,
+                provider: PaymentProvider.payMongoCheckout,
+                status: PaymentAttemptStatus.created,
+                createdAt: DateTime(2026, 6, 20, 10),
+                updatedAt: DateTime(2026, 6, 20, 10),
+              ).toFirestore(),
+            );
+
+        await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .collection('payment_attempts')
+            .doc('newer')
+            .set(
+              PaymentAttempt(
+                id: 'newer',
+                campaignId: campaign.id,
+                createdByUid: 'watcher-uid',
+                donorName: 'Newer Attempt',
+                amount: 700,
+                provider: PaymentProvider.payMongoCheckout,
+                status: PaymentAttemptStatus.pendingCheckout,
+                createdAt: DateTime(2026, 6, 21, 10),
+                updatedAt: DateTime(2026, 6, 21, 10),
+              ).toFirestore(),
+            );
+
+        await expectLater(
+          service.watchLatestAttemptForCurrentUser(campaignId: campaign.id),
+          emits(
+            isA<PaymentAttempt>()
+                .having((attempt) => attempt.id, 'id', 'newer')
+                .having((attempt) => attempt.amount, 'amount', 700),
+          ),
+        );
+      },
+    );
   });
 }

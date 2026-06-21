@@ -172,6 +172,27 @@ class CrowdfundingPaymentService {
     });
   }
 
+  Stream<PaymentAttempt?> watchLatestAttemptForCurrentUser({
+    required String campaignId,
+  }) {
+    final uid = _uid;
+    if (uid == null) {
+      return Stream.value(null);
+    }
+
+    return _attemptsRef(
+      campaignId,
+    ).where('createdByUid', isEqualTo: uid).snapshots().map((snap) {
+      if (snap.docs.isEmpty) return null;
+
+      final attempts =
+          snap.docs.map((doc) => _attemptFromDoc(doc, campaignId)).toList()
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return attempts.first;
+    });
+  }
+
   Future<PaymentAttempt> waitForCheckoutReady({
     required String campaignId,
     required String attemptId,

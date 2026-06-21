@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/models/payment_attempt.dart';
+import 'package:bukidbayan_app/screens/crowdfunding_payment_return_screen.dart';
 import 'package:bukidbayan_app/services/crowdfunding_payment_service.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -128,6 +129,127 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  String _latestAttemptLabel(PaymentAttempt attempt) {
+    switch (attempt.status) {
+      case PaymentAttemptStatus.created:
+        return 'May naihandang support attempt na naghihintay pa ng checkout.';
+      case PaymentAttemptStatus.pendingCheckout:
+        return 'May huli kang checkout attempt para sa campaign na ito.';
+      case PaymentAttemptStatus.processing:
+        return 'Pinoproseso pa ang huli mong bayad para sa campaign na ito.';
+      case PaymentAttemptStatus.paid:
+        return 'Nakumpirma na ang huli mong bayad para sa campaign na ito.';
+      case PaymentAttemptStatus.failed:
+        return 'Hindi natuloy ang huli mong bayad para sa campaign na ito.';
+      case PaymentAttemptStatus.cancelled:
+        return 'Kinansela ang huli mong checkout para sa campaign na ito.';
+      case PaymentAttemptStatus.expired:
+        return 'Nag-expire ang huli mong checkout para sa campaign na ito.';
+      case PaymentAttemptStatus.refunded:
+        return 'Na-refund ang huli mong bayad para sa campaign na ito.';
+      default:
+        return 'May naitalang support attempt para sa campaign na ito.';
+    }
+  }
+
+  void _openPaymentStatus(PaymentAttempt attempt) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CrowdfundingPaymentReturnScreen(
+          campaignId: attempt.campaignId,
+          attemptId: attempt.id,
+        ),
+      ),
+    );
+  }
+
+  bool _shouldShowLatestAttemptRecovery(PaymentAttempt attempt) {
+    return !attempt.isTerminal;
+  }
+
+  Widget _buildLatestAttemptCard(Campaign campaign) {
+    return StreamBuilder<PaymentAttempt?>(
+      stream: paymentService.watchLatestAttemptForCurrentUser(
+        campaignId: campaign.id,
+      ),
+      builder: (context, snapshot) {
+        final attempt = snapshot.data;
+        if (attempt == null || !_shouldShowLatestAttemptRecovery(attempt)) {
+          return const SizedBox.shrink();
+        }
+
+        final accent = switch (attempt.status) {
+          PaymentAttemptStatus.paid => Colors.green.shade700,
+          PaymentAttemptStatus.failed ||
+          PaymentAttemptStatus.cancelled ||
+          PaymentAttemptStatus.expired => Colors.orange.shade700,
+          _ => lightColorScheme.primary,
+        };
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Card(
+            elevation: 0,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: accent.withValues(alpha: 0.24)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.receipt_long_outlined, color: accent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Huli mong payment status',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _latestAttemptLabel(attempt),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(
+                        label: Text(formatPeso(attempt.amount)),
+                        side: BorderSide(color: accent.withValues(alpha: 0.2)),
+                      ),
+                      Chip(
+                        label: Text(attempt.status),
+                        side: BorderSide(color: accent.withValues(alpha: 0.2)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () => _openPaymentStatus(attempt),
+                    icon: const Icon(Icons.open_in_new_outlined),
+                    label: const Text('Tingnan ang payment status'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -590,6 +712,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         'Basahin ang target, benepisyo, at panganib para malinaw ang iyong desisyon.',
                   ),
                 ),
+                _buildLatestAttemptCard(c),
                 if (!canSupport && disabledMessage != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
