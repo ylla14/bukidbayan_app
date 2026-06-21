@@ -6,7 +6,7 @@ import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
 import 'package:flutter/material.dart';
 
-class CrowdfundingPaymentReturnScreen extends StatefulWidget {
+class CrowdfundingPaymentReturnScreen extends StatelessWidget {
   static const routePath = '/crowdfunding/payment-return';
 
   const CrowdfundingPaymentReturnScreen({
@@ -22,54 +22,14 @@ class CrowdfundingPaymentReturnScreen extends StatefulWidget {
   final String? paymentStatusHint;
   final CrowdfundingPaymentService? _paymentService;
 
-  @override
-  State<CrowdfundingPaymentReturnScreen> createState() =>
-      _CrowdfundingPaymentReturnScreenState();
-}
-
-class _CrowdfundingPaymentReturnScreenState
-    extends State<CrowdfundingPaymentReturnScreen> {
-  bool _finalizing = false;
-  String? _finalizationError;
-
   CrowdfundingPaymentService get _service =>
-      widget._paymentService ?? CrowdfundingPaymentService();
+      _paymentService ?? CrowdfundingPaymentService();
 
   bool get _hasRequiredIds =>
-      widget.campaignId != null &&
-      widget.campaignId!.trim().isNotEmpty &&
-      widget.attemptId != null &&
-      widget.attemptId!.trim().isNotEmpty;
-
-  @override
-  void initState() {
-    super.initState();
-    _attemptFinalize();
-  }
-
-  Future<void> _attemptFinalize() async {
-    if (!_hasRequiredIds) return;
-    if ((widget.paymentStatusHint ?? '').toLowerCase() == 'cancelled') return;
-
-    setState(() {
-      _finalizing = true;
-      _finalizationError = null;
-    });
-    try {
-      await _service.finalizePaymentFromRedirect(
-        campaignId: widget.campaignId!,
-        attemptId: widget.attemptId!,
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _finalizationError = e.toString().replaceFirst('Exception: ', '');
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _finalizing = false);
-    }
-  }
+      campaignId != null &&
+      campaignId!.trim().isNotEmpty &&
+      attemptId != null &&
+      attemptId!.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -83,69 +43,121 @@ class _CrowdfundingPaymentReturnScreenState
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: _hasRequiredIds
-              ? _finalizing
-                  ? _buildFinalizing()
-                  : _finalizationError != null
-                  ? _buildFinalizationError()
-                  : StreamBuilder<PaymentAttempt?>(
-                      stream: _service.watchPaymentAttempt(
-                        campaignId: widget.campaignId!,
-                        attemptId: widget.attemptId!,
-                      ),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasError) {
-                          return _PaymentReturnCard(
-                            icon: Icons.lock_outline,
-                            iconColor: Colors.orange.shade700,
-                            title: 'Hindi ma-verify ang bayad',
-                            message:
-                                'May problema sa pagbabasa ng payment status. Subukan ulit pagkalipas ng ilang sandali.',
-                            attemptId: widget.attemptId!,
-                            actions: [_backToWelcomeAction(context)],
-                          );
-                        }
+              ? StreamBuilder<PaymentAttempt?>(
+                  stream: _service.watchPaymentAttempt(
+                    campaignId: campaignId!,
+                    attemptId: attemptId!,
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      final rawError = snapshot.error.toString();
+                      final isPermissionIssue = rawError.contains(
+                        'permission-denied',
+                      );
+                      return _PaymentReturnCard(
+                        icon: Icons.lock_outline,
+                        iconColor: Colors.orange.shade700,
+                        title: isPermissionIssue
+                            ? 'Hindi ma-verify ang bayad'
+                            : 'May problema sa pag-check ng status',
+                        message: isPermissionIssue
+                            ? 'Mag-sign in gamit ang account na ginamit sa checkout para makita ang tunay na kalagayan ng bayad.'
+                            : 'Hindi mabasa ang payment attempt sa ngayon. Subukan ulit pagkalipas ng ilang sandali.',
+                        attemptId: attemptId!,
+                        trailingText:
+                            'Ang pledge ay hindi bibilangin hangga\'t walang backend confirmation.',
+                        actions: [
+                          _PaymentAction(
+                            label: 'Bumalik sa Welcome',
+                            onPressed: () {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const WelcomeScreen(),
+                                ),
+                                (route) => false,
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    }
 
-                        if (!snapshot.hasData) {
-                          return _PaymentReturnCard(
-                            icon: Icons.hourglass_top_rounded,
-                            iconColor: lightColorScheme.primary,
-                            title: 'Tinitingnan ang payment status',
-                            message: 'Sandaling hinihintay ang resulta...',
-                            attemptId: widget.attemptId!,
-                          );
-                        }
+                    if (!snapshot.hasData) {
+                      return _PaymentReturnCard(
+                        icon: Icons.hourglass_top_rounded,
+                        iconColor: lightColorScheme.primary,
+                        title: 'Tinitingnan ang payment attempt',
+                        message:
+                            'Sandaling hinihintay ang pinakabagong status mula sa backend.',
+                        attemptId: attemptId!,
+                        trailingText:
+                            'Kapag na-verify ang bayad, dito lalabas ang kumpirmadong resulta.',
+                      );
+                    }
 
-                        final attempt = snapshot.data;
-                        if (attempt == null) {
-                          return _PaymentReturnCard(
-                            icon: Icons.search_off_outlined,
-                            iconColor: Colors.orange.shade700,
-                            title: 'Hindi nakita ang payment attempt',
-                            message:
-                                'Walang tumugmang crowdfunding payment attempt para sa ibinigay na detalye.',
-                            attemptId: widget.attemptId!,
-                            actions: [
-                              _openCampaignAction(context, widget.campaignId!),
-                            ],
-                          );
-                        }
+                    final attempt = snapshot.data;
+                    if (attempt == null) {
+                      return _PaymentReturnCard(
+                        icon: Icons.search_off_outlined,
+                        iconColor: Colors.orange.shade700,
+                        title: 'Hindi nakita ang payment attempt',
+                        message:
+                            'Walang tumugmang crowdfunding payment attempt para sa ibinigay na detalye.',
+                        attemptId: attemptId!,
+                        actions: [
+                          _PaymentAction(
+                            label: 'Buksan ang campaign',
+                            onPressed: () {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (_) => CampaignDetailScreen(
+                                    campaignId: campaignId!,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    }
 
-                        final statusView = _resolveStatusView(attempt);
-                        return _PaymentReturnCard(
-                          icon: statusView.icon,
-                          iconColor: statusView.iconColor,
-                          title: statusView.title,
-                          message: statusView.message,
-                          amountText: formatPeso(attempt.amount),
-                          attemptId: attempt.id,
-                          trailingText: statusView.trailingText,
-                          actions: [
-                            _openCampaignAction(context, attempt.campaignId),
-                            _backToWelcomeAction(context),
-                          ],
-                        );
-                      },
-                    )
+                    final statusView = _resolveStatusView(attempt);
+                    return _PaymentReturnCard(
+                      icon: statusView.icon,
+                      iconColor: statusView.iconColor,
+                      title: statusView.title,
+                      message: statusView.message,
+                      amountText: formatPeso(attempt.amount),
+                      attemptId: attempt.id,
+                      trailingText: statusView.trailingText,
+                      actions: [
+                        _PaymentAction(
+                          label: 'Buksan ang campaign',
+                          onPressed: () {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (_) => CampaignDetailScreen(
+                                  campaignId: attempt.campaignId,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        _PaymentAction(
+                          label: 'Bumalik sa Welcome',
+                          onPressed: () {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const WelcomeScreen(),
+                              ),
+                              (route) => false,
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                )
               : _PaymentReturnCard(
                   icon: Icons.link_off_outlined,
                   iconColor: Colors.orange.shade700,
@@ -154,74 +166,22 @@ class _CrowdfundingPaymentReturnScreenState
                       'Hindi sapat ang datos ng redirect para mahanap ang payment attempt.',
                   trailingText:
                       'Gamitin ang campaign page para tingnan muli ang status ng suporta mo.',
-                  actions: [_backToWelcomeAction(context)],
+                  actions: [
+                    _PaymentAction(
+                      label: 'Bumalik sa Welcome',
+                      onPressed: () {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => const WelcomeScreen(),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                  ],
                 ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFinalizing() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(color: lightColorScheme.primary),
-          const SizedBox(height: 20),
-          const Text(
-            'Kine-confirm ang iyong bayad...',
-            style: TextStyle(fontSize: 15),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Huwag isara ang screen na ito.',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFinalizationError() {
-    return _PaymentReturnCard(
-      icon: Icons.wifi_off_outlined,
-      iconColor: Colors.orange.shade700,
-      title: 'Hindi ma-kumpirma ang bayad',
-      message: _finalizationError ??
-          'May problema sa pag-verify ng bayad sa PayMongo.',
-      trailingText:
-          'Kung natuloy ang bayad sa PayMongo, maaaring delayed lang ang kumpirmasyon. Subukan ulit.',
-      attemptId: widget.attemptId,
-      actions: [
-        _PaymentAction(label: 'Subukan Ulit', onPressed: _attemptFinalize),
-        if (widget.campaignId != null)
-          _openCampaignAction(context, widget.campaignId!),
-      ],
-    );
-  }
-
-  _PaymentAction _backToWelcomeAction(BuildContext context) {
-    return _PaymentAction(
-      label: 'Bumalik sa Welcome',
-      onPressed: () {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-          (route) => false,
-        );
-      },
-    );
-  }
-
-  _PaymentAction _openCampaignAction(BuildContext context, String campaignId) {
-    return _PaymentAction(
-      label: 'Buksan ang campaign',
-      onPressed: () {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => CampaignDetailScreen(campaignId: campaignId),
-          ),
-        );
-      },
     );
   }
 
@@ -233,7 +193,7 @@ class _CrowdfundingPaymentReturnScreenState
           iconColor: Colors.green.shade700,
           title: 'Nakumpirma na ang bayad',
           message:
-              'Na-verify ang iyong bayad sa PayMongo. Kasama na ito sa campaign totals at pledge records.',
+              'Na-verify na ng backend ang bayad mo. Kasama na ito sa campaign totals at pledge records.',
           trailingText:
               'Reference: ${attempt.providerPaymentId ?? attempt.providerCheckoutId ?? attempt.id}',
         );
@@ -269,24 +229,26 @@ class _CrowdfundingPaymentReturnScreenState
               'Kailangan gumawa ng panibagong checkout attempt para magpatuloy.',
         );
       default:
-        if ((widget.paymentStatusHint ?? '').toLowerCase() == 'cancelled') {
+        if ((paymentStatusHint ?? '').toLowerCase() == 'cancelled') {
           return _PaymentStatusView(
             icon: Icons.cancel_outlined,
             iconColor: Colors.orange.shade700,
             title: 'Kinansela mo ang checkout',
             message:
-                'Walang naitalang bayad mula sa redirect na ito. Hindi ito bibilang bilang pledge.',
+                'Walang naitalang bayad mula sa redirect na ito. Hindi ito bibilang bilang pledge maliban kung may hiwalay na backend confirmation.',
             trailingText:
                 'Kung gusto mong tumuloy, bumalik sa campaign at gumawa ng panibagong checkout.',
           );
         }
+
         return _PaymentStatusView(
           icon: Icons.hourglass_top_rounded,
           iconColor: lightColorScheme.primary,
-          title: 'Hinihintay ang kumpirmasyon',
+          title: 'Hinihintay ang kumpirmasyon ng bayad',
           message:
-              'Natanggap ang pagbabalik mula sa checkout. Tinitingnan ang status ng bayad...',
-          trailingText: null,
+              'Natanggap ang pagbabalik mula sa checkout, pero backend pa rin ang magpapasya kung matagumpay ang bayad.',
+          trailingText:
+              'Hindi pa mababago ang pledge records at campaign totals hangga\'t hindi nagiging `paid` ang payment attempt.',
         );
     }
   }
