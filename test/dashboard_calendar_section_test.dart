@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/components/dashboard/dashboard_calendar_section.dart';
 import 'package:bukidbayan_app/models/dashboard_calendar.dart';
+import 'package:bukidbayan_app/models/demand_forecast.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/services/dashboard_calendar_service.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
@@ -74,6 +75,61 @@ void main() {
     );
     expect(find.textContaining('Weather risk on booking day'), findsOneWidget);
     expect(find.textContaining('Harvester'), findsWidgets);
+  });
+
+  testWidgets('renders demand forecast panel when forecast data is available', (
+    tester,
+  ) async {
+    final contextData = DashboardCalendarContext(
+      userId: 'user-1',
+      requests: const [],
+      forecast: const [],
+      season: 'Wet Season',
+      seasonalCrops: const ['Rice (Wet Season)'],
+      demandForecast: DemandForecastSnapshot(
+        generatedAt: DateTime(2026, 7, 8),
+        weekStart: DateTime(2026, 7, 8),
+        weekEnd: DateTime(2026, 7, 14),
+        locationLabel: 'Barangay San Jose',
+        summary:
+            'Estimated medium demand for Hand Tractor (Kuliglig) in Barangay San Jose this week with medium confidence.',
+        confidence: DemandForecastConfidence.medium,
+        insights: const [
+          DemandForecastInsight(
+            equipmentCategory: 'Hand Tractor (Kuliglig)',
+            score: 3.2,
+            level: DemandForecastLevel.medium,
+            matchedRequests: 2,
+            recentRequests: 2,
+            drivers: ['2 recent requests', 'Crop signal: Rice (Wet Season)'],
+            recommendation:
+                'Monitor availability and scheduling for Hand Tractor (Kuliglig).',
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: DashboardCalendarSection(
+              currentUserId: 'user-1',
+              controller: _FakeDashboardCalendarController(contextData),
+              initialMonth: DateTime(2026, 7, 1),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('dashboard_calendar_demand_forecast_panel')),
+      findsOneWidget,
+    );
+    expect(find.text('Demand Forecast'), findsOneWidget);
+    expect(find.textContaining('Hand Tractor (Kuliglig)'), findsWidgets);
   });
 }
 

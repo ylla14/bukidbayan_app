@@ -1717,7 +1717,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                               onPressed: _isLoading ? null : _publishCampaign,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: lightColorScheme.primary,
-                                foregroundColor: Colors.white,  // add this
+                                foregroundColor: lightColorScheme.onPrimary,
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -1725,7 +1725,9 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,  // keep spinner white too
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
                                       ),
                                     )
                                   : const Text('I-publish'),

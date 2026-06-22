@@ -1,6 +1,8 @@
 import 'package:bukidbayan_app/components/admin/admin_card.dart';
 import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
+import 'package:bukidbayan_app/screens/admin/admin_analytics_screen.dart';
+import 'package:bukidbayan_app/services/analytics/admin_analytics_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +11,8 @@ class AdminScreen extends StatefulWidget {
   final FirebaseAuth? authOverride;
   final PreferredSizeWidget? appBarOverride;
   final Widget? drawerOverride;
+  final AdminAnalyticsService? adminAnalyticsServiceOverride;
+
   /// True when the logged-in user is the co-op account.
   /// Only co-ops should see this screen.
   final bool isCoop;
@@ -18,6 +22,7 @@ class AdminScreen extends StatefulWidget {
     this.authOverride,
     this.appBarOverride,
     this.drawerOverride,
+    this.adminAnalyticsServiceOverride,
     this.isCoop = false,
   });
 
@@ -57,7 +62,9 @@ class _AdminScreenState extends State<AdminScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: lightColorScheme.primary.withOpacity(0.28)),
+        border: Border.all(
+          color: lightColorScheme.primary.withValues(alpha: 0.28),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,10 +83,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: const TextStyle(fontSize: 13),
-                ),
+                Text(description, style: const TextStyle(fontSize: 13)),
               ],
             ),
           ),
@@ -93,9 +97,9 @@ class _AdminScreenState extends State<AdminScreen> {
     final adminTheme = Theme.of(context).copyWith(
       scaffoldBackgroundColor: Colors.white,
       cardTheme: Theme.of(context).cardTheme.copyWith(
-            color: Colors.white,
-            surfaceTintColor: Colors.transparent,
-          ),
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
     );
 
     if (!widget.isCoop) {
@@ -109,11 +113,7 @@ class _AdminScreenState extends State<AdminScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.lock_outline,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'Restricted Access',
@@ -126,10 +126,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Ang admin page ay para lamang sa co-op accounts.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -229,9 +226,12 @@ class _AdminScreenState extends State<AdminScreen> {
                   title: 'Analytics & Reports',
                   description: 'View detailed statistics and reports',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming soon: Analytics'),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AdminAnalyticsScreen(
+                          isCoop: widget.isCoop,
+                          serviceOverride: widget.adminAnalyticsServiceOverride,
+                        ),
                       ),
                     );
                   },
@@ -243,9 +243,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   description: 'Configure platform settings and preferences',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming soon: Settings'),
-                      ),
+                      const SnackBar(content: Text('Coming soon: Settings')),
                     );
                   },
                 ),

@@ -19,16 +19,17 @@ class CampaignReportPdfService {
     ).format(value);
   }
 
+  static String _formatPercent(double value) {
+    return '${(value * 100).toStringAsFixed(1)}%';
+  }
+
   static pw.Widget _buildSectionTitle({
     required String title,
     required pw.Font bold,
   }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 6, top: 12),
-      child: pw.Text(
-        title,
-        style: pw.TextStyle(font: bold, fontSize: 13),
-      ),
+      child: pw.Text(title, style: pw.TextStyle(font: bold, fontSize: 13)),
     );
   }
 
@@ -39,10 +40,7 @@ class CampaignReportPdfService {
   }) {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.7),
-      columnWidths: const {
-        0: pw.FlexColumnWidth(2),
-        1: pw.FlexColumnWidth(3),
-      },
+      columnWidths: const {0: pw.FlexColumnWidth(2), 1: pw.FlexColumnWidth(3)},
       children: [
         for (var i = 0; i < rows.length; i++)
           pw.TableRow(
@@ -78,22 +76,22 @@ class CampaignReportPdfService {
     final bold = await PdfGoogleFonts.nunitoBold();
 
     final campaign = report.campaign;
-    final generatedAt = DateFormat(
-      'yyyy-MM-dd HH:mm',
-    ).format(DateTime.now());
+    final generatedAt = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final isOngoing = !report.isEnded;
     final outcome = isOngoing
         ? 'Ongoing (interim report)'
         : (report.isSuccessful ? 'Successful' : 'Did not reach goal');
     final shortfallOrSurplus = report.fundingDifference >= 0
         ? (isOngoing
-            ? 'Ahead of goal by: ${_formatCurrency(report.fundingDifference)}'
-            : 'Surplus: ${_formatCurrency(report.fundingDifference)}')
+              ? 'Ahead of goal by: ${_formatCurrency(report.fundingDifference)}'
+              : 'Surplus: ${_formatCurrency(report.fundingDifference)}')
         : (isOngoing
-            ? 'Remaining to goal: ${_formatCurrency(-report.fundingDifference)}'
-            : 'Shortfall: ${_formatCurrency(-report.fundingDifference)}');
-    final remainingDays =
-        campaign.endDate.difference(DateTime.now()).inDays.clamp(0, 99999);
+              ? 'Remaining to goal: ${_formatCurrency(-report.fundingDifference)}'
+              : 'Shortfall: ${_formatCurrency(-report.fundingDifference)}');
+    final remainingDays = campaign.endDate
+        .difference(DateTime.now())
+        .inDays
+        .clamp(0, 99999);
 
     doc.addPage(
       pw.MultiPage(
@@ -140,7 +138,9 @@ class CampaignReportPdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  campaign.title.isEmpty ? '(Untitled Campaign)' : campaign.title,
+                  campaign.title.isEmpty
+                      ? '(Untitled Campaign)'
+                      : campaign.title,
                   style: pw.TextStyle(font: bold, fontSize: 14),
                 ),
                 pw.SizedBox(height: 4),
@@ -163,7 +163,10 @@ class CampaignReportPdfService {
             rows: [
               ['Total raised', _formatCurrency(report.totalRaised)],
               ['Goal amount', _formatCurrency(campaign.goalAmount)],
-              [isOngoing ? 'Current status' : 'Final result', shortfallOrSurplus],
+              [
+                isOngoing ? 'Current status' : 'Final result',
+                shortfallOrSurplus,
+              ],
               ['Supporters', report.totalBackers.toString()],
               ['Pledges', report.totalPledges.toString()],
               ['Average pledge', _formatCurrency(report.averagePledge.round())],
@@ -171,13 +174,90 @@ class CampaignReportPdfService {
             regular: regular,
             bold: bold,
           ),
-          _buildSectionTitle(
-            title: 'Timeline',
-            bold: bold,
-          ),
+          _buildSectionTitle(title: 'Payment Funnel', bold: bold),
+          if (!report.paymentFunnel.hasAttempts)
+            pw.Text(
+              'No payment attempts available for this campaign.',
+              style: pw.TextStyle(font: regular, fontSize: 10),
+            )
+          else ...[
+            _buildInfoTable(
+              rows: [
+                [
+                  'Total payment attempts',
+                  report.paymentFunnel.totalAttempts.toString(),
+                ],
+                [
+                  'Active checkout attempts',
+                  report.paymentFunnel.activeCheckoutCount.toString(),
+                ],
+                ['Paid attempts', report.paymentFunnel.paidCount.toString()],
+                [
+                  'Failed attempts',
+                  report.paymentFunnel.failedCount.toString(),
+                ],
+                [
+                  'Cancelled attempts',
+                  report.paymentFunnel.cancelledCount.toString(),
+                ],
+                [
+                  'Expired attempts',
+                  report.paymentFunnel.expiredCount.toString(),
+                ],
+                [
+                  'Refunded attempts',
+                  report.paymentFunnel.refundedCount.toString(),
+                ],
+                [
+                  'Total attempted amount',
+                  _formatCurrency(report.paymentFunnel.totalAttemptAmount),
+                ],
+                [
+                  'Total paid amount',
+                  _formatCurrency(report.paymentFunnel.paidAttemptAmount),
+                ],
+                [
+                  'Attempt -> paid conversion',
+                  _formatPercent(report.paymentFunnel.paidConversionRate),
+                ],
+                [
+                  'Attempt -> pledge capture',
+                  _formatPercent(
+                    report.paymentFunnel.totalAttempts == 0
+                        ? 0
+                        : report.totalPledges /
+                              report.paymentFunnel.totalAttempts,
+                  ),
+                ],
+                [
+                  'First payment attempt',
+                  _formatDate(report.paymentFunnel.firstAttemptAt),
+                ],
+                [
+                  'Last payment attempt',
+                  _formatDate(report.paymentFunnel.lastAttemptAt),
+                ],
+              ],
+              regular: regular,
+              bold: bold,
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Pledges and payment attempts are tracked separately. The funnel shows checkout conversion and does not replace pledge totals.',
+              style: pw.TextStyle(
+                font: regular,
+                fontSize: 9,
+                color: PdfColors.grey700,
+              ),
+            ),
+          ],
+          _buildSectionTitle(title: 'Timeline', bold: bold),
           _buildInfoTable(
             rows: [
-              ['Start', _formatDate(campaign.publishedAt ?? campaign.createdAt)],
+              [
+                'Start',
+                _formatDate(campaign.publishedAt ?? campaign.createdAt),
+              ],
               ['End', _formatDate(campaign.endDate)],
               ['Days remaining', remainingDays.toString()],
               ['First pledge', _formatDate(report.firstPledgeAt)],
@@ -186,10 +266,7 @@ class CampaignReportPdfService {
             regular: regular,
             bold: bold,
           ),
-          _buildSectionTitle(
-            title: 'Reward Performance',
-            bold: bold,
-          ),
+          _buildSectionTitle(title: 'Reward Performance', bold: bold),
           if (campaign.rewards.isEmpty)
             pw.Text(
               'No reward tiers in this campaign.',
@@ -207,12 +284,9 @@ class CampaignReportPdfService {
               children: [
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.green700),
-                  children: [
-                    'Reward',
-                    'Minimum',
-                    'Pledges',
-                    'Amount',
-                  ].map((text) {
+                  children: ['Reward', 'Minimum', 'Pledges', 'Amount'].map((
+                    text,
+                  ) {
                     return pw.Padding(
                       padding: const pw.EdgeInsets.all(6),
                       child: pw.Text(
@@ -262,7 +336,9 @@ class CampaignReportPdfService {
                 }),
                 if (report.noRewardPledgeCount > 0)
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                    decoration: const pw.BoxDecoration(
+                      color: PdfColors.grey100,
+                    ),
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(6),
@@ -296,10 +372,7 @@ class CampaignReportPdfService {
                   ),
               ],
             ),
-          _buildSectionTitle(
-            title: 'Supporters',
-            bold: bold,
-          ),
+          _buildSectionTitle(title: 'Supporters', bold: bold),
           if (report.pledges.isEmpty)
             pw.Text(
               'No pledge records available.',
@@ -316,12 +389,16 @@ class CampaignReportPdfService {
                   if (amountCompare != 0) return amountCompare;
                   return b.createdAt.compareTo(a.createdAt);
                 });
-              final totalAmount =
-                  supporters.fold<int>(0, (sum, pledge) => sum + pledge.amount);
+              final totalAmount = supporters.fold<int>(
+                0,
+                (sum, pledge) => sum + pledge.amount,
+              );
 
               return pw.Table(
-                border:
-                    pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
+                border: pw.TableBorder.all(
+                  color: PdfColors.grey300,
+                  width: 0.6,
+                ),
                 columnWidths: const {
                   0: pw.FlexColumnWidth(2.4),
                   1: pw.FlexColumnWidth(2.1),
@@ -332,49 +409,54 @@ class CampaignReportPdfService {
                 },
                 children: [
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.green700),
-                    children: [
-                      'Supporter',
-                      'Contact',
-                      'Reward',
-                      'Date',
-                      'Amount',
-                      'Note',
-                    ].map((text) {
-                      return pw.Padding(
-                        padding: const pw.EdgeInsets.all(6),
-                        child: pw.Text(
-                          text,
-                          style: pw.TextStyle(
-                            font: bold,
-                            fontSize: 9,
-                            color: PdfColors.white,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    decoration: const pw.BoxDecoration(
+                      color: PdfColors.green700,
+                    ),
+                    children:
+                        [
+                          'Supporter',
+                          'Contact',
+                          'Reward',
+                          'Date',
+                          'Amount',
+                          'Note',
+                        ].map((text) {
+                          return pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text(
+                              text,
+                              style: pw.TextStyle(
+                                font: bold,
+                                fontSize: 9,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                          );
+                        }).toList(),
                   ),
                   ...supporters.map((pledge) {
                     final donor =
                         (pledge.backerName != null &&
-                                pledge.backerName!.trim().isNotEmpty)
-                            ? pledge.backerName!.trim()
-                            : ((pledge.backerEmail != null &&
-                                    pledge.backerEmail!.trim().isNotEmpty)
-                                ? pledge.backerEmail!.trim()
-                                : 'Anonymous');
-                    final contact = (pledge.backerPhone != null &&
+                            pledge.backerName!.trim().isNotEmpty)
+                        ? pledge.backerName!.trim()
+                        : ((pledge.backerEmail != null &&
+                                  pledge.backerEmail!.trim().isNotEmpty)
+                              ? pledge.backerEmail!.trim()
+                              : 'Anonymous');
+                    final contact =
+                        (pledge.backerPhone != null &&
                             pledge.backerPhone!.trim().isNotEmpty)
                         ? pledge.backerPhone!.trim()
                         : ((pledge.backerEmail != null &&
-                                pledge.backerEmail!.trim().isNotEmpty)
-                            ? pledge.backerEmail!.trim()
-                            : '-');
+                                  pledge.backerEmail!.trim().isNotEmpty)
+                              ? pledge.backerEmail!.trim()
+                              : '-');
                     final rewardTitle =
                         (pledge.rewardId == null || pledge.rewardId!.isEmpty)
-                            ? '-'
-                            : (rewardTitleById[pledge.rewardId] ?? '-');
-                    final note = (pledge.backerNote != null &&
+                        ? '-'
+                        : (rewardTitleById[pledge.rewardId] ?? '-');
+                    final note =
+                        (pledge.backerNote != null &&
                             pledge.backerNote!.trim().isNotEmpty)
                         ? pledge.backerNote!.trim()
                         : '-';
@@ -427,7 +509,9 @@ class CampaignReportPdfService {
                     );
                   }),
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.green50),
+                    decoration: const pw.BoxDecoration(
+                      color: PdfColors.green50,
+                    ),
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(6),
@@ -477,10 +561,7 @@ class CampaignReportPdfService {
               );
             }(),
           ],
-          _buildSectionTitle(
-            title: 'Operational Notes',
-            bold: bold,
-          ),
+          _buildSectionTitle(title: 'Operational Notes', bold: bold),
           _buildInfoTable(
             rows: [
               ['Production timeline', campaign.productionTimeline ?? '-'],
@@ -498,7 +579,11 @@ class CampaignReportPdfService {
           pw.SizedBox(height: 6),
           pw.Text(
             'Supporter table in PDF is sorted by amount (highest to lowest).',
-            style: pw.TextStyle(font: regular, fontSize: 9, color: PdfColors.grey700),
+            style: pw.TextStyle(
+              font: regular,
+              fontSize: 9,
+              color: PdfColors.grey700,
+            ),
           ),
         ],
       ),
@@ -507,9 +592,7 @@ class CampaignReportPdfService {
     return doc.save();
   }
 
-  static Future<void> printOrSavePdf({
-    required CampaignReport report,
-  }) async {
+  static Future<void> printOrSavePdf({required CampaignReport report}) async {
     final bytes = await buildPdfBytes(report: report);
     final fileDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
     await Printing.layoutPdf(

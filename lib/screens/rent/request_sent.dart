@@ -31,19 +31,24 @@ class RequestSentPage extends StatefulWidget {
 
 /// GDrive PDF manual links keyed by equipment category name.
 const Map<String, String> _equipmentManuals = {
-  'Tractor'               : 'https://drive.google.com/file/d/1YaSltUq4k_opJgI4nLuvoJDGQvykPKaL/view?usp=sharing',
-  'Harvester (Halimaw)'   : 'https://drive.google.com/file/d/1D3v2BXKderLv-kTOUmY4nE4hVgjZD_Gf/view?usp=sharing',
-  'Floating Tiller (Pagong)': 'https://drive.google.com/file/d/18ICD5LJTUg9LJLjsqciVypuTSHHNxIKr/view?usp=sharing',
-  'Hand Tractor (Kuliglig)': 'https://drive.google.com/file/d/1Iq4D7xfAoCtS5CqKEQivsHXQu_B-Yn7w/view?usp=sharing',
+  'Tractor':
+      'https://drive.google.com/file/d/1YaSltUq4k_opJgI4nLuvoJDGQvykPKaL/view?usp=sharing',
+  'Harvester (Halimaw)':
+      'https://drive.google.com/file/d/1D3v2BXKderLv-kTOUmY4nE4hVgjZD_Gf/view?usp=sharing',
+  'Floating Tiller (Pagong)':
+      'https://drive.google.com/file/d/18ICD5LJTUg9LJLjsqciVypuTSHHNxIKr/view?usp=sharing',
+  'Hand Tractor (Kuliglig)':
+      'https://drive.google.com/file/d/1Iq4D7xfAoCtS5CqKEQivsHXQu_B-Yn7w/view?usp=sharing',
 };
 
 /// YouTube tutorial links keyed by equipment category.
 /// Only shown for equipment rented WITHOUT an operator.
 const Map<String, String> _equipmentTutorials = {
-  'Tractor'                 : 'https://youtu.be/H66et2wlv08?si=f1wnpzYOi-JXOjIw',
-  'Hand Tractor (Kuliglig)' : 'https://youtu.be/gSlqgjwvnkE?si=5d7dRWxUBljb1yYk',
-  'Harvester (Halimaw)'     : 'https://youtu.be/gSlqgjwvnkE?si=5d7dRWxUBljb1yYk',
-  'Floating Tiller (Pagong)': 'https://youtu.be/S1VAxvalLBg?si=h7xGEpT3chPnuBCJ',
+  'Tractor': 'https://youtu.be/H66et2wlv08?si=f1wnpzYOi-JXOjIw',
+  'Hand Tractor (Kuliglig)': 'https://youtu.be/gSlqgjwvnkE?si=5d7dRWxUBljb1yYk',
+  'Harvester (Halimaw)': 'https://youtu.be/gSlqgjwvnkE?si=5d7dRWxUBljb1yYk',
+  'Floating Tiller (Pagong)':
+      'https://youtu.be/S1VAxvalLBg?si=h7xGEpT3chPnuBCJ',
 };
 
 class _RequestSentPageState extends State<RequestSentPage> {
@@ -57,26 +62,26 @@ class _RequestSentPageState extends State<RequestSentPage> {
       DateFormat('MMM dd, yyyy').format(date);
 
   int _getCurrentStep(RentRequestStatus status) {
-  switch (status) {
-    case RentRequestStatus.pending:
-      return 0;
-    case RentRequestStatus.approved:
-      return 1;
-    case RentRequestStatus.readyForPickup: // ✅
-    case RentRequestStatus.pickedUp:       // ✅
-    case RentRequestStatus.onTheWay:
-    case RentRequestStatus.inProgress:
-    case RentRequestStatus.retrieving:
-    case RentRequestStatus.returned:
-      return 2;
-    case RentRequestStatus.finished:
-    case RentRequestStatus.completed:
-      return 3;
-    case RentRequestStatus.declined:
-    case RentRequestStatus.canceled:
-      return -1;
+    switch (status) {
+      case RentRequestStatus.pending:
+        return 0;
+      case RentRequestStatus.approved:
+        return 1;
+      case RentRequestStatus.readyForPickup: // ✅
+      case RentRequestStatus.pickedUp: // ✅
+      case RentRequestStatus.onTheWay:
+      case RentRequestStatus.inProgress:
+      case RentRequestStatus.retrieving:
+      case RentRequestStatus.returned:
+        return 2;
+      case RentRequestStatus.finished:
+      case RentRequestStatus.completed:
+        return 3;
+      case RentRequestStatus.declined:
+      case RentRequestStatus.canceled:
+        return -1;
+    }
   }
-}
 
   Color _statusColor(RentRequestStatus status) {
     switch (status) {
@@ -85,9 +90,9 @@ class _RequestSentPageState extends State<RequestSentPage> {
       case RentRequestStatus.approved:
         return const Color(0xFF3B82F6);
       case RentRequestStatus.readyForPickup:
-      case RentRequestStatus.onTheWay: 
+      case RentRequestStatus.onTheWay:
         return const Color(0xFFF59E0B);
-      case RentRequestStatus.pickedUp:      
+      case RentRequestStatus.pickedUp:
       case RentRequestStatus.inProgress:
       case RentRequestStatus.retrieving:
       case RentRequestStatus.returned:
@@ -100,7 +105,6 @@ class _RequestSentPageState extends State<RequestSentPage> {
     }
   }
 
-
   IconData _statusIcon(RentRequestStatus status) {
     switch (status) {
       case RentRequestStatus.pending:
@@ -109,7 +113,7 @@ class _RequestSentPageState extends State<RequestSentPage> {
         return Icons.check_circle_rounded;
       case RentRequestStatus.readyForPickup: // ✅
         return Icons.store_rounded;
-      case RentRequestStatus.pickedUp:       // ✅
+      case RentRequestStatus.pickedUp: // ✅
         return Icons.directions_walk_rounded;
       case RentRequestStatus.onTheWay:
         return Icons.local_shipping_rounded;
@@ -138,7 +142,7 @@ class _RequestSentPageState extends State<RequestSentPage> {
         return 'Request Approved';
       case RentRequestStatus.readyForPickup: // ✅
         return 'Ready for Pick Up';
-      case RentRequestStatus.pickedUp:       // ✅
+      case RentRequestStatus.pickedUp: // ✅
         return 'Equipment Picked Up';
       case RentRequestStatus.onTheWay:
         return 'Item Is On The Way';
@@ -167,7 +171,7 @@ class _RequestSentPageState extends State<RequestSentPage> {
         return 'The owner has approved your rental request';
       case RentRequestStatus.readyForPickup: // ✅
         return 'The equipment is ready — head over to collect it';
-      case RentRequestStatus.pickedUp:       // ✅
+      case RentRequestStatus.pickedUp: // ✅
         return 'You have collected the equipment. Rental is now active';
       case RentRequestStatus.onTheWay:
         return 'The equipment is being delivered to you';
@@ -190,18 +194,29 @@ class _RequestSentPageState extends State<RequestSentPage> {
 
   String _getRateSuffix(String rentRate) {
     switch (rentRate.toLowerCase()) {
-      case 'per day': return '/day';
-      case 'per hour': return '/hr';
-      case 'per week': return '/week';
-      case 'per month': return '/mo';
-      case 'per kg': return '/kg';
+      case 'per day':
+        return '/day';
+      case 'per hour':
+        return '/hr';
+      case 'per week':
+        return '/week';
+      case 'per month':
+        return '/mo';
+      case 'per kg':
+        return '/kg';
       case 'per hectare':
         return '/ha';
-      default: return '';
+      default:
+        return '';
     }
   }
 
-  Widget _infoTile(IconData icon, String label, String value, Color accentColor) {
+  Widget _infoTile(
+    IconData icon,
+    String label,
+    String value,
+    Color accentColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -220,18 +235,24 @@ class _RequestSentPageState extends State<RequestSentPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[500],
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.3)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -240,7 +261,11 @@ class _RequestSentPageState extends State<RequestSentPage> {
     );
   }
 
-  Widget _sectionCard({required String title, required List<Widget> children, Color? accentColor}) {
+  Widget _sectionCard({
+    required String title,
+    required List<Widget> children,
+    Color? accentColor,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -271,12 +296,15 @@ class _RequestSentPageState extends State<RequestSentPage> {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black54,
-                        letterSpacing: 0.8)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black54,
+                    letterSpacing: 0.8,
+                  ),
+                ),
               ],
             ),
           ),
@@ -348,7 +376,10 @@ class _RequestSentPageState extends State<RequestSentPage> {
             label: Text(buttonLabel),
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFF2563EB),
-              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
@@ -369,11 +400,16 @@ class _RequestSentPageState extends State<RequestSentPage> {
         child: OutlinedButton.icon(
           onPressed: onPressed,
           icon: Icon(icon ?? Icons.close, color: color, size: 18),
-          label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+          label: Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             side: BorderSide(color: color.withOpacity(0.5)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       );
@@ -383,14 +419,21 @@ class _RequestSentPageState extends State<RequestSentPage> {
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon ?? Icons.check, color: Colors.white, size: 18),
-        label: Text(label,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+        label: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           padding: const EdgeInsets.symmetric(vertical: 14),
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -402,12 +445,15 @@ class _RequestSentPageState extends State<RequestSentPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
-        Text(label,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Colors.black54,
-                letterSpacing: 0.5)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.black54,
+            letterSpacing: 0.5,
+          ),
+        ),
         const SizedBox(height: 6),
         GestureDetector(
           onTap: () {
@@ -422,8 +468,9 @@ class _RequestSentPageState extends State<RequestSentPage> {
                     height: MediaQuery.of(context).size.height * 0.6,
                     child: PhotoView(
                       imageProvider: NetworkImage(url),
-                      backgroundDecoration:
-                          BoxDecoration(color: Colors.black.withOpacity(0.9)),
+                      backgroundDecoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.9),
+                      ),
                       minScale: PhotoViewComputedScale.contained,
                       maxScale: PhotoViewComputedScale.covered * 3,
                     ),
@@ -436,15 +483,20 @@ class _RequestSentPageState extends State<RequestSentPage> {
             borderRadius: BorderRadius.circular(10),
             child: Stack(
               children: [
-                Image.network(url,
-                    height: 120,
-                    width: double.infinity,
-                    fit: BoxFit.cover),
+                Image.network(
+                  url,
+                  height: 120,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
                 Positioned(
                   bottom: 6,
                   right: 6,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(6),
@@ -454,8 +506,10 @@ class _RequestSentPageState extends State<RequestSentPage> {
                       children: [
                         Icon(Icons.zoom_in, color: Colors.white, size: 12),
                         SizedBox(width: 4),
-                        Text('Tap to view',
-                            style: TextStyle(color: Colors.white, fontSize: 11)),
+                        Text(
+                          'Tap to view',
+                          style: TextStyle(color: Colors.white, fontSize: 11),
+                        ),
                       ],
                     ),
                   ),
@@ -469,23 +523,23 @@ class _RequestSentPageState extends State<RequestSentPage> {
   }
 
   // Add this near the top of the class (alongside other helpers)
-Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
-  final doc = await FirebaseFirestore.instance
-      .collection('users')       // ← adjust to your users collection name
-      .doc(ownerId)
-      .get();
-  return doc.exists ? doc.data() as Map<String, dynamic> : null;
-}
+  Future<Map<String, dynamic>?> _fetchOwnerProfile(String ownerId) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users') // ← adjust to your users collection name
+        .doc(ownerId)
+        .get();
+    return doc.exists ? doc.data() as Map<String, dynamic> : null;
+  }
 
-Future<bool> _hasLeftReview(String requestId) async {
-  final doc = await FirebaseFirestore.instance
-      .collection('reviews')  // adjust to your collection name
-      .where('requestId', isEqualTo: requestId)
-      .where('renterId', isEqualTo: AuthService().currentUser?.uid)
-      .limit(1)
-      .get();
-  return doc.docs.isNotEmpty;
-}
+  Future<bool> _hasLeftReview(String requestId) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('reviews') // adjust to your collection name
+        .where('requestId', isEqualTo: requestId)
+        .where('renterId', isEqualTo: AuthService().currentUser?.uid)
+        .limit(1)
+        .get();
+    return doc.docs.isNotEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -528,14 +582,15 @@ Future<bool> _hasLeftReview(String requestId) async {
                 request.status == RentRequestStatus.inProgress) {
               _lateStrikesChecked = true;
               StrikeService().issueLateDayStrikes(
-                requestId               : widget.requestId,
-                renterId                : request.renterId,
-                ownerId                 : request.ownerId,
-                endDate                 : request.end,
+                requestId: widget.requestId,
+                renterId: request.renterId,
+                ownerId: request.ownerId,
+                endDate: request.end,
                 lastLateStrikeIssuedDate: request.lastLateStrikeIssuedDate,
               );
             }
-            final isTerminal = request.status == RentRequestStatus.declined ||
+            final isTerminal =
+                request.status == RentRequestStatus.declined ||
                 request.status == RentRequestStatus.canceled;
             final showApproveDecline =
                 isOwner && request.status == RentRequestStatus.pending;
@@ -548,15 +603,21 @@ Future<bool> _hasLeftReview(String requestId) async {
                 flexibleSpace: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [lightColorScheme.primary, lightColorScheme.secondary],
+                      colors: [
+                        lightColorScheme.primary,
+                        lightColorScheme.secondary,
+                      ],
                     ),
                   ),
                 ),
-                title: const Text('Request Status',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 17)),
+                title: const Text(
+                  'Request Status',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 17,
+                  ),
+                ),
                 centerTitle: true,
                 iconTheme: const IconThemeData(color: Colors.white),
               ),
@@ -568,7 +629,10 @@ Future<bool> _hasLeftReview(String requestId) async {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [lightColorScheme.primary, lightColorScheme.secondary],
+                          colors: [
+                            lightColorScheme.primary,
+                            lightColorScheme.secondary,
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -579,7 +643,9 @@ Future<bool> _hasLeftReview(String requestId) async {
                           // Stepper inside banner
                           if (!isTerminal)
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
                               child: _grabStyleStepper(
                                 currentStep: currentStep,
                                 icons: const [
@@ -620,8 +686,9 @@ Future<bool> _hasLeftReview(String requestId) async {
                             child: Text(
                               _statusSubtitle(request.status),
                               style: TextStyle(
-                                  color: Colors.white.withOpacity(0.85),
-                                  fontSize: 13),
+                                color: Colors.white.withOpacity(0.85),
+                                fontSize: 13,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -630,7 +697,9 @@ Future<bool> _hasLeftReview(String requestId) async {
                           Container(
                             margin: const EdgeInsets.only(bottom: 24),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(20),
@@ -638,15 +707,19 @@ Future<bool> _hasLeftReview(String requestId) async {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.agriculture_rounded,
-                                    color: Colors.white, size: 16),
+                                const Icon(
+                                  Icons.agriculture_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 6),
                                 Text(
                                   request.itemName,
                                   style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14),
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ],
                             ),
@@ -670,12 +743,20 @@ Future<bool> _hasLeftReview(String requestId) async {
                                 children: [
                                   Expanded(
                                     child: _dateBox(
-                                        'Start', request.start, Icons.play_circle_outline, Colors.green),
+                                      'Start',
+                                      request.start,
+                                      Icons.play_circle_outline,
+                                      Colors.green,
+                                    ),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: _dateBox(
-                                        'End', request.end, Icons.stop_circle_outlined, Colors.red),
+                                      'End',
+                                      request.end,
+                                      Icons.stop_circle_outlined,
+                                      Colors.red,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -687,12 +768,15 @@ Future<bool> _hasLeftReview(String requestId) async {
                             title: 'PRICING',
                             accentColor: const Color(0xFF10B981),
                             children: [
-                              if (request.agreedRentalUnit?.toLowerCase() == 'per kg' ||
+                              if (request.agreedRentalUnit?.toLowerCase() ==
+                                      'per kg' ||
                                   request.estimatedMillingFee != null) ...[
                                 _infoTile(
                                   Icons.grain,
                                   'PRICING TYPE',
-                                  request.keepDarak == true ? 'Rice + Darak' : 'Rice Only',
+                                  request.keepDarak == true
+                                      ? 'Rice + Darak'
+                                      : 'Rice Only',
                                   const Color(0xFF10B981),
                                 ),
                                 _infoTile(
@@ -714,16 +798,20 @@ Future<bool> _hasLeftReview(String requestId) async {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text('Estimated Total',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15)),
+                                      const Text(
+                                        'Estimated Total',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
                                       Text(
                                         '₱${request.estimatedMillingFee!.toStringAsFixed(2)}',
                                         style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF10B981)),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF10B981),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -743,15 +831,22 @@ Future<bool> _hasLeftReview(String requestId) async {
                           FutureBuilder<Map<String, dynamic>?>(
                             future: _fetchOwnerProfile(request.ownerId),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
                                 return _sectionCard(
                                   title: 'LENDER INFORMATION',
                                   accentColor: const Color(0xFFF59E0B),
                                   children: const [
-                                    Center(child: Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8),
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )),
+                                    Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 );
                               }
@@ -763,106 +858,138 @@ Future<bool> _hasLeftReview(String requestId) async {
                                 title: 'LENDER INFORMATION',
                                 accentColor: const Color(0xFFF59E0B),
                                 children: [
-                                  if (owner['firstName'] != null || owner['lastName'] != null)
+                                  if (owner['firstName'] != null ||
+                                      owner['lastName'] != null)
                                     _infoTile(
                                       Icons.person_outline,
                                       'NAME',
-                                      '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'.trim().isNotEmpty
-                                          ? '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'.trim()
+                                      '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'
+                                              .trim()
+                                              .isNotEmpty
+                                          ? '${owner['firstName'] ?? ''} ${owner['lastName'] ?? ''}'
+                                                .trim()
                                           : '—',
                                       const Color(0xFFF59E0B),
                                     ),
-                                  if (owner['phoneNumber'] != null || owner['contactNumber'] != null)
-                                    _infoTile(Icons.phone_outlined, 'CONTACT',
-                                      owner?['phoneNumber'] ?? '—', const Color(0xFFF59E0B)),
+                                  if (owner['phoneNumber'] != null ||
+                                      owner['contactNumber'] != null)
+                                    _infoTile(
+                                      Icons.phone_outlined,
+                                      'CONTACT',
+                                      owner?['phoneNumber'] ?? '—',
+                                      const Color(0xFFF59E0B),
+                                    ),
                                   if (owner['address'] != null)
-                                    _infoTile(Icons.location_on_outlined, 'ADDRESS',
-                                        owner?['address'] ?? '—', const Color(0xFFF59E0B)),
+                                    _infoTile(
+                                      Icons.location_on_outlined,
+                                      'ADDRESS',
+                                      owner?['address'] ?? '—',
+                                      const Color(0xFFF59E0B),
+                                    ),
                                 ],
                               );
                             },
-),
+                          ),
 
-                         // ── RENTER INFO ──
-                        _sectionCard(
-                          title: 'RENTER INFORMATION',
-                          accentColor: const Color(0xFF3B82F6),
-                          children: [
-                            _infoTile(Icons.person_outline, 'NAME',
-                                request.name, const Color(0xFF3B82F6)),
-                            _infoTile(Icons.location_on_outlined, 'ADDRESS',
-                                request.address, const Color(0xFF3B82F6)),
-                            _infoTile(Icons.location_on_outlined, 'CONTACT',
-                                request.phoneNumber ?? 'Unknown', const Color(0xFF3B82F6)),
-
-                            // // ── Land size proofs ──────────────────────────────────
-                            // if (request.landSizeProofPaths.isNotEmpty) ...[
-                            //   const SizedBox(height: 4),
-                            //   _proofImages(
-                            //     request.landSizeProofPaths,
-                            //     'LAND SIZE PROOF',
-                            //     context,
-                            //   ),
-                            // ],
-
-                            if (request.hectaresEntered != null) ...[
-                              () {
-                                final totalDays = request.end.difference(request.start).inDays + 1;
-                                final haPerDay = request.hectaresEntered! / totalDays;
-                                return Column(
-                                  children: [
-                                    _infoTile(
-                                      Icons.crop_square_rounded,
-                                      'LAND AREA',
-                                      '${request.hectaresEntered! % 1 == 0 ? request.hectaresEntered!.toInt() : request.hectaresEntered} hectares',
-                                      const Color(0xFF3B82F6),
-                                    ),
-                                    _infoTile(
-                                      Icons.calendar_month_rounded,
-                                      'DURATION',
-                                      '$totalDays day${totalDays == 1 ? '' : 's'}',
-                                      const Color(0xFF3B82F6),
-                                    ),
-                                    _infoTile(
-                                      Icons.speed_rounded,
-                                      'COVERAGE RATE',
-                                      '${haPerDay % 1 == 0 ? haPerDay.toInt() : haPerDay.toStringAsFixed(1)} ha/day',
-                                      const Color(0xFF3B82F6),
-                                    ),
-                                  ],
-                                );
-                              }(),
-                            ] else if (request.landSizeProofPaths.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              _proofImages(
-                                request.landSizeProofPaths,
-                                'LAND SIZE PROOF',
-                                context,
+                          // ── RENTER INFO ──
+                          _sectionCard(
+                            title: 'RENTER INFORMATION',
+                            accentColor: const Color(0xFF3B82F6),
+                            children: [
+                              _infoTile(
+                                Icons.person_outline,
+                                'NAME',
+                                request.name,
+                                const Color(0xFF3B82F6),
                               ),
-                            ],
-
-                            // ── Crop height proofs ────────────────────────────────
-                            if (request.cropHeightProofPaths.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              _proofImages(
-                                request.cropHeightProofPaths,
-                                'GRASS HEIGHT PROOF',
-                                context,
+                              _infoTile(
+                                Icons.location_on_outlined,
+                                'ADDRESS',
+                                request.address,
+                                const Color(0xFF3B82F6),
                               ),
-                            ],
-
-                            // ── Crop condition proofs ─────────────────────────────
-                            if (request.cropConditionProofPaths.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              _proofImages(
-                                request.cropConditionProofPaths,
-                                'CROP CONDITION PROOF',
-                                context,
+                              _infoTile(
+                                Icons.location_on_outlined,
+                                'CONTACT',
+                                request.phoneNumber ?? 'Unknown',
+                                const Color(0xFF3B82F6),
                               ),
-                            ],
-                          ],
-                        ),
 
+                              // // ── Land size proofs ──────────────────────────────────
+                              // if (request.landSizeProofPaths.isNotEmpty) ...[
+                              //   const SizedBox(height: 4),
+                              //   _proofImages(
+                              //     request.landSizeProofPaths,
+                              //     'LAND SIZE PROOF',
+                              //     context,
+                              //   ),
+                              // ],
+                              if (request.hectaresEntered != null) ...[
+                                () {
+                                  final totalDays =
+                                      request.end
+                                          .difference(request.start)
+                                          .inDays +
+                                      1;
+                                  final haPerDay =
+                                      request.hectaresEntered! / totalDays;
+                                  return Column(
+                                    children: [
+                                      _infoTile(
+                                        Icons.crop_square_rounded,
+                                        'LAND AREA',
+                                        '${request.hectaresEntered! % 1 == 0 ? request.hectaresEntered!.toInt() : request.hectaresEntered} hectares',
+                                        const Color(0xFF3B82F6),
+                                      ),
+                                      _infoTile(
+                                        Icons.calendar_month_rounded,
+                                        'DURATION',
+                                        '$totalDays day${totalDays == 1 ? '' : 's'}',
+                                        const Color(0xFF3B82F6),
+                                      ),
+                                      _infoTile(
+                                        Icons.speed_rounded,
+                                        'COVERAGE RATE',
+                                        '${haPerDay % 1 == 0 ? haPerDay.toInt() : haPerDay.toStringAsFixed(1)} ha/day',
+                                        const Color(0xFF3B82F6),
+                                      ),
+                                    ],
+                                  );
+                                }(),
+                              ] else if (request
+                                  .landSizeProofPaths
+                                  .isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                _proofImages(
+                                  request.landSizeProofPaths,
+                                  'LAND SIZE PROOF',
+                                  context,
+                                ),
+                              ],
+
+                              // ── Crop height proofs ────────────────────────────────
+                              if (request.cropHeightProofPaths.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                _proofImages(
+                                  request.cropHeightProofPaths,
+                                  'GRASS HEIGHT PROOF',
+                                  context,
+                                ),
+                              ],
+
+                              // ── Crop condition proofs ─────────────────────────────
+                              if (request
+                                  .cropConditionProofPaths
+                                  .isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                _proofImages(
+                                  request.cropConditionProofPaths,
+                                  'CROP CONDITION PROOF',
+                                  context,
+                                ),
+                              ],
+                            ],
+                          ),
 
                           // ── DECLINE REASON ──
                           if (request.status == RentRequestStatus.declined &&
@@ -878,23 +1005,33 @@ Future<bool> _hasLeftReview(String requestId) async {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.info_outline,
-                                      color: Colors.red.shade400, size: 20),
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.red.shade400,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text('Reason for Decline',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.red.shade700,
-                                                fontSize: 13)),
+                                        Text(
+                                          'Reason for Decline',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.red.shade700,
+                                            fontSize: 13,
+                                          ),
+                                        ),
                                         const SizedBox(height: 4),
-                                        Text(request.declineReason!,
-                                            style: TextStyle(
-                                                color: Colors.red.shade800,
-                                                fontSize: 13)),
+                                        Text(
+                                          request.declineReason!,
+                                          style: TextStyle(
+                                            color: Colors.red.shade800,
+                                            fontSize: 13,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -903,7 +1040,8 @@ Future<bool> _hasLeftReview(String requestId) async {
                             ),
 
                           // ── OVERDUE WARNING ──
-                          if (isRenter && isOverdue &&
+                          if (isRenter &&
+                              isOverdue &&
                               request.status == RentRequestStatus.inProgress)
                             Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -911,28 +1049,34 @@ Future<bool> _hasLeftReview(String requestId) async {
                               decoration: BoxDecoration(
                                 color: Colors.orange.shade50,
                                 borderRadius: BorderRadius.circular(16),
-                                border:
-                                    Border.all(color: Colors.orange.shade300),
+                                border: Border.all(
+                                  color: Colors.orange.shade300,
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.warning_amber_rounded,
-                                      color: Colors.orange.shade600, size: 22),
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.orange.shade600,
+                                    size: 22,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'Return period has ended. Please return the equipment immediately.',
                                       style: TextStyle(
-                                          color: Colors.orange.shade800,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500),
+                                        color: Colors.orange.shade800,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
 
-                            if (isOwner && isOverdue &&
+                          if (isOwner &&
+                              isOverdue &&
                               request.status == RentRequestStatus.inProgress)
                             Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -947,33 +1091,42 @@ Future<bool> _hasLeftReview(String requestId) async {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.warning_amber_rounded,
-                                          color: Colors.red.shade600, size: 22),
+                                      Icon(
+                                        Icons.warning_amber_rounded,
+                                        color: Colors.red.shade600,
+                                        size: 22,
+                                      ),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
                                           'Equipment Not Returned',
                                           style: TextStyle(
-                                              color: Colors.red.shade800,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700),
+                                            color: Colors.red.shade800,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: Colors.red.shade600,
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
                                         ),
                                         child: Text(
                                           daysOverdue == 0
                                               ? 'Due today'
                                               : '$daysOverdue ${daysOverdue == 1 ? 'day' : 'days'} late',
                                           style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold),
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -984,8 +1137,9 @@ Future<bool> _hasLeftReview(String requestId) async {
                                     'Ang mga susunod na booking ay inililipat ng 1 araw para sa bawat araw na naantala. '
                                     'Ang nangupahan ay tumatanggap ng isang paglabag bawat araw hanggang maibalik ang kagamitan.',
                                     style: TextStyle(
-                                        color: Colors.red.shade700,
-                                        fontSize: 12),
+                                      color: Colors.red.shade700,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1004,15 +1158,19 @@ Future<bool> _hasLeftReview(String requestId) async {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.directions_car_rounded,
-                                      color: Colors.blue.shade600, size: 22),
+                                  Icon(
+                                    Icons.directions_car_rounded,
+                                    color: Colors.blue.shade600,
+                                    size: 22,
+                                  ),
                                   const SizedBox(width: 10),
                                   const Expanded(
                                     child: Text(
                                       'The owner is on the way to retrieve the equipment. Please have it ready.',
                                       style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1028,21 +1186,26 @@ Future<bool> _hasLeftReview(String requestId) async {
                               decoration: BoxDecoration(
                                 color: Colors.purple.shade50,
                                 borderRadius: BorderRadius.circular(16),
-                                border:
-                                    Border.all(color: Colors.purple.shade200),
+                                border: Border.all(
+                                  color: Colors.purple.shade200,
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.access_time_rounded,
-                                      color: Colors.purple.shade400, size: 22),
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    color: Colors.purple.shade400,
+                                    size: 22,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'Waiting for renter to confirm equipment receipt',
                                       style: TextStyle(
-                                          color: Colors.purple.shade700,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500),
+                                        color: Colors.purple.shade700,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1074,26 +1237,35 @@ Future<bool> _hasLeftReview(String requestId) async {
                           //     ),
 
                           // Renter: just an info banner while waiting for owner confirmation
-                          if (isRenter && request.status == RentRequestStatus.readyForPickup)
+                          if (isRenter &&
+                              request.status ==
+                                  RentRequestStatus.readyForPickup)
                             Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: Colors.purple.shade50,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.purple.shade200),
+                                border: Border.all(
+                                  color: Colors.purple.shade200,
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.access_time_rounded, color: Colors.purple.shade400, size: 22),
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    color: Colors.purple.shade400,
+                                    size: 22,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'Waiting for the owner to confirm your pick up.',
                                       style: TextStyle(
-                                          color: Colors.purple.shade700,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500),
+                                        color: Colors.purple.shade700,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1111,19 +1283,24 @@ Future<bool> _hasLeftReview(String requestId) async {
                                     final data = d.data();
                                     return (
                                       data?['category'] as String?,
-                                      data?['operatorIncluded'] as bool? ?? false,
+                                      data?['operatorIncluded'] as bool? ??
+                                          false,
                                     );
                                   }),
                               builder: (context, snap) {
-                                final category         = snap.data?.$1;
+                                final category = snap.data?.$1;
                                 final operatorIncluded = snap.data?.$2 ?? false;
                                 // Manual always shown if the category has one.
-                                final manualUrl = category != null ? _equipmentManuals[category] : null;
+                                final manualUrl = category != null
+                                    ? _equipmentManuals[category]
+                                    : null;
                                 // Tutorial only shown for equipment without an operator.
-                                final videoId   = (!operatorIncluded && category != null)
+                                final videoId =
+                                    (!operatorIncluded && category != null)
                                     ? _equipmentTutorials[category]
                                     : null;
-                                if (manualUrl == null && videoId == null) return const SizedBox.shrink();
+                                if (manualUrl == null && videoId == null)
+                                  return const SizedBox.shrink();
                                 return Column(
                                   children: [
                                     if (manualUrl != null)
@@ -1161,18 +1338,35 @@ Future<bool> _hasLeftReview(String requestId) async {
                           // ── Weather postpone button ──
                           if (isOwner &&
                               (request.status == RentRequestStatus.approved ||
-                               request.status == RentRequestStatus.readyForPickup ||
-                               request.status == RentRequestStatus.onTheWay) &&
-                              DateTime(request.start.year, request.start.month, request.start.day) ==
+                                  request.status ==
+                                      RentRequestStatus.readyForPickup ||
+                                  request.status ==
+                                      RentRequestStatus.onTheWay) &&
+                              DateTime(
+                                    request.start.year,
+                                    request.start.month,
+                                    request.start.day,
+                                  ) ==
                                   DateTime(now.year, now.month, now.day))
                             FutureBuilder<bool>(
                               future: WeatherService()
-                                  .getOrFetchForecast(requestLocationPermission: false)
+                                  .getOrFetchForecast(
+                                    requestLocationPermission: false,
+                                  )
                                   .then((forecast) {
                                     final today = DateTime.now();
-                                    final todayDay = DateTime(today.year, today.month, today.day);
+                                    final todayDay = DateTime(
+                                      today.year,
+                                      today.month,
+                                      today.day,
+                                    );
                                     for (final d in forecast) {
-                                      if (DateTime(d.date.year, d.date.month, d.date.day) == todayDay) {
+                                      if (DateTime(
+                                            d.date.year,
+                                            d.date.month,
+                                            d.date.day,
+                                          ) ==
+                                          todayDay) {
                                         return d.isBadWeather;
                                       }
                                     }
@@ -1184,7 +1378,10 @@ Future<bool> _hasLeftReview(String requestId) async {
                                   padding: const EdgeInsets.only(bottom: 10),
                                   child: ElevatedButton.icon(
                                     onPressed: isBad
-                                        ? () => _postponeForWeather(context, request)
+                                        ? () => _postponeForWeather(
+                                            context,
+                                            request,
+                                          )
                                         : null,
                                     icon: Icon(
                                       isBad
@@ -1202,7 +1399,10 @@ Future<bool> _hasLeftReview(String requestId) async {
                                           ? Colors.blue.shade600
                                           : Colors.grey.shade400,
                                       foregroundColor: Colors.white,
-                                      minimumSize: const Size(double.infinity, 48),
+                                      minimumSize: const Size(
+                                        double.infinity,
+                                        48,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
@@ -1214,48 +1414,63 @@ Future<bool> _hasLeftReview(String requestId) async {
 
                           // Owner: Approve / Decline
                           // Owner: Approve / Decline
-if (showApproveDecline && now.isBefore(request.start))
-  Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.amber.shade50,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.amber.shade300),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.info_outline_rounded,
-            color: Colors.amber.shade700, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: TextStyle(
-                  fontSize: 13, color: Colors.amber.shade900),
-              children: [
-                const TextSpan(
-                  text: 'Note: ',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const TextSpan(
-                  text: 'If you approve this request, the rental will still begin on ',
-                ),
-                TextSpan(
-                  text: DateFormat('MMMM dd, yyyy').format(request.start),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const TextSpan(
-                  text: ' as scheduled by the renter.',
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
+                          if (showApproveDecline && now.isBefore(request.start))
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.amber.shade300,
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.info_outline_rounded,
+                                    color: Colors.amber.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.amber.shade900,
+                                        ),
+                                        children: [
+                                          const TextSpan(
+                                            text: 'Note: ',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const TextSpan(
+                                            text:
+                                                'If you approve this request, the rental will still begin on ',
+                                          ),
+                                          TextSpan(
+                                            text: DateFormat(
+                                              'MMMM dd, yyyy',
+                                            ).format(request.start),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const TextSpan(
+                                            text:
+                                                ' as scheduled by the renter.',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           if (showApproveDecline)
                             Row(
                               children: [
@@ -1263,25 +1478,33 @@ if (showApproveDecline && now.isBefore(request.start))
                                   child: ElevatedButton.icon(
                                     onPressed: () {
                                       context.read<RequestBloc>().add(
-                                            RequestStatusUpdated(
-                                                request.requestId,
-                                                RentRequestStatus.approved),
-                                          );
+                                        RequestStatusUpdated(
+                                          request.requestId,
+                                          RentRequestStatus.approved,
+                                        ),
+                                      );
                                     },
-                                    icon: const Icon(Icons.check_rounded,
-                                        color: Colors.white, size: 18),
-                                    label: const Text('Approve',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600)),
+                                    icon: const Icon(
+                                      Icons.check_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    label: const Text(
+                                      'Approve',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF10B981),
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 14),
+                                        vertical: 14,
+                                      ),
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1289,22 +1512,30 @@ if (showApproveDecline && now.isBefore(request.start))
                                 Expanded(
                                   child: ElevatedButton.icon(
                                     onPressed: () => _showDeclineDialog(
-                                        context, request.requestId),
-                                    icon: const Icon(Icons.close_rounded,
-                                        color: Colors.white, size: 18),
-                                    label: const Text('Decline',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600)),
+                                      context,
+                                      request.requestId,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    label: const Text(
+                                      'Decline',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          const Color(0xFFEF4444),
+                                      backgroundColor: const Color(0xFFEF4444),
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 14),
+                                        vertical: 14,
+                                      ),
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1314,33 +1545,46 @@ if (showApproveDecline && now.isBefore(request.start))
                           if (isOwner &&
                               request.status == RentRequestStatus.approved &&
                               request.deliveryMethod == DeliveryMethod.pickup)
-                             if (now.isBefore(request.start)) ...[
+                            if (now.isBefore(request.start)) ...[
                               Container(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade50,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.blue.shade200),
+                                  border: Border.all(
+                                    color: Colors.blue.shade200,
+                                  ),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.event_rounded, color: Colors.blue.shade600, size: 22),
+                                    Icon(
+                                      Icons.event_rounded,
+                                      color: Colors.blue.shade600,
+                                      size: 22,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text('Rental Not Started Yet',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.blue.shade700,
-                                                  fontSize: 13)),
+                                          Text(
+                                            'Rental Not Started Yet',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.blue.shade700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
                                           const SizedBox(height: 2),
                                           Text(
                                             'You can mark "On The Way" starting ${DateFormat('MMM dd, yyyy').format(request.start)}.',
-                                            style: TextStyle(color: Colors.blue.shade600, fontSize: 13),
+                                            style: TextStyle(
+                                              color: Colors.blue.shade600,
+                                              fontSize: 13,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -1348,14 +1592,17 @@ if (showApproveDecline && now.isBefore(request.start))
                                   ],
                                 ),
                               ),
-                            ]  else ...[
+                            ] else ...[
                               _actionButton(
                                 label: 'Mark as Ready for Pick Up',
                                 icon: Icons.store_rounded,
                                 color: const Color(0xFF3B82F6),
                                 onPressed: () {
                                   context.read<RequestBloc>().add(
-                                    RequestStatusUpdated(request.requestId, RentRequestStatus.readyForPickup),
+                                    RequestStatusUpdated(
+                                      request.requestId,
+                                      RentRequestStatus.readyForPickup,
+                                    ),
                                   );
                                 },
                               ),
@@ -1373,21 +1620,27 @@ if (showApproveDecline && now.isBefore(request.start))
                           //       );
                           //     },
                           //   ),
-
-                          if (isOwner && request.status == RentRequestStatus.readyForPickup)
+                          if (isOwner &&
+                              request.status ==
+                                  RentRequestStatus.readyForPickup)
                             _actionButton(
                               label: 'Confirm Pick Up',
                               icon: Icons.check_circle_rounded,
                               color: const Color(0xFF8B5CF6),
                               onPressed: () {
                                 context.read<RequestBloc>().add(
-                                  RequestStatusUpdated(request.requestId, RentRequestStatus.inProgress),
+                                  RequestStatusUpdated(
+                                    request.requestId,
+                                    RentRequestStatus.inProgress,
+                                  ),
                                 );
                               },
                             ),
 
                           // Owner: On The Way (delivery)
-                          if (isOwner && request.status == RentRequestStatus.approved && request.deliveryMethod == DeliveryMethod.delivery)
+                          if (isOwner &&
+                              request.status == RentRequestStatus.approved &&
+                              request.deliveryMethod == DeliveryMethod.delivery)
                             if (now.isBefore(request.start)) ...[
                               Container(
                                 margin: const EdgeInsets.only(bottom: 12),
@@ -1395,26 +1648,39 @@ if (showApproveDecline && now.isBefore(request.start))
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade50,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.blue.shade200),
+                                  border: Border.all(
+                                    color: Colors.blue.shade200,
+                                  ),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.event_rounded, color: Colors.blue.shade600, size: 22),
+                                    Icon(
+                                      Icons.event_rounded,
+                                      color: Colors.blue.shade600,
+                                      size: 22,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text('Rental Not Started Yet',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.blue.shade700,
-                                                  fontSize: 13)),
+                                          Text(
+                                            'Rental Not Started Yet',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.blue.shade700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
                                           const SizedBox(height: 2),
                                           Text(
                                             'You can mark "On The Way" starting ${DateFormat('MMM dd, yyyy').format(request.start)}.',
-                                            style: TextStyle(color: Colors.blue.shade600, fontSize: 13),
+                                            style: TextStyle(
+                                              color: Colors.blue.shade600,
+                                              fontSize: 13,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -1429,40 +1695,58 @@ if (showApproveDecline && now.isBefore(request.start))
                                 color: const Color(0xFF3B82F6),
                                 onPressed: () {
                                   context.read<RequestBloc>().add(
-                                    RequestStatusUpdated(request.requestId, RentRequestStatus.onTheWay),
+                                    RequestStatusUpdated(
+                                      request.requestId,
+                                      RentRequestStatus.onTheWay,
+                                    ),
                                   );
                                 },
                               ),
                             ],
 
                           // Renter: approved but not started yet
-                          if (isRenter && request.status == RentRequestStatus.approved && now.isBefore(request.start))
+                          if (isRenter &&
+                              request.status == RentRequestStatus.approved &&
+                              now.isBefore(request.start))
                             Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade50,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.green.shade200),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
+                                ),
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 22),
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.green.shade600,
+                                    size: 22,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text('Request Approved!',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.green.shade700,
-                                                fontSize: 13)),
+                                        Text(
+                                          'Request Approved!',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.green.shade700,
+                                            fontSize: 13,
+                                          ),
+                                        ),
                                         const SizedBox(height: 2),
                                         Text(
                                           'Your rental is scheduled to start on ${DateFormat('MMM dd, yyyy').format(request.start)}.',
-                                          style: TextStyle(color: Colors.green.shade600, fontSize: 13),
+                                          style: TextStyle(
+                                            color: Colors.green.shade600,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -1480,9 +1764,11 @@ if (showApproveDecline && now.isBefore(request.start))
                               color: const Color(0xFF8B5CF6),
                               onPressed: () {
                                 context.read<RequestBloc>().add(
-                                      RequestStatusUpdated(request.requestId,
-                                          RentRequestStatus.inProgress),
-                                    );
+                                  RequestStatusUpdated(
+                                    request.requestId,
+                                    RentRequestStatus.inProgress,
+                                  ),
+                                );
                               },
                             ),
 
@@ -1497,55 +1783,61 @@ if (showApproveDecline && now.isBefore(request.start))
                               color: lightColorScheme.primary,
                               onPressed: () {
                                 context.read<RequestBloc>().add(
-                                      RequestStatusUpdated(request.requestId,
-                                          RentRequestStatus.returned),
-                                    );
+                                  RequestStatusUpdated(
+                                    request.requestId,
+                                    RentRequestStatus.returned,
+                                  ),
+                                );
                               },
                             ),
 
                           // Owner: On My Way to Retrieve (overdue)
-                         if (isOwner &&
-                            request.status == RentRequestStatus.inProgress &&
-                            request.deliveryMethod == DeliveryMethod.delivery)
+                          if (isOwner &&
+                              request.status == RentRequestStatus.inProgress &&
+                              request.deliveryMethod == DeliveryMethod.delivery)
                             _actionButton(
                               label: 'On My Way to Retrieve',
                               icon: Icons.directions_car_rounded,
                               color: Colors.orange,
                               onPressed: () {
                                 context.read<RequestBloc>().add(
-                                      RequestStatusUpdated(request.requestId,
-                                          RentRequestStatus.retrieving),
-                                    );
+                                  RequestStatusUpdated(
+                                    request.requestId,
+                                    RentRequestStatus.retrieving,
+                                  ),
+                                );
                               },
                             ),
 
                           // Owner: Confirm Retrieved (Path B — forced retrieval)
                           if (isOwner &&
-                            request.status == RentRequestStatus.retrieving)
-                          _actionButton(
-                            label: 'Confirm Retrieved',
-                            icon: Icons.task_alt_rounded,
-                            color: lightColorScheme.primary,
-                            onPressed: () async {
-                              final days = DateTime.now()
-                                  .difference(request.end)
-                                  .inDays
-                                  .clamp(0, 9999);
-                              if (days > 0) {
-                                await RentRequestService()
-                                    .shiftQueuedBookingsForEquipment(
-                                  equipmentId: request.itemId,
-                                  daysLate: days,
-                                );
-                              }
-                              if (context.mounted) {
-                                context.read<RequestBloc>().add(
-                                      RequestStatusUpdated(request.requestId,
-                                          RentRequestStatus.finished),
-                                    );
-                              }
-                            },
-                          ),
+                              request.status == RentRequestStatus.retrieving)
+                            _actionButton(
+                              label: 'Confirm Retrieved',
+                              icon: Icons.task_alt_rounded,
+                              color: lightColorScheme.primary,
+                              onPressed: () async {
+                                final days = DateTime.now()
+                                    .difference(request.end)
+                                    .inDays
+                                    .clamp(0, 9999);
+                                if (days > 0) {
+                                  await RentRequestService()
+                                      .shiftQueuedBookingsForEquipment(
+                                        equipmentId: request.itemId,
+                                        daysLate: days,
+                                      );
+                                }
+                                if (context.mounted) {
+                                  context.read<RequestBloc>().add(
+                                    RequestStatusUpdated(
+                                      request.requestId,
+                                      RentRequestStatus.finished,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
 
                           // Owner: Confirm Return (Path A — renter self-returns)
                           if (isOwner &&
@@ -1562,15 +1854,17 @@ if (showApproveDecline && now.isBefore(request.start))
                                 if (days > 0) {
                                   await RentRequestService()
                                       .shiftQueuedBookingsForEquipment(
-                                    equipmentId: request.itemId,
-                                    daysLate   : days,
-                                  );
+                                        equipmentId: request.itemId,
+                                        daysLate: days,
+                                      );
                                 }
                                 if (context.mounted) {
                                   context.read<RequestBloc>().add(
-                                        RequestStatusUpdated(request.requestId,
-                                            RentRequestStatus.finished),
-                                      );
+                                    RequestStatusUpdated(
+                                      request.requestId,
+                                      RentRequestStatus.finished,
+                                    ),
+                                  );
                                 }
                               },
                             ),
@@ -1582,7 +1876,7 @@ if (showApproveDecline && now.isBefore(request.start))
                               label: 'Confirm Completion',
                               icon: Icons.verified_rounded,
                               color: lightColorScheme.primary,
-                             onPressed: () async {
+                              onPressed: () async {
                                 final doc = await FirebaseFirestore.instance
                                     .collection('equipment')
                                     .doc(request.itemId)
@@ -1594,15 +1888,16 @@ if (showApproveDecline && now.isBefore(request.start))
                                     request.requestId,
                                     equipment,
                                     rentalStart: request.start,
-                                    rentalEnd  : request.end,
-                                    ownerId    : request.ownerId,
+                                    rentalEnd: request.end,
+                                    ownerId: request.ownerId,
                                   );
                                 }
                               },
                             ),
 
                           // Renter: Leave Review
-                          if (isRenter && request.status == RentRequestStatus.completed)
+                          if (isRenter &&
+                              request.status == RentRequestStatus.completed)
                             FutureBuilder<bool>(
                               future: _hasLeftReview(request.requestId),
                               builder: (context, snapshot) {
@@ -1613,11 +1908,17 @@ if (showApproveDecline && now.isBefore(request.start))
                                     decoration: BoxDecoration(
                                       color: Colors.amber.shade50,
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.amber.shade200),
+                                      border: Border.all(
+                                        color: Colors.amber.shade200,
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 22),
+                                        Icon(
+                                          Icons.star_rounded,
+                                          color: Colors.amber.shade600,
+                                          size: 22,
+                                        ),
                                         const SizedBox(width: 10),
                                         Text(
                                           'You have already left a review.',
@@ -1657,7 +1958,7 @@ if (showApproveDecline && now.isBefore(request.start))
                             _actionButton(
                               label: 'Report Renter',
                               icon: Icons.flag_rounded,
-                              color: lightColorScheme.error, // 
+                              color: lightColorScheme.error, //
                               onPressed: () {
                                 Navigator.push(
                                   context,
@@ -1665,7 +1966,7 @@ if (showApproveDecline && now.isBefore(request.start))
                                     builder: (_) => ReportRenterPage(
                                       requestId: request.requestId,
                                       renterId: request.renterId,
-                                      renterName: request.name,   
+                                      renterName: request.name,
                                       itemName: request.itemName,
                                     ),
                                   ),
@@ -1682,14 +1983,18 @@ if (showApproveDecline && now.isBefore(request.start))
                                 icon: Icons.cancel_outlined,
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
-                                onPressed: () => _showCancelDialog(context,
-                                    request,
-                                    isRenter: true),
+                                onPressed: () => _showCancelDialog(
+                                  context,
+                                  request,
+                                  isRenter: true,
+                                ),
                               ),
                             ),
 
                           // Owner: Cancel
-                          if (isOwner && !showApproveDecline && _canOwnerCancel(request))
+                          if (isOwner &&
+                              !showApproveDecline &&
+                              _canOwnerCancel(request))
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: _actionButton(
@@ -1697,9 +2002,11 @@ if (showApproveDecline && now.isBefore(request.start))
                                 icon: Icons.cancel_outlined,
                                 color: const Color(0xFFEF4444),
                                 outlined: true,
-                                onPressed: () => _showCancelDialog(context,
-                                    request,
-                                    isRenter: false),
+                                onPressed: () => _showCancelDialog(
+                                  context,
+                                  request,
+                                  isRenter: false,
+                                ),
                               ),
                             ),
 
@@ -1713,16 +2020,13 @@ if (showApproveDecline && now.isBefore(request.start))
             );
           }
 
-          return const Scaffold(
-            body: Center(child: Text('Unknown state')),
-          );
+          return const Scaffold(body: Center(child: Text('Unknown state')));
         },
       ),
     );
   }
 
-  Widget _dateBox(
-      String label, DateTime date, IconData icon, Color color) {
+  Widget _dateBox(String label, DateTime date, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1737,21 +2041,25 @@ if (showApproveDecline && now.isBefore(request.start))
             children: [
               Icon(icon, size: 14, color: color),
               const SizedBox(width: 4),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                      letterSpacing: 0.5)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             DateFormat('MMM dd').format(date),
             style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           Text(
             DateFormat('yyyy').format(date),
@@ -1771,10 +2079,10 @@ if (showApproveDecline && now.isBefore(request.start))
       children: List.generate(icons.length * 2 - 1, (index) {
         if (index.isEven) {
           final stepIndex = index ~/ 2;
-          final isCompleted = stepIndex < currentStep ||
-              status == RentRequestStatus.completed;
-          final isCurrent = stepIndex == currentStep &&
-              status != RentRequestStatus.completed;
+          final isCompleted =
+              stepIndex < currentStep || status == RentRequestStatus.completed;
+          final isCurrent =
+              stepIndex == currentStep && status != RentRequestStatus.completed;
 
           Color color;
           if (isCompleted) {
@@ -1797,8 +2105,8 @@ if (showApproveDecline && now.isBefore(request.start))
           );
         } else {
           final lineIndex = (index - 1) ~/ 2;
-          final isActive = lineIndex < currentStep ||
-              status == RentRequestStatus.completed;
+          final isActive =
+              lineIndex < currentStep || status == RentRequestStatus.completed;
           return Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 400),
@@ -1838,27 +2146,35 @@ if (showApproveDecline && now.isBefore(request.start))
           builder: (_, setState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              title: const Text('Dahilan ng Pagtanggi',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Dahilan ng Pagtanggi',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                        'Pumili ng dahilan para sa pagtanggi ng kahilingan:',
-                        style: TextStyle(fontSize: 13, color: Colors.grey)),
+                      'Pumili ng dahilan para sa pagtanggi ng kahilingan:',
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
                     const SizedBox(height: 12),
-                    ...reasons.map((reason) => RadioListTile<String>(
-                          value: reason,
-                          groupValue: selectedReason,
-                          title:
-                              Text(reason, style: const TextStyle(fontSize: 13)),
-                          onChanged: (val) =>
-                              setState(() => selectedReason = val),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        )),
+                    ...reasons.map(
+                      (reason) => RadioListTile<String>(
+                        value: reason,
+                        groupValue: selectedReason,
+                        title: Text(
+                          reason,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        onChanged: (val) =>
+                            setState(() => selectedReason = val),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                    ),
                     if (selectedReason == 'Iba pang dahilan') ...[
                       const SizedBox(height: 8),
                       TextField(
@@ -1868,7 +2184,8 @@ if (showApproveDecline && now.isBefore(request.start))
                           hintText: 'Ipaliwanag ang dahilan...',
                           hintStyle: const TextStyle(fontSize: 13),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           contentPadding: const EdgeInsets.all(10),
                         ),
                       ),
@@ -1888,20 +2205,25 @@ if (showApproveDecline && now.isBefore(request.start))
                   onPressed: selectedReason == null
                       ? null
                       : () {
-                          final finalReason = selectedReason ==
-                                      'Iba pang dahilan' &&
+                          final finalReason =
+                              selectedReason == 'Iba pang dahilan' &&
                                   otherController.text.trim().isNotEmpty
                               ? 'Iba pang dahilan: ${otherController.text.trim()}'
                               : selectedReason!;
                           Navigator.pop(dialogContext);
-                          requestBloc.add(RequestStatusUpdated(
-                              requestId, RentRequestStatus.declined,
-                              declineReason: finalReason));
+                          requestBloc.add(
+                            RequestStatusUpdated(
+                              requestId,
+                              RentRequestStatus.declined,
+                              declineReason: finalReason,
+                            ),
+                          );
                         },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red),
-                  child: const Text('Tanggihan',
-                      style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text(
+                    'Tanggihan',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -1911,921 +2233,1151 @@ if (showApproveDecline && now.isBefore(request.start))
     );
   }
 
-void _showEquipmentConditionDialog(
-  BuildContext context,
-  String requestId,
-  Equipment equipment, {
-  required DateTime rentalStart,
-  required DateTime rentalEnd,
-  required String ownerId,
-}) {
-  bool? equipmentGood;
-  final commentController = TextEditingController();
-  final maintenanceDaysController = TextEditingController();
-  final requestBloc = context.read<RequestBloc>();
+  void _showEquipmentConditionDialog(
+    BuildContext context,
+    String requestId,
+    Equipment equipment, {
+    required DateTime rentalStart,
+    required DateTime rentalEnd,
+    required String ownerId,
+  }) {
+    bool? equipmentGood;
+    final commentController = TextEditingController();
+    final maintenanceDaysController = TextEditingController();
+    final requestBloc = context.read<RequestBloc>();
 
-  // Maintenance state
-  DateTime? maintenanceEndDate;
-  List<Map<String, dynamic>>? affectedBookings;
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
+    // Maintenance state
+    DateTime? maintenanceEndDate;
+    List<Map<String, dynamic>>? affectedBookings;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
-  showDialog(
-    context: context,
-    builder: (dialogContext) {
-      return StatefulBuilder(
-        builder: (_, setState) {
-          final durationDays = maintenanceEndDate != null
-              ? maintenanceEndDate!.difference(today).inDays + 1
-              : 0;
-          final isUnforeseen = durationDays > 7;
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (_, setState) {
+            final durationDays = maintenanceEndDate != null
+                ? maintenanceEndDate!.difference(today).inDays + 1
+                : 0;
+            final isUnforeseen = durationDays > 7;
 
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text(
-              'Ulat ng Kondisyon ng Kagamitan',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Punan ang form na ito bago tapusin ang rental.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Nasa maayos na kondisyon ba ang kagamitan?',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // ── Yes / No toggle ──────────────────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() {
-                            equipmentGood = true;
-                            // Clear maintenance if they switch back to Yes
-                            maintenanceEndDate = null;
-                            maintenanceDaysController.clear();
-                          }),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: equipmentGood == true ? Colors.green : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: equipmentGood == true ? Colors.green : Colors.grey.shade400,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.check_circle,
-                                    color: equipmentGood == true ? Colors.white : Colors.grey,
-                                    size: 20),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Oo',
-                                  style: TextStyle(
-                                    color: equipmentGood == true ? Colors.white : Colors.grey.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => equipmentGood = false),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: equipmentGood == false ? Colors.red : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: equipmentGood == false ? Colors.red : Colors.grey.shade400,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.cancel,
-                                    color: equipmentGood == false ? Colors.white : Colors.grey,
-                                    size: 20),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Hindi',
-                                  style: TextStyle(
-                                    color: equipmentGood == false ? Colors.white : Colors.grey.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // ── No branch ────────────────────────────────────
-                  if (equipmentGood == false) ...[
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Ulat ng Kondisyon ng Kagamitan',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Punan ang form na ito bago tapusin ang rental.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
                     const SizedBox(height: 16),
                     const Text(
-                      'Ilarawan ang problema:',
+                      'Nasa maayos na kondisyon ba ang kagamitan?',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: commentController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'hal. Sirang talim, hindi umaandar ang makina...',
-                        hintStyle: const TextStyle(fontSize: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        contentPadding: const EdgeInsets.all(10),
-                      ),
-                    ),
+                    const SizedBox(height: 8),
 
-                    const SizedBox(height: 20),
-
-                    // ── Maintenance section ──────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: lightColorScheme.secondary.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: lightColorScheme.secondary),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.build_outlined, color: lightColorScheme.primary, size: 16),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'I-schedule ang Maintenance',
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-
-                          if (equipment.maintenanceStart != null || equipment.maintenanceEnd != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    // ── Yes / No toggle ──────────────────────────────
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() {
+                              equipmentGood = true;
+                              // Clear maintenance if they switch back to Yes
+                              maintenanceEndDate = null;
+                              maintenanceDaysController.clear();
+                            }),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
-                                color: lightColorScheme.surface,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: lightColorScheme.outlineVariant),
+                                color: equipmentGood == true
+                                    ? Colors.green
+                                    : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: equipmentGood == true
+                                      ? Colors.green
+                                      : Colors.grey.shade400,
+                                ),
                               ),
                               child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, color: lightColorScheme.primary, size: 16),
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: equipmentGood == true
+                                        ? Colors.white
+                                        : Colors.grey,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      'Kasalukuyang nasa maintenance'
-                                      '${equipment.maintenanceStart != null ? ' mula ${DateFormat('MMM d').format(equipment.maintenanceStart!)}' : ''}'
-                                      '${equipment.maintenanceEnd != null ? ' hanggang ${DateFormat('MMM d, yyyy').format(equipment.maintenanceEnd!)}' : ''}.',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: lightColorScheme.onSecondary,
-                                      ),
+                                  Text(
+                                    'Oo',
+                                    style: TextStyle(
+                                      color: equipmentGood == true
+                                          ? Colors.white
+                                          : Colors.grey.shade700,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
-                            )
-                          else ...[
-                            _buildDateRow(
-                              label: 'Simula',
-                              value: DateFormat('MMM d, yyyy').format(today),
-                              icon: Icons.today,
-                              color: lightColorScheme.primary,
-                              isFixed: true,
-                              onTap: null,
                             ),
-                            const SizedBox(height: 8),
-                            _buildDateRow(
-                              label: 'Katapusan',
-                              value: maintenanceEndDate != null
-                                  ? DateFormat('MMM d, yyyy').format(maintenanceEndDate!)
-                                  : 'Pindutin para pumili ng petsa',
-                              icon: Icons.event,
-                              color: lightColorScheme.primary,
-                              isFixed: false,
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: dialogContext,
-                                  initialDate: today.add(const Duration(days: 1)),
-                                  firstDate: today.add(const Duration(days: 1)),
-                                  lastDate: today.add(const Duration(days: 365)),
-                                  helpText: 'Pumili ng petsa ng katapusan ng maintenance',
-                                );
-                                if (picked != null) {
-                                  final newEnd = DateTime(
-                                      picked.year, picked.month, picked.day, 23, 59, 59);
-                                  final bookings =
-                                      await _fetchConditionReportAffectedBookings(
-                                    equipmentId: equipment.id!,
-                                    today: today,
-                                    maintenanceEnd: newEnd,
-                                    availableUntil: equipment.availableUntil,
-                                  );
-                                  setState(() {
-                                    maintenanceEndDate = newEnd;
-                                    affectedBookings = bookings;
-                                  });
-                                }
-                              },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => equipmentGood = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: equipmentGood == false
+                                    ? Colors.red
+                                    : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: equipmentGood == false
+                                      ? Colors.red
+                                      : Colors.grey.shade400,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.cancel,
+                                    color: equipmentGood == false
+                                        ? Colors.white
+                                        : Colors.grey,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Hindi',
+                                    style: TextStyle(
+                                      color: equipmentGood == false
+                                          ? Colors.white
+                                          : Colors.grey.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            if (maintenanceEndDate != null) ...[
-                              const SizedBox(height: 10),
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // ── No branch ────────────────────────────────────
+                    if (equipmentGood == false) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Ilarawan ang problema:',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: commentController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText:
+                              'hal. Sirang talim, hindi umaandar ang makina...',
+                          hintStyle: const TextStyle(fontSize: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.all(10),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ── Maintenance section ──────────────────────
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: lightColorScheme.secondary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: lightColorScheme.secondary),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.build_outlined,
+                                  color: lightColorScheme.primary,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'I-schedule ang Maintenance',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            if (equipment.maintenanceStart != null ||
+                                equipment.maintenanceEnd != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isUnforeseen
-                                      ? lightColorScheme.error.withOpacity(0.08)
-                                      : lightColorScheme.secondary.withOpacity(0.25),
+                                  color: lightColorScheme.surface,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: isUnforeseen
-                                        ? lightColorScheme.error
-                                        : lightColorScheme.primary,
+                                    color: lightColorScheme.outlineVariant,
                                   ),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
-                                      isUnforeseen ? Icons.warning_amber_rounded : Icons.info_outline,
-                                      color: isUnforeseen ? lightColorScheme.error : lightColorScheme.primary,
+                                      Icons.warning_amber_rounded,
+                                      color: lightColorScheme.primary,
                                       size: 16,
                                     ),
                                     const SizedBox(width: 6),
                                     Flexible(
                                       child: Text(
-                                        isUnforeseen
-                                            ? '$durationDays na araw — Hindi Inaasahan. Lahat ng booking ay IKAKANSELA.'
-                                            : '$durationDays na araw — Ang mga booking ay ire-reschedule.',
+                                        'Kasalukuyang nasa maintenance'
+                                        '${equipment.maintenanceStart != null ? ' mula ${DateFormat('MMM d').format(equipment.maintenanceStart!)}' : ''}'
+                                        '${equipment.maintenanceEnd != null ? ' hanggang ${DateFormat('MMM d, yyyy').format(equipment.maintenanceEnd!)}' : ''}.',
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
-                                          color: isUnforeseen
-                                              ? lightColorScheme.error
-                                              : lightColorScheme.primary,
+                                          color: lightColorScheme.onSecondary,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
+                              )
+                            else ...[
+                              _buildDateRow(
+                                label: 'Simula',
+                                value: DateFormat('MMM d, yyyy').format(today),
+                                icon: Icons.today,
+                                color: lightColorScheme.primary,
+                                isFixed: true,
+                                onTap: null,
                               ),
-                              if (affectedBookings != null) ...[
+                              const SizedBox(height: 8),
+                              _buildDateRow(
+                                label: 'Katapusan',
+                                value: maintenanceEndDate != null
+                                    ? DateFormat(
+                                        'MMM d, yyyy',
+                                      ).format(maintenanceEndDate!)
+                                    : 'Pindutin para pumili ng petsa',
+                                icon: Icons.event,
+                                color: lightColorScheme.primary,
+                                isFixed: false,
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: dialogContext,
+                                    initialDate: today.add(
+                                      const Duration(days: 1),
+                                    ),
+                                    firstDate: today.add(
+                                      const Duration(days: 1),
+                                    ),
+                                    lastDate: today.add(
+                                      const Duration(days: 365),
+                                    ),
+                                    helpText:
+                                        'Pumili ng petsa ng katapusan ng maintenance',
+                                  );
+                                  if (picked != null) {
+                                    final newEnd = DateTime(
+                                      picked.year,
+                                      picked.month,
+                                      picked.day,
+                                      23,
+                                      59,
+                                      59,
+                                    );
+                                    final bookings =
+                                        await _fetchConditionReportAffectedBookings(
+                                          equipmentId: equipment.id!,
+                                          today: today,
+                                          maintenanceEnd: newEnd,
+                                          availableUntil:
+                                              equipment.availableUntil,
+                                        );
+                                    setState(() {
+                                      maintenanceEndDate = newEnd;
+                                      affectedBookings = bookings;
+                                    });
+                                  }
+                                },
+                              ),
+                              if (maintenanceEndDate != null) ...[
                                 const SizedBox(height: 10),
-                                Text(
-                                  'Mga Apektadong Booking',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isUnforeseen
+                                        ? lightColorScheme.error.withOpacity(
+                                            0.08,
+                                          )
+                                        : lightColorScheme.secondary
+                                              .withOpacity(0.25),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isUnforeseen
+                                          ? lightColorScheme.error
+                                          : lightColorScheme.primary,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isUnforeseen
+                                            ? Icons.warning_amber_rounded
+                                            : Icons.info_outline,
+                                        color: isUnforeseen
+                                            ? lightColorScheme.error
+                                            : lightColorScheme.primary,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          isUnforeseen
+                                              ? '$durationDays na araw — Hindi Inaasahan. Lahat ng booking ay IKAKANSELA.'
+                                              : '$durationDays na araw — Ang mga booking ay ire-reschedule.',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: isUnforeseen
+                                                ? lightColorScheme.error
+                                                : lightColorScheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                if (affectedBookings!.isEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      'Walang apektadong booking.',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                if (affectedBookings != null) ...[
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Mga Apektadong Booking',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
                                     ),
-                                  )
-                                else
-                                  ...affectedBookings!.map((b) {
-                                    final isCancelled = b['willBeCancelled'] as bool;
-                                    final newStart = b['newStart'] as DateTime?;
-                                    final newEnd = b['newEnd'] as DateTime?;
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 6),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                isCancelled ? Icons.cancel_outlined : Icons.update,
-                                                size: 14,
-                                                color: isCancelled
-                                                    ? Colors.red.shade600
-                                                    : Colors.orange.shade700,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Text(
-                                                  '${b['renterName']} · '
-                                                  '${DateFormat('MMM d').format(b['start'] as DateTime)} – '
-                                                  '${DateFormat('MMM d, yyyy').format(b['end'] as DateTime)}',
-                                                  style: const TextStyle(fontSize: 12, color: Colors.black87),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                isCancelled ? 'Ikakansela' : 'Ire-reschedule',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
+                                  ),
+                                  if (affectedBookings!.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'Walang apektadong booking.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    ...affectedBookings!.map((b) {
+                                      final isCancelled =
+                                          b['willBeCancelled'] as bool;
+                                      final newStart =
+                                          b['newStart'] as DateTime?;
+                                      final newEnd = b['newEnd'] as DateTime?;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  isCancelled
+                                                      ? Icons.cancel_outlined
+                                                      : Icons.update,
+                                                  size: 14,
                                                   color: isCancelled
                                                       ? Colors.red.shade600
                                                       : Colors.orange.shade700,
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                          if (!isCancelled && newStart != null && newEnd != null)
-                                            Padding(
-                                              padding: const EdgeInsets.only(left: 20, top: 2),
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.arrow_forward, size: 12, color: Colors.orange.shade700),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    '${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
-                                                    style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.w500),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${b['renterName']} · '
+                                                    '${DateFormat('MMM d').format(b['start'] as DateTime)} – '
+                                                    '${DateFormat('MMM d, yyyy').format(b['end'] as DateTime)}',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.black87,
+                                                    ),
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  isCancelled
+                                                      ? 'Ikakansela'
+                                                      : 'Ire-reschedule',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isCancelled
+                                                        ? Colors.red.shade600
+                                                        : Colors
+                                                              .orange
+                                                              .shade700,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                        ],
-                                      ),
-                                    );
-                                  }),
+                                            if (!isCancelled &&
+                                                newStart != null &&
+                                                newEnd != null)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 20,
+                                                  top: 2,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.arrow_forward,
+                                                      size: 12,
+                                                      color: Colors
+                                                          .orange
+                                                          .shade700,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      '${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        color: Colors
+                                                            .orange
+                                                            .shade800,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                ],
                               ],
                             ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Kanselahin'),
-              ),
-              ElevatedButton(
-                onPressed: equipmentGood == null
-                    ? null
-                    : () async {
-                        Navigator.pop(dialogContext);
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Kanselahin'),
+                ),
+                ElevatedButton(
+                  onPressed: equipmentGood == null
+                      ? null
+                      : () async {
+                          Navigator.pop(dialogContext);
 
-                        // Complete the rental
-                        requestBloc.add(
-                            RequestStatusUpdated(requestId, RentRequestStatus.completed));
-
-                        // Log rental usage for maintenance hour tracking.
-                        // Each rental day = 24 hours of assumed machine use.
-                        final startDate = DateTime(rentalStart.year,
-                            rentalStart.month, rentalStart.day);
-                        final endDate = DateTime(rentalEnd.year,
-                            rentalEnd.month, rentalEnd.day);
-                        final rentalDays =
-                            endDate.difference(startDate).inDays + 1;
-                        MaintenanceService().logRentalUsage(
-                          equipmentId  : equipment.id ?? requestId,
-                          ownerId      : ownerId,
-                          equipmentName: equipment.name,
-                          rentalDays   : rentalDays,
-                        );
-
-                        // If No + maintenance end date selected → schedule it
-                        if (equipmentGood == false && maintenanceEndDate != null) {
-                          await _applyMaintenanceFromConditionReport(
-                            context: context,
-                            equipment: equipment,
-                            maintenanceEnd: maintenanceEndDate!,
-                            today: today,
+                          // Complete the rental
+                          requestBloc.add(
+                            RequestStatusUpdated(
+                              requestId,
+                              RentRequestStatus.completed,
+                            ),
                           );
-                        }
-                      },
-                style: ElevatedButton.styleFrom(backgroundColor: lightColorScheme.primary),
-                child: const Text(
-                  'Isumite at Tapusin',
-                  style: TextStyle(color: Colors.white),
+
+                          // Log rental usage for maintenance hour tracking.
+                          // Each rental day = 24 hours of assumed machine use.
+                          final startDate = DateTime(
+                            rentalStart.year,
+                            rentalStart.month,
+                            rentalStart.day,
+                          );
+                          final endDate = DateTime(
+                            rentalEnd.year,
+                            rentalEnd.month,
+                            rentalEnd.day,
+                          );
+                          final rentalDays =
+                              endDate.difference(startDate).inDays + 1;
+                          MaintenanceService().logRentalUsage(
+                            equipmentId: equipment.id ?? requestId,
+                            ownerId: ownerId,
+                            equipmentName: equipment.name,
+                            rentalDays: rentalDays,
+                          );
+
+                          // If No + maintenance end date selected → schedule it
+                          if (equipmentGood == false &&
+                              maintenanceEndDate != null) {
+                            await _applyMaintenanceFromConditionReport(
+                              context: context,
+                              equipment: equipment,
+                              maintenanceEnd: maintenanceEndDate!,
+                              today: today,
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: lightColorScheme.primary,
+                  ),
+                  child: const Text(
+                    'Isumite at Tapusin',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-// ── Inline date row widget for the dialog ───────────────────────────────────
-Widget _buildDateRow({
-  required String label,
-  required String value,
-  required IconData icon,
-  required Color color,
-  required bool isFixed,
-  required VoidCallback? onTap,
-}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isFixed ? Colors.grey.shade50 : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isFixed ? Colors.grey.shade300 : color.withOpacity(0.5),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey.shade500,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isFixed ? Colors.grey.shade600 : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          if (!isFixed) ...[
-            const Spacer(),
-            Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 16),
-          ],
-        ],
-      ),
-    ),
-  );
-}
-
-// ── Fetches bookings affected by maintenance from the condition report flow ──
-Future<List<Map<String, dynamic>>> _fetchConditionReportAffectedBookings({
-  required String equipmentId,
-  required DateTime today,
-  required DateTime maintenanceEnd,
-  DateTime? availableUntil,
-}) async {
-  const activeStatuses = ['pending', 'approved', 'readyForPickup'];
-  final snap = await FirebaseFirestore.instance
-      .collection('rentRequests')
-      .where('itemId', isEqualTo: equipmentId)
-      .where('status', whereIn: activeStatuses)
-      .get();
-
-  final maintenanceEndDay =
-      DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
-  final durationDays = maintenanceEndDay.difference(today).inDays + 1;
-  final isUnforeseen = durationDays > 7;
-
-  // Sort ascending by start so cascade propagates in order
-  final sortedDocs = snap.docs.toList()
-    ..sort((a, b) {
-      final aStart = (a.data()['start'] as Timestamp).toDate();
-      final bStart = (b.data()['start'] as Timestamp).toDate();
-      return aStart.compareTo(bStart);
-    });
-
-  final results = <Map<String, dynamic>>[];
-
-  if (isUnforeseen) {
-    // Unforeseen: only direct overlaps are cancelled.
-    for (final doc in sortedDocs) {
-      final request = RentRequest.fromDoc(doc);
-      final bookingStart =
-          DateTime(request.start.year, request.start.month, request.start.day);
-      final bookingEnd =
-          DateTime(request.end.year, request.end.month, request.end.day);
-      final overlaps =
-          bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
-          bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
-      if (!overlaps) continue;
-      results.add({
-        'renterName': request.name,
-        'start': request.start,
-        'end': request.end,
-        'willBeCancelled': true,
-      });
-    }
-  } else {
-    // Foreseen: simulate the same cascade used during actual scheduling so
-    // bookings shifted by a prior booking are also included in the preview.
-    DateTime blockedUntil = maintenanceEndDay;
-    for (final doc in sortedDocs) {
-      final request = RentRequest.fromDoc(doc);
-      final bookingStart =
-          DateTime(request.start.year, request.start.month, request.start.day);
-      if (bookingStart.isAfter(blockedUntil)) continue; // Not affected
-
-      final bookingDuration = request.end.difference(request.start);
-      final newStart = DateTime(
-        blockedUntil.year, blockedUntil.month, blockedUntil.day,
-        request.start.hour, request.start.minute,
-      ).add(const Duration(days: 1));
-      final newEnd = newStart.add(bookingDuration);
-
-      final exceedsAvailability =
-          availableUntil != null && newEnd.isAfter(availableUntil);
-
-      results.add({
-        'renterName': request.name,
-        'start': request.start,
-        'end': request.end,
-        'willBeCancelled': exceedsAvailability,
-        if (!exceedsAvailability) 'newStart': newStart,
-        if (!exceedsAvailability) 'newEnd': newEnd,
-      });
-
-      if (!exceedsAvailability) {
-        // Advance cascade pointer; cancelled slots don't block the next booking.
-        blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
-      }
-    }
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
-  return results;
-}
+  // ── Inline date row widget for the dialog ───────────────────────────────────
+  Widget _buildDateRow({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required bool isFixed,
+    required VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isFixed ? Colors.grey.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isFixed ? Colors.grey.shade300 : color.withOpacity(0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isFixed ? Colors.grey.shade600 : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            if (!isFixed) ...[
+              const Spacer(),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 16),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
-// ── Applies maintenance after condition report (same logic as _scheduleMaintenance) ─
-Future<void> _applyMaintenanceFromConditionReport({
-  required BuildContext context,
-  required Equipment equipment,
-  required DateTime maintenanceEnd,
-  required DateTime today,
-}) async {
-  final durationDays = maintenanceEnd.difference(today).inDays + 1;
-  final isUnforeseen = durationDays > 7;
-
-
-  try {
-    final db = FirebaseFirestore.instance;
-
-    // Update equipment status
-    await db.collection('equipment').doc(equipment.id).update({
-      'status': EquipmentStatus.underMaintenance.toValue(),
-      'isAvailable': false,
-      'maintenanceStart': Timestamp.fromDate(today),
-      'maintenanceEnd': Timestamp.fromDate(maintenanceEnd),
-    });
-
+  // ── Fetches bookings affected by maintenance from the condition report flow ──
+  Future<List<Map<String, dynamic>>> _fetchConditionReportAffectedBookings({
+    required String equipmentId,
+    required DateTime today,
+    required DateTime maintenanceEnd,
+    DateTime? availableUntil,
+  }) async {
     const activeStatuses = ['pending', 'approved', 'readyForPickup'];
-
-    final bookingsSnap = await db
+    final snap = await FirebaseFirestore.instance
         .collection('rentRequests')
-        .where('itemId', isEqualTo: equipment.id)
+        .where('itemId', isEqualTo: equipmentId)
         .where('status', whereIn: activeStatuses)
         .get();
 
-    final batch = db.batch();
-    final List<Future<void>> notifFutures = [];
+    final maintenanceEndDay = DateTime(
+      maintenanceEnd.year,
+      maintenanceEnd.month,
+      maintenanceEnd.day,
+    );
+    final durationDays = maintenanceEndDay.difference(today).inDays + 1;
+    final isUnforeseen = durationDays > 7;
 
-    // Sort by start date so cascade shifts propagate in order.
-    final sortedDocs = bookingsSnap.docs.toList()
+    // Sort ascending by start so cascade propagates in order
+    final sortedDocs = snap.docs.toList()
       ..sort((a, b) {
         final aStart = (a.data()['start'] as Timestamp).toDate();
         final bStart = (b.data()['start'] as Timestamp).toDate();
         return aStart.compareTo(bStart);
       });
 
-    // For foreseen maintenance: tracks the last occupied day so that
-    // each shifted booking cascades off the previous one's new end date.
-    DateTime blockedUntil = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
-    final maintenanceEndDay = DateTime(maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+    final results = <Map<String, dynamic>>[];
 
-    for (final doc in sortedDocs) {
-      final request = RentRequest.fromDoc(doc);
-
-      final bookingStart = DateTime(request.start.year, request.start.month, request.start.day);
-      final bookingEnd   = DateTime(request.end.year,   request.end.month,   request.end.day);
-
-      if (isUnforeseen) {
+    if (isUnforeseen) {
+      // Unforeseen: only direct overlaps are cancelled.
+      for (final doc in sortedDocs) {
+        final request = RentRequest.fromDoc(doc);
+        final bookingStart = DateTime(
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
         final overlaps =
-            bookingStart.isBefore(maintenanceEndDay.add(const Duration(days: 1))) &&
+            bookingStart.isBefore(
+              maintenanceEndDay.add(const Duration(days: 1)),
+            ) &&
             bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
         if (!overlaps) continue;
-
-        batch.update(doc.reference, {
-          'status': RentRequestStatus.canceled.name,
-          'declineReason':
-              'Ang kagamitan ay naka-schedule para sa hindi inaasahang maintenance mula '
-              '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
-              'Paumanhin sa abala.',
+        results.add({
+          'renterName': request.name,
+          'start': request.start,
+          'end': request.end,
+          'willBeCancelled': true,
         });
-        notifFutures.add(_sendNotification(
-          userId: request.renterId,
-          title: '🔧 Kinansela ang Booking — Maintenance',
-          body: 'Ang iyong booking para sa "${equipment.name}" '
-              '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
-              'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw). '
-              'Paumanhin sa abala.',
-          type: 'maintenance_cancel',
-          extra: {'requestId': request.requestId, 'equipmentId': equipment.id, 'ownerId': equipment.ownerId},
-        ));
-      } else {
-        // Foreseen: cascade shift — conflict if booking starts on or before blockedUntil.
-        if (bookingStart.isAfter(blockedUntil)) continue;
+      }
+    } else {
+      // Foreseen: simulate the same cascade used during actual scheduling so
+      // bookings shifted by a prior booking are also included in the preview.
+      DateTime blockedUntil = maintenanceEndDay;
+      for (final doc in sortedDocs) {
+        final request = RentRequest.fromDoc(doc);
+        final bookingStart = DateTime(
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        if (bookingStart.isAfter(blockedUntil)) continue; // Not affected
 
         final bookingDuration = request.end.difference(request.start);
         final newStart = DateTime(
-          blockedUntil.year, blockedUntil.month, blockedUntil.day,
-          request.start.hour, request.start.minute,
+          blockedUntil.year,
+          blockedUntil.month,
+          blockedUntil.day,
+          request.start.hour,
+          request.start.minute,
         ).add(const Duration(days: 1));
         final newEnd = newStart.add(bookingDuration);
 
-        final exceedsAvailability = equipment.availableUntil != null &&
-            newEnd.isAfter(equipment.availableUntil!);
+        final exceedsAvailability =
+            availableUntil != null && newEnd.isAfter(availableUntil);
 
-        if (exceedsAvailability) {
-          batch.update(doc.reference, {
-            'status': RentRequestStatus.canceled.name,
-            'declineReason':
-                'Hindi ma-reschedule ang booking pagkatapos ng maintenance — ang bagong mga petsa ay wala na sa availability ng kagamitan.',
-          });
-          notifFutures.add(_sendNotification(
-            userId: request.renterId,
-            title: '🔧 Kinansela ang Booking — Labas ng Availability',
-            body: 'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
-                'pagkatapos ng maintenance dahil ang bagong mga petsa ay wala na sa '
-                'availability ng kagamitan. Kinansela na ang iyong booking.',
-            type: 'maintenance_cancel',
-            extra: {'requestId': request.requestId, 'equipmentId': equipment.id, 'ownerId': equipment.ownerId},
-          ));
-          // Do NOT advance blockedUntil — cancelled slot is freed.
-        } else {
-          batch.update(doc.reference, {
-            'start'         : Timestamp.fromDate(newStart),
-            'end'           : Timestamp.fromDate(newEnd),
-            'originalStart' : Timestamp.fromDate(request.start),
-            'originalEnd'   : Timestamp.fromDate(request.end),
-            'maintenanceRescheduled': true,
-          });
-          notifFutures.add(_sendNotification(
-            userId: request.renterId,
-            title: '📅 Na-reschedule ang Booking — Maintenance',
-            body: 'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
-                '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
-                'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
-                'dahil sa maintenance. '
-                'Maaari mong kanselahin o tanggapin ang bagong schedule.',
-            type: 'maintenance_reschedule',
-            extra: {
-              'requestId': request.requestId,
-              'equipmentId': equipment.id,
-              'ownerId': equipment.ownerId,
-              'canCancel': true,
-              'canAccept': true,
-              'newStart': Timestamp.fromDate(newStart),
-              'newEnd': Timestamp.fromDate(newEnd),
-            },
-          ));
-          // Advance the cascade pointer so the next booking shifts off this one's new end.
+        results.add({
+          'renterName': request.name,
+          'start': request.start,
+          'end': request.end,
+          'willBeCancelled': exceedsAvailability,
+          if (!exceedsAvailability) 'newStart': newStart,
+          if (!exceedsAvailability) 'newEnd': newEnd,
+        });
+
+        if (!exceedsAvailability) {
+          // Advance cascade pointer; cancelled slots don't block the next booking.
           blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
         }
       }
     }
 
-    await batch.commit();
-    await Future.wait(notifFutures);
+    return results;
+  }
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isUnforeseen
-                ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
-                : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
+  // ── Applies maintenance after condition report (same logic as _scheduleMaintenance) ─
+  Future<void> _applyMaintenanceFromConditionReport({
+    required BuildContext context,
+    required Equipment equipment,
+    required DateTime maintenanceEnd,
+    required DateTime today,
+  }) async {
+    final durationDays = maintenanceEnd.difference(today).inDays + 1;
+    final isUnforeseen = durationDays > 7;
+
+    try {
+      final db = FirebaseFirestore.instance;
+      final requestHistory = RentRequestService();
+
+      await MaintenanceService().markEquipmentUnderMaintenance(
+        equipment: equipment,
+        maintenanceStart: today,
+        maintenanceEnd: maintenanceEnd,
+        isUnforeseen: isUnforeseen,
+        source: 'condition_report_schedule',
+      );
+
+      const activeStatuses = ['pending', 'approved', 'readyForPickup'];
+
+      final bookingsSnap = await db
+          .collection('rentRequests')
+          .where('itemId', isEqualTo: equipment.id)
+          .where('status', whereIn: activeStatuses)
+          .get();
+
+      final batch = db.batch();
+      final List<Future<void>> notifFutures = [];
+
+      // Sort by start date so cascade shifts propagate in order.
+      final sortedDocs = bookingsSnap.docs.toList()
+        ..sort((a, b) {
+          final aStart = (a.data()['start'] as Timestamp).toDate();
+          final bStart = (b.data()['start'] as Timestamp).toDate();
+          return aStart.compareTo(bStart);
+        });
+
+      // For foreseen maintenance: tracks the last occupied day so that
+      // each shifted booking cascades off the previous one's new end date.
+      DateTime blockedUntil = DateTime(
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
+      final maintenanceEndDay = DateTime(
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
+
+      for (final doc in sortedDocs) {
+        final request = RentRequest.fromDoc(doc);
+
+        final bookingStart = DateTime(
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
+
+        if (isUnforeseen) {
+          final overlaps =
+              bookingStart.isBefore(
+                maintenanceEndDay.add(const Duration(days: 1)),
+              ) &&
+              bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
+          if (!overlaps) continue;
+
+          batch.update(doc.reference, {
+            'status': RentRequestStatus.canceled.name,
+            'declineReason':
+                'Ang kagamitan ay naka-schedule para sa hindi inaasahang maintenance mula '
+                '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
+                'Paumanhin sa abala.',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+          requestHistory.addStatusHistoryToBatch(
+            batch: batch,
+            requestId: request.requestId,
+            fromStatus: request.status,
+            toStatus: RentRequestStatus.canceled,
+            actorId: equipment.ownerId,
+            actorRole: 'owner',
+            source: 'maintenance_unforeseen_cancel',
+            reason:
+                'Canceled because equipment entered unforeseen maintenance.',
+          );
+          requestHistory.addTimelineEventToBatch(
+            batch: batch,
+            requestId: request.requestId,
+            eventType: 'maintenance_canceled_booking',
+            actorId: equipment.ownerId,
+            actorRole: 'owner',
+            source: 'maintenance_unforeseen_cancel',
+            metadata: {
+              'maintenanceStart': today,
+              'maintenanceEnd': maintenanceEnd,
+              'durationDays': durationDays,
+            },
+          );
+          notifFutures.add(
+            _sendNotification(
+              userId: request.renterId,
+              title: '🔧 Kinansela ang Booking — Maintenance',
+              body:
+                  'Ang iyong booking para sa "${equipment.name}" '
+                  '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
+                  'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw). '
+                  'Paumanhin sa abala.',
+              type: 'maintenance_cancel',
+              extra: {
+                'requestId': request.requestId,
+                'equipmentId': equipment.id,
+                'ownerId': equipment.ownerId,
+              },
+            ),
+          );
+        } else {
+          // Foreseen: cascade shift — conflict if booking starts on or before blockedUntil.
+          if (bookingStart.isAfter(blockedUntil)) continue;
+
+          final bookingDuration = request.end.difference(request.start);
+          final newStart = DateTime(
+            blockedUntil.year,
+            blockedUntil.month,
+            blockedUntil.day,
+            request.start.hour,
+            request.start.minute,
+          ).add(const Duration(days: 1));
+          final newEnd = newStart.add(bookingDuration);
+
+          final exceedsAvailability =
+              equipment.availableUntil != null &&
+              newEnd.isAfter(equipment.availableUntil!);
+
+          if (exceedsAvailability) {
+            batch.update(doc.reference, {
+              'status': RentRequestStatus.canceled.name,
+              'declineReason':
+                  'Hindi ma-reschedule ang booking pagkatapos ng maintenance — ang bagong mga petsa ay wala na sa availability ng kagamitan.',
+            });
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '🔧 Kinansela ang Booking — Labas ng Availability',
+                body:
+                    'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
+                    'pagkatapos ng maintenance dahil ang bagong mga petsa ay wala na sa '
+                    'availability ng kagamitan. Kinansela na ang iyong booking.',
+                type: 'maintenance_cancel',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                  'ownerId': equipment.ownerId,
+                },
+              ),
+            );
+            // Do NOT advance blockedUntil — cancelled slot is freed.
+          } else {
+            batch.update(doc.reference, {
+              'start': Timestamp.fromDate(newStart),
+              'end': Timestamp.fromDate(newEnd),
+              'originalStart': Timestamp.fromDate(request.start),
+              'originalEnd': Timestamp.fromDate(request.end),
+              'maintenanceRescheduled': true,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '📅 Na-reschedule ang Booking — Maintenance',
+                body:
+                    'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
+                    '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
+                    'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)} '
+                    'dahil sa maintenance. '
+                    'Maaari mong kanselahin o tanggapin ang bagong schedule.',
+                type: 'maintenance_reschedule',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                  'ownerId': equipment.ownerId,
+                  'canCancel': true,
+                  'canAccept': true,
+                  'newStart': Timestamp.fromDate(newStart),
+                  'newEnd': Timestamp.fromDate(newEnd),
+                },
+              ),
+            );
+            requestHistory.addTimelineEventToBatch(
+              batch: batch,
+              requestId: request.requestId,
+              eventType: 'schedule_shifted_due_to_maintenance',
+              actorId: equipment.ownerId,
+              actorRole: 'owner',
+              source: 'maintenance_reschedule',
+              metadata: {
+                'previousStart': request.start,
+                'previousEnd': request.end,
+                'newStart': newStart,
+                'newEnd': newEnd,
+                'maintenanceStart': today,
+                'maintenanceEnd': maintenanceEnd,
+              },
+            );
+            // Advance the cascade pointer so the next booking shifts off this one's new end.
+            blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
+          }
+        }
+      }
+
+      await batch.commit();
+      await Future.wait(notifFutures);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isUnforeseen
+                  ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
+                  : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
+            ),
+            backgroundColor: isUnforeseen ? Colors.red : Colors.green,
+            duration: const Duration(seconds: 4),
           ),
-          backgroundColor: isUnforeseen ? Colors.red : Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Maintenance error: $e'), backgroundColor: Colors.red),
-      );
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Maintenance error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-}
 
-// --------------- HELPER: postpone booking due to bad weather ---------------
-Future<void> _postponeForWeather(
-    BuildContext context, RentRequest affectedRequest) async {
-  final today = DateTime.now();
-  final todayDay = DateTime(today.year, today.month, today.day);
+  // --------------- HELPER: postpone booking due to bad weather ---------------
+  Future<void> _postponeForWeather(
+    BuildContext context,
+    RentRequest affectedRequest,
+  ) async {
+    final today = DateTime.now();
+    final todayDay = DateTime(today.year, today.month, today.day);
 
-  // Fetch all upcoming bookings for this equipment that start today or later.
-  const shiftStatuses = ['pending', 'approved', 'readyForPickup'];
-  final snap = await FirebaseFirestore.instance
-      .collection('rentRequests')
-      .where('itemId', isEqualTo: affectedRequest.itemId)
-      .where('status', whereIn: shiftStatuses)
-      .get();
+    // Fetch all upcoming bookings for this equipment that start today or later.
+    const shiftStatuses = ['pending', 'approved', 'readyForPickup'];
+    final snap = await FirebaseFirestore.instance
+        .collection('rentRequests')
+        .where('itemId', isEqualTo: affectedRequest.itemId)
+        .where('status', whereIn: shiftStatuses)
+        .get();
 
-  final upcoming = snap.docs
-      .map((d) => RentRequest.fromDoc(d))
-      .where((r) {
-        final startDay = DateTime(r.start.year, r.start.month, r.start.day);
-        return !startDay.isBefore(todayDay);
-      })
-      .toList()
-    ..sort((a, b) => a.start.compareTo(b.start));
+    final upcoming = snap.docs.map((d) => RentRequest.fromDoc(d)).where((r) {
+      final startDay = DateTime(r.start.year, r.start.month, r.start.day);
+      return !startDay.isBefore(todayDay);
+    }).toList()..sort((a, b) => a.start.compareTo(b.start));
 
-  if (!context.mounted) return;
+    if (!context.mounted) return;
 
-  final fmt = DateFormat('MMM d');
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Ipagpaliban Dahil sa Masamang Panahon?'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ang lahat ng booking mula ngayon para sa kagamitang ito ay ililipat ng isang araw. '
-                'Makakatanggap ang mga renter ng abiso at maaari nilang tanggapin o kanselahin.',
-              ),
-              if (upcoming.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text('Mga Apektadong Booking:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                ...upcoming.map((r) {
-                  final newStart = r.start.add(const Duration(days: 1));
-                  final newEnd = r.end.add(const Duration(days: 1));
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.person_outline,
-                            size: 14, color: Colors.black54),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(r.name,
+    final fmt = DateFormat('MMM d');
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ipagpaliban Dahil sa Masamang Panahon?'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Ang lahat ng booking mula ngayon para sa kagamitang ito ay ililipat ng isang araw. '
+                  'Makakatanggap ang mga renter ng abiso at maaari nilang tanggapin o kanselahin.',
+                ),
+                if (upcoming.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Mga Apektadong Booking:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  ...upcoming.map((r) {
+                    final newStart = r.start.add(const Duration(days: 1));
+                    final newEnd = r.end.add(const Duration(days: 1));
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.person_outline,
+                            size: 14,
+                            color: Colors.black54,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  r.name,
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13)),
-                              Text(
-                                'Dati: ${fmt.format(r.start)} – ${fmt.format(r.end)}',
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.black54),
-                              ),
-                              Text(
-                                'Bago: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
-                                style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  'Dati: ${fmt.format(r.start)} – ${fmt.format(r.end)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                Text(
+                                  'Bago: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.blue.shade700,
-                                    fontWeight: FontWeight.w500),
-                              ),
-                            ],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Huwag'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade600,
-            foregroundColor: Colors.white,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huwag'),
           ),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Oo, Ipagpaliban'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm != true || !context.mounted) return;
-
-  final db = FirebaseFirestore.instance;
-  final futures = <Future>[];
-
-  for (final r in upcoming) {
-    final newStart = r.start.add(const Duration(days: 1));
-    final newEnd = r.end.add(const Duration(days: 1));
-
-    futures.add(
-      db.collection('rentRequests').doc(r.requestId).update({
-        'start': Timestamp.fromDate(newStart),
-        'end': Timestamp.fromDate(newEnd),
-        'weatherPostponed': true,
-        'originalStart': Timestamp.fromDate(r.start),
-        'originalEnd': Timestamp.fromDate(r.end),
-      }),
-    );
-
-    futures.add(
-      db.collection('notifications').doc(r.renterId).collection('items').add({
-        'type': 'maintenance_reschedule',
-        'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
-        'body': 'Ang iyong booking para sa "${affectedRequest.itemName}" '
-            '(${fmt.format(r.start)} – ${fmt.format(r.end)}) '
-            'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
-            'Bagong petsa: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
-        'requestId': r.requestId,
-        'equipmentId': affectedRequest.itemId,
-        'ownerId': affectedRequest.ownerId,
-        'canCancel': true,
-        'canAccept': true,
-        'newStart': Timestamp.fromDate(newStart),
-        'newEnd': Timestamp.fromDate(newEnd),
-        'originalStart': Timestamp.fromDate(r.start),
-        'originalEnd': Timestamp.fromDate(r.end),
-        'createdAt': FieldValue.serverTimestamp(),
-        'read': false,
-      }),
-    );
-  }
-
-  await Future.wait(futures);
-
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-            'Na-postpone ang mga booking ng isang araw dahil sa masamang panahon.'),
-        backgroundColor: Colors.blue,
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Oo, Ipagpaliban'),
+          ),
+        ],
       ),
     );
+
+    if (confirm != true || !context.mounted) return;
+
+    final db = FirebaseFirestore.instance;
+    final futures = <Future>[];
+
+    for (final r in upcoming) {
+      final newStart = r.start.add(const Duration(days: 1));
+      final newEnd = r.end.add(const Duration(days: 1));
+
+      futures.add(
+        db.collection('rentRequests').doc(r.requestId).update({
+          'start': Timestamp.fromDate(newStart),
+          'end': Timestamp.fromDate(newEnd),
+          'weatherPostponed': true,
+          'originalStart': Timestamp.fromDate(r.start),
+          'originalEnd': Timestamp.fromDate(r.end),
+        }),
+      );
+
+      futures.add(
+        db.collection('notifications').doc(r.renterId).collection('items').add({
+          'type': 'maintenance_reschedule',
+          'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
+          'body':
+              'Ang iyong booking para sa "${affectedRequest.itemName}" '
+              '(${fmt.format(r.start)} – ${fmt.format(r.end)}) '
+              'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
+              'Bagong petsa: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
+          'requestId': r.requestId,
+          'equipmentId': affectedRequest.itemId,
+          'ownerId': affectedRequest.ownerId,
+          'canCancel': true,
+          'canAccept': true,
+          'newStart': Timestamp.fromDate(newStart),
+          'newEnd': Timestamp.fromDate(newEnd),
+          'originalStart': Timestamp.fromDate(r.start),
+          'originalEnd': Timestamp.fromDate(r.end),
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
+        }),
+      );
+    }
+
+    await Future.wait(futures);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Na-postpone ang mga booking ng isang araw dahil sa masamang panahon.',
+          ),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
   }
-}
 
-// --------------- HELPER: send in-app notification ---------------
-Future<void> _sendNotification({
-  required String userId,
-  required String title,
-  required String body,
-  required String type,
-  Map<String, dynamic> extra = const {},
-}) async {
-  await FirebaseFirestore.instance
-      .collection('notifications')
-      .doc(userId)
-      .collection('items')
-      .add({
-    'title': title,
-    'body': body,
-    'type': type,
-    'read': false,
-    'createdAt': FieldValue.serverTimestamp(),
-    ...extra,
-  });
-}
+  // --------------- HELPER: send in-app notification ---------------
+  Future<void> _sendNotification({
+    required String userId,
+    required String title,
+    required String body,
+    required String type,
+    Map<String, dynamic> extra = const {},
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(userId)
+        .collection('items')
+        .add({
+          'title': title,
+          'body': body,
+          'type': type,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          ...extra,
+        });
+  }
 
-  void _showCancelDialog(BuildContext context, RentRequest request,
-      {required bool isRenter}) {
+  void _showCancelDialog(
+    BuildContext context,
+    RentRequest request, {
+    required bool isRenter,
+  }) {
     // Case 1: strike if renter cancels after approval.
-    final isPostApproval = isRenter &&
+    final isPostApproval =
+        isRenter &&
         (request.status == RentRequestStatus.approved ||
             request.status == RentRequestStatus.readyForPickup);
 
@@ -2833,16 +3385,19 @@ Future<void> _sendNotification({
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Kanselahin ang Request',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(isRenter
-            ? isPostApproval
-                ? 'Sigurado ka bang gusto mong kanselahin ang approved na rental na ito? '
-                  'Ang pagkansela pagkatapos ng pag-apruba ay magdudulot ng isang paglabag sa iyong account.'
-                : 'Sigurado ka bang gusto mong kanselahin ang rental request na ito? Hindi ito maaaring bawiin.'
-            : 'Sigurado ka bang gusto mong kanselahin ang request na ito? Maabisuhan ang renter.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Kanselahin ang Request',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          isRenter
+              ? isPostApproval
+                    ? 'Sigurado ka bang gusto mong kanselahin ang approved na rental na ito? '
+                          'Ang pagkansela pagkatapos ng pag-apruba ay magdudulot ng isang paglabag sa iyong account.'
+                    : 'Sigurado ka bang gusto mong kanselahin ang rental request na ito? Hindi ito maaaring bawiin.'
+              : 'Sigurado ka bang gusto mong kanselahin ang request na ito? Maabisuhan ang renter.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -2851,18 +3406,22 @@ Future<void> _sendNotification({
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              requestBloc.add(RequestStatusUpdated(
-                  request.requestId, RentRequestStatus.canceled));
+              requestBloc.add(
+                RequestStatusUpdated(
+                  request.requestId,
+                  RentRequestStatus.canceled,
+                ),
+              );
 
               // ── Case 1: issue strike for post-approval cancel ────────────
               if (isPostApproval) {
                 try {
                   await StrikeService().submitReport(
-                    requestId        : request.requestId,
-                    renterId         : request.renterId,
-                    ownerId          : request.ownerId,
-                    reason           : 'cancel_after_approval',
-                    details          : 'Renter cancelled after the request was approved.',
+                    requestId: request.requestId,
+                    renterId: request.renterId,
+                    ownerId: request.ownerId,
+                    reason: 'cancel_after_approval',
+                    details: 'Renter cancelled after the request was approved.',
                     blockDurationDays: kBlockDurationCancelStrike,
                   );
                 } catch (e) {
@@ -2871,8 +3430,10 @@ Future<void> _sendNotification({
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Yes, Cancel',
-                style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Yes, Cancel',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -2899,126 +3460,125 @@ Future<void> _sendNotification({
   }
 
   // ── Replace your old _proofImage() helper with this ───────────────────────
-Widget _proofImages(
-  List<String> urls,
-  String label,
-  BuildContext context,
-) {
-  if (urls.isEmpty) return const SizedBox.shrink();
- 
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Label row
-        Row(
-          children: [
-            const Icon(Icons.photo_library_outlined,
-                size: 14, color: Color(0xFF3B82F6)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
+  Widget _proofImages(List<String> urls, String label, BuildContext context) {
+    if (urls.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label row
+          Row(
+            children: [
+              const Icon(
+                Icons.photo_library_outlined,
+                size: 14,
                 color: Color(0xFF3B82F6),
               ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '(${urls.length})',
-              style: const TextStyle(fontSize: 11, color: Colors.black45),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
- 
-        // Horizontally scrollable image strip
-        SizedBox(
-          height: 110,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: urls.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final url = urls[i];
-              final isVideo = _isVideoUrl(url);
- 
-              return GestureDetector(
-                onTap: () => _openProofViewer(context, urls, initialIndex: i),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: isVideo
-                      ? _videoThumbnailTile(url)
-                      : Image.network(
-                          url,
-                          width: 110,
-                          height: 110,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (_, child, progress) =>
-                              progress == null
-                                  ? child
-                                  : Container(
-                                      width: 110,
-                                      height: 110,
-                                      color: Colors.grey.shade200,
-                                      child: const Center(
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
-                                      ),
-                                    ),
-                          errorBuilder: (_, __, ___) => Container(
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: Color(0xFF3B82F6),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '(${urls.length})',
+                style: const TextStyle(fontSize: 11, color: Colors.black45),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Horizontally scrollable image strip
+          SizedBox(
+            height: 110,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: urls.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final url = urls[i];
+                final isVideo = _isVideoUrl(url);
+
+                return GestureDetector(
+                  onTap: () => _openProofViewer(context, urls, initialIndex: i),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: isVideo
+                        ? _videoThumbnailTile(url)
+                        : Image.network(
+                            url,
                             width: 110,
                             height: 110,
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.broken_image_outlined,
-                                color: Colors.grey),
+                            fit: BoxFit.cover,
+                            loadingBuilder: (_, child, progress) =>
+                                progress == null
+                                ? child
+                                : Container(
+                                    width: 110,
+                                    height: 110,
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 110,
+                              height: 110,
+                              color: Colors.grey.shade200,
+                              child: const Icon(
+                                Icons.broken_image_outlined,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ),
-                        ),
-                ),
-              );
-            },
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
- 
-/// Dark tile with play icon for video URLs
-Widget _videoThumbnailTile(String url) {
-  return Container(
-    width: 110,
-    height: 110,
-    color: Colors.grey.shade800,
-    child: const Center(
-      child: Icon(Icons.play_circle_fill, color: Colors.white70, size: 36),
-    ),
-  );
-}
- 
-/// Detect video by URL extension
-bool _isVideoUrl(String url) {
-  final ext = url.split('?').first.split('.').last.toLowerCase();
-  return ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v'].contains(ext);
-}
- 
-/// Full-screen viewer — tap to open any proof
-void _openProofViewer(
-  BuildContext context,
-  List<String> urls, {
-  int initialIndex = 0,
-}) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => ProofViewerPage(urls: urls, initialIndex: initialIndex),
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
+  /// Dark tile with play icon for video URLs
+  Widget _videoThumbnailTile(String url) {
+    return Container(
+      width: 110,
+      height: 110,
+      color: Colors.grey.shade800,
+      child: const Center(
+        child: Icon(Icons.play_circle_fill, color: Colors.white70, size: 36),
+      ),
+    );
+  }
+
+  /// Detect video by URL extension
+  bool _isVideoUrl(String url) {
+    final ext = url.split('?').first.split('.').last.toLowerCase();
+    return ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v'].contains(ext);
+  }
+
+  /// Full-screen viewer — tap to open any proof
+  void _openProofViewer(
+    BuildContext context,
+    List<String> urls, {
+    int initialIndex = 0,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProofViewerPage(urls: urls, initialIndex: initialIndex),
+      ),
+    );
+  }
 } // end of _RequestSentPageState
-
-

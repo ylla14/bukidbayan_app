@@ -15,10 +15,7 @@ enum RentRequestStatus {
   canceled,
 }
 
-enum DeliveryMethod {
-  pickup,
-  delivery,
-}
+enum DeliveryMethod { pickup, delivery }
 
 class RentRequest {
   final String requestId;
@@ -65,7 +62,17 @@ class RentRequest {
   final double? farmLatitude;
   final double? farmLongitude;
   final String? phoneNumber;
-
+  final String? barangay;
+  final String? municipality;
+  final String? province;
+  final String? region;
+  final String? farmBarangay;
+  final String? farmMunicipality;
+  final String? farmProvince;
+  final String? farmRegion;
+  final String? cropType;
+  final String? farmingPhase;
+  final String? intendedUse;
 
   RentRequest({
     required this.requestId,
@@ -98,6 +105,17 @@ class RentRequest {
     this.farmLatitude,
     this.farmLongitude,
     this.phoneNumber,
+    this.barangay,
+    this.municipality,
+    this.province,
+    this.region,
+    this.farmBarangay,
+    this.farmMunicipality,
+    this.farmProvince,
+    this.farmRegion,
+    this.cropType,
+    this.farmingPhase,
+    this.intendedUse,
 
     this.lastLateStrikeIssuedDate,
     this.originalStart,
@@ -133,6 +151,17 @@ class RentRequest {
       'farmLatitude': farmLatitude,
       'farmLongitude': farmLongitude,
       'phoneNumber': phoneNumber,
+      'barangay': barangay,
+      'municipality': municipality,
+      'province': province,
+      'region': region,
+      'farmBarangay': farmBarangay,
+      'farmMunicipality': farmMunicipality,
+      'farmProvince': farmProvince,
+      'farmRegion': farmRegion,
+      'cropType': cropType,
+      'farmingPhase': farmingPhase,
+      'intendedUse': intendedUse,
 
       'lastLateStrikeIssuedDate': lastLateStrikeIssuedDate != null
           ? Timestamp.fromDate(lastLateStrikeIssuedDate!)
@@ -165,7 +194,8 @@ class RentRequest {
       name: map['name'],
       address: map['address'],
       start: (map['start'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      end: (map['end'] as Timestamp?)?.toDate() ??
+      end:
+          (map['end'] as Timestamp?)?.toDate() ??
           DateTime.now().add(const Duration(days: 1)),
       // ── Backwards-compatible reads ─────────────────────────
       landSizeProofPaths: _toStringList(
@@ -207,9 +237,20 @@ class RentRequest {
       farmLatitude: (map['farmLatitude'] as num?)?.toDouble(),
       farmLongitude: (map['farmLongitude'] as num?)?.toDouble(),
       phoneNumber: map['phoneNumber'] as String?,
+      barangay: map['barangay'] as String?,
+      municipality: map['municipality'] as String?,
+      province: map['province'] as String?,
+      region: map['region'] as String?,
+      farmBarangay: map['farmBarangay'] as String?,
+      farmMunicipality: map['farmMunicipality'] as String?,
+      farmProvince: map['farmProvince'] as String?,
+      farmRegion: map['farmRegion'] as String?,
+      cropType: map['cropType'] as String?,
+      farmingPhase: map['farmingPhase'] as String?,
+      intendedUse: map['intendedUse'] as String?,
 
-      lastLateStrikeIssuedDate:
-          (map['lastLateStrikeIssuedDate'] as Timestamp?)?.toDate(),
+      lastLateStrikeIssuedDate: (map['lastLateStrikeIssuedDate'] as Timestamp?)
+          ?.toDate(),
       originalStart: (map['originalStart'] as Timestamp?)?.toDate(),
       originalEnd: (map['originalEnd'] as Timestamp?)?.toDate(),
     );
@@ -229,7 +270,10 @@ class RentRequest {
     RentRequestStatus? status,
     String? renterId,
     String? ownerId,
+    DateTime? createdAt,
     String? declineReason,
+    bool? weatherFlag,
+    List<DateTime>? weatherFlagDates,
     double? volumeSubmitted,
     bool? keepDarak,
     double? estimatedMillingFee,
@@ -243,6 +287,17 @@ class RentRequest {
     double? farmLongitude,
     double? hectaresEntered,
     String? phoneNumber,
+    String? barangay,
+    String? municipality,
+    String? province,
+    String? region,
+    String? farmBarangay,
+    String? farmMunicipality,
+    String? farmProvince,
+    String? farmRegion,
+    String? cropType,
+    String? farmingPhase,
+    String? intendedUse,
 
     DateTime? lastLateStrikeIssuedDate,
     DateTime? originalStart,
@@ -258,12 +313,16 @@ class RentRequest {
       end: end ?? this.end,
       landSizeProofPaths: landSizeProofPaths ?? this.landSizeProofPaths,
       cropHeightProofPaths: cropHeightProofPaths ?? this.cropHeightProofPaths,
-      cropConditionProofPaths: cropConditionProofPaths ?? this.cropConditionProofPaths,
+      cropConditionProofPaths:
+          cropConditionProofPaths ?? this.cropConditionProofPaths,
       hectaresEntered: hectaresEntered ?? this.hectaresEntered,
       status: status ?? this.status,
       renterId: renterId ?? this.renterId,
       ownerId: ownerId ?? this.ownerId,
+      createdAt: createdAt ?? this.createdAt,
       declineReason: declineReason ?? this.declineReason,
+      weatherFlag: weatherFlag ?? this.weatherFlag,
+      weatherFlagDates: weatherFlagDates ?? this.weatherFlagDates,
       volumeSubmitted: volumeSubmitted ?? this.volumeSubmitted,
       keepDarak: keepDarak ?? this.keepDarak,
       estimatedMillingFee: estimatedMillingFee ?? this.estimatedMillingFee,
@@ -276,6 +335,17 @@ class RentRequest {
       farmLatitude: farmLatitude ?? this.farmLatitude,
       farmLongitude: farmLongitude ?? this.farmLongitude,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      barangay: barangay ?? this.barangay,
+      municipality: municipality ?? this.municipality,
+      province: province ?? this.province,
+      region: region ?? this.region,
+      farmBarangay: farmBarangay ?? this.farmBarangay,
+      farmMunicipality: farmMunicipality ?? this.farmMunicipality,
+      farmProvince: farmProvince ?? this.farmProvince,
+      farmRegion: farmRegion ?? this.farmRegion,
+      cropType: cropType ?? this.cropType,
+      farmingPhase: farmingPhase ?? this.farmingPhase,
+      intendedUse: intendedUse ?? this.intendedUse,
       lastLateStrikeIssuedDate:
           lastLateStrikeIssuedDate ?? this.lastLateStrikeIssuedDate,
       originalStart: originalStart ?? this.originalStart,

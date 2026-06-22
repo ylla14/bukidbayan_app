@@ -1,12 +1,27 @@
 import 'dart:convert';
+import 'package:bukidbayan_app/services/geography_normalization_service.dart';
+import 'package:bukidbayan_app/services/platform_telemetry_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
+  final GeographyNormalizationService _geography;
+  final PlatformTelemetryService _telemetry;
+
+  AuthService({
+    FirebaseAuth? auth,
+    FirebaseFirestore? firestore,
+    GeographyNormalizationService geography =
+        const GeographyNormalizationService(),
+    PlatformTelemetryService? telemetry,
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _geography = geography,
+       _telemetry = telemetry ?? PlatformTelemetryService(firestore: firestore);
 
   static const String _shadowEmailDomain = '@phone.bukidbayan.app';
 
@@ -24,15 +39,17 @@ class AuthService {
   static bool isValidIdentifier(String input) {
     final trimmed = input.trim();
     if (RegExp(r'^\d{11}$').hasMatch(trimmed)) return true;
-    if (RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z]+\.[a-zA-Z]{2,}$').hasMatch(trimmed)) return true;
+    if (RegExp(
+      r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(trimmed))
+      return true;
     return false;
   }
 
   bool _isPhoneNumber(String input) =>
       RegExp(r'^\d{11}$').hasMatch(input.trim());
 
-  String _toShadowEmail(String phone) =>
-      '${phone.trim()}$_shadowEmailDomain';
+  String _toShadowEmail(String phone) => '${phone.trim()}$_shadowEmailDomain';
 
   // Validate an address string via Nominatim (OpenStreetMap).
   // Returns {'latitude': ..., 'longitude': ...} on success.
@@ -45,28 +62,34 @@ class AuthService {
         '&q=${Uri.encodeQueryComponent(address)}'
         '&limit=1',
       );
-      final response = await http.get(uri, headers: {
-        'Accept-Language': 'en',
-        'User-Agent': 'BukidbayanApp/1.0',
-      });
+      final response = await http.get(
+        uri,
+        headers: {'Accept-Language': 'en', 'User-Agent': 'BukidbayanApp/1.0'},
+      );
 
       if (response.statusCode != 200) {
-        throw Exception('Could not validate address. Check your connection and try again.');
+        throw Exception(
+          'Could not validate address. Check your connection and try again.',
+        );
       }
 
       final List<dynamic> results = jsonDecode(response.body);
       if (results.isEmpty) {
-        throw Exception('Address not found. Please enter a more specific address.');
+        throw Exception(
+          'Address not found. Please enter a more specific address.',
+        );
       }
 
       final first = results.first as Map<String, dynamic>;
       return {
-        'latitude':  double.parse(first['lat'] as String),
+        'latitude': double.parse(first['lat'] as String),
         'longitude': double.parse(first['lon'] as String),
       };
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception('Could not validate address. Check your connection and try again.');
+      throw Exception(
+        'Could not validate address. Check your connection and try again.',
+      );
     }
   }
 
@@ -89,14 +112,21 @@ class AuthService {
     final shadowEmail = _toShadowEmail(phoneNumber);
     try {
       // Create user in Firebase Auth using the shadow email
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: shadowEmail,
-        password: password,
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(
+            email: shadowEmail,
+            password: password,
+          );
 
       User? user = userCredential.user;
 
       if (user != null) {
+        final homeGeo = _geography.normalizeAddressFields(address: address);
+        final farmGeo = _geography.normalizeAddressFields(
+          address: farmAddress,
+          prefix: 'farm',
+        );
+
         // Store additional user data in Firestore
         await _firestore.collection('users').doc(user.uid).set({
           'email': shadowEmail,
@@ -112,6 +142,8 @@ class AuthService {
           if (farmLatitude != null) 'farmLatitude': farmLatitude,
           if (farmLongitude != null) 'farmLongitude': farmLongitude,
           if (farmPolygonId != null) 'farmPolygonId': farmPolygonId,
+          ...homeGeo,
+          ...farmGeo,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
@@ -138,6 +170,9 @@ class AuthService {
   // the associated email (real or shadow) before authenticating.
   Future<User?> login(String identifier, String password) async {
     String emailToUse = identifier.trim();
+    final identifierType = _isPhoneNumber(identifier)
+        ? 'phone_number'
+        : 'email';
 
     if (_isPhoneNumber(identifier)) {
       final query = await _firestore
@@ -156,8 +191,17 @@ class AuthService {
         email: emailToUse,
         password: password,
       );
+      await _telemetry.logLoginSuccess(
+        userId: userCredential.user?.uid,
+        identifierType: identifierType,
+      );
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
+      await _telemetry.logLoginFailure(
+        identifierType: identifierType,
+        error: e,
+        stackTrace: StackTrace.current,
+      );
       if (e.code == 'user-not-found') {
         throw Exception('No user found for that email.');
       } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
@@ -166,6 +210,11 @@ class AuthService {
         throw Exception(e.message ?? 'An error occurred during login.');
       }
     } catch (e) {
+      await _telemetry.logLoginFailure(
+        identifierType: identifierType,
+        error: e,
+        stackTrace: StackTrace.current,
+      );
       if (e is Exception) rethrow;
       throw Exception('An error occurred: $e');
     }
@@ -181,7 +230,9 @@ class AuthService {
         .limit(1)
         .get();
     if (existing.docs.isNotEmpty && existing.docs.first.id != uid) {
-      throw Exception('That phone number is already registered to another account.');
+      throw Exception(
+        'That phone number is already registered to another account.',
+      );
     }
     await _firestore.collection('users').doc(uid).update({
       'phoneNumber': phone,
@@ -231,7 +282,9 @@ class AuthService {
         );
         debugPrint('[seedCoopAccount] Recovered existing Auth account.');
       } catch (e2) {
-        debugPrint('[seedCoopAccount] Could not sign in to recover account: $e2');
+        debugPrint(
+          '[seedCoopAccount] Could not sign in to recover account: $e2',
+        );
         return;
       }
     }
@@ -245,7 +298,9 @@ class AuthService {
         'accountType': 'coop',
         'isPhoneUser': true,
       }, SetOptions(merge: true));
-      debugPrint('[seedCoopAccount] Firestore doc written for uid=${cred.user!.uid}');
+      debugPrint(
+        '[seedCoopAccount] Firestore doc written for uid=${cred.user!.uid}',
+      );
     } catch (e) {
       debugPrint('[seedCoopAccount] Firestore write failed: $e');
     } finally {
@@ -271,7 +326,10 @@ class AuthService {
   // Get user data from Firestore
   Future<Map<String, dynamic>?> getUserData(String uid) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      DocumentSnapshot doc = await _firestore
+          .collection('users')
+          .doc(uid)
+          .get();
       return doc.data() as Map<String, dynamic>?;
     } catch (e) {
       print('Error getting user data: $e');
@@ -282,7 +340,23 @@ class AuthService {
   // Update user data in Firestore
   Future<void> updateUserData(String uid, Map<String, dynamic> data) async {
     try {
-      await _firestore.collection('users').doc(uid).update(data);
+      final includeNulls =
+          data.containsKey('address') || data.containsKey('farmAddress');
+      final normalizedData = {
+        ...data,
+        if (data.containsKey('address'))
+          ..._geography.normalizeAddressFields(
+            address: data['address'] as String?,
+            includeNulls: includeNulls,
+          ),
+        if (data.containsKey('farmAddress'))
+          ..._geography.normalizeAddressFields(
+            address: data['farmAddress'] as String?,
+            prefix: 'farm',
+            includeNulls: includeNulls,
+          ),
+      };
+      await _firestore.collection('users').doc(uid).update(normalizedData);
     } catch (e) {
       throw Exception('Error updating user data: $e');
     }
@@ -293,11 +367,12 @@ class AuthService {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? 'An error occurred while resetting password.');
+      throw Exception(
+        e.message ?? 'An error occurred while resetting password.',
+      );
     }
   }
 }
-
 
 // //import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
@@ -312,7 +387,7 @@ class AuthService {
 //   // Auth state changes stream
 //   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-//   //  PHONE AUTH 
+//   //  PHONE AUTH
 
 //   /// Step 1 — Send OTP to the given phone number.
 //   /// [onCodeSent] receives the verificationId you must keep for step 2.
@@ -404,7 +479,7 @@ class AuthService {
 //     }
 //   }
 
-//   //  PROFILE 
+//   //  PROFILE
 
 //   // Get user data from Firestore
 //   Future<Map<String, dynamic>?> getUserData(String uid) async {
@@ -442,7 +517,7 @@ class AuthService {
 //     });
 //   }
 
-//   // SESSION 
+//   // SESSION
 
 //   Future<void> logout() async => _auth.signOut();
 // }

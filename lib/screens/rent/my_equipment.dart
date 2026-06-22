@@ -8,6 +8,7 @@ import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/maintenance_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -160,19 +161,19 @@ class _MyEquipmentState extends State<MyEquipment> {
         .where('ownerId', isEqualTo: uid)
         .snapshots()
         .listen((snap) {
-      final ids = snap.docs
-          .map((d) => d.id)
-          .where((id) => !_ratingFetchedIds.contains(id))
-          .toList();
+          final ids = snap.docs
+              .map((d) => d.id)
+              .where((id) => !_ratingFetchedIds.contains(id))
+              .toList();
 
-      if (ids.isEmpty) return;
+          if (ids.isEmpty) return;
 
-      // Mark as in-flight immediately so re-emits don't spawn duplicates.
-      _ratingFetchedIds.addAll(ids);
+          // Mark as in-flight immediately so re-emits don't spawn duplicates.
+          _ratingFetchedIds.addAll(ids);
 
-      // Firestore 'whereIn' is capped at 30 per call – chunk if needed.
-      _fetchRatingsForIds(ids);
-    });
+          // Firestore 'whereIn' is capped at 30 per call – chunk if needed.
+          _fetchRatingsForIds(ids);
+        });
   }
 
   Future<void> _fetchRatingsForIds(List<String> ids) async {
@@ -180,8 +181,9 @@ class _MyEquipmentState extends State<MyEquipment> {
     const chunkSize = 30;
     final chunks = <List<String>>[];
     for (var i = 0; i < ids.length; i += chunkSize) {
-      chunks.add(ids.sublist(
-          i, i + chunkSize > ids.length ? ids.length : i + chunkSize));
+      chunks.add(
+        ids.sublist(i, i + chunkSize > ids.length ? ids.length : i + chunkSize),
+      );
     }
 
     final futures = chunks.map((chunk) async {
@@ -205,7 +207,8 @@ class _MyEquipmentState extends State<MyEquipment> {
               ? 0
               : double.parse(
                   (ratings.reduce((a, b) => a + b) / ratings.length)
-                      .toStringAsFixed(1));
+                      .toStringAsFixed(1),
+                );
         }
       } catch (_) {
         // On error just leave the cache empty for these IDs.
@@ -225,9 +228,7 @@ class _MyEquipmentState extends State<MyEquipment> {
 
     // Status filter
     if (_filter.statusFilter != null) {
-      result = result
-          .where((e) => e.status == _filter.statusFilter)
-          .toList();
+      result = result.where((e) => e.status == _filter.statusFilter).toList();
     }
 
     // Maintenance filters
@@ -258,8 +259,9 @@ class _MyEquipmentState extends State<MyEquipment> {
           final rB = _ratingCache[b.id] ?? 0;
           return rA.compareTo(rB);
         case EquipmentSortOption.maintenanceHours:
-          return b.hoursUsedSinceLastMaintenance
-              .compareTo(a.hoursUsedSinceLastMaintenance);
+          return b.hoursUsedSinceLastMaintenance.compareTo(
+            a.hoursUsedSinceLastMaintenance,
+          );
         case EquipmentSortOption.newest:
           final aDate = a.createdAt ?? DateTime(2000);
           final bDate = b.createdAt ?? DateTime(2000);
@@ -360,8 +362,11 @@ class _MyEquipmentState extends State<MyEquipment> {
                                 label: Text(opt.label),
                                 selected: selected,
                                 onSelected: (_) {
-                                  setSheetState(() => _filter =
-                                      _filter.copyWith(sortOption: opt));
+                                  setSheetState(
+                                    () => _filter = _filter.copyWith(
+                                      sortOption: opt,
+                                    ),
+                                  );
                                 },
                                 selectedColor: lightColorScheme.primary,
                                 labelStyle: TextStyle(
@@ -384,7 +389,9 @@ class _MyEquipmentState extends State<MyEquipment> {
                                 ),
                                 showCheckmark: false,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
                               );
                             }).toList(),
                           ),
@@ -464,9 +471,11 @@ class _MyEquipmentState extends State<MyEquipment> {
                                   icon: Icons.build_rounded,
                                   color: Colors.red,
                                   value: _filter.onlyForMaintenance,
-                                  onChanged: (v) => setSheetState(() =>
-                                      _filter = _filter.copyWith(
-                                          onlyForMaintenance: v)),
+                                  onChanged: (v) => setSheetState(
+                                    () => _filter = _filter.copyWith(
+                                      onlyForMaintenance: v,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -476,9 +485,11 @@ class _MyEquipmentState extends State<MyEquipment> {
                                   icon: Icons.warning_amber_rounded,
                                   color: Colors.amber.shade700,
                                   value: _filter.onlyUpcomingMaintenance,
-                                  onChanged: (v) => setSheetState(() =>
-                                      _filter = _filter.copyWith(
-                                          onlyUpcomingMaintenance: v)),
+                                  onChanged: (v) => setSheetState(
+                                    () => _filter = _filter.copyWith(
+                                      onlyUpcomingMaintenance: v,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -504,13 +515,15 @@ class _MyEquipmentState extends State<MyEquipment> {
                           child: OutlinedButton(
                             onPressed: () {
                               setSheetState(
-                                  () => _filter = const _FilterState());
+                                () => _filter = const _FilterState(),
+                              );
                             },
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(color: Colors.grey.shade400),
                               foregroundColor: Colors.black54,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                             child: const Text('I-reset'),
                           ),
@@ -527,7 +540,8 @@ class _MyEquipmentState extends State<MyEquipment> {
                               backgroundColor: lightColorScheme.primary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                             child: const Text('Ilapat'),
                           ),
@@ -554,13 +568,11 @@ class _MyEquipmentState extends State<MyEquipment> {
   }) {
     final selected = _filter.statusFilter == value;
     return ChoiceChip(
-      avatar: Icon(icon,
-          size: 14, color: selected ? Colors.white : color),
+      avatar: Icon(icon, size: 14, color: selected ? Colors.white : color),
       label: Text(label),
       selected: selected,
       onSelected: (_) {
-        setSheetState(
-            () => _filter = _filter.copyWith(statusFilter: value));
+        setSheetState(() => _filter = _filter.copyWith(statusFilter: value));
       },
       selectedColor: color,
       labelStyle: TextStyle(
@@ -571,9 +583,7 @@ class _MyEquipmentState extends State<MyEquipment> {
       backgroundColor: Colors.grey.shade100,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? color : Colors.grey.shade300,
-        ),
+        side: BorderSide(color: selected ? color : Colors.grey.shade300),
       ),
       showCheckmark: false,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -595,9 +605,7 @@ class _MyEquipmentState extends State<MyEquipment> {
         decoration: BoxDecoration(
           color: value ? color.withOpacity(0.1) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: value ? color : Colors.grey.shade300,
-          ),
+          border: Border.all(color: value ? color : Colors.grey.shade300),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -610,8 +618,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                 style: TextStyle(
                   fontSize: 12,
                   color: value ? color : Colors.black54,
-                  fontWeight:
-                      value ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: value ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ),
@@ -636,9 +643,9 @@ class _MyEquipmentState extends State<MyEquipment> {
         .collection('equipment')
         .doc(equipment.id)
         .update({
-      'status': newStatus.toValue(),
-      'isAvailable': newStatus == EquipmentStatus.available,
-    });
+          'status': newStatus.toValue(),
+          'isAvailable': newStatus == EquipmentStatus.available,
+        });
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -716,8 +723,7 @@ class _MyEquipmentState extends State<MyEquipment> {
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(
-                    child: Text('No equipment listed yet.'));
+                return const Center(child: Text('No equipment listed yet.'));
               }
 
               final rawList = snapshot.data!.docs
@@ -734,9 +740,11 @@ class _MyEquipmentState extends State<MyEquipment> {
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Column(
                       children: [
-                        Icon(Icons.filter_list_off,
-                            size: 48,
-                            color: Colors.grey.shade400),
+                        Icon(
+                          Icons.filter_list_off,
+                          size: 48,
+                          color: Colors.grey.shade400,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'Walang kagamitan na nagtutugma sa filter.',
@@ -896,14 +904,18 @@ class _MyEquipmentState extends State<MyEquipment> {
                             // Status badge
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: _statusColor(equipment.status)
-                                    .withOpacity(0.1),
+                                color: _statusColor(
+                                  equipment.status,
+                                ).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: _statusColor(equipment.status)
-                                      .withOpacity(0.4),
+                                  color: _statusColor(
+                                    equipment.status,
+                                  ).withOpacity(0.4),
                                 ),
                               ),
                               child: Text(
@@ -927,19 +939,24 @@ class _MyEquipmentState extends State<MyEquipment> {
                               const SizedBox(height: 4),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.red.shade50,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                      color: Colors.red.shade300),
+                                    color: Colors.red.shade300,
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.build_rounded,
-                                        size: 10,
-                                        color: Colors.red.shade700),
+                                    Icon(
+                                      Icons.build_rounded,
+                                      size: 10,
+                                      color: Colors.red.shade700,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'For Maintenance',
@@ -956,19 +973,24 @@ class _MyEquipmentState extends State<MyEquipment> {
                               const SizedBox(height: 4),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.amber.shade50,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                      color: Colors.amber.shade400),
+                                    color: Colors.amber.shade400,
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.warning_amber_rounded,
-                                        size: 10,
-                                        color: Colors.amber.shade800),
+                                    Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 10,
+                                      color: Colors.amber.shade800,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Upcoming Maintenance',
@@ -1005,16 +1027,22 @@ class _MyEquipmentState extends State<MyEquipment> {
                                 );
                               },
                               icon: const Icon(Icons.edit_outlined, size: 14),
-                              label: const Text('Edit',
-                                  style: TextStyle(fontSize: 12)),
+                              label: const Text(
+                                'Edit',
+                                style: TextStyle(fontSize: 12),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: lightColorScheme.primary,
                                 side: BorderSide(
-                                    color: lightColorScheme.primary),
+                                  color: lightColorScheme.primary,
+                                ),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 6),
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6)),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
                               ),
                             ),
                           ),
@@ -1024,18 +1052,22 @@ class _MyEquipmentState extends State<MyEquipment> {
                             child: ElevatedButton.icon(
                               onPressed:
                                   equipment.status ==
-                                          EquipmentStatus.unavailable
-                                      ? null
-                                      : () async {
-                                          if (equipment.status ==
-                                              EquipmentStatus.available) {
-                                            await _scheduleMaintenance(
-                                                context, equipment);
-                                          } else {
-                                            await _endMaintenance(
-                                                context, equipment);
-                                          }
-                                        },
+                                      EquipmentStatus.unavailable
+                                  ? null
+                                  : () async {
+                                      if (equipment.status ==
+                                          EquipmentStatus.available) {
+                                        await _scheduleMaintenance(
+                                          context,
+                                          equipment,
+                                        );
+                                      } else {
+                                        await _endMaintenance(
+                                          context,
+                                          equipment,
+                                        );
+                                      }
+                                    },
                               icon: Icon(
                                 equipment.status == EquipmentStatus.available
                                     ? Icons.build_outlined
@@ -1049,18 +1081,22 @@ class _MyEquipmentState extends State<MyEquipment> {
                                 style: const TextStyle(fontSize: 11),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: equipment.status ==
+                                backgroundColor:
+                                    equipment.status ==
                                         EquipmentStatus.unavailable
                                     ? Colors.grey.shade400
                                     : equipment.status ==
-                                            EquipmentStatus.available
-                                        ? const Color(0xFFF59E0B)
-                                        : lightColorScheme.primary,
+                                          EquipmentStatus.available
+                                    ? const Color(0xFFF59E0B)
+                                    : lightColorScheme.primary,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 6),
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6)),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
                               ),
                             ),
                           ),
@@ -1071,15 +1107,20 @@ class _MyEquipmentState extends State<MyEquipment> {
                               onPressed: () =>
                                   _deleteEquipment(context, equipment),
                               icon: const Icon(Icons.delete_outline, size: 14),
-                              label: const Text('Delete',
-                                  style: TextStyle(fontSize: 12)),
+                              label: const Text(
+                                'Delete',
+                                style: TextStyle(fontSize: 12),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.red.shade600,
                                 side: BorderSide(color: Colors.red.shade400),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 6),
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6)),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
                               ),
                             ),
                           ),
@@ -1103,8 +1144,11 @@ class _MyEquipmentState extends State<MyEquipment> {
       width: 72,
       height: 72,
       color: Colors.grey.shade200,
-      child: const Icon(Icons.image_not_supported,
-          color: Colors.grey, size: 28),
+      child: const Icon(
+        Icons.image_not_supported,
+        color: Colors.grey,
+        size: 28,
+      ),
     );
   }
 
@@ -1141,17 +1185,20 @@ class _MyEquipmentState extends State<MyEquipment> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Run')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Run'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
-    final snapshot =
-        await FirebaseFirestore.instance.collection('equipment').get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('equipment')
+        .get();
     int updated = 0, skipped = 0;
     for (final doc in snapshot.docs) {
       final data = doc.data();
@@ -1169,9 +1216,11 @@ class _MyEquipmentState extends State<MyEquipment> {
       updated++;
     }
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Migration done. Updated: $updated, Skipped: $skipped')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Migration done. Updated: $updated, Skipped: $skipped'),
+        ),
+      );
     }
   }
 
@@ -1185,17 +1234,20 @@ class _MyEquipmentState extends State<MyEquipment> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Rollback')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Rollback'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
-    final snapshot =
-        await FirebaseFirestore.instance.collection('equipment').get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('equipment')
+        .get();
     int updated = 0;
     for (final doc in snapshot.docs) {
       final data = doc.data();
@@ -1209,9 +1261,13 @@ class _MyEquipmentState extends State<MyEquipment> {
       updated++;
     }
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('Rollback done. Restored isAvailable on $updated docs.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Rollback done. Restored isAvailable on $updated docs.',
+          ),
+        ),
+      );
     }
   }
 
@@ -1228,13 +1284,13 @@ class _MyEquipmentState extends State<MyEquipment> {
         .doc(userId)
         .collection('items')
         .add({
-      'title': title,
-      'body': body,
-      'type': type,
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
-      ...extra,
-    });
+          'title': title,
+          'body': body,
+          'type': type,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          ...extra,
+        });
   }
 
   Future<List<_AffectedBooking>> _fetchAffectedBookings({
@@ -1252,7 +1308,10 @@ class _MyEquipmentState extends State<MyEquipment> {
         .get();
 
     final maintenanceEndDay = DateTime(
-        maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+      maintenanceEnd.year,
+      maintenanceEnd.month,
+      maintenanceEnd.day,
+    );
     final sortedDocs = snap.docs.toList()
       ..sort((a, b) {
         final aStart = (a.data()['start'] as Timestamp).toDate();
@@ -1266,27 +1325,39 @@ class _MyEquipmentState extends State<MyEquipment> {
       for (final doc in sortedDocs) {
         final request = RentRequest.fromDoc(doc);
         final bookingStart = DateTime(
-            request.start.year, request.start.month, request.start.day);
-        final bookingEnd =
-            DateTime(request.end.year, request.end.month, request.end.day);
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
         final overlaps =
             bookingStart.isBefore(
-                maintenanceEndDay.add(const Duration(days: 1))) &&
+              maintenanceEndDay.add(const Duration(days: 1)),
+            ) &&
             bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
         if (!overlaps) continue;
-        results.add(_AffectedBooking(
-          renterName: request.name,
-          start: request.start,
-          end: request.end,
-          willBeCancelled: true,
-        ));
+        results.add(
+          _AffectedBooking(
+            renterName: request.name,
+            start: request.start,
+            end: request.end,
+            willBeCancelled: true,
+          ),
+        );
       }
     } else {
       DateTime blockedUntil = maintenanceEndDay;
       for (final doc in sortedDocs) {
         final request = RentRequest.fromDoc(doc);
         final bookingStart = DateTime(
-            request.start.year, request.start.month, request.start.day);
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
         if (bookingStart.isAfter(blockedUntil)) continue;
 
         final bookingDuration = request.end.difference(request.start);
@@ -1301,18 +1372,19 @@ class _MyEquipmentState extends State<MyEquipment> {
         final exceedsAvailability =
             availableUntil != null && newEnd.isAfter(availableUntil);
 
-        results.add(_AffectedBooking(
-          renterName: request.name,
-          start: request.start,
-          end: request.end,
-          willBeCancelled: exceedsAvailability,
-          newStart: exceedsAvailability ? null : newStart,
-          newEnd: exceedsAvailability ? null : newEnd,
-        ));
+        results.add(
+          _AffectedBooking(
+            renterName: request.name,
+            start: request.start,
+            end: request.end,
+            willBeCancelled: exceedsAvailability,
+            newStart: exceedsAvailability ? null : newStart,
+            newEnd: exceedsAvailability ? null : newEnd,
+          ),
+        );
 
         if (!exceedsAvailability) {
-          blockedUntil =
-              DateTime(newEnd.year, newEnd.month, newEnd.day);
+          blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
         }
       }
     }
@@ -1321,7 +1393,9 @@ class _MyEquipmentState extends State<MyEquipment> {
 
   // ── Schedule maintenance ──────────────────────────────────────
   Future<void> _scheduleMaintenance(
-      BuildContext context, Equipment equipment) async {
+    BuildContext context,
+    Equipment equipment,
+  ) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -1329,16 +1403,22 @@ class _MyEquipmentState extends State<MyEquipment> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) =>
           _MaintenanceDatePicker(equipmentName: equipment.name, today: today),
     );
     if (picked == null || !context.mounted) return;
 
-    final maintenanceEnd =
-        DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
-    final durationDays =
-        maintenanceEnd.difference(today).inDays + 1;
+    final maintenanceEnd = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      23,
+      59,
+      59,
+    );
+    final durationDays = maintenanceEnd.difference(today).inDays + 1;
     final isUnforeseen = durationDays > 7;
 
     final affectedBookings = await _fetchAffectedBookings(
@@ -1356,17 +1436,17 @@ class _MyEquipmentState extends State<MyEquipment> {
         title: Row(
           children: [
             Icon(
-              isUnforeseen
-                  ? Icons.warning_amber_rounded
-                  : Icons.build_outlined,
+              isUnforeseen ? Icons.warning_amber_rounded : Icons.build_outlined,
               color: isUnforeseen ? Colors.red : Colors.orange,
               size: 20,
             ),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(isUnforeseen
-                  ? 'Hindi Inaasahang Maintenance'
-                  : 'I-schedule ang Maintenance'),
+              child: Text(
+                isUnforeseen
+                    ? 'Hindi Inaasahang Maintenance'
+                    : 'I-schedule ang Maintenance',
+              ),
             ),
           ],
         ),
@@ -1385,8 +1465,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                 Text(
                   '$durationDays na araw',
                   style: TextStyle(
-                    color:
-                        isUnforeseen ? Colors.red : lightColorScheme.primary,
+                    color: isUnforeseen ? Colors.red : lightColorScheme.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1415,7 +1494,9 @@ class _MyEquipmentState extends State<MyEquipment> {
                     child: Text(
                       'Ang mga booking sa panahong ito ay ire-reschedule pagkatapos ng maintenance.',
                       style: TextStyle(
-                          color: lightColorScheme.primary, fontSize: 13),
+                        color: lightColorScheme.primary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 if (affectedBookings.isNotEmpty) ...[
@@ -1423,93 +1504,106 @@ class _MyEquipmentState extends State<MyEquipment> {
                   Text(
                     'Mga Apektadong Booking (${affectedBookings.length})',
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  ...affectedBookings.map((b) => Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
+                  ...affectedBookings.map(
+                    (b) => Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: b.willBeCancelled
+                            ? Colors.red.shade50
+                            : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
                           color: b.willBeCancelled
-                              ? Colors.red.shade50
-                              : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: b.willBeCancelled
-                                ? Colors.red.shade200
-                                : Colors.orange.shade300,
-                          ),
+                              ? Colors.red.shade200
+                              : Colors.orange.shade300,
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              b.willBeCancelled
-                                  ? Icons.cancel_outlined
-                                  : Icons.event_repeat,
-                              size: 16,
-                              color: b.willBeCancelled
-                                  ? Colors.red.shade700
-                                  : Colors.orange.shade800,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(b.renterName,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13)),
-                                  Text(
-                                    '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade700),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            b.willBeCancelled
+                                ? Icons.cancel_outlined
+                                : Icons.event_repeat,
+                            size: 16,
+                            color: b.willBeCancelled
+                                ? Colors.red.shade700
+                                : Colors.orange.shade800,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  b.renterName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
                                   ),
-                                  if (!b.willBeCancelled &&
-                                      b.newStart != null &&
-                                      b.newEnd != null) ...[
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.arrow_forward,
-                                            size: 12,
-                                            color: Colors.orange.shade700),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.orange.shade800,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                ),
+                                Text(
+                                  '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                if (!b.willBeCancelled &&
+                                    b.newStart != null &&
+                                    b.newEnd != null) ...[
                                   const SizedBox(height: 2),
-                                  Text(
-                                    b.willBeCancelled
-                                        ? 'Ikakansela'
-                                        : 'Ire-reschedule',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: b.willBeCancelled
-                                          ? Colors.red.shade700
-                                          : Colors.orange.shade800,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 12,
+                                        color: Colors.orange.shade700,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.orange.shade800,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
-                              ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  b.willBeCancelled
+                                      ? 'Ikakansela'
+                                      : 'Ire-reschedule',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: b.willBeCancelled
+                                        ? Colors.red.shade700
+                                        : Colors.orange.shade800,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      )),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ] else ...[
                   const SizedBox(height: 12),
-                  const Text('Walang booking ang maaapektuhan.',
-                      style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const Text(
+                    'Walang booking ang maaapektuhan.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
                 ],
               ],
             ),
@@ -1517,12 +1611,14 @@ class _MyEquipmentState extends State<MyEquipment> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kanselahin'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  isUnforeseen ? Colors.red : lightColorScheme.primary,
+              backgroundColor: isUnforeseen
+                  ? Colors.red
+                  : lightColorScheme.primary,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -1541,12 +1637,14 @@ class _MyEquipmentState extends State<MyEquipment> {
 
     try {
       final db = FirebaseFirestore.instance;
-      await db.collection('equipment').doc(equipment.id).update({
-        'status': EquipmentStatus.underMaintenance.toValue(),
-        'isAvailable': false,
-        'maintenanceStart': Timestamp.fromDate(today),
-        'maintenanceEnd': Timestamp.fromDate(maintenanceEnd),
-      });
+      final requestHistory = RentRequestService();
+      await MaintenanceService().markEquipmentUnderMaintenance(
+        equipment: equipment,
+        maintenanceStart: today,
+        maintenanceEnd: maintenanceEnd,
+        isUnforeseen: isUnforeseen,
+        source: 'owner_manual_schedule',
+      );
 
       const activeStatuses = ['pending', 'approved', 'readyForPickup'];
       final bookingsSnap = await db
@@ -1565,21 +1663,34 @@ class _MyEquipmentState extends State<MyEquipment> {
         });
 
       DateTime blockedUntil = DateTime(
-          maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
       final maintenanceEndDay = DateTime(
-          maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
 
       for (final doc in sortedDocs) {
         final request = RentRequest.fromDoc(doc);
         final bookingStart = DateTime(
-            request.start.year, request.start.month, request.start.day);
-        final bookingEnd =
-            DateTime(request.end.year, request.end.month, request.end.day);
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
 
         if (isUnforeseen) {
           final overlaps =
               bookingStart.isBefore(
-                  maintenanceEndDay.add(const Duration(days: 1))) &&
+                maintenanceEndDay.add(const Duration(days: 1)),
+              ) &&
               bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
           if (!overlaps) continue;
 
@@ -1589,20 +1700,47 @@ class _MyEquipmentState extends State<MyEquipment> {
                 'Ang kagamitan ay naka-schedule para sa hindi inaasahang maintenance mula '
                 '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
                 'Paumanhin sa abala.',
+            'updatedAt': FieldValue.serverTimestamp(),
           });
-          notifFutures.add(_sendNotification(
-            userId: request.renterId,
-            title: '🔧 Kinansela ang Booking — Maintenance',
-            body:
-                'Ang iyong booking para sa "${equipment.name}" '
-                '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
-                'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw).',
-            type: 'maintenance_cancel',
-            extra: {
-              'requestId': request.requestId,
-              'equipmentId': equipment.id,
+          requestHistory.addStatusHistoryToBatch(
+            batch: batch,
+            requestId: request.requestId,
+            fromStatus: request.status,
+            toStatus: RentRequestStatus.canceled,
+            actorId: equipment.ownerId,
+            actorRole: 'owner',
+            source: 'maintenance_unforeseen_cancel',
+            reason:
+                'Canceled because equipment entered unforeseen maintenance.',
+          );
+          requestHistory.addTimelineEventToBatch(
+            batch: batch,
+            requestId: request.requestId,
+            eventType: 'maintenance_canceled_booking',
+            actorId: equipment.ownerId,
+            actorRole: 'owner',
+            source: 'maintenance_unforeseen_cancel',
+            metadata: {
+              'maintenanceStart': today,
+              'maintenanceEnd': maintenanceEnd,
+              'durationDays': durationDays,
             },
-          ));
+          );
+          notifFutures.add(
+            _sendNotification(
+              userId: request.renterId,
+              title: '🔧 Kinansela ang Booking — Maintenance',
+              body:
+                  'Ang iyong booking para sa "${equipment.name}" '
+                  '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
+                  'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw).',
+              type: 'maintenance_cancel',
+              extra: {
+                'requestId': request.requestId,
+                'equipmentId': equipment.id,
+              },
+            ),
+          );
         } else {
           if (bookingStart.isAfter(blockedUntil)) continue;
           final bookingDuration = request.end.difference(request.start);
@@ -1614,7 +1752,8 @@ class _MyEquipmentState extends State<MyEquipment> {
             request.start.minute,
           ).add(const Duration(days: 1));
           final newEnd = newStart.add(bookingDuration);
-          final exceedsAvailability = equipment.availableUntil != null &&
+          final exceedsAvailability =
+              equipment.availableUntil != null &&
               newEnd.isAfter(equipment.availableUntil!);
 
           if (exceedsAvailability) {
@@ -1622,19 +1761,45 @@ class _MyEquipmentState extends State<MyEquipment> {
               'status': RentRequestStatus.canceled.name,
               'declineReason':
                   'Hindi ma-reschedule ang booking pagkatapos ng maintenance.',
+              'updatedAt': FieldValue.serverTimestamp(),
             });
-            notifFutures.add(_sendNotification(
-              userId: request.renterId,
-              title: '🔧 Kinansela ang Booking — Labas ng Availability',
-              body:
-                  'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
-                  'pagkatapos ng maintenance. Kinansela na ang iyong booking.',
-              type: 'maintenance_cancel',
-              extra: {
-                'requestId': request.requestId,
-                'equipmentId': equipment.id,
+            requestHistory.addStatusHistoryToBatch(
+              batch: batch,
+              requestId: request.requestId,
+              fromStatus: request.status,
+              toStatus: RentRequestStatus.canceled,
+              actorId: equipment.ownerId,
+              actorRole: 'owner',
+              source: 'maintenance_reschedule_failed_cancel',
+              reason:
+                  'Canceled because shifted dates exceeded equipment availability.',
+            );
+            requestHistory.addTimelineEventToBatch(
+              batch: batch,
+              requestId: request.requestId,
+              eventType: 'maintenance_canceled_booking',
+              actorId: equipment.ownerId,
+              actorRole: 'owner',
+              source: 'maintenance_reschedule_failed_cancel',
+              metadata: {
+                'maintenanceStart': today,
+                'maintenanceEnd': maintenanceEnd,
               },
-            ));
+            );
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '🔧 Kinansela ang Booking — Labas ng Availability',
+                body:
+                    'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
+                    'pagkatapos ng maintenance. Kinansela na ang iyong booking.',
+                type: 'maintenance_cancel',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                },
+              ),
+            );
           } else {
             batch.update(doc.reference, {
               'start': Timestamp.fromDate(newStart),
@@ -1642,27 +1807,45 @@ class _MyEquipmentState extends State<MyEquipment> {
               'originalStart': Timestamp.fromDate(request.start),
               'originalEnd': Timestamp.fromDate(request.end),
               'maintenanceRescheduled': true,
+              'updatedAt': FieldValue.serverTimestamp(),
             });
-            notifFutures.add(_sendNotification(
-              userId: request.renterId,
-              title: '📅 Na-reschedule ang Booking — Maintenance',
-              body:
-                  'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
-                  '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
-                  'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
-              type: 'maintenance_reschedule',
-              extra: {
-                'requestId': request.requestId,
-                'equipmentId': equipment.id,
-                'ownerId': equipment.ownerId,
-                'canCancel': true,
-                'canAccept': true,
-                'newStart': Timestamp.fromDate(newStart),
-                'newEnd': Timestamp.fromDate(newEnd),
+            requestHistory.addTimelineEventToBatch(
+              batch: batch,
+              requestId: request.requestId,
+              eventType: 'schedule_shifted_due_to_maintenance',
+              actorId: equipment.ownerId,
+              actorRole: 'owner',
+              source: 'maintenance_reschedule',
+              metadata: {
+                'previousStart': request.start,
+                'previousEnd': request.end,
+                'newStart': newStart,
+                'newEnd': newEnd,
+                'maintenanceStart': today,
+                'maintenanceEnd': maintenanceEnd,
               },
-            ));
-            blockedUntil =
-                DateTime(newEnd.year, newEnd.month, newEnd.day);
+            );
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '📅 Na-reschedule ang Booking — Maintenance',
+                body:
+                    'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
+                    '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
+                    'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
+                type: 'maintenance_reschedule',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                  'ownerId': equipment.ownerId,
+                  'canCancel': true,
+                  'canAccept': true,
+                  'newStart': Timestamp.fromDate(newStart),
+                  'newEnd': Timestamp.fromDate(newEnd),
+                },
+              ),
+            );
+            blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
           }
         }
       }
@@ -1671,26 +1854,33 @@ class _MyEquipmentState extends State<MyEquipment> {
       await Future.wait(notifFutures);
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(isUnforeseen
-              ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
-              : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.'),
-          backgroundColor: isUnforeseen ? Colors.red : Colors.green,
-          duration: const Duration(seconds: 4),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isUnforeseen
+                  ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
+                  : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
+            ),
+            backgroundColor: isUnforeseen ? Colors.red : Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
 
   // ── End maintenance ───────────────────────────────────────────
   Future<void> _endMaintenance(
-      BuildContext context, Equipment equipment) async {
+    BuildContext context,
+    Equipment equipment,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1698,8 +1888,9 @@ class _MyEquipmentState extends State<MyEquipment> {
         content: const Text('Markahan ang kagamitan bilang available na?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kanselahin'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade600,
@@ -1713,48 +1904,52 @@ class _MyEquipmentState extends State<MyEquipment> {
     );
     if (confirmed != true) return;
 
-    await FirebaseFirestore.instance
-        .collection('equipment')
-        .doc(equipment.id)
-        .update({
-      'status': EquipmentStatus.available.toValue(),
-      'isAvailable': true,
-      'maintenanceStart': null,
-      'maintenanceEnd': null,
-    });
-    await MaintenanceService().resetMaintenanceHours(equipment.id!);
+    await MaintenanceService().completeMaintenance(
+      equipment: equipment,
+      source: 'owner_manual_complete',
+    );
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
           content: Text('✅ Equipment is now available.'),
-          backgroundColor: Colors.green));
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
 
   // ── Delete equipment ──────────────────────────────────────────
   Future<void> _deleteEquipment(
-      BuildContext context, Equipment equipment) async {
+    BuildContext context,
+    Equipment equipment,
+  ) async {
     final activeSnap = await FirebaseFirestore.instance
         .collection('rentRequests')
         .where('itemId', isEqualTo: equipment.id)
-        .where('status', whereIn: [
-          'pending',
-          'approved',
-          'onTheWay',
-          'inProgress',
-          'readyForPickup',
-        ])
+        .where(
+          'status',
+          whereIn: [
+            'pending',
+            'approved',
+            'onTheWay',
+            'inProgress',
+            'readyForPickup',
+          ],
+        )
         .get();
 
     if (activeSnap.docs.isNotEmpty && context.mounted) {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Row(children: [
-            Icon(Icons.block, color: Colors.red, size: 20),
-            SizedBox(width: 8),
-            Text('Cannot Delete'),
-          ]),
+          title: const Row(
+            children: [
+              Icon(Icons.block, color: Colors.red, size: 20),
+              SizedBox(width: 8),
+              Text('Cannot Delete'),
+            ],
+          ),
           content: Text(
             'This equipment has ${activeSnap.docs.length} active '
             '${activeSnap.docs.length == 1 ? 'booking' : 'bookings'}. '
@@ -1762,8 +1957,9 @@ class _MyEquipmentState extends State<MyEquipment> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
           ],
         ),
       );
@@ -1774,11 +1970,13 @@ class _MyEquipmentState extends State<MyEquipment> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
-          SizedBox(width: 8),
-          Flexible(child: Text('Burahin ang Kagamitan')),
-        ]),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+            SizedBox(width: 8),
+            Flexible(child: Text('Burahin ang Kagamitan')),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1788,16 +1986,15 @@ class _MyEquipmentState extends State<MyEquipment> {
                 style: const TextStyle(color: Colors.black87, fontSize: 14),
                 children: [
                   const TextSpan(
-                      text:
-                          'Sigurado ka bang gusto mong burahin ang '),
+                    text: 'Sigurado ka bang gusto mong burahin ang ',
+                  ),
                   TextSpan(
                     text: '"${equipment.name}"',
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const TextSpan(
-                      text:
-                          '? Hindi na maaaring bawiin ang pagkilos na ito.'),
+                    text: '? Hindi na maaaring bawiin ang pagkilos na ito.',
+                  ),
                 ],
               ),
             ),
@@ -1805,8 +2002,9 @@ class _MyEquipmentState extends State<MyEquipment> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kanselahin'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
@@ -1823,17 +2021,21 @@ class _MyEquipmentState extends State<MyEquipment> {
     try {
       await _firestoreService.deleteEquipment(equipment.id!);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('"${equipment.name}" has been deleted.'),
-          backgroundColor: Colors.red.shade600,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"${equipment.name}" has been deleted.'),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error deleting equipment: $e'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting equipment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -1853,14 +2055,10 @@ class _RatingBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: hasRating
-            ? Colors.amber.shade50
-            : Colors.grey.shade100,
+        color: hasRating ? Colors.amber.shade50 : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: hasRating
-              ? Colors.amber.shade400
-              : Colors.grey.shade300,
+          color: hasRating ? Colors.amber.shade400 : Colors.grey.shade300,
         ),
       ),
       child: Row(
@@ -1877,8 +2075,7 @@ class _RatingBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color:
-                  hasRating ? Colors.amber.shade800 : Colors.grey.shade500,
+              color: hasRating ? Colors.amber.shade800 : Colors.grey.shade500,
             ),
           ),
         ],
@@ -1902,11 +2099,13 @@ class _ActiveFilterBar extends StatelessWidget {
     final chips = <Widget>[];
 
     if (filter.sortOption != EquipmentSortOption.newest) {
-      chips.add(_chip(
-        label: filter.sortOption.label,
-        icon: filter.sortOption.icon,
-        color: lightColorScheme.primary,
-      ));
+      chips.add(
+        _chip(
+          label: filter.sortOption.label,
+          icon: filter.sortOption.icon,
+          color: lightColorScheme.primary,
+        ),
+      );
     }
 
     if (filter.statusFilter != null) {
@@ -1920,24 +2119,29 @@ class _ActiveFilterBar extends StatelessWidget {
             return 'Maintenance';
         }
       }();
-      chips.add(_chip(
-          label: label,
-          icon: Icons.circle,
-          color: Colors.blueGrey));
+      chips.add(
+        _chip(label: label, icon: Icons.circle, color: Colors.blueGrey),
+      );
     }
 
     if (filter.onlyForMaintenance) {
-      chips.add(_chip(
+      chips.add(
+        _chip(
           label: 'For Maintenance',
           icon: Icons.build_rounded,
-          color: Colors.red));
+          color: Colors.red,
+        ),
+      );
     }
 
     if (filter.onlyUpcomingMaintenance) {
-      chips.add(_chip(
+      chips.add(
+        _chip(
           label: 'Upcoming Maint.',
           icon: Icons.warning_amber_rounded,
-          color: Colors.amber.shade800));
+          color: Colors.amber.shade800,
+        ),
+      );
     }
 
     return Row(
@@ -1963,11 +2167,14 @@ class _ActiveFilterBar extends StatelessWidget {
               children: [
                 Icon(Icons.close, size: 12, color: Colors.red.shade600),
                 const SizedBox(width: 4),
-                Text('I-clear',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.red.shade600,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  'I-clear',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.red.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1976,10 +2183,11 @@ class _ActiveFilterBar extends StatelessWidget {
     );
   }
 
-  Widget _chip(
-      {required String label,
-      required IconData icon,
-      required Color color}) {
+  Widget _chip({
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1993,11 +2201,14 @@ class _ActiveFilterBar extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: color,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -2040,8 +2251,7 @@ class _MaintenanceDatePicker extends StatefulWidget {
   });
 
   @override
-  State<_MaintenanceDatePicker> createState() =>
-      _MaintenanceDatePickerState();
+  State<_MaintenanceDatePicker> createState() => _MaintenanceDatePickerState();
 }
 
 class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
@@ -2079,18 +2289,23 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.build_outlined,
-                  color: lightColorScheme.primary, size: 20),
+              Icon(
+                Icons.build_outlined,
+                color: lightColorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              const Text('I-schedule ang Maintenance',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'I-schedule ang Maintenance',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(widget.equipmentName,
-              style: TextStyle(
-                  color: Colors.grey.shade600, fontSize: 13)),
+          Text(
+            widget.equipmentName,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
           const SizedBox(height: 20),
           _DateRow(
             label: 'Simula',
@@ -2125,8 +2340,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
             const SizedBox(height: 16),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: _isUnforeseen
                     ? Colors.red.shade50
@@ -2144,9 +2358,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                     _isUnforeseen
                         ? Icons.warning_amber_rounded
                         : Icons.info_outline,
-                    color: _isUnforeseen
-                        ? Colors.red
-                        : Colors.orange.shade700,
+                    color: _isUnforeseen ? Colors.red : Colors.orange.shade700,
                     size: 18,
                   ),
                   const SizedBox(width: 8),
@@ -2228,9 +2440,7 @@ class _DateRow extends StatelessWidget {
           color: isFixed ? Colors.grey.shade50 : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isFixed
-                ? Colors.grey.shade300
-                : color.withOpacity(0.5),
+            color: isFixed ? Colors.grey.shade300 : color.withOpacity(0.5),
           ),
         ),
         child: Row(
@@ -2253,17 +2463,14 @@ class _DateRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isFixed
-                        ? Colors.grey.shade600
-                        : Colors.black87,
+                    color: isFixed ? Colors.grey.shade600 : Colors.black87,
                   ),
                 ),
               ],
             ),
             if (!isFixed) ...[
               const Spacer(),
-              Icon(Icons.chevron_right,
-                  color: Colors.grey.shade400, size: 18),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 18),
             ],
           ],
         ),
@@ -2298,8 +2505,9 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
 
   Future<void> _loadData() async {
     try {
-      final forecast = await WeatherService()
-          .getOrFetchForecast(requestLocationPermission: false);
+      final forecast = await WeatherService().getOrFetchForecast(
+        requestLocationPermission: false,
+      );
       final today = DateTime.now();
       final todayDay = DateTime(today.year, today.month, today.day);
 
@@ -2323,14 +2531,10 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
           .where('status', whereIn: ['approved', 'readyForPickup'])
           .get();
 
-      final bookings = snap.docs
-          .map((d) => RentRequest.fromDoc(d))
-          .where((r) {
-            final startDay =
-                DateTime(r.start.year, r.start.month, r.start.day);
-            return startDay == todayDay;
-          })
-          .toList();
+      final bookings = snap.docs.map((d) => RentRequest.fromDoc(d)).where((r) {
+        final startDay = DateTime(r.start.year, r.start.month, r.start.day);
+        return startDay == todayDay;
+      }).toList();
 
       if (mounted) {
         setState(() {
@@ -2354,15 +2558,10 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
         .where('status', whereIn: ['pending', 'approved', 'readyForPickup'])
         .get();
 
-    final upcoming = snap.docs
-        .map((d) => RentRequest.fromDoc(d))
-        .where((r) {
-          final startDay =
-              DateTime(r.start.year, r.start.month, r.start.day);
-          return !startDay.isBefore(todayDay);
-        })
-        .toList()
-      ..sort((a, b) => a.start.compareTo(b.start));
+    final upcoming = snap.docs.map((d) => RentRequest.fromDoc(d)).where((r) {
+      final startDay = DateTime(r.start.year, r.start.month, r.start.day);
+      return !startDay.isBefore(todayDay);
+    }).toList()..sort((a, b) => a.start.compareTo(b.start));
 
     if (!mounted) return;
 
@@ -2383,41 +2582,50 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
                 ),
                 if (upcoming.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  const Text('Mga Apektadong Booking:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Mga Apektadong Booking:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 6),
                   ...upcoming.map((r) {
-                    final newStart =
-                        r.start.add(const Duration(days: 1));
+                    final newStart = r.start.add(const Duration(days: 1));
                     final newEnd = r.end.add(const Duration(days: 1));
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.person_outline,
-                              size: 14, color: Colors.black54),
+                          const Icon(
+                            Icons.person_outline,
+                            size: 14,
+                            color: Colors.black54,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(r.name,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13)),
+                                Text(
+                                  r.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 Text(
                                   'Dati: ${fmt.format(r.start)} – ${fmt.format(r.end)}',
                                   style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black54),
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
                                 ),
                                 Text(
                                   'Bago: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
                                   style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.blue.shade700,
-                                      fontWeight: FontWeight.w500),
+                                    fontSize: 12,
+                                    color: Colors.blue.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
@@ -2433,8 +2641,9 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Huwag')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huwag'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade600,
@@ -2457,48 +2666,51 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
       final newStart = r.start.add(const Duration(days: 1));
       final newEnd = r.end.add(const Duration(days: 1));
 
-      futures.add(db.collection('rentRequests').doc(r.requestId).update({
-        'start': Timestamp.fromDate(newStart),
-        'end': Timestamp.fromDate(newEnd),
-        'weatherPostponed': true,
-        'originalStart': Timestamp.fromDate(r.start),
-        'originalEnd': Timestamp.fromDate(r.end),
-      }));
+      futures.add(
+        db.collection('rentRequests').doc(r.requestId).update({
+          'start': Timestamp.fromDate(newStart),
+          'end': Timestamp.fromDate(newEnd),
+          'weatherPostponed': true,
+          'originalStart': Timestamp.fromDate(r.start),
+          'originalEnd': Timestamp.fromDate(r.end),
+        }),
+      );
 
-      futures.add(db
-          .collection('notifications')
-          .doc(r.renterId)
-          .collection('items')
-          .add({
-        'type': 'maintenance_reschedule',
-        'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
-        'body':
-            'Ang iyong booking para sa "${widget.equipment.name}" '
-            '(${fmt2.format(r.start)} – ${fmt2.format(r.end)}) '
-            'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
-            'Bagong petsa: ${fmt2.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
-        'requestId': r.requestId,
-        'equipmentId': widget.equipment.id,
-        'ownerId': widget.equipment.ownerId,
-        'canCancel': true,
-        'canAccept': true,
-        'newStart': Timestamp.fromDate(newStart),
-        'newEnd': Timestamp.fromDate(newEnd),
-        'originalStart': Timestamp.fromDate(r.start),
-        'originalEnd': Timestamp.fromDate(r.end),
-        'createdAt': FieldValue.serverTimestamp(),
-        'read': false,
-      }));
+      futures.add(
+        db.collection('notifications').doc(r.renterId).collection('items').add({
+          'type': 'maintenance_reschedule',
+          'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
+          'body':
+              'Ang iyong booking para sa "${widget.equipment.name}" '
+              '(${fmt2.format(r.start)} – ${fmt2.format(r.end)}) '
+              'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
+              'Bagong petsa: ${fmt2.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
+          'requestId': r.requestId,
+          'equipmentId': widget.equipment.id,
+          'ownerId': widget.equipment.ownerId,
+          'canCancel': true,
+          'canAccept': true,
+          'newStart': Timestamp.fromDate(newStart),
+          'newEnd': Timestamp.fromDate(newEnd),
+          'originalStart': Timestamp.fromDate(r.start),
+          'originalEnd': Timestamp.fromDate(r.end),
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
+        }),
+      );
     }
 
     await Future.wait(futures);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Na-postpone ang mga booking ng isang araw dahil sa masamang panahon.'),
-        backgroundColor: Colors.blue,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Na-postpone ang mga booking ng isang araw dahil sa masamang panahon.',
+          ),
+          backgroundColor: Colors.blue,
+        ),
+      );
       setState(() {
         _todayBookings = [];
         _isBadWeather = false;
@@ -2524,14 +2736,16 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
       ),
       child: Row(
         children: [
-          Icon(Icons.thunderstorm_outlined,
-              color: Colors.blue.shade700, size: 18),
+          Icon(
+            Icons.thunderstorm_outlined,
+            color: Colors.blue.shade700,
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               '${_todayBookings.length} booking ngayon na apektado ng masamang panahon.',
-              style:
-                  TextStyle(fontSize: 12, color: Colors.blue.shade800),
+              style: TextStyle(fontSize: 12, color: Colors.blue.shade800),
             ),
           ),
           const SizedBox(width: 8),
@@ -2540,11 +2754,11 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade600,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               textStyle: const TextStyle(fontSize: 11),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6)),
+                borderRadius: BorderRadius.circular(6),
+              ),
             ),
             child: const Text('Ipagpaliban'),
           ),
@@ -2595,8 +2809,11 @@ class _OverdueReturnsSection extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded,
-                        color: Colors.red.shade600, size: 20),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red.shade600,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Unreturned Equipment (${overdue.length})',
@@ -2615,20 +2832,30 @@ class _OverdueReturnsSection extends StatelessWidget {
                 return ListTile(
                   dense: true,
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 2),
-                  leading: Icon(Icons.agriculture_rounded,
-                      color: Colors.red.shade400, size: 22),
-                  title: Text(r.itemName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
+                    horizontal: 14,
+                    vertical: 2,
+                  ),
+                  leading: Icon(
+                    Icons.agriculture_rounded,
+                    color: Colors.red.shade400,
+                    size: 22,
+                  ),
+                  title: Text(
+                    r.itemName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
                   subtitle: Text(
                     'Renter: ${r.name}  •  Due: ${DateFormat('MMM dd').format(r.end)}',
-                    style: TextStyle(
-                        color: Colors.grey.shade600, fontSize: 11),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
                   ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red.shade600,
                       borderRadius: BorderRadius.circular(20),
@@ -2638,16 +2865,16 @@ class _OverdueReturnsSection extends StatelessWidget {
                           ? 'Due today'
                           : '$days ${days == 1 ? 'day' : 'days'} late',
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          RequestSentPage(requestId: r.requestId),
+                      builder: (_) => RequestSentPage(requestId: r.requestId),
                     ),
                   ),
                 );

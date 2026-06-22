@@ -29,13 +29,16 @@ class _RequestRentFormState extends State<RequestRentForm> {
   final TextEditingController addressController = TextEditingController();
   final TextEditingController farmAddressController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController cropTypeController = TextEditingController();
+  final TextEditingController farmingPhaseController = TextEditingController();
+  final TextEditingController intendedUseController = TextEditingController();
 
   double? _farmLat;
   double? _farmLng;
 
   String? _profileFarmAddress;
-double? _profileFarmLat;
-double? _profileFarmLng;
+  double? _profileFarmLat;
+  double? _profileFarmLng;
 
   // ── Changed from single XFile? to List<XFile> ──────────────
   List<XFile> _landSizeProofs = [];
@@ -84,10 +87,11 @@ double? _profileFarmLng;
   double? _profileLng;
   double? _hectaresEntered;
 
-  bool get _onlyHasLandReq => hasLandSizeRequirement &&
-    !hasCropHeightRequirement &&
-    !widget.item.cropConditionRequirement &&
-    !isRiceMill;
+  bool get _onlyHasLandReq =>
+      hasLandSizeRequirement &&
+      !hasCropHeightRequirement &&
+      !widget.item.cropConditionRequirement &&
+      !isRiceMill;
 
   bool get _isAutoComputedCategory => () {
     final cat = widget.item.category?.toLowerCase();
@@ -96,7 +100,6 @@ double? _profileFarmLng;
         cat == 'hand tractor (kuliglig)' ||
         cat == 'floating tiller (pagong)';
   }();
-
 
   DeliveryMethod _deliveryMethod = DeliveryMethod.pickup;
 
@@ -129,10 +132,10 @@ double? _profileFarmLng;
           _profileLat = (data['latitude'] as num?)?.toDouble();
           _profileLng = (data['longitude'] as num?)?.toDouble();
 
-            // add these:
-        _profileFarmAddress = data['farmAddress'] as String?;
-        _profileFarmLat = (data['farmLatitude'] as num?)?.toDouble();
-        _profileFarmLng = (data['farmLongitude'] as num?)?.toDouble();
+          // add these:
+          _profileFarmAddress = data['farmAddress'] as String?;
+          _profileFarmLat = (data['farmLatitude'] as num?)?.toDouble();
+          _profileFarmLng = (data['farmLongitude'] as num?)?.toDouble();
 
           if (_profileAddress != null && addressController.text.isEmpty) {
             addressController.text = _profileAddress!;
@@ -143,8 +146,6 @@ double? _profileFarmLng;
       debugPrint('Failed to load profile address: $e');
     }
   }
-
-  
 
   void _onFieldChanged() => setState(() {});
 
@@ -158,6 +159,9 @@ double? _profileFarmLng;
     addressController.dispose();
     farmAddressController.dispose();
     _volumeController.dispose();
+    cropTypeController.dispose();
+    farmingPhaseController.dispose();
+    intendedUseController.dispose();
     super.dispose();
   }
 
@@ -203,11 +207,12 @@ double? _profileFarmLng;
                 });
               },
               onReturnDatePicked: (date) => setState(() => returnDate = date),
-              onHectaresChanged: (ha) => setState(() => _hectaresEntered = ha), // ADD
+              onHectaresChanged: (ha) =>
+                  setState(() => _hectaresEntered = ha), // ADD
             ),
 
             if (isScheduleComplete) ...[
-             UserInfoStep(
+              UserInfoStep(
                 nameController: nameController,
                 phoneController: phoneController, // ← add this
                 farmAddressController: farmAddressController,
@@ -219,17 +224,17 @@ double? _profileFarmLng;
                 },
               ),
 
-             DeliveryMethodStep(
-              selected: _deliveryMethod,
-              equipmentLocation: widget.item.location,
-              deliveryMode: widget.item.deliveryMode, // ← add this
-              onChanged: (method) => setState(() {
-                _deliveryMethod = method;
-                if (method == DeliveryMethod.pickup) {
-                  addressController.clear();
-                }
-              }),
-            ),
+              DeliveryMethodStep(
+                selected: _deliveryMethod,
+                equipmentLocation: widget.item.location,
+                deliveryMode: widget.item.deliveryMode, // ← add this
+                onChanged: (method) => setState(() {
+                  _deliveryMethod = method;
+                  if (method == DeliveryMethod.pickup) {
+                    addressController.clear();
+                  }
+                }),
+              ),
 
               AddressStep(
                 profileAddress: _profileAddress,
@@ -239,35 +244,102 @@ double? _profileFarmLng;
                 profileFarmLat: _profileFarmLat,
                 profileFarmLng: _profileFarmLng,
                 addressController: addressController,
-                onLatChanged: (v) => setState(() => _addressLat = v?.toString()),
-                onLngChanged: (v) => setState(() => _addressLng = v?.toString()),
+                onLatChanged: (v) =>
+                    setState(() => _addressLat = v?.toString()),
+                onLngChanged: (v) =>
+                    setState(() => _addressLng = v?.toString()),
               ),
             ],
 
-            if (isScheduleComplete && hasAnyRequirement && !(_isAutoComputedCategory && _onlyHasLandReq))...[
+            if (isScheduleComplete &&
+                hasAnyRequirement &&
+                !(_isAutoComputedCategory && _onlyHasLandReq)) ...[
               RequirementStep(
                 item: widget.item,
                 landSizeProofs: _landSizeProofs,
                 cropHeightProofs: _cropHeightProofs,
-                cropConditionProofs: _cropConditionProofs,         // NEW
-                onLandAdd: (file) =>
-                    setState(() => _landSizeProofs.add(file)),
+                cropConditionProofs: _cropConditionProofs, // NEW
+                onLandAdd: (file) => setState(() => _landSizeProofs.add(file)),
                 onLandRemove: (index) =>
                     setState(() => _landSizeProofs.removeAt(index)),
                 onCropAdd: (file) =>
                     setState(() => _cropHeightProofs.add(file)),
                 onCropRemove: (index) =>
                     setState(() => _cropHeightProofs.removeAt(index)),
-                onCropConditionAdd: (file) =>                      // NEW
-                    setState(() => _cropConditionProofs.add(file)),
-                onCropConditionRemove: (index) =>                  // NEW
-                    setState(() => _cropConditionProofs.removeAt(index)),
+                onCropConditionAdd:
+                    (file) => // NEW
+                        setState(() => _cropConditionProofs.add(file)),
+                onCropConditionRemove:
+                    (index) => // NEW
+                        setState(() => _cropConditionProofs.removeAt(index)),
                 picker: _picker,
                 volumeController: _volumeController,
                 volumeError: _volumeError,
                 keepDarak: _keepDarak,
                 onToggleDarak: () => setState(() => _keepDarak = !_keepDarak),
                 estimatedTotal: _estimatedTotal,
+              ),
+            ],
+
+            if (isScheduleComplete) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: lightColorScheme.primary.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Forecast Inputs',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: lightColorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Optional fields for future demand forecasting and barangay planning analytics.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: cropTypeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Crop Type',
+                        hintText: 'Rice, corn, vegetables, etc.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: farmingPhaseController,
+                      decoration: const InputDecoration(
+                        labelText: 'Farming Phase',
+                        hintText: 'Land preparation, planting, harvest, etc.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: intendedUseController,
+                      decoration: const InputDecoration(
+                        labelText: 'Intended Use',
+                        hintText: 'Plowing, hauling, milling, spraying, etc.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
 
@@ -296,8 +368,15 @@ double? _profileFarmLng;
                 deliveryMethod: _deliveryMethod,
                 hectaresEntered: _hectaresEntered, // ADD
                 phoneNumber: phoneController.text,
-
-
+                cropType: cropTypeController.text.trim().isEmpty
+                    ? null
+                    : cropTypeController.text.trim(),
+                farmingPhase: farmingPhaseController.text.trim().isEmpty
+                    ? null
+                    : farmingPhaseController.text.trim(),
+                intendedUse: intendedUseController.text.trim().isEmpty
+                    ? null
+                    : intendedUseController.text.trim(),
               ),
           ],
         ),

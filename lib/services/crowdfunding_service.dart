@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:bukidbayan_app/models/campaign_report.dart';
+import 'package:bukidbayan_app/services/analytics/campaign_analytics_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -56,10 +57,6 @@ class CrowdfundingService {
     }
     return false;
   }
-
-  bool _isCampaignEnded(Campaign campaign) =>
-      campaign.status.startsWith('ended') ||
-      DateTime.now().isAfter(campaign.endDate);
 
   // ── Seed ─────────────────────────────────────────────────────────────────
 
@@ -654,84 +651,10 @@ class CrowdfundingService {
     required String campaignId,
     String? userEmail,
   }) async {
-    final snap = await _campaigns.doc(campaignId).get();
-    if (!snap.exists) throw Exception('Campaign not found.');
-    final campaign = _fromDoc(snap);
-
-    if (!_isOwnedByUser(campaign, email: userEmail)) {
-      throw Exception(
-        'Only the campaign owner can generate a report for this campaign.',
-      );
-    }
-    final isEnded = _isCampaignEnded(campaign);
-
-    final pledgesSnap = await _pledgesRef(
-      campaignId,
-    ).orderBy('createdAt').get();
-    final campaignPledges = pledgesSnap.docs
-        .map((d) => _pledgeFromDoc(d, campaignId))
-        .toList();
-
-    final pledgeAmountTotal = campaignPledges.fold<int>(
-      0,
-      (s, p) => s + p.amount,
-    );
-    final totalPledges = campaignPledges.length;
-    final totalRaised = campaign.pledgedAmount;
-    final firstPledgeAt = totalPledges > 0
-        ? campaignPledges.first.createdAt
-        : null;
-    final lastPledgeAt = totalPledges > 0
-        ? campaignPledges.last.createdAt
-        : null;
-    final averagePledge = totalPledges > 0
-        ? pledgeAmountTotal / totalPledges
-        : (campaign.backersCount > 0
-              ? campaign.pledgedAmount / campaign.backersCount
-              : 0.0);
-
-    final rewardBreakdown = campaign.rewards.map((tier) {
-      final related = campaignPledges.where((p) => p.rewardId == tier.id);
-      return CampaignRewardReportItem(
-        rewardTier: tier,
-        pledgeCount: related.length,
-        totalAmount: related.fold<int>(0, (s, p) => s + p.amount),
-      );
-    }).toList();
-
-    final noRewardPledges = campaignPledges
-        .where((p) => p.rewardId == null || p.rewardId!.trim().isEmpty)
-        .toList();
-
-    final campaignStart = campaign.publishedAt ?? campaign.createdAt;
-    final campaignDurationDays = campaign.endDate
-        .difference(campaignStart)
-        .inDays
-        .clamp(0, 99999);
-
-    final isSuccessful = campaign.status == 'ended_success'
-        ? true
-        : campaign.status == 'ended_fail'
-        ? false
-        : totalRaised >= campaign.goalAmount;
-
-    return CampaignReport(
-      campaign: campaign,
-      isEnded: isEnded,
-      isSuccessful: isSuccessful,
-      totalRaised: totalRaised,
-      fundingDifference: totalRaised - campaign.goalAmount,
-      totalPledges: totalPledges,
-      totalBackers: campaign.backersCount,
-      averagePledge: averagePledge,
-      firstPledgeAt: firstPledgeAt,
-      lastPledgeAt: lastPledgeAt,
-      campaignDurationDays: campaignDurationDays,
-      pledges: campaignPledges,
-      rewardBreakdown: rewardBreakdown,
-      noRewardPledgeCount: noRewardPledges.length,
-      noRewardAmount: noRewardPledges.fold<int>(0, (s, p) => s + p.amount),
-    );
+    return CampaignAnalyticsService(
+      firestore: _db,
+      auth: _auth,
+    ).generateCampaignReport(campaignId: campaignId, userEmail: userEmail);
   }
 
   // ── Validation ────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/models/campaign.dart';
+import 'package:bukidbayan_app/models/payment_attempt.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
@@ -95,6 +96,21 @@ Future<void> _seedPledges(
   }
 }
 
+Future<void> _seedPaymentAttempts(
+  FakeFirebaseFirestore firestore, {
+  required String campaignId,
+  required List<PaymentAttempt> attempts,
+}) async {
+  for (final attempt in attempts) {
+    await firestore
+        .collection('campaigns')
+        .doc(campaignId)
+        .collection('payment_attempts')
+        .doc(attempt.id)
+        .set(attempt.toFirestore());
+  }
+}
+
 void main() {
   group('CrowdfundingService.generateCampaignReport', () {
     test(
@@ -132,12 +148,56 @@ void main() {
             createdAt: DateTime(2026, 1, 4),
           ),
         ];
+        final attempts = [
+          PaymentAttempt(
+            id: 'a1',
+            campaignId: campaign.id,
+            createdByUid: 'backer-a',
+            createdByEmail: 'a@example.com',
+            donorName: 'Backer A',
+            amount: 1000,
+            provider: PaymentProvider.payMongoCheckout,
+            status: PaymentAttemptStatus.paid,
+            createdAt: DateTime(2026, 1, 3),
+            updatedAt: DateTime(2026, 1, 3, 1),
+            completedAt: DateTime(2026, 1, 3, 1),
+          ),
+          PaymentAttempt(
+            id: 'a2',
+            campaignId: campaign.id,
+            createdByUid: 'backer-b',
+            createdByEmail: 'b@example.com',
+            donorName: 'Backer B',
+            amount: 500,
+            provider: PaymentProvider.payMongoCheckout,
+            status: PaymentAttemptStatus.failed,
+            createdAt: DateTime(2026, 1, 4),
+            updatedAt: DateTime(2026, 1, 4, 1),
+          ),
+          PaymentAttempt(
+            id: 'a3',
+            campaignId: campaign.id,
+            createdByUid: 'backer-c',
+            createdByEmail: 'c@example.com',
+            donorName: 'Backer C',
+            amount: 700,
+            provider: PaymentProvider.payMongoCheckout,
+            status: PaymentAttemptStatus.pendingCheckout,
+            createdAt: DateTime(2026, 1, 5),
+            updatedAt: DateTime(2026, 1, 5, 1),
+          ),
+        ];
 
         await _seedCampaign(firestore, campaign);
         await _seedPledges(
           firestore,
           campaignId: campaign.id,
           pledges: pledges,
+        );
+        await _seedPaymentAttempts(
+          firestore,
+          campaignId: campaign.id,
+          attempts: attempts,
         );
 
         final report = await service.generateCampaignReport(
@@ -158,6 +218,13 @@ void main() {
         expect(report.rewardBreakdown.first.totalAmount, 1000);
         expect(report.noRewardPledgeCount, 1);
         expect(report.noRewardAmount, 500);
+        expect(report.paymentAttempts.length, 3);
+        expect(report.paymentFunnel.totalAttempts, 3);
+        expect(report.paymentFunnel.paidCount, 1);
+        expect(report.paymentFunnel.failedCount, 1);
+        expect(report.paymentFunnel.pendingCheckoutCount, 1);
+        expect(report.paymentFunnel.totalAttemptAmount, 2200);
+        expect(report.paymentFunnel.paidAttemptAmount, 1000);
       },
     );
 
@@ -240,9 +307,42 @@ void main() {
           createdAt: DateTime(2026, 1, 3),
         ),
       ];
+      final attempts = [
+        PaymentAttempt(
+          id: 'a1',
+          campaignId: campaign.id,
+          createdByUid: 'backer-a',
+          createdByEmail: 'a@example.com',
+          donorName: 'Backer A',
+          amount: 300,
+          provider: PaymentProvider.payMongoCheckout,
+          status: PaymentAttemptStatus.paid,
+          createdAt: DateTime(2026, 1, 3),
+          updatedAt: DateTime(2026, 1, 3, 1),
+          completedAt: DateTime(2026, 1, 3, 1),
+        ),
+        PaymentAttempt(
+          id: 'a2',
+          campaignId: campaign.id,
+          createdByUid: 'backer-b',
+          createdByEmail: 'b@example.com',
+          donorName: 'Backer B',
+          amount: 600,
+          provider: PaymentProvider.payMongoCheckout,
+          status: PaymentAttemptStatus.paid,
+          createdAt: DateTime(2026, 1, 4),
+          updatedAt: DateTime(2026, 1, 4, 1),
+          completedAt: DateTime(2026, 1, 4, 1),
+        ),
+      ];
 
       await _seedCampaign(firestore, campaign);
       await _seedPledges(firestore, campaignId: campaign.id, pledges: pledges);
+      await _seedPaymentAttempts(
+        firestore,
+        campaignId: campaign.id,
+        attempts: attempts,
+      );
 
       final report = await service.generateCampaignReport(
         campaignId: campaign.id,
@@ -251,6 +351,9 @@ void main() {
       expect(report.totalRaised, 900);
       expect(report.totalPledges, 1);
       expect(report.pledges.single.amount, 300);
+      expect(report.paymentFunnel.totalAttempts, 2);
+      expect(report.paymentFunnel.paidCount, 2);
+      expect(report.paymentFunnel.paidAttemptAmount, 900);
     });
   });
 }

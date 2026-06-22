@@ -38,7 +38,9 @@ class SubmitButton extends StatefulWidget {
   final DeliveryMethod deliveryMethod;
   final double? hectaresEntered;
   final String phoneNumber;
-
+  final String? cropType;
+  final String? farmingPhase;
+  final String? intendedUse;
 
   const SubmitButton({
     super.key,
@@ -61,7 +63,9 @@ class SubmitButton extends StatefulWidget {
     this.farmLongitude,
     required this.deliveryMethod,
     required this.phoneNumber,
-
+    this.cropType,
+    this.farmingPhase,
+    this.intendedUse,
   });
 
   @override
@@ -74,15 +78,18 @@ class _SubmitButtonState extends State<SubmitButton> {
   // ── Shared rate helper (mirrors date_step.dart) ─────────────────────────
   double get _hectaresPerDay {
     switch (widget.item.category?.toLowerCase()) {
-      case 'hand tractor (kuliglig)': 
-      case 'floating tiller (pagong)': return 1.0;
-      default:                          return 2.0; // tractor, harvester (halimaw)
+      case 'hand tractor (kuliglig)':
+      case 'floating tiller (pagong)':
+        return 1.0;
+      default:
+        return 2.0; // tractor, harvester (halimaw)
     }
   }
 
   bool get _isAutoComputed {
     final cat = widget.item.category?.toLowerCase();
-    final isEligible = cat == 'tractor' ||
+    final isEligible =
+        cat == 'tractor' ||
         cat == 'harvester (halimaw)' ||
         cat == 'hand tractor (kuliglig)' ||
         cat == 'floating tiller (pagong)';
@@ -93,24 +100,33 @@ class _SubmitButtonState extends State<SubmitButton> {
   Widget build(BuildContext context) {
     String _getRateSuffix(String rentRate) {
       switch (rentRate.toLowerCase()) {
-        case 'per day':     return '/day';
-        case 'per hour':    return '/hour';
-        case 'per week':    return '/week';
-        case 'per month':   return '/month';
-        case 'per kg':      return '/kg';
-        case 'per hectare': return '/ha';
-        default:            return '';
+        case 'per day':
+          return '/day';
+        case 'per hour':
+          return '/hour';
+        case 'per week':
+          return '/week';
+        case 'per month':
+          return '/month';
+        case 'per kg':
+          return '/kg';
+        case 'per hectare':
+          return '/ha';
+        default:
+          return '';
       }
     }
 
     final isHarvester = widget.item.category?.toLowerCase() == 'harvester';
-    final isHalimaw   = widget.item.category?.toLowerCase() == 'harvester (halimaw)';
-    final isRiceMill  = widget.item.category?.toLowerCase().contains('rice mill') == true;
+    final isHalimaw =
+        widget.item.category?.toLowerCase() == 'harvester (halimaw)';
+    final isRiceMill =
+        widget.item.category?.toLowerCase().contains('rice mill') == true;
 
-    final isAutoComputed  = _isAutoComputed;
-    final hectaresPerDay  = _hectaresPerDay;
-    final ha              = widget.hectaresEntered;
-    final int? days       = (isAutoComputed && ha != null)
+    final isAutoComputed = _isAutoComputed;
+    final hectaresPerDay = _hectaresPerDay;
+    final ha = widget.hectaresEntered;
+    final int? days = (isAutoComputed && ha != null)
         ? (ha / hectaresPerDay).ceil().clamp(1, 9999)
         : null;
     final double basePrice = widget.item.price;
@@ -148,14 +164,17 @@ class _SubmitButtonState extends State<SubmitButton> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Pricing Type',
-                        style: TextStyle(fontSize: 15, color: Colors.black54)),
+                    const Text(
+                      'Pricing Type',
+                      style: TextStyle(fontSize: 15, color: Colors.black54),
+                    ),
                     Text(
                       widget.keepDarak ? 'Rice + Darak' : 'Rice Only',
                       style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -163,16 +182,19 @@ class _SubmitButtonState extends State<SubmitButton> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Rate',
-                        style: TextStyle(fontSize: 15, color: Colors.black54)),
+                    const Text(
+                      'Rate',
+                      style: TextStyle(fontSize: 15, color: Colors.black54),
+                    ),
                     Text(
                       widget.keepDarak
                           ? '₱${widget.item.ricePlusDarakPricePerKg?.toStringAsFixed(2) ?? '3.00'}/kg'
                           : '₱${widget.item.riceOnlyPricePerKg?.toStringAsFixed(2) ?? '2.00'}/kg',
                       style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -183,32 +205,38 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Estimated Total',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Estimated Total',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '₱${widget.estimatedMillingFee!.toStringAsFixed(2)}',
                         style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
                 ],
 
-              // ── Auto-computed (tractor / halimaw / kuliglig / pagong) ──
+                // ── Auto-computed (tractor / halimaw / kuliglig / pagong) ──
               ] else if (isAutoComputed) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Rental Rate',
-                        style: TextStyle(fontSize: 15, color: Colors.black54)),
+                    const Text(
+                      'Rental Rate',
+                      style: TextStyle(fontSize: 15, color: Colors.black54),
+                    ),
                     Text(
                       '₱${basePrice.toStringAsFixed(2)}/day',
                       style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -217,14 +245,17 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Land Area',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Land Area',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '${fmtHa(ha)} ha',
                         style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -232,15 +263,18 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Duration',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Duration',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '$days day${days == 1 ? '' : 's'} '
                         '(${fmtHa(ha)} ha ÷ ${fmtHa(hectaresPerDay)} ha/day)',
                         style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -250,14 +284,17 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Estimated Total',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Estimated Total',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '₱${(basePrice * days).toStringAsFixed(2)}',
                         style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -265,7 +302,10 @@ class _SubmitButtonState extends State<SubmitButton> {
                     alignment: Alignment.centerRight,
                     child: Text(
                       '₱${basePrice.toStringAsFixed(2)}/day × $days days',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ),
                 ] else ...[
@@ -273,14 +313,17 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Duration',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Duration',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '${widget.returnDate.difference(widget.startDate).inDays + 1} day${widget.returnDate.difference(widget.startDate).inDays + 1 == 1 ? '' : 's'}',
                         style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -290,14 +333,17 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Estimated Total',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Estimated Total',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '₱${(basePrice * (widget.returnDate.difference(widget.startDate).inDays + 1)).toStringAsFixed(2)}',
                         style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -305,25 +351,31 @@ class _SubmitButtonState extends State<SubmitButton> {
                     alignment: Alignment.centerRight,
                     child: Text(
                       '₱${basePrice.toStringAsFixed(2)}/day × ${widget.returnDate.difference(widget.startDate).inDays + 1} days',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ),
                 ],
 
-              // ── All other equipment ───────────────────────────────────
-              // ── All other equipment ───────────────────────────────────
+                // ── All other equipment ───────────────────────────────────
+                // ── All other equipment ───────────────────────────────────
               ] else ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Rental Rate',
-                        style: TextStyle(fontSize: 15, color: Colors.black54)),
+                    const Text(
+                      'Rental Rate',
+                      style: TextStyle(fontSize: 15, color: Colors.black54),
+                    ),
                     Text(
                       '₱${basePrice.toStringAsFixed(2)}${_getRateSuffix(widget.item.rentalUnit)}',
                       style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -334,11 +386,15 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Additional Fee',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Additional Fee',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade50,
                           border: Border.all(color: Colors.orange.shade300),
@@ -347,9 +403,10 @@ class _SubmitButtonState extends State<SubmitButton> {
                         child: const Text(
                           '+ 12% of Crop Harvest',
                           style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.deepOrange,
-                              fontWeight: FontWeight.w600),
+                            fontSize: 14,
+                            color: Colors.deepOrange,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -360,14 +417,17 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Duration',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Duration',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '${widget.returnDate.difference(widget.startDate).inDays + 1} day${widget.returnDate.difference(widget.startDate).inDays + 1 == 1 ? '' : 's'}',
                         style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -377,14 +437,17 @@ class _SubmitButtonState extends State<SubmitButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Estimated Total',
-                          style: TextStyle(fontSize: 15, color: Colors.black54)),
+                      const Text(
+                        'Estimated Total',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
                       Text(
                         '₱${(basePrice * (widget.returnDate.difference(widget.startDate).inDays + 1)).toStringAsFixed(2)}',
                         style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -392,7 +455,10 @@ class _SubmitButtonState extends State<SubmitButton> {
                     alignment: Alignment.centerRight,
                     child: Text(
                       '₱${basePrice.toStringAsFixed(2)}/day × ${widget.returnDate.difference(widget.startDate).inDays + 1} days',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ),
                 ],
@@ -405,8 +471,10 @@ class _SubmitButtonState extends State<SubmitButton> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Method',
-                      style: TextStyle(fontSize: 15, color: Colors.black54)),
+                  const Text(
+                    'Method',
+                    style: TextStyle(fontSize: 15, color: Colors.black54),
+                  ),
                   Row(
                     children: [
                       Icon(
@@ -422,9 +490,10 @@ class _SubmitButtonState extends State<SubmitButton> {
                             ? 'Pick Up'
                             : 'Delivery',
                         style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -446,7 +515,8 @@ class _SubmitButtonState extends State<SubmitButton> {
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                          lightColorScheme.primary),
+                        lightColorScheme.primary,
+                      ),
                     ),
                   )
                 : Text(
@@ -478,8 +548,7 @@ class _SubmitButtonState extends State<SubmitButton> {
 
     if (widget.item.minimumVolumeRequired &&
         widget.item.minimumVolumeKg != null) {
-      final entered =
-          double.tryParse(widget.volumeController?.text ?? '') ?? 0;
+      final entered = double.tryParse(widget.volumeController?.text ?? '') ?? 0;
       final minInUnit = widget.item.minimumVolumeUnit == 'cavans'
           ? widget.item.minimumVolumeKg! / 50
           : widget.item.minimumVolumeKg!;
@@ -590,16 +659,16 @@ class _SubmitButtonState extends State<SubmitButton> {
               : widget.item.riceOnlyPricePerKg ?? 2.0;
         }
         if (_isAutoComputed && widget.hectaresEntered != null) {
-          final days = (widget.hectaresEntered! / _hectaresPerDay)
-              .ceil()
-              .clamp(1, 9999);
+          final days = (widget.hectaresEntered! / _hectaresPerDay).ceil().clamp(
+            1,
+            9999,
+          );
           return widget.item.price * days;
         }
         // ADD THIS BLOCK before the final return:
         if (_isAutoComputed && widget.hectaresEntered == null) {
-          final days = widget.returnDate
-              .difference(widget.startDate)
-              .inDays + 1;
+          final days =
+              widget.returnDate.difference(widget.startDate).inDays + 1;
           return widget.item.price * days.clamp(1, 9999);
         }
         return widget.item.price;
@@ -619,8 +688,7 @@ class _SubmitButtonState extends State<SubmitButton> {
         status: RentRequestStatus.pending,
         renterId: currentUserId,
         ownerId: widget.item.ownerId,
-        volumeSubmitted:
-            double.tryParse(widget.volumeController?.text ?? ''),
+        volumeSubmitted: double.tryParse(widget.volumeController?.text ?? ''),
         keepDarak: widget.keepDarak,
         estimatedMillingFee: widget.estimatedMillingFee,
         agreedPrice: agreedPrice,
@@ -631,20 +699,21 @@ class _SubmitButtonState extends State<SubmitButton> {
         farmLongitude: widget.farmLongitude,
         hectaresEntered: widget.hectaresEntered,
         phoneNumber: widget.phoneNumber,
-
+        cropType: widget.cropType,
+        farmingPhase: widget.farmingPhase,
+        intendedUse: widget.intendedUse,
       );
 
       final newRequestId = await widget.requestService.saveRequest(request);
 
-
       // ── Notify the equipment owner ──────────────────────────────────────
-      final renterName = FirebaseAuth.instance.currentUser?.displayName
-          ?? widget.name;
+      final renterName =
+          FirebaseAuth.instance.currentUser?.displayName ?? widget.name;
       await _sendOwnerNotification(
-        ownerId    : widget.item.ownerId,
-        requestId  : newRequestId,
-        itemName   : widget.item.name,
-        renterName : renterName,
+        ownerId: widget.item.ownerId,
+        requestId: newRequestId,
+        itemName: widget.item.name,
+        renterName: renterName,
       );
 
       print('🔄 Request created, validating equipment availability...');
@@ -654,8 +723,9 @@ class _SubmitButtonState extends State<SubmitButton> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Request sent!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Request sent!')));
 
       Navigator.pushReplacement(
         context,
@@ -695,62 +765,79 @@ class _SubmitButtonState extends State<SubmitButton> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
- 
-  Widget _manualDaysSummary(double basePrice) {
-  final manualDays =
-      widget.returnDate.difference(widget.startDate).inDays + 1;
-  return Column(
-    children: [
-      const SizedBox(height: 6),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text('Duration',
-              style: TextStyle(fontSize: 15, color: Colors.black54)),
-          Text('$manualDays day${manualDays == 1 ? '' : 's'}',
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
-        ],
-      ),
-      const SizedBox(height: 8),
-      const Divider(height: 1),
-      const SizedBox(height: 8),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text('Estimated Total',
-              style: TextStyle(fontSize: 15, color: Colors.black54)),
-          Text('₱${(basePrice * manualDays).toStringAsFixed(2)}',
-              style: const TextStyle(
-                  fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87)),
-        ],
-      ),
-      Align(
-        alignment: Alignment.centerRight,
-        child: Text('₱${basePrice.toStringAsFixed(2)}/day × $manualDays days',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-      ),
-    ],
-  );
-}
 
-Future<void> _sendOwnerNotification({
-  required String ownerId,
-  required String requestId,
-  required String itemName,
-  required String renterName,
-}) async {
-  await FirebaseFirestore.instance
-      .collection('notifications')
-      .doc(ownerId)
-      .collection('items')
-      .add({
-    'title': '🌾 Bagong Kahilingang Mag-Rental',
-    'body': 'Humiling si $renterName na mag-rent ng "$itemName". I-tap para suriin.',
-    'type': 'new_request',
-    'read': false,
-    'requestId': requestId,
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-}
+  Widget _manualDaysSummary(double basePrice) {
+    final manualDays =
+        widget.returnDate.difference(widget.startDate).inDays + 1;
+    return Column(
+      children: [
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Duration',
+              style: TextStyle(fontSize: 15, color: Colors.black54),
+            ),
+            Text(
+              '$manualDays day${manualDays == 1 ? '' : 's'}',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Divider(height: 1),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Estimated Total',
+              style: TextStyle(fontSize: 15, color: Colors.black54),
+            ),
+            Text(
+              '₱${(basePrice * manualDays).toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '₱${basePrice.toStringAsFixed(2)}/day × $manualDays days',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _sendOwnerNotification({
+    required String ownerId,
+    required String requestId,
+    required String itemName,
+    required String renterName,
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(ownerId)
+        .collection('items')
+        .add({
+          'title': '🌾 Bagong Kahilingang Mag-Rental',
+          'body':
+              'Humiling si $renterName na mag-rent ng "$itemName". I-tap para suriin.',
+          'type': 'new_request',
+          'read': false,
+          'requestId': requestId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+  }
 }
