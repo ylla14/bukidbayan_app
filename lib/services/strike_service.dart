@@ -196,6 +196,118 @@ class StrikeService {
     }
   }
 
+  // ── Admin actions ──────────────────────────────────────────────────────────
+
+  /// Admin issues a formal warning. Increments [warningCount], sets
+  /// [isDelinquent] to true, and stores [reason] as [lastDelinquencyReason].
+  Future<void> issueAdminWarning({
+    required String targetUid,
+    required String reason,
+    String? adminUid,
+  }) async {
+    final userRef   = _db.collection('users').doc(targetUid);
+    final reportRef = _db.collection('reports').doc();
+
+    await _db.runTransaction((tx) async {
+      final snap    = await tx.get(userRef);
+      final current = (snap.data()?['warningCount'] as int?) ?? 0;
+
+      tx.update(userRef, {
+        'warningCount'          : current + 1,
+        'isDelinquent'          : true,
+        'lastDelinquencyReason' : reason,
+      });
+
+      tx.set(reportRef, {
+        'type'      : 'admin_warning',
+        'renterId'  : targetUid,
+        'ownerId'   : adminUid ?? '',
+        'reason'    : 'admin_warning',
+        'details'   : reason,
+        'evidenceUrls': <String>[],
+        'createdAt' : FieldValue.serverTimestamp(),
+      });
+    });
+
+    try {
+      await _db
+          .collection('notifications')
+          .doc(targetUid)
+          .collection('items')
+          .add({
+        'type'      : 'strike',
+        'title'     : 'Natanggap ang Babala mula sa Admin',
+        'body'      : 'Nakatanggap ka ng opisyal na babala: "$reason". '
+            'Pakisuyong sumunod sa mga alituntunin ng platform.',
+        'createdAt' : FieldValue.serverTimestamp(),
+        'read'      : false,
+      });
+    } catch (e) {
+      debugPrint('Admin warning notification failed (non-fatal): $e');
+    }
+  }
+
+  /// Admin suspends a user for [days] days with a stated [reason].
+  Future<void> issueAdminSuspension({
+    required String targetUid,
+    required int days,
+    required String reason,
+    String? adminUid,
+  }) async {
+    final userRef      = _db.collection('users').doc(targetUid);
+    final reportRef    = _db.collection('reports').doc();
+    final blockedUntil = DateTime.now().add(Duration(days: days));
+
+    await _db.runTransaction((tx) async {
+      tx.update(userRef, {
+        'blockedUntil'          : Timestamp.fromDate(blockedUntil),
+        'isDelinquent'          : true,
+        'lastDelinquencyReason' : reason,
+      });
+
+      tx.set(reportRef, {
+        'type'        : 'admin_suspension',
+        'renterId'    : targetUid,
+        'ownerId'     : adminUid ?? '',
+        'reason'      : 'admin_suspension',
+        'details'     : reason,
+        'evidenceUrls': <String>[],
+        'createdAt'   : FieldValue.serverTimestamp(),
+      });
+    });
+
+    try {
+      final d           = blockedUntil;
+      final unblockDate = '${d.day}/${d.month}/${d.year}';
+      await _db
+          .collection('notifications')
+          .doc(targetUid)
+          .collection('items')
+          .add({
+        'type'      : 'strike',
+        'title'     : 'Nasuspinde ang Iyong Account',
+        'body'      : 'Ang iyong account ay sinuspinde ng admin sa loob ng '
+            '$days na araw dahil sa: "$reason". '
+            'Hindi ka makakapaghiram ng kagamitan hanggang $unblockDate.',
+        'createdAt' : FieldValue.serverTimestamp(),
+        'read'      : false,
+      });
+    } catch (e) {
+      debugPrint('Admin suspension notification failed (non-fatal): $e');
+    }
+  }
+
+  /// Admin clears all delinquency state for a user.
+  Future<void> clearDelinquency({required String targetUid}) async {
+    await _db.collection('users').doc(targetUid).update({
+      'isDelinquent'          : false,
+      'warningCount'          : 0,
+      'strikeCount'           : 0,
+      'lastDelinquencyReason' : FieldValue.delete(),
+      'blockedUntil'          : FieldValue.delete(),
+    });
+  }
+
   // ── Block checks ───────────────────────────────────────────────────────────
 
   Future<bool> isRenterBlocked(String userId) async {
