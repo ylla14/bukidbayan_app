@@ -79,6 +79,7 @@ void main() {
       () {
         final service = RentalAnalyticsService(
           firestore: FakeFirebaseFirestore(),
+          now: () => DateTime(2026, 1, 31),
         );
 
         final tractor = _equipment(
@@ -261,12 +262,21 @@ void main() {
           ),
           isTrue,
         );
+        expect(
+          report.forecastSnapshot.equipmentTrends.any(
+            (item) =>
+                item.equipmentId == 'eq-1' &&
+                item.trend == OwnerRentalDemandTrend.steady,
+          ),
+          isTrue,
+        );
       },
     );
 
     test('applies equipment, operator, payment, and search filters', () {
       final service = RentalAnalyticsService(
         firestore: FakeFirebaseFirestore(),
+        now: () => DateTime(2026, 2, 10),
       );
 
       final tractor = _equipment(
@@ -354,6 +364,153 @@ void main() {
       expect(report.scopedEquipment.length, 1);
       expect(report.scopedEquipment.single.id, 'eq-1');
       expect(report.forecastSnapshot.requestsConsidered, 0);
+    });
+
+    test('builds demand trends per owner tool from recent windows', () {
+      final service = RentalAnalyticsService(
+        firestore: FakeFirebaseFirestore(),
+        now: () => DateTime(2026, 6, 23),
+      );
+
+      final tractor = _equipment(
+        id: 'eq-1',
+        ownerId: 'owner-1',
+        name: 'Four-wheel Tractor',
+        category: 'Mechanized Tools',
+        operatorIncluded: true,
+        status: EquipmentStatus.available,
+        hoursUsedSinceLastMaintenance: 120,
+      );
+      final mill = _equipment(
+        id: 'eq-2',
+        ownerId: 'owner-1',
+        name: 'Rice Mill',
+        category: 'Post-harvest',
+        operatorIncluded: false,
+        status: EquipmentStatus.available,
+        hoursUsedSinceLastMaintenance: 80,
+      );
+
+      final source = OwnerRentalReportSource(
+        ownerId: 'owner-1',
+        rows: const [],
+        ownedEquipment: [tractor, mill],
+        forecastRequests: [
+          _request(
+            requestId: 'recent-1',
+            itemId: 'eq-1',
+            itemName: tractor.name,
+            renterId: 'farmer-a',
+            renterName: 'Ana Farmer',
+            ownerId: 'owner-1',
+            start: DateTime(2026, 6, 10),
+            end: DateTime(2026, 6, 11),
+            agreedPrice: 3000,
+          ),
+          _request(
+            requestId: 'historical-june',
+            itemId: 'eq-1',
+            itemName: tractor.name,
+            renterId: 'farmer-z',
+            renterName: 'Zed Farmer',
+            ownerId: 'owner-1',
+            start: DateTime(2025, 6, 9),
+            end: DateTime(2025, 6, 10),
+            agreedPrice: 2600,
+          ),
+          _request(
+            requestId: 'recent-2',
+            itemId: 'eq-1',
+            itemName: tractor.name,
+            renterId: 'farmer-b',
+            renterName: 'Ben Grower',
+            ownerId: 'owner-1',
+            start: DateTime(2026, 6, 18),
+            end: DateTime(2026, 6, 19),
+            agreedPrice: 2800,
+          ),
+          _request(
+            requestId: 'previous-1',
+            itemId: 'eq-1',
+            itemName: tractor.name,
+            renterId: 'farmer-c',
+            renterName: 'Cara Farmer',
+            ownerId: 'owner-1',
+            start: DateTime(2026, 5, 8),
+            end: DateTime(2026, 5, 9),
+            agreedPrice: 2500,
+          ),
+          _request(
+            requestId: 'previous-2',
+            itemId: 'eq-2',
+            itemName: mill.name,
+            renterId: 'farmer-d',
+            renterName: 'Dino Miller',
+            ownerId: 'owner-1',
+            start: DateTime(2026, 5, 12),
+            end: DateTime(2026, 5, 13),
+            estimatedMillingFee: 1600,
+            agreedRentalUnit: 'Per KG',
+          ),
+          _request(
+            requestId: 'previous-3',
+            itemId: 'eq-2',
+            itemName: mill.name,
+            renterId: 'farmer-e',
+            renterName: 'Ella Miller',
+            ownerId: 'owner-1',
+            start: DateTime(2026, 5, 20),
+            end: DateTime(2026, 5, 21),
+            estimatedMillingFee: 1700,
+            agreedRentalUnit: 'Per KG',
+          ),
+          _request(
+            requestId: 'recent-mill',
+            itemId: 'eq-2',
+            itemName: mill.name,
+            renterId: 'farmer-f',
+            renterName: 'Faye Miller',
+            ownerId: 'owner-1',
+            start: DateTime(2026, 6, 5),
+            end: DateTime(2026, 6, 6),
+            estimatedMillingFee: 1750,
+            agreedRentalUnit: 'Per KG',
+          ),
+        ],
+        equipmentById: {tractor.id!: tractor, mill.id!: mill},
+      );
+
+      final report = service.buildOwnerRentalReport(source: source);
+
+      expect(report.forecastSnapshot.equipmentTrends.length, 2);
+      expect(report.forecastSnapshot.risingTrendCount, 1);
+      expect(report.forecastSnapshot.softeningTrendCount, 1);
+      expect(
+        report.forecastSnapshot.equipmentTrends.any(
+          (item) =>
+              item.equipmentId == 'eq-1' &&
+              item.trend == OwnerRentalDemandTrend.rising &&
+              item.recentRequestCount == 2 &&
+              item.previousRequestCount == 1 &&
+              item.sameMonthHistoricalCount == 3 &&
+              item.peakMonthLabel == 'June' &&
+              item.peakMonthRequestCount == 3 &&
+              item.isCurrentMonthPeak &&
+              item.isCurrentMonthAboveAverage &&
+              item.note.contains('June'),
+        ),
+        isTrue,
+      );
+      expect(
+        report.forecastSnapshot.equipmentTrends.any(
+          (item) =>
+              item.equipmentId == 'eq-2' &&
+              item.trend == OwnerRentalDemandTrend.softening &&
+              item.recentRequestCount == 1 &&
+              item.previousRequestCount == 2,
+        ),
+        isTrue,
+      );
     });
   });
 

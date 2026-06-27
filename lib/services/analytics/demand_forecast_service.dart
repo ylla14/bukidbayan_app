@@ -120,6 +120,7 @@ class DemandForecastService {
         .where((request) => !_excludedStatuses.contains(request.status))
         .toList(growable: false);
     final accumulators = <String, _ForecastAccumulator>{};
+    final forecastMonthLabel = _monthLabel(generatedAt.month);
 
     for (final crop in weekCrops) {
       final cropLabel = _normalizeCropLabel(crop, season) ?? crop.trim();
@@ -154,6 +155,8 @@ class DemandForecastService {
           _hasText(request.farmingPhase) ||
           _hasText(request.intendedUse);
       final inForecastWeek = _isWithinRange(request.start, weekStart, weekEnd);
+      final historicalSameMonth =
+          signalDate.month == weekStart.month && signalDate.isBefore(weekStart);
       final upcomingSoon =
           request.start.isAfter(weekEnd) &&
           !request.start.isAfter(weekEnd.add(const Duration(days: 14)));
@@ -181,6 +184,8 @@ class DemandForecastService {
         weight: requestWeight * 0.6,
         requestId: request.requestId,
         recentRequest: recencyWeight >= 0.75,
+        historicalMonthRequest: historicalSameMonth,
+        historicalMonthLabel: forecastMonthLabel,
         cropLabel: cropSignal,
         inForecastWeek: inForecastWeek,
       );
@@ -190,6 +195,8 @@ class DemandForecastService {
         weight: requestWeight * 0.85,
         requestId: request.requestId,
         recentRequest: recencyWeight >= 0.75,
+        historicalMonthRequest: historicalSameMonth,
+        historicalMonthLabel: forecastMonthLabel,
         phaseLabel: phaseSignal,
         inForecastWeek: inForecastWeek,
       );
@@ -199,6 +206,8 @@ class DemandForecastService {
         weight: requestWeight,
         requestId: request.requestId,
         recentRequest: recencyWeight >= 0.75,
+        historicalMonthRequest: historicalSameMonth,
+        historicalMonthLabel: forecastMonthLabel,
         useLabel: useSignal,
         inForecastWeek: inForecastWeek,
       );
@@ -214,6 +223,8 @@ class DemandForecastService {
           weight: requestWeight * (hadStructuredSignal ? 0.35 : 0.7),
           requestId: request.requestId,
           recentRequest: recencyWeight >= 0.75,
+          historicalMonthRequest: historicalSameMonth,
+          historicalMonthLabel: forecastMonthLabel,
           itemLabel: itemSignal,
           inForecastWeek: inForecastWeek,
         );
@@ -226,6 +237,8 @@ class DemandForecastService {
           weight: requestWeight * (hadStructuredSignal ? 2.5 : 1.8),
           requestId: request.requestId,
           recentRequest: recencyWeight >= 0.75,
+          historicalMonthRequest: historicalSameMonth,
+          historicalMonthLabel: forecastMonthLabel,
           itemLabel: itemSignal,
           inForecastWeek: inForecastWeek,
         );
@@ -245,6 +258,8 @@ class DemandForecastService {
           weight: 1.2,
           requestId: request.requestId,
           recentRequest: true,
+          historicalMonthRequest: historicalSameMonth,
+          historicalMonthLabel: forecastMonthLabel,
           inForecastWeek: true,
         );
       } else if (bonusCategories.isNotEmpty && upcomingSoon) {
@@ -254,6 +269,8 @@ class DemandForecastService {
           weight: 0.45,
           requestId: request.requestId,
           recentRequest: recencyWeight >= 0.75,
+          historicalMonthRequest: historicalSameMonth,
+          historicalMonthLabel: forecastMonthLabel,
         );
       }
 
@@ -264,6 +281,20 @@ class DemandForecastService {
           weight: 0.2,
           requestId: request.requestId,
           recentRequest: recencyWeight >= 0.75,
+          historicalMonthRequest: historicalSameMonth,
+          historicalMonthLabel: forecastMonthLabel,
+        );
+      }
+
+      if (bonusCategories.isNotEmpty && historicalSameMonth) {
+        _applySignal(
+          accumulators: accumulators,
+          categories: bonusCategories,
+          weight: 0.35,
+          requestId: request.requestId,
+          recentRequest: recencyWeight >= 0.75,
+          historicalMonthRequest: true,
+          historicalMonthLabel: forecastMonthLabel,
         );
       }
     }
@@ -335,7 +366,9 @@ class DemandForecastService {
     required double weight,
     String? requestId,
     bool recentRequest = false,
+    bool historicalMonthRequest = false,
     bool inForecastWeek = false,
+    String? historicalMonthLabel,
     String? cropLabel,
     String? phaseLabel,
     String? useLabel,
@@ -357,6 +390,12 @@ class DemandForecastService {
         accumulator.requestIds.add(requestId);
         if (recentRequest) {
           accumulator.recentRequestIds.add(requestId);
+        }
+        if (historicalMonthRequest) {
+          accumulator.historicalMonthRequestIds.add(requestId);
+          if (_hasText(historicalMonthLabel)) {
+            accumulator.historicalMonthLabels.add(historicalMonthLabel!.trim());
+          }
         }
         if (inForecastWeek) {
           accumulator.forecastWeekRequestIds.add(requestId);
@@ -391,6 +430,15 @@ class DemandForecastService {
         '${accumulator.forecastWeekRequestIds.length == 1 ? '' : 's'} this week',
       );
     }
+    if (accumulator.historicalMonthRequestIds.isNotEmpty) {
+      final monthLabel = accumulator.historicalMonthLabels.isEmpty
+          ? 'this month'
+          : accumulator.historicalMonthLabels.first;
+      drivers.add(
+        '${accumulator.historicalMonthRequestIds.length} historical $monthLabel booking'
+        '${accumulator.historicalMonthRequestIds.length == 1 ? '' : 's'}',
+      );
+    }
     if (accumulator.cropSignals.isNotEmpty) {
       drivers.add('Crop signal: ${accumulator.cropSignals.take(2).join(', ')}');
     }
@@ -416,19 +464,21 @@ class DemandForecastService {
       matchedRequests: accumulator.requestIds.length,
       recentRequests: accumulator.recentRequestIds.length,
       drivers: drivers.take(3).toList(growable: false),
-      recommendation: _recommendationForLevel(level, accumulator.category),
+      recommendation: _recommendationForLevel(level, accumulator),
     );
   }
 
   DemandForecastLevel _resolveLevel(_ForecastAccumulator accumulator) {
     if (accumulator.score >= 5.0 ||
         accumulator.requestIds.length >= 4 ||
-        accumulator.forecastWeekRequestIds.length >= 2) {
+        accumulator.forecastWeekRequestIds.length >= 2 ||
+        accumulator.historicalMonthRequestIds.length >= 3) {
       return DemandForecastLevel.high;
     }
     if (accumulator.score >= 2.5 ||
         accumulator.requestIds.length >= 2 ||
-        accumulator.recentRequestIds.length >= 2) {
+        accumulator.recentRequestIds.length >= 2 ||
+        accumulator.historicalMonthRequestIds.length >= 2) {
       return DemandForecastLevel.medium;
     }
     return DemandForecastLevel.low;
@@ -468,8 +518,23 @@ class DemandForecastService {
 
   String _recommendationForLevel(
     DemandForecastLevel level,
-    String equipmentCategory,
+    _ForecastAccumulator accumulator,
   ) {
+    final equipmentCategory = accumulator.category;
+    final historicalMonthLabel = accumulator.historicalMonthLabels.isEmpty
+        ? 'this month'
+        : accumulator.historicalMonthLabels.first;
+    if (accumulator.historicalMonthRequestIds.length >= 2) {
+      switch (level) {
+        case DemandForecastLevel.high:
+          return '$equipmentCategory shows repeat demand in $historicalMonthLabel. Prepare this tool early.';
+        case DemandForecastLevel.medium:
+          return '$equipmentCategory has recurring $historicalMonthLabel demand. Keep availability and scheduling ready.';
+        case DemandForecastLevel.low:
+          return '$equipmentCategory has some recurring $historicalMonthLabel demand, even if the current weekly signal is still early.';
+      }
+    }
+
     switch (level) {
       case DemandForecastLevel.high:
         return 'Prepare or secure $equipmentCategory early for next week.';
@@ -634,6 +699,24 @@ class DemandForecastService {
   static DateTime _dayKey(DateTime value) =>
       DateTime(value.year, value.month, value.day);
 
+  String _monthLabel(int month) {
+    const labels = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return labels[(month - 1).clamp(0, 11)];
+  }
+
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
   String? _firstNonEmpty(List<String?> values) {
@@ -652,6 +735,8 @@ class _ForecastAccumulator {
   final Set<String> requestIds = <String>{};
   final Set<String> recentRequestIds = <String>{};
   final Set<String> forecastWeekRequestIds = <String>{};
+  final Set<String> historicalMonthRequestIds = <String>{};
+  final Set<String> historicalMonthLabels = <String>{};
   final Set<String> cropSignals = <String>{};
   final Set<String> phaseSignals = <String>{};
   final Set<String> useSignals = <String>{};

@@ -9,13 +9,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class RentalAnalyticsService {
   final FirebaseFirestore _firestore;
   final DemandForecastService _demandForecastService;
+  final DateTime Function() _now;
 
   RentalAnalyticsService({
     FirebaseFirestore? firestore,
     DemandForecastService? demandForecastService,
+    DateTime Function()? now,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _demandForecastService =
-           demandForecastService ?? DemandForecastService();
+           demandForecastService ?? DemandForecastService(),
+       _now = now ?? DateTime.now;
 
   Future<OwnerRentalReportSource> loadOwnerReportSource({
     required String ownerId,
@@ -514,6 +517,10 @@ class RentalAnalyticsService {
       scopedEquipment: scopedEquipment,
       insights: categoryInsights,
     );
+    final equipmentTrends = _buildForecastEquipmentTrends(
+      scopedEquipment: scopedEquipment,
+      requests: filteredRequests,
+    );
 
     return OwnerRentalForecastSnapshot(
       requestsConsidered: filteredRequests.length,
@@ -524,6 +531,7 @@ class RentalAnalyticsService {
       summary: demandSnapshot.summary,
       categoryInsights: categoryInsights,
       equipmentMatches: equipmentMatches,
+      equipmentTrends: equipmentTrends,
     );
   }
 
@@ -591,6 +599,211 @@ class RentalAnalyticsService {
     return insight.recommendation;
   }
 
+  List<OwnerRentalDemandTrendItem> _buildForecastEquipmentTrends({
+    required List<Equipment> scopedEquipment,
+    required List<RentRequest> requests,
+  }) {
+    final today = _dayKey(_now());
+    final currentMonth = today.month;
+    final recentWindowStart = today.subtract(const Duration(days: 29));
+    final previousWindowStart = today.subtract(const Duration(days: 59));
+    final previousWindowEndExclusive = recentWindowStart;
+    final grouped = <String, List<RentRequest>>{};
+
+    for (final request in requests) {
+      grouped.putIfAbsent(request.itemId, () => <RentRequest>[]).add(request);
+    }
+
+    final trends = <OwnerRentalDemandTrendItem>[];
+    for (final equipment in scopedEquipment) {
+      final equipmentId = equipment.id;
+      if (equipmentId == null) continue;
+      final equipmentRequests = grouped[equipmentId] ?? const [];
+      if (equipmentRequests.isEmpty) continue;
+
+      var recentCount = 0;
+      var previousCount = 0;
+      var sameMonthHistoricalCount = 0;
+      final sameMonthYears = <int>{};
+      final countsByCalendarMonth = <int, int>{};
+      final activeYearMonths = <int>{};
+      DateTime? latestRequestAt;
+
+      for (final request in equipmentRequests) {
+        final signalDate = _dayKey(request.createdAt ?? request.start);
+        if (latestRequestAt == null || signalDate.isAfter(latestRequestAt)) {
+          latestRequestAt = signalDate;
+        }
+        countsByCalendarMonth.update(
+          signalDate.month,
+          (value) => value + 1,
+          ifAbsent: () => 1,
+        );
+        activeYearMonths.add(signalDate.year * 100 + signalDate.month);
+        if (signalDate.month == currentMonth) {
+          sameMonthHistoricalCount += 1;
+          sameMonthYears.add(signalDate.year);
+        }
+        if (!_isBeforeDay(signalDate, recentWindowStart) &&
+            !_isAfterDay(signalDate, today)) {
+          recentCount += 1;
+          continue;
+        }
+        if (!_isBeforeDay(signalDate, previousWindowStart) &&
+            signalDate.isBefore(previousWindowEndExclusive)) {
+          previousCount += 1;
+        }
+      }
+
+      if (recentCount == 0 && previousCount == 0) continue;
+
+      final trend = _resolveDemandTrend(
+        recentCount: recentCount,
+        previousCount: previousCount,
+      );
+      final peakMonthEntry = countsByCalendarMonth.entries.toList()
+        ..sort((a, b) {
+          final countCompare = b.value.compareTo(a.value);
+          if (countCompare != 0) return countCompare;
+          return a.key.compareTo(b.key);
+        });
+      final peakMonth = peakMonthEntry.first.key;
+      final peakMonthRequestCount = peakMonthEntry.first.value;
+      final totalHistoricalRequests = equipmentRequests.length;
+      final activeHistoricalMonths = activeYearMonths.length;
+      final averageRequestsPerActiveMonth = activeHistoricalMonths == 0
+          ? 0.0
+          : totalHistoricalRequests / activeHistoricalMonths;
+
+      trends.add(
+        OwnerRentalDemandTrendItem(
+          equipmentId: equipmentId,
+          equipmentName: equipment.name,
+          categoryLabel: _equipmentCategoryLabel(equipment),
+          trend: trend,
+          recentRequestCount: recentCount,
+          previousRequestCount: previousCount,
+          totalHistoricalRequests: totalHistoricalRequests,
+          activeHistoricalMonths: activeHistoricalMonths,
+          averageRequestsPerActiveMonth: averageRequestsPerActiveMonth,
+          sameMonthHistoricalCount: sameMonthHistoricalCount,
+          sameMonthHistoricalYears: sameMonthYears.length,
+          sameMonthLabel: _monthLabel(currentMonth),
+          peakMonth: peakMonth,
+          peakMonthLabel: _monthLabel(peakMonth),
+          peakMonthRequestCount: peakMonthRequestCount,
+          latestRequestAt: latestRequestAt,
+          note: _buildTrendNote(
+            equipmentName: equipment.name,
+            trend: trend,
+            recentCount: recentCount,
+            previousCount: previousCount,
+            totalHistoricalRequests: totalHistoricalRequests,
+            activeHistoricalMonths: activeHistoricalMonths,
+            averageRequestsPerActiveMonth: averageRequestsPerActiveMonth,
+            sameMonthHistoricalCount: sameMonthHistoricalCount,
+            sameMonthHistoricalYears: sameMonthYears.length,
+            sameMonthLabel: _monthLabel(currentMonth),
+            peakMonthLabel: _monthLabel(peakMonth),
+            peakMonthRequestCount: peakMonthRequestCount,
+          ),
+        ),
+      );
+    }
+
+    trends.sort((a, b) {
+      final trendCompare = _forecastTrendRank(
+        b.trend,
+      ).compareTo(_forecastTrendRank(a.trend));
+      if (trendCompare != 0) return trendCompare;
+      final recentCompare = b.recentRequestCount.compareTo(
+        a.recentRequestCount,
+      );
+      if (recentCompare != 0) return recentCompare;
+      return a.equipmentName.toLowerCase().compareTo(
+        b.equipmentName.toLowerCase(),
+      );
+    });
+
+    return trends.take(5).toList(growable: false);
+  }
+
+  OwnerRentalDemandTrend _resolveDemandTrend({
+    required int recentCount,
+    required int previousCount,
+  }) {
+    if (previousCount == 0 && recentCount > 0) {
+      return OwnerRentalDemandTrend.emerging;
+    }
+    if (recentCount > previousCount) {
+      return OwnerRentalDemandTrend.rising;
+    }
+    if (recentCount < previousCount) {
+      return OwnerRentalDemandTrend.softening;
+    }
+    return OwnerRentalDemandTrend.steady;
+  }
+
+  String _buildTrendNote({
+    required String equipmentName,
+    required OwnerRentalDemandTrend trend,
+    required int recentCount,
+    required int previousCount,
+    required int totalHistoricalRequests,
+    required int activeHistoricalMonths,
+    required double averageRequestsPerActiveMonth,
+    required int sameMonthHistoricalCount,
+    required int sameMonthHistoricalYears,
+    required String sameMonthLabel,
+    required String peakMonthLabel,
+    required int peakMonthRequestCount,
+  }) {
+    final base = switch (trend) {
+      OwnerRentalDemandTrend.emerging =>
+        '$equipmentName is seeing new demand in the last 30 days.',
+      OwnerRentalDemandTrend.rising =>
+        '$equipmentName has more requests in the last 30 days than the prior 30 days.',
+      OwnerRentalDemandTrend.steady =>
+        '$equipmentName has held a steady request pattern across the last two 30-day windows.',
+      OwnerRentalDemandTrend.softening =>
+        '$equipmentName has fewer recent requests than the prior 30-day window.',
+    };
+
+    final notes = <String>[base];
+
+    if (sameMonthHistoricalCount >= 2) {
+      final yearsLabel = sameMonthHistoricalYears <= 1
+          ? 'the current records'
+          : '$sameMonthHistoricalYears different year${sameMonthHistoricalYears == 1 ? '' : 's'}';
+      notes.add(
+        '$equipmentName was also rented $sameMonthHistoricalCount time${sameMonthHistoricalCount == 1 ? '' : 's'} in $sameMonthLabel across $yearsLabel.',
+      );
+    }
+
+    if (peakMonthRequestCount >= 2) {
+      if (peakMonthLabel == sameMonthLabel) {
+        notes.add(
+          '$sameMonthLabel is historically a peak month for $equipmentName.',
+        );
+      } else {
+        notes.add(
+          '$equipmentName usually peaks in $peakMonthLabel with $peakMonthRequestCount recorded request${peakMonthRequestCount == 1 ? '' : 's'}.',
+        );
+      }
+    }
+
+    if (averageRequestsPerActiveMonth > 0 &&
+        sameMonthHistoricalCount >= averageRequestsPerActiveMonth * 1.25 &&
+        totalHistoricalRequests >= 3 &&
+        activeHistoricalMonths >= 2) {
+      notes.add(
+        '$sameMonthLabel is running above this tool\'s usual monthly average of ${averageRequestsPerActiveMonth.toStringAsFixed(1)} requests.',
+      );
+    }
+
+    return notes.join(' ');
+  }
+
   AnalyticsTimeWindow _resolveUtilizationWindow({
     required OwnerRentalReportSource source,
     required OwnerRentalReportFilter filter,
@@ -636,6 +849,15 @@ class RentalAnalyticsService {
     return left.isBefore(right) ? left : right;
   }
 
+  DateTime _dayKey(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  bool _isBeforeDay(DateTime value, DateTime reference) =>
+      value.isBefore(_dayKey(reference));
+
+  bool _isAfterDay(DateTime value, DateTime reference) =>
+      value.isAfter(_dayKey(reference));
+
   bool _isForecastExcludedStatus(RentRequestStatus status) =>
       status == RentRequestStatus.declined ||
       status == RentRequestStatus.canceled;
@@ -649,6 +871,24 @@ class RentalAnalyticsService {
   bool _hasNonEmptyString(String? value) =>
       value != null && value.trim().isNotEmpty;
 
+  String _monthLabel(int month) {
+    const labels = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return labels[(month - 1).clamp(0, 11)];
+  }
+
   int _forecastLevelRank(DemandForecastLevel level) {
     switch (level) {
       case DemandForecastLevel.high:
@@ -656,6 +896,19 @@ class RentalAnalyticsService {
       case DemandForecastLevel.medium:
         return 2;
       case DemandForecastLevel.low:
+        return 1;
+    }
+  }
+
+  int _forecastTrendRank(OwnerRentalDemandTrend trend) {
+    switch (trend) {
+      case OwnerRentalDemandTrend.emerging:
+        return 4;
+      case OwnerRentalDemandTrend.rising:
+        return 3;
+      case OwnerRentalDemandTrend.steady:
+        return 2;
+      case OwnerRentalDemandTrend.softening:
         return 1;
     }
   }

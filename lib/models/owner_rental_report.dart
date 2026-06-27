@@ -271,6 +271,59 @@ class OwnerRentalForecastEquipmentMatch {
   });
 }
 
+enum OwnerRentalDemandTrend { emerging, rising, steady, softening }
+
+class OwnerRentalDemandTrendItem {
+  final String equipmentId;
+  final String equipmentName;
+  final String categoryLabel;
+  final OwnerRentalDemandTrend trend;
+  final int recentRequestCount;
+  final int previousRequestCount;
+  final int totalHistoricalRequests;
+  final int activeHistoricalMonths;
+  final double averageRequestsPerActiveMonth;
+  final int sameMonthHistoricalCount;
+  final int sameMonthHistoricalYears;
+  final String sameMonthLabel;
+  final int peakMonth;
+  final String peakMonthLabel;
+  final int peakMonthRequestCount;
+  final DateTime? latestRequestAt;
+  final String note;
+
+  const OwnerRentalDemandTrendItem({
+    required this.equipmentId,
+    required this.equipmentName,
+    required this.categoryLabel,
+    required this.trend,
+    required this.recentRequestCount,
+    required this.previousRequestCount,
+    this.totalHistoricalRequests = 0,
+    this.activeHistoricalMonths = 0,
+    this.averageRequestsPerActiveMonth = 0,
+    this.sameMonthHistoricalCount = 0,
+    this.sameMonthHistoricalYears = 0,
+    this.sameMonthLabel = '',
+    this.peakMonth = 0,
+    this.peakMonthLabel = '',
+    this.peakMonthRequestCount = 0,
+    required this.latestRequestAt,
+    required this.note,
+  });
+
+  bool get hasHistoricalMonthSignal => sameMonthHistoricalCount >= 2;
+
+  bool get hasPeakMonthSignal => peakMonthRequestCount >= 2;
+
+  bool get isCurrentMonthPeak =>
+      sameMonthLabel == peakMonthLabel && hasPeakMonthSignal;
+
+  bool get isCurrentMonthAboveAverage =>
+      averageRequestsPerActiveMonth > 0 &&
+      sameMonthHistoricalCount >= averageRequestsPerActiveMonth * 1.25;
+}
+
 class OwnerRentalForecastSnapshot {
   final int requestsConsidered;
   final int requestsWithForecastInputs;
@@ -278,6 +331,7 @@ class OwnerRentalForecastSnapshot {
   final String summary;
   final List<DemandForecastInsight> categoryInsights;
   final List<OwnerRentalForecastEquipmentMatch> equipmentMatches;
+  final List<OwnerRentalDemandTrendItem> equipmentTrends;
 
   const OwnerRentalForecastSnapshot({
     required this.requestsConsidered,
@@ -286,6 +340,7 @@ class OwnerRentalForecastSnapshot {
     required this.summary,
     this.categoryInsights = const [],
     this.equipmentMatches = const [],
+    this.equipmentTrends = const [],
   });
 
   bool get hasInsights => categoryInsights.isNotEmpty;
@@ -293,6 +348,18 @@ class OwnerRentalForecastSnapshot {
   double get forecastInputCoverageRate => requestsConsidered == 0
       ? 0
       : requestsWithForecastInputs / requestsConsidered;
+
+  int get emergingTrendCount => equipmentTrends
+      .where((item) => item.trend == OwnerRentalDemandTrend.emerging)
+      .length;
+
+  int get risingTrendCount => equipmentTrends
+      .where((item) => item.trend == OwnerRentalDemandTrend.rising)
+      .length;
+
+  int get softeningTrendCount => equipmentTrends
+      .where((item) => item.trend == OwnerRentalDemandTrend.softening)
+      .length;
 }
 
 class OwnerRentalReport {

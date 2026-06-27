@@ -78,6 +78,52 @@ void main() {
       );
       expect(snapshot.summary, contains('Hand Tractor (Kuliglig)'));
     });
+
+    test('uses same-month history as an explicit forecast driver', () {
+      final service = DemandForecastService(now: () => DateTime(2026, 6, 20));
+
+      final snapshot = service.buildWeeklyForecast(
+        requests: [
+          _request(
+            requestId: 'req-1',
+            itemName: 'Hand Tractor',
+            start: DateTime(2026, 6, 8),
+            createdAt: DateTime(2026, 6, 7),
+            cropType: 'Rice',
+            farmingPhase: 'Land preparation',
+            intendedUse: 'Plowing',
+          ),
+          _request(
+            requestId: 'req-2',
+            itemName: 'Hand Tractor',
+            start: DateTime(2025, 6, 9),
+            createdAt: DateTime(2025, 6, 8),
+            cropType: 'Rice',
+            farmingPhase: 'Land preparation',
+            intendedUse: 'Plowing',
+          ),
+          _request(
+            requestId: 'req-3',
+            itemName: 'Hand Tractor',
+            start: DateTime(2024, 6, 12),
+            createdAt: DateTime(2024, 6, 10),
+            cropType: 'Rice',
+            farmingPhase: 'Land preparation',
+            intendedUse: 'Plowing',
+          ),
+        ],
+        seasonalCrops: const ['Rice (Wet Season)'],
+      );
+
+      expect(snapshot.insights, isNotEmpty);
+      expect(
+        snapshot.insights.first.drivers.any(
+          (driver) => driver.contains('historical June'),
+        ),
+        isTrue,
+      );
+      expect(snapshot.insights.first.recommendation, contains('June'));
+    });
   });
 }
 

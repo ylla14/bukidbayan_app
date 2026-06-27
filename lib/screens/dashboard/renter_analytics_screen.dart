@@ -127,36 +127,49 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   }
 
   Widget _buildSummaryCards(RenterAnalyticsReport report) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        _KpiCard(
-          label: 'Total Requests',
-          value: report.summary.totalRequests.toString(),
-          subtitle: 'All requests you have submitted',
-          icon: Icons.list_alt_rounded,
-        ),
-        _KpiCard(
-          label: 'Completed Rentals',
-          value: report.summary.completedRentals.toString(),
-          subtitle: 'Finished bookings with completed status',
-          icon: Icons.check_circle_outline_rounded,
-        ),
-        _KpiCard(
-          label: 'Active Rentals',
-          value: report.summary.activeRentals.toString(),
-          subtitle:
-              '${report.summary.pendingRequests} pending request${report.summary.pendingRequests == 1 ? '' : 's'}',
-          icon: Icons.agriculture_rounded,
-        ),
-        _KpiCard(
-          label: 'Total Spending',
-          value: _formatCurrency(report.summary.totalSpending),
-          subtitle: 'Completed rentals only',
-          icon: Icons.payments_outlined,
-        ),
-      ],
+    final cards = [
+      _KpiCard(
+        label: 'Total Requests',
+        value: report.summary.totalRequests.toString(),
+        subtitle: 'All requests you have submitted',
+        icon: Icons.list_alt_rounded,
+      ),
+      _KpiCard(
+        label: 'Completed Rentals',
+        value: report.summary.completedRentals.toString(),
+        subtitle: 'Finished bookings with completed status',
+        icon: Icons.check_circle_outline_rounded,
+      ),
+      _KpiCard(
+        label: 'Active Rentals',
+        value: report.summary.activeRentals.toString(),
+        subtitle:
+            '${report.summary.pendingRequests} pending request${report.summary.pendingRequests == 1 ? '' : 's'}',
+        icon: Icons.agriculture_rounded,
+      ),
+      _KpiCard(
+        label: 'Total Spending',
+        value: _formatCurrency(report.summary.totalSpending),
+        subtitle: 'Completed rentals only',
+        icon: Icons.payments_outlined,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final cardWidth = availableWidth >= 720
+            ? (availableWidth - 12) / 2
+            : availableWidth;
+
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final card in cards) SizedBox(width: cardWidth, child: card),
+          ],
+        );
+      },
     );
   }
 
@@ -237,31 +250,33 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
       subtitle: 'Ranked by how often you booked each category',
       child: report.categoryUsage.isEmpty
           ? const Text('No category usage data is available yet.')
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 20,
-                headingRowColor: WidgetStateProperty.resolveWith(
-                  (_) => lightColorScheme.primary.withValues(alpha: 0.08),
+          : _RenterTableScrollFrame(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 20,
+                  headingRowColor: WidgetStateProperty.resolveWith(
+                    (_) => lightColorScheme.primary.withValues(alpha: 0.08),
+                  ),
+                  columns: const [
+                    DataColumn(label: Text('Category')),
+                    DataColumn(label: Text('Requests'), numeric: true),
+                    DataColumn(label: Text('Completed'), numeric: true),
+                    DataColumn(label: Text('Spending')),
+                  ],
+                  rows: report.categoryUsage
+                      .map(
+                        (item) => DataRow(
+                          cells: [
+                            DataCell(Text(item.categoryLabel)),
+                            DataCell(Text(item.requestCount.toString())),
+                            DataCell(Text(item.completedRentals.toString())),
+                            DataCell(Text(_formatCurrency(item.totalSpending))),
+                          ],
+                        ),
+                      )
+                      .toList(),
                 ),
-                columns: const [
-                  DataColumn(label: Text('Category')),
-                  DataColumn(label: Text('Requests'), numeric: true),
-                  DataColumn(label: Text('Completed'), numeric: true),
-                  DataColumn(label: Text('Spending')),
-                ],
-                rows: report.categoryUsage
-                    .map(
-                      (item) => DataRow(
-                        cells: [
-                          DataCell(Text(item.categoryLabel)),
-                          DataCell(Text(item.requestCount.toString())),
-                          DataCell(Text(item.completedRentals.toString())),
-                          DataCell(Text(_formatCurrency(item.totalSpending))),
-                        ],
-                      ),
-                    )
-                    .toList(),
               ),
             ),
     );
@@ -308,6 +323,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
         await _future!;
       },
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
           Text(
@@ -326,6 +342,8 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
+          const SizedBox(height: 6),
+          const _RenterPullToRefreshHint(),
           const SizedBox(height: 16),
           _buildPrivacyCard(),
           const SizedBox(height: 16),
@@ -463,7 +481,6 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 240,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -475,31 +492,105 @@ class _KpiCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: lightColorScheme.primary),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: lightColorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: lightColorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: TextStyle(color: Colors.grey.shade700, height: 1.25),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: lightColorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.grey.shade700, height: 1.25),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RenterPullToRefreshHint extends StatelessWidget {
+  const _RenterPullToRefreshHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(Icons.swipe_down_rounded, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 6),
+        Text(
+          'Pull down to refresh your analytics.',
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RenterTableScrollFrame extends StatelessWidget {
+  final Widget child;
+
+  const _RenterTableScrollFrame({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.swipe_left_alt_rounded,
+              size: 16,
+              color: Colors.grey.shade600,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Swipe horizontally to see more columns.',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
     );
   }
 }
