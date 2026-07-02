@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:bukidbayan_app/firebase_local_emulator.dart';
 import 'package:bukidbayan_app/screens/crowdfunding_payment_return_screen.dart';
 import 'package:bukidbayan_app/screens/auth/signin_screen.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
+import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -14,12 +16,18 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await configureFirebaseLocalEmulators();
 
-  FirestoreService firestoreService = FirestoreService();
-  await firestoreService.validateAllEquipmentAvailability();
-  await firestoreService.seedEquipmentDropdownOptions();
-  await AuthService().seedCoopAccount();
-  unawaited(WeatherService().runWeatherCheck());
+  if (kUseFirebaseEmulators) {
+    await CrowdfundingService().seedIfEmpty();
+  } else {
+    FirestoreService firestoreService = FirestoreService();
+    await firestoreService.validateAllEquipmentAvailability();
+    await firestoreService.seedEquipmentDropdownOptions();
+    await AuthService().seedCoopAccount();
+    unawaited(WeatherService().runWeatherCheck());
+  }
+
   runApp(const MyApp());
 }
 

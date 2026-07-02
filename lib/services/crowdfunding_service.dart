@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:bukidbayan_app/firebase_local_emulator.dart';
 import 'package:bukidbayan_app/models/campaign_report.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
@@ -385,7 +386,11 @@ class CrowdfundingService {
         .get();
     return snap.docs
         .map(_fromDoc)
-        .where((campaign) => !_seedCampaignIds.contains(campaign.id))
+        .where(
+          (campaign) =>
+              includeSeedCrowdfundingCampaigns ||
+              !_seedCampaignIds.contains(campaign.id),
+        )
         .toList();
   }
 
