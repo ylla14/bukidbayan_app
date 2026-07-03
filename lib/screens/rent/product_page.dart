@@ -10,6 +10,7 @@ import 'package:bukidbayan_app/screens/rent/all_reviews_screen.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/request_rent_form.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/services/language_notifier.dart';
 import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/widgets/custom_divider.dart';
@@ -220,16 +221,38 @@ class _PhaseChipState extends State<_PhaseChip> {
 // ---------------------------------------------------------------------------
 // ProductPage
 // ---------------------------------------------------------------------------
-class ProductPage extends StatelessWidget {
+class ProductPage extends StatefulWidget {
   final Equipment item;
 
   const ProductPage({super.key, required this.item});
 
   @override
+  State<ProductPage> createState() => _ProductPageState();
+}
+
+class _ProductPageState extends State<ProductPage> {
+  final PageController _pageController = PageController();
+  final ValueNotifier<int> _currentIndex = ValueNotifier<int>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    LanguageNotifier.showTl.addListener(_onLanguageChange);
+  }
+
+  void _onLanguageChange() => setState(() {});
+
+  @override
+  void dispose() {
+    LanguageNotifier.showTl.removeListener(_onLanguageChange);
+    _pageController.dispose();
+    _currentIndex.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    final PageController _pageController = PageController();
-    final ValueNotifier<int> currentIndex = ValueNotifier<int>(0);
 
     String _getRateSuffix(String rentRate) {
       switch (rentRate.toLowerCase()) {
@@ -329,7 +352,7 @@ class ProductPage extends StatelessWidget {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('equipment')
-          .doc(item.id)
+          .doc(widget.item.id)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -368,12 +391,12 @@ class ProductPage extends StatelessWidget {
               children: [
                 // ── Image carousel ──────────────────────────────────────────
                 ValueListenableBuilder<int>(
-                  valueListenable: currentIndex,
+                  valueListenable: _currentIndex,
                   builder: (_, index, __) => ProductImageCarousel(
                     images: liveItem.imageUrls,
                     controller: _pageController,
                     currentIndex: index,
-                    onPageChanged: (i) => currentIndex.value = i,
+                    onPageChanged: (i) => _currentIndex.value = i,
                     onImageTap: (url) => _openFullImage(context, url),
                   ),
                 ),
@@ -387,7 +410,9 @@ class ProductPage extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          liveItem.name,
+                          LanguageNotifier.showTl.value
+                              ? (liveItem.nameTl ?? liveItem.name)
+                              : (liveItem.nameEn ?? liveItem.name),
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
@@ -462,7 +487,9 @@ class ProductPage extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    liveItem.description,
+                    LanguageNotifier.showTl.value
+                        ? (liveItem.descriptionTl ?? liveItem.description)
+                        : (liveItem.descriptionEn ?? liveItem.description),
                     style: const TextStyle(
                       fontSize: 14,
                       color: Colors.black54,

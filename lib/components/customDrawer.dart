@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/services/language_notifier.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -17,19 +18,42 @@ class CustomDrawer extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(30),
         children: [
-          // ListTile(
-          //   leading: const Icon(Icons.settings),
-          //   title: const Text('Settings'),
-          // ),
+          // ── Language toggle ────────────────────────────────────────────────
+          ValueListenableBuilder<bool>(
+            valueListenable: LanguageNotifier.showTl,
+            builder: (_, showTl, _) {
+              return ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text('Language'),
+                subtitle: Text(
+                  showTl ? 'Tagalog' : 'English',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: lightColorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                trailing: ToggleButtons(
+                  isSelected: [!showTl, showTl],
+                  onPressed: (i) => LanguageNotifier.showTl.value = i == 1,
+                  borderRadius: BorderRadius.circular(6),
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 32,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  children: const [Text('EN'), Text('TL')],
+                ),
+              );
+            },
+          ),
 
-          // ListTile(
-          //   leading: const Icon(Icons.circle),
-          //   title: const Text('Menu 2'),
-          // ),
+          const Divider(),
 
-          // const Divider(),
-
-          //LOGOUT BUTTON
+          // ── Logout ─────────────────────────────────────────────────────────
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text(
@@ -38,8 +62,6 @@ class CustomDrawer extends StatelessWidget {
             ),
             onTap: () async {
               await onLogout();
-
-              // Navigate back to login screen
               Navigator.of(context).pushNamedAndRemoveUntil(
                 '/login',
                 (route) => false,

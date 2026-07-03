@@ -25,6 +25,7 @@ import 'package:bukidbayan_app/theme/theme.dart';
 
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/services/language_notifier.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RentScreen extends StatefulWidget {
@@ -94,7 +95,10 @@ class _RentScreenState extends State<RentScreen> {
     _loadBlockedCategories();
     _loadCropPreferences();
     _checkAccountBlock();
+    LanguageNotifier.showTl.addListener(_onLanguageChange);
   }
+
+  void _onLanguageChange() => setState(() {});
 
   StreamSubscription<QuerySnapshot>? _requestListener;
 
@@ -222,6 +226,7 @@ class _RentScreenState extends State<RentScreen> {
 
   @override
   void dispose() {
+    LanguageNotifier.showTl.removeListener(_onLanguageChange);
     _requestListener?.cancel();
     super.dispose();
   }
@@ -904,7 +909,9 @@ class _RentScreenState extends State<RentScreen> {
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
                           return RentItemCard(
-                            title: equipment.name,
+                            title: LanguageNotifier.showTl.value
+    ? (equipment.nameTl ?? equipment.name)
+    : (equipment.nameEn ?? equipment.name),
                             imageUrl: equipment.imageUrls.isNotEmpty
                                 ? equipment.imageUrls[0]
                                 : 'assets/images/rent1.jpg',
@@ -982,7 +989,9 @@ class _RentScreenState extends State<RentScreen> {
                                         );
                                       },
                                       child: RentItemCard(
-                                        title: equipment.name,
+                                        title: LanguageNotifier.showTl.value
+    ? (equipment.nameTl ?? equipment.name)
+    : (equipment.nameEn ?? equipment.name),
                                         imageUrl: equipment.imageUrls.isNotEmpty
                                             ? equipment.imageUrls[0]
                                             : 'assets/images/rent1.jpg',
@@ -1029,7 +1038,9 @@ class _RentScreenState extends State<RentScreen> {
                                         );
                                       },
                                       child: RentItemCard(
-                                        title: equipment.name,
+                                        title: LanguageNotifier.showTl.value
+    ? (equipment.nameTl ?? equipment.name)
+    : (equipment.nameEn ?? equipment.name),
                                         imageUrl: equipment.imageUrls.isNotEmpty
                                             ? equipment.imageUrls[0]
                                             : 'assets/images/rent1.jpg',
@@ -1063,7 +1074,9 @@ class _RentScreenState extends State<RentScreen> {
                                     );
                                   },
                                   child: RentItemCard(
-                                    title: equipment.name,
+                                    title: LanguageNotifier.showTl.value
+    ? (equipment.nameTl ?? equipment.name)
+    : (equipment.nameEn ?? equipment.name),
                                     imageUrl: equipment.imageUrls.isNotEmpty
                                         ? equipment.imageUrls[0]
                                         : 'assets/images/rent1.jpg',
