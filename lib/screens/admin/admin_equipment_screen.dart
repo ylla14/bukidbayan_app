@@ -103,25 +103,18 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
 
   Color _statusColor(String? status) {
     switch (status) {
-      case 'available':
-        return Colors.green;
-      case 'underMaintenance':
-        return Colors.orange;
-      default:
-        return Colors.red;
+      case 'available':        return Colors.green;
+      case 'under_maintenance': return Colors.orange;
+      default:                 return Colors.red;
     }
   }
 
   String _statusLabel(String? status) {
     switch (status) {
-      case 'available':
-        return 'Available';
-      case 'underMaintenance':
-        return 'Maintenance';
-      case 'unavailable':
-        return 'Unavailable';
-      default:
-        return status ?? '—';
+      case 'available':         return 'Available';
+      case 'unavailable':       return 'Unavailable';
+      case 'under_maintenance': return 'Under Maintenance';
+      default:                  return status ?? '—';
     }
   }
 
@@ -199,12 +192,12 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
               child: Table(
                 // Proportional columns — fills phone width automatically
                 columnWidths: const {
-                  0: FlexColumnWidth(2.5), // Name (widest)
-                  1: FlexColumnWidth(1.8), // Category
-                  2: FlexColumnWidth(1.8), // Owner
-                  3: FlexColumnWidth(1.5), // Condition
-                  4: FlexColumnWidth(1.8), // Status
-                  5: FlexColumnWidth(1.8), // Renter
+                  0: FixedColumnWidth(44),  // Photo thumbnail
+                  1: FlexColumnWidth(3.0),  // Name + Category
+                  2: FlexColumnWidth(1.8),  // Owner
+                  3: FlexColumnWidth(1.5),  // Condition
+                  4: FlexColumnWidth(1.8),  // Status
+                  5: FlexColumnWidth(1.8),  // Renter
                 },
                 border: TableBorder(
                   horizontalInside: BorderSide(
@@ -219,8 +212,9 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                       color: lightColorScheme.primary.withValues(alpha: 0.07),
                     ),
                     children: [
-                      headerCell('Name'),
-                      headerCell('Category'),
+                      // Photo column — empty header
+                      const SizedBox.shrink(),
+                      headerCell('Name / Category'),
                       headerCell('Owner'),
                       // Tappable sort header
                       GestureDetector(
@@ -266,27 +260,73 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                     Widget cell(Widget child) =>
                         Padding(padding: cellPadding, child: child);
 
+                    final imageUrls =
+                        (eq['imageUrls'] as List<dynamic>? ?? [])
+                            .cast<String>();
+                    final firstUrl =
+                        imageUrls.isNotEmpty ? imageUrls.first : null;
+                    final category =
+                        (eq['category'] as String? ?? '').trim();
+
                     return TableRow(
                       children: [
-                        cell(
-                          Text(
-                            eq['name'] as String? ?? '—',
-                            style: cellStyle.copyWith(
-                              fontWeight: FontWeight.w500,
+                        // Photo thumbnail
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 5),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: firstUrl != null
+                                ? Image.network(
+                                    firstUrl,
+                                    width: 36,
+                                    height: 36,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      width: 36,
+                                      height: 36,
+                                      color: Colors.grey.shade100,
+                                      child: Icon(
+                                        Icons.image_not_supported_outlined,
+                                        size: 14,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 36,
+                                    height: 36,
+                                    color: Colors.grey.shade100,
+                                    child: Icon(
+                                      Icons.image_not_supported_outlined,
+                                      size: 14,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        // Name + Category combined
+                        cell(Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              eq['name'] as String? ?? '—',
+                              style: cellStyle.copyWith(
+                                  fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
                             ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                          ),
-                        ),
-                        cell(
-                          Text(
-                            (eq['category'] as String? ?? '').isEmpty
-                                ? 'Uncategorized'
-                                : eq['category'] as String,
-                            style: cellStyle,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+                            Text(
+                              category.isEmpty ? 'Uncategorized' : category,
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.grey.shade500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        )),
                         cell(
                           Text(
                             eq['ownerName'] as String? ?? '—',
@@ -357,7 +397,7 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('Equipment by Type', _categoryCounts.length),
+        _sectionHeader('Equipment Demographics', _categoryCounts.length),
         const SizedBox(height: 12),
         if (sorted.isEmpty)
           Center(
@@ -525,9 +565,9 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildEquipmentTable(),
-                    const SizedBox(height: 28),
                     _buildCategoryTable(),
+                    const SizedBox(height: 28),
+                    _buildEquipmentTable(),
                     const SizedBox(height: 24),
                   ],
                 ),

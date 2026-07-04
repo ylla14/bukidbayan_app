@@ -77,10 +77,12 @@ class MaintenanceService {
 
   // ── Reset ──────────────────────────────────────────────────────────────────
 
-  /// Resets the usage counter to 0 when the owner marks maintenance as done.
+  /// Resets the usage counter to 0 when the owner marks maintenance as done
+  /// and increments the lifetime maintenance event counter.
   Future<void> resetMaintenanceHours(String equipmentId) async {
     await _db.collection('equipment').doc(equipmentId).update({
       'hoursUsedSinceLastMaintenance': 0,
+      'maintenanceCount': FieldValue.increment(1),
     });
   }
 

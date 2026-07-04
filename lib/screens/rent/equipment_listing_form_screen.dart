@@ -12,6 +12,7 @@ import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
+import 'package:bukidbayan_app/services/translation_service.dart';
 import 'package:bukidbayan_app/screens/location_picker_screen.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -2082,11 +2083,21 @@ String? _currentDraftId;
             : null,
       );
 
+      // Translate name & description in parallel before persisting.
+      final translations = await TranslationService.translateEquipmentFields(
+        name: equipment.name,
+        description: equipment.description,
+      );
+      final equipmentMap = {
+        ...equipment.toMap(),
+        ...translations,
+      };
+
       if (widget.existingEquipment != null) {
         await firestoreService.updateEquipment(
-            widget.existingEquipment!.id!, equipment.toMap());
+            widget.existingEquipment!.id!, equipmentMap);
       } else {
-        await firestoreService.addEquipment(equipment.toMap());
+        await firestoreService.addEquipment(equipmentMap);
       }
 
       if (mounted) Navigator.pop(context);

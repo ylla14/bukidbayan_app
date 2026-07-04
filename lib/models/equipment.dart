@@ -54,6 +54,12 @@ class Equipment {
   final String name;
   final String description;
 
+  // Translation fields (populated at save time via TranslationService)
+  final String? nameEn;
+  final String? nameTl;
+  final String? descriptionEn;
+  final String? descriptionTl;
+
   final String? category;
   final String? brand;
   final String? yearModel;
@@ -124,6 +130,7 @@ final double? cropSharePercent; // max 15.0
 final bool maintenanceRequired;
 final double maintenanceIntervalHrs;        // default 240
 final double hoursUsedSinceLastMaintenance; // accumulated rental hours
+final int maintenanceCount;                 // lifetime completed maintenance events
 
 /// Hours remaining before maintenance is due.
 double get remainingMaintenanceHrs =>
@@ -141,6 +148,10 @@ bool get isForMaintenance =>
     this.id,
     required this.name,
     required this.description,
+    this.nameEn,
+    this.nameTl,
+    this.descriptionEn,
+    this.descriptionTl,
     this.category,
     this.brand,
     this.yearModel,
@@ -189,12 +200,17 @@ this.cropSharePercent,
 this.maintenanceRequired = false,
 this.maintenanceIntervalHrs = 240,
 this.hoursUsedSinceLastMaintenance = 0,
+this.maintenanceCount = 0,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'description': description,
+      'nameEn': nameEn,
+      'nameTl': nameTl,
+      'descriptionEn': descriptionEn,
+      'descriptionTl': descriptionTl,
       'category': category,
       'brand': brand,
       'yearModel': yearModel,
@@ -242,6 +258,7 @@ this.hoursUsedSinceLastMaintenance = 0,
 'maintenanceRequired': maintenanceRequired,
 'maintenanceIntervalHrs': maintenanceIntervalHrs,
 'hoursUsedSinceLastMaintenance': hoursUsedSinceLastMaintenance,
+'maintenanceCount': maintenanceCount,
     };
   }
 
@@ -265,6 +282,10 @@ this.hoursUsedSinceLastMaintenance = 0,
       id: doc.id,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
+      nameEn: data['nameEn'] as String?,
+      nameTl: data['nameTl'] as String?,
+      descriptionEn: data['descriptionEn'] as String?,
+      descriptionTl: data['descriptionTl'] as String?,
       category: data['category'],
       power: (data['power'] as String?)?.isNotEmpty == true ? data['power'] : null,
       brand: (data['brand'] as String?)?.isNotEmpty == true ? data['brand'] : null,
@@ -323,6 +344,7 @@ maintenanceRequired: data['maintenanceRequired'] is bool
 maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
 hoursUsedSinceLastMaintenance:
     (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
+maintenanceCount: (data['maintenanceCount'] as int?) ?? 0,
     );
   }
 
@@ -342,6 +364,10 @@ factory Equipment.fromMap(Map<String, dynamic> data, [String? docId]) {
       id: docId,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
+      nameEn: data['nameEn'] as String?,
+      nameTl: data['nameTl'] as String?,
+      descriptionEn: data['descriptionEn'] as String?,
+      descriptionTl: data['descriptionTl'] as String?,
       category: (data['category'] as String?)?.isNotEmpty == true ? data['category'] : null,
       brand: (data['brand'] as String?)?.isNotEmpty == true ? data['brand'] : null,
       yearModel: (data['yearModel'] as String?)?.isNotEmpty == true ? data['yearModel'] : null,
@@ -400,12 +426,17 @@ maintenanceRequired: data['maintenanceRequired'] is bool
 maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
 hoursUsedSinceLastMaintenance:
     (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
+maintenanceCount: (data['maintenanceCount'] as int?) ?? 0,
     );
   }
 
   Equipment copyWith({
     String? name,
     String? description,
+    String? nameEn,
+    String? nameTl,
+    String? descriptionEn,
+    String? descriptionTl,
     String? category,
     String? brand,
     String? yearModel,
@@ -453,11 +484,16 @@ double? cropSharePercent,
 bool? maintenanceRequired,
 double? maintenanceIntervalHrs,
 double? hoursUsedSinceLastMaintenance,
+int? maintenanceCount,
   }) {
     return Equipment(
       id: id,
       name: name ?? this.name,
       description: description ?? this.description,
+      nameEn: nameEn ?? this.nameEn,
+      nameTl: nameTl ?? this.nameTl,
+      descriptionEn: descriptionEn ?? this.descriptionEn,
+      descriptionTl: descriptionTl ?? this.descriptionTl,
       category: category ?? this.category,
       brand: brand ?? this.brand,
       yearModel: yearModel ?? this.yearModel,
@@ -506,6 +542,7 @@ double? hoursUsedSinceLastMaintenance,
       maintenanceIntervalHrs: maintenanceIntervalHrs ?? this.maintenanceIntervalHrs,
       hoursUsedSinceLastMaintenance:
           hoursUsedSinceLastMaintenance ?? this.hoursUsedSinceLastMaintenance,
+      maintenanceCount: maintenanceCount ?? this.maintenanceCount,
     );
   }
 }
