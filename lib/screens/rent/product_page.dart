@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bukidbayan_app/components/rent/product_page/community_impact_bar.dart';
 import 'package:bukidbayan_app/components/rent/product_page/product_availability.dart';
 import 'package:bukidbayan_app/components/rent/product_page/product_image_carousel.dart';
 import 'package:bukidbayan_app/components/rent/product_page/product_specs.dart';
@@ -748,6 +749,8 @@ class _ProductPageState extends State<ProductPage> {
                   _buildOwnerKpiSection(liveItem),
                   CustomDivider(),
                 ],
+                CommunityImpactBar(equipmentId: liveItem.id!),
+                const SizedBox(height: 4),
 
                 // ── Location ─────────────────────────────────────────────────
                 if (liveItem.location != null && liveItem.location!.isNotEmpty) ...[
@@ -1092,6 +1095,16 @@ class _ProductBottomBarState extends State<_ProductBottomBar> {
     super.initState();
     _listenToActiveRequests();
     _checkAccountBlock();
+
+    FirebaseFirestore.instance
+    .collection('rentRequests')
+    .where('itemId', isEqualTo: 'BPMtDXKyapumBZzA3GsW')
+    .get()
+    .then((snap) {
+      for (final doc in snap.docs) {
+        print('requestId: ${doc.id} | status: ${doc.data()['status']}');
+      }
+    });
   }
 
   Future<void> _checkAccountBlock() async {

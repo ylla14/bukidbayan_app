@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/screens/dashboard/earnings_report_page.dart';
+import 'package:bukidbayan_app/screens/dashboard/kpi_dashboard_page.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
@@ -65,6 +66,18 @@ class ActionButtonsSection extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const EarningsReportPage()),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+        
+        _ActionCard(
+          icon: Icons.insights_rounded,
+          label: "Performance Dashboard",
+          color: lightColorScheme.primary,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const KpiDashboardPage()),
           ),
         ),
       ],

@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
 import 'package:bukidbayan_app/blocs/request_state.dart';
@@ -661,6 +662,55 @@ Future<bool> _hasLeftReview(String requestId) async {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // ── REQUEST ID ──
+GestureDetector(
+  onTap: () {
+    Clipboard.setData(ClipboardData(text: request.requestId));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Request ID copied to clipboard'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  },
+  child: Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade100,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.grey.shade300),
+    ),
+    child: Row(
+      children: [
+        Icon(Icons.tag_rounded, size: 14, color: Colors.grey.shade500),
+        const SizedBox(width: 8),
+        Text(
+          'Request ID',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey.shade500,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            request.requestId,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontFamily: 'monospace',
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Icon(Icons.copy_rounded, size: 13, color: Colors.grey.shade400),
+      ],
+    ),
+  ),
+),
                           // ── RENTAL PERIOD ──
                           _sectionCard(
                             title: 'RENTAL PERIOD',
