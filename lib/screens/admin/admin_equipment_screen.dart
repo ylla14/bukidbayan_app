@@ -103,25 +103,18 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
 
   Color _statusColor(String? status) {
     switch (status) {
-      case 'available':
-        return Colors.green;
-      case 'underMaintenance':
-        return Colors.orange;
-      default:
-        return Colors.red;
+      case 'available':        return Colors.green;
+      case 'under_maintenance': return Colors.orange;
+      default:                 return Colors.red;
     }
   }
 
   String _statusLabel(String? status) {
     switch (status) {
-      case 'available':
-        return 'Available';
-      case 'underMaintenance':
-        return 'Maintenance';
-      case 'unavailable':
-        return 'Unavailable';
-      default:
-        return status ?? '—';
+      case 'available':         return 'Available';
+      case 'unavailable':       return 'Unavailable';
+      case 'under_maintenance': return 'Under Maintenance';
+      default:                  return status ?? '—';
     }
   }
 
@@ -289,7 +282,7 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                                     width: 36,
                                     height: 36,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, _) => Container(
+                                    errorBuilder: (_, _, _) => Container(
                                       width: 36,
                                       height: 36,
                                       color: Colors.grey.shade100,
@@ -404,7 +397,7 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('Equipment by Type', _categoryCounts.length),
+        _sectionHeader('Equipment Demographics', _categoryCounts.length),
         const SizedBox(height: 12),
         if (sorted.isEmpty)
           Center(
@@ -572,9 +565,9 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildEquipmentTable(),
-                    const SizedBox(height: 28),
                     _buildCategoryTable(),
+                    const SizedBox(height: 28),
+                    _buildEquipmentTable(),
                     const SizedBox(height: 24),
                   ],
                 ),

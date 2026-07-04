@@ -234,10 +234,247 @@ class _ProductPageState extends State<ProductPage> {
   final PageController _pageController = PageController();
   final ValueNotifier<int> _currentIndex = ValueNotifier<int>(0);
 
+  // Cached so language-toggle rebuilds don't re-fire the Firestore query.
+  late final Future<int> _rentedDaysFuture;
+
   @override
   void initState() {
     super.initState();
+    _rentedDaysFuture = _loadRentedDaysThisMonth(widget.item.id ?? '');
     LanguageNotifier.showTl.addListener(_onLanguageChange);
+  }
+
+  /// Sums the calendar days of completed rentals that overlap the current month.
+  Future<int> _loadRentedDaysThisMonth(String equipmentId) async {
+    if (equipmentId.isEmpty) return 0;
+    final now = DateTime.now();
+    final firstOfMonth = DateTime(now.year, now.month);
+    final lastOfMonth  = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    final snap = await FirebaseFirestore.instance
+        .collection('rentRequests')
+        .where('itemId', isEqualTo: equipmentId)
+        .where('status', isEqualTo: 'completed')
+        .get();
+
+    int days = 0;
+    for (final doc in snap.docs) {
+      final data  = doc.data();
+      final start = (data['start'] as Timestamp?)?.toDate();
+      final end   = (data['end']   as Timestamp?)?.toDate();
+      if (start == null || end == null) continue;
+      if (end.isBefore(firstOfMonth) || start.isAfter(lastOfMonth)) continue;
+
+      final clampedStart = start.isBefore(firstOfMonth) ? firstOfMonth : start;
+      final clampedEnd   = end.isAfter(lastOfMonth)     ? lastOfMonth  : end;
+      final overlap      = clampedEnd.difference(clampedStart).inDays + 1;
+      if (overlap > 0) days += overlap;
+    }
+    return days;
+  }
+
+  /// Owner-only KPI panel shown inside the product scroll body.
+  Widget _buildOwnerKpiSection(Equipment liveItem) {
+    final now         = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final monthName   = const [
+      'January','February','March','April','May','June',
+      'July','August','September','October','November','December'
+    ][now.month - 1];
+
+    Color utilizationColor(double pct) {
+      if (pct >= 60) return Colors.green.shade600;
+      if (pct >= 30) return Colors.orange.shade700;
+      return Colors.red.shade600;
+    }
+
+    // ── Breakdown Frequency data (from already-loaded equipment doc) ──────────
+    final totalDamage      = liveItem.damageReportCount;
+    final totalMaintenance = liveItem.maintenanceCount;
+    final avgDamagePerCycle = totalMaintenance > 0
+        ? totalDamage / totalMaintenance
+        : null;
+
+    Color breakdownColor() {
+      if (avgDamagePerCycle == null) return Colors.grey.shade500;
+      if (avgDamagePerCycle <= 1)    return Colors.green.shade600;
+      if (avgDamagePerCycle <= 3)    return Colors.orange.shade700;
+      return Colors.red.shade600;
+    }
+
+    Widget kpiCard({
+      required String title,
+      required IconData icon,
+      required Widget content,
+    }) =>
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 16, color: lightColorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: lightColorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              content,
+            ],
+          ),
+        );
+
+    Widget statRow(String label, String value, {Color? valueColor}) => Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: valueColor ?? Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Performance Metrics',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+
+          // ── KPI 1: Utilization & Uptime Rate ─────────────────────────────
+          FutureBuilder<int>(
+            future: _rentedDaysFuture,
+            builder: (context, snap) {
+              if (!snap.hasData) {
+                return kpiCard(
+                  title  : 'Utilization & Uptime Rate',
+                  icon   : Icons.speed,
+                  content: const SizedBox(
+                    height: 24,
+                    child : LinearProgressIndicator(),
+                  ),
+                );
+              }
+              final rentedDays = snap.data!.clamp(0, daysInMonth);
+              final pct        = rentedDays / daysInMonth * 100;
+              final color      = utilizationColor(pct);
+
+              return kpiCard(
+                title  : 'Utilization & Uptime Rate',
+                icon   : Icons.speed,
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${pct.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            monthName,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value          : pct / 100,
+                        minHeight      : 6,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor     : AlwaysStoppedAnimation<Color>(color),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$rentedDays of $daysInMonth days rented this month',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── KPI 2: Breakdown Frequency (Reliability Score) ───────────────
+          kpiCard(
+            title  : 'Breakdown Frequency',
+            icon   : Icons.build_circle_outlined,
+            content: Column(
+              children: [
+                statRow('Total damage reports', '$totalDamage'),
+                statRow('Total maintenance events', '$totalMaintenance'),
+                const Divider(height: 16),
+                statRow(
+                  'Avg. damage reports per cycle',
+                  avgDamagePerCycle != null
+                      ? avgDamagePerCycle.toStringAsFixed(1)
+                      : '—',
+                  valueColor: breakdownColor(),
+                ),
+                if (avgDamagePerCycle == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'No maintenance events recorded yet.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade400,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onLanguageChange() => setState(() {});
@@ -504,6 +741,13 @@ class _ProductPageState extends State<ProductPage> {
                 CustomDivider(),
                 ProductAvailability(item: liveItem),
                 CustomDivider(),
+
+                // ── Owner KPIs (owner-only) ───────────────────────────────────
+                if (currentUserId != null &&
+                    currentUserId == liveItem.ownerId) ...[
+                  _buildOwnerKpiSection(liveItem),
+                  CustomDivider(),
+                ],
 
                 // ── Location ─────────────────────────────────────────────────
                 if (liveItem.location != null && liveItem.location!.isNotEmpty) ...[

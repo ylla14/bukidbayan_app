@@ -130,6 +130,7 @@ final double? cropSharePercent; // max 15.0
 final bool maintenanceRequired;
 final double maintenanceIntervalHrs;        // default 240
 final double hoursUsedSinceLastMaintenance; // accumulated rental hours
+final int maintenanceCount;                 // lifetime completed maintenance events
 
 /// Hours remaining before maintenance is due.
 double get remainingMaintenanceHrs =>
@@ -199,6 +200,7 @@ this.cropSharePercent,
 this.maintenanceRequired = false,
 this.maintenanceIntervalHrs = 240,
 this.hoursUsedSinceLastMaintenance = 0,
+this.maintenanceCount = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -256,6 +258,7 @@ this.hoursUsedSinceLastMaintenance = 0,
 'maintenanceRequired': maintenanceRequired,
 'maintenanceIntervalHrs': maintenanceIntervalHrs,
 'hoursUsedSinceLastMaintenance': hoursUsedSinceLastMaintenance,
+'maintenanceCount': maintenanceCount,
     };
   }
 
@@ -341,6 +344,7 @@ maintenanceRequired: data['maintenanceRequired'] is bool
 maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
 hoursUsedSinceLastMaintenance:
     (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
+maintenanceCount: (data['maintenanceCount'] as int?) ?? 0,
     );
   }
 
@@ -422,6 +426,7 @@ maintenanceRequired: data['maintenanceRequired'] is bool
 maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 240,
 hoursUsedSinceLastMaintenance:
     (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
+maintenanceCount: (data['maintenanceCount'] as int?) ?? 0,
     );
   }
 
@@ -479,6 +484,7 @@ double? cropSharePercent,
 bool? maintenanceRequired,
 double? maintenanceIntervalHrs,
 double? hoursUsedSinceLastMaintenance,
+int? maintenanceCount,
   }) {
     return Equipment(
       id: id,
@@ -536,6 +542,7 @@ double? hoursUsedSinceLastMaintenance,
       maintenanceIntervalHrs: maintenanceIntervalHrs ?? this.maintenanceIntervalHrs,
       hoursUsedSinceLastMaintenance:
           hoursUsedSinceLastMaintenance ?? this.hoursUsedSinceLastMaintenance,
+      maintenanceCount: maintenanceCount ?? this.maintenanceCount,
     );
   }
 }
