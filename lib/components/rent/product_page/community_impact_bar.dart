@@ -1,15 +1,29 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-/// Displays "Farmers Served", "Hectares Covered", and "Total Rentals"
-/// for a single equipment listing.
+/// Displays "Farmers Served", "Hectares Covered" (conditionally), and
+/// "Total Rentals" for a single equipment listing.
 ///
 /// Counts ALL terminal-status requests so nothing is missed:
 ///   returned → finished → completed (plus the older "returned" mid-flow step)
 class CommunityImpactBar extends StatelessWidget {
   final String equipmentId;
 
-  const CommunityImpactBar({super.key, required this.equipmentId});
+  /// The equipment's rental unit / rate basis (e.g. "Per Hectare", "Per Day").
+  /// Used to decide whether "Hectares Covered" is relevant to show at all.
+  final String? rentalUnit;
+
+  /// Fallback/override in case you already know this equipment requires a
+  /// land size (hectares) — e.g. from `Equipment.landSizeRequirement`.
+  /// If either this OR `rentalUnit` indicates hectares, the stat is shown.
+  final bool landSizeRequirement;
+
+  const CommunityImpactBar({
+    super.key,
+    required this.equipmentId,
+    this.rentalUnit,
+    this.landSizeRequirement = false,
+  });
 
   // Every status that means "this rental actually happened / wrapped up".
   // Firestore whereIn supports up to 30 values so this is fine.
@@ -18,8 +32,15 @@ class CommunityImpactBar extends StatelessWidget {
     'completed',  // renter confirmed completion
   ];
 
+  /// True when this equipment is actually priced or measured by hectares —
+  /// e.g. rentalUnit is "Per Hectare", or it explicitly requires a land size.
+  bool get _isHectareBased {
+    final unit = rentalUnit?.toLowerCase() ?? '';
+    return unit.contains('hectare') || unit.contains('ha') || landSizeRequirement;
+  }
+
   Future<Map<String, dynamic>> _fetchImpact() async {
-    // Firestore whereIn max is 10 per clause, but we only have 3 so one query suffices.
+    // Firestore whereIn max is 10 per clause, but we only have 2 so one query suffices.
     final snap = await FirebaseFirestore.instance
         .collection('rentRequests')
         .where('itemId', isEqualTo: equipmentId)
@@ -59,6 +80,8 @@ class CommunityImpactBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showHectares = _isHectareBased;
+
     return FutureBuilder<Map<String, dynamic>>(
       future: _fetchImpact(),
       builder: (context, snap) {
@@ -66,6 +89,35 @@ class CommunityImpactBar extends StatelessWidget {
         final hectares      = (snap.data?['hectaresCovered'] as double?) ?? 0.0;
         final totalRentals  = (snap.data?['totalRentals'] as int?) ?? 0;
         final loading       = !snap.hasData;
+
+        final stats = <Widget>[
+          _ImpactStat(
+            icon: Icons.receipt_long_rounded,
+            label: 'Total Rentals',
+            value: loading ? '—' : '$totalRentals',
+            color: const Color(0xFF9370DB),
+          ),
+          Tooltip(
+            message: 'Unique farmers who rented this equipment',
+            child: _ImpactStat(
+              icon: Icons.people_alt_rounded,
+              label: 'Farmers Served',
+              value: loading ? '—' : '$farmersServed',
+              color: const Color(0xFF1E90FF),
+            ),
+          ),
+          if (showHectares)
+            _ImpactStat(
+              icon: Icons.landscape_rounded,
+              label: 'Ha. Covered',
+              value: loading
+                  ? '—'
+                  : hectares > 0
+                      ? hectares.toStringAsFixed(1)
+                      : '0',
+              color: const Color(0xFF6B8E23),
+            ),
+        ];
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -111,40 +163,10 @@ class CommunityImpactBar extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Total rentals — raw transaction count
-                  _ImpactStat(
-                    icon: Icons.receipt_long_rounded,
-                    label: 'Total Rentals',
-                    value: loading ? '—' : '$totalRentals',
-                    color: const Color(0xFF9370DB),
-                  ),
-
-                  _divider(),
-
-                  // Farmers served — unique renters (1 farmer renting 3× = 1)
-                  Tooltip(
-                    message: 'Unique farmers who rented this equipment',
-                    child: _ImpactStat(
-                      icon: Icons.people_alt_rounded,
-                      label: 'Farmers Served',
-                      value: loading ? '—' : '$farmersServed',
-                      color: const Color(0xFF1E90FF),
-                    ),
-                  ),
-
-                  _divider(),
-
-                  // Hectares covered — sum of hectaresEntered across all done rentals
-                  _ImpactStat(
-                    icon: Icons.landscape_rounded,
-                    label: 'Ha. Covered',
-                    value: loading
-                        ? '—'
-                        : hectares > 0
-                            ? hectares.toStringAsFixed(1)
-                            : '0',
-                    color: const Color(0xFF6B8E23),
-                  ),
+                  for (var i = 0; i < stats.length; i++) ...[
+                    if (i != 0) _divider(),
+                    stats[i],
+                  ],
                 ],
               ),
             ],
