@@ -1,18 +1,34 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:bukidbayan_app/firebase_local_emulator.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/models/payment_attempt.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:http/http.dart' as http;
 
 class CrowdfundingPaymentService {
-  CrowdfundingPaymentService({FirebaseFirestore? firestore, FirebaseAuth? auth})
-    : _firestoreOverride = firestore,
-      _authOverride = auth;
+  CrowdfundingPaymentService({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+    http.Client? httpClient,
+    Uri Function(String functionName)? functionUriBuilder,
+  }) : _firestoreOverride = firestore,
+       _authOverride = auth,
+       _httpOverride = httpClient,
+       _functionUriBuilder = functionUriBuilder;
+
+  static const String _functionsRegion = 'asia-southeast1';
+  static const String _cancelAttemptFunctionName =
+      'cancelCrowdfundingPaymentAttempt';
 
   final FirebaseFirestore? _firestoreOverride;
   final FirebaseAuth? _authOverride;
+  final http.Client? _httpOverride;
+  final Uri Function(String functionName)? _functionUriBuilder;
 
   FirebaseFirestore get _db => _firestoreOverride ?? FirebaseFirestore.instance;
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
@@ -30,6 +46,30 @@ class CrowdfundingPaymentService {
   String? get _email => _auth.currentUser?.email;
   String? get _displayName => _auth.currentUser?.displayName;
 
+  Uri _functionsUri(String functionName) {
+    final uriOverride = _functionUriBuilder;
+    if (uriOverride != null) {
+      return uriOverride(functionName);
+    }
+
+    final projectId = Firebase.app().options.projectId;
+    if (projectId.trim().isEmpty) {
+      throw Exception('Firebase project is not configured.');
+    }
+
+    if (kUseFirebaseEmulators) {
+      return Uri.http(
+        '$firebaseEmulatorHost:$kFunctionsEmulatorPort',
+        '$projectId/$_functionsRegion/$functionName',
+      );
+    }
+
+    return Uri.https(
+      '$_functionsRegion-$projectId.cloudfunctions.net',
+      functionName,
+    );
+  }
+
   Campaign _campaignFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
       Campaign.fromJson({...doc.data()!, 'id': doc.id});
 
@@ -41,6 +81,20 @@ class CrowdfundingPaymentService {
     'id': doc.id,
     'campaignId': campaignId,
   });
+
+  List<PaymentAttempt> _sortedAttemptsByCreatedAt(
+    Iterable<PaymentAttempt> attempts,
+  ) {
+    final sorted = attempts.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return sorted;
+  }
+
+  PaymentAttempt? _latestRecoverableAttempt(Iterable<PaymentAttempt> attempts) {
+    final recoverable = attempts.where((attempt) => attempt.isActive);
+    final sorted = _sortedAttemptsByCreatedAt(recoverable);
+    return sorted.isEmpty ? null : sorted.first;
+  }
 
   bool _isOwnedByUser(Campaign campaign) {
     if (_uid != null && campaign.creatorUid == _uid) return true;
@@ -185,12 +239,67 @@ class CrowdfundingPaymentService {
     ).where('createdByUid', isEqualTo: uid).snapshots().map((snap) {
       if (snap.docs.isEmpty) return null;
 
-      final attempts =
-          snap.docs.map((doc) => _attemptFromDoc(doc, campaignId)).toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final attempts = _sortedAttemptsByCreatedAt(
+        snap.docs.map((doc) => _attemptFromDoc(doc, campaignId)),
+      );
 
       return attempts.first;
     });
+  }
+
+  Stream<PaymentAttempt?> watchRecoverableAttemptForCurrentUser({
+    required String campaignId,
+  }) {
+    final uid = _uid;
+    if (uid == null) {
+      return Stream.value(null);
+    }
+
+    return _attemptsRef(
+      campaignId,
+    ).where('createdByUid', isEqualTo: uid).snapshots().map((snap) {
+      if (snap.docs.isEmpty) return null;
+      return _latestRecoverableAttempt(
+        snap.docs.map((doc) => _attemptFromDoc(doc, campaignId)),
+      );
+    });
+  }
+
+  Future<PaymentAttempt?> getLatestAttemptForCurrentUser({
+    required String campaignId,
+  }) async {
+    final uid = _uid;
+    if (uid == null) {
+      return null;
+    }
+
+    final snap = await _attemptsRef(
+      campaignId,
+    ).where('createdByUid', isEqualTo: uid).get();
+    if (snap.docs.isEmpty) return null;
+
+    final attempts = _sortedAttemptsByCreatedAt(
+      snap.docs.map((doc) => _attemptFromDoc(doc, campaignId)),
+    );
+    return attempts.first;
+  }
+
+  Future<PaymentAttempt?> getRecoverableAttemptForCurrentUser({
+    required String campaignId,
+  }) async {
+    final uid = _uid;
+    if (uid == null) {
+      return null;
+    }
+
+    final snap = await _attemptsRef(
+      campaignId,
+    ).where('createdByUid', isEqualTo: uid).get();
+    if (snap.docs.isEmpty) return null;
+
+    return _latestRecoverableAttempt(
+      snap.docs.map((doc) => _attemptFromDoc(doc, campaignId)),
+    );
   }
 
   Future<PaymentAttempt> waitForCheckoutReady({
@@ -237,5 +346,72 @@ class CrowdfundingPaymentService {
       campaignId,
     ).where('backerUid', isEqualTo: backerUid).limit(1).get();
     return existingSnap.docs.isNotEmpty;
+  }
+
+  Future<bool> currentUserHasPaidPledge({required String campaignId}) async {
+    final uid = _uid;
+    if (uid == null) {
+      return false;
+    }
+
+    return hasExistingPaidPledge(campaignId: campaignId, backerUid: uid);
+  }
+
+  Future<String?> cancelCheckoutAttempt({
+    required String campaignId,
+    required String attemptId,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('You must be signed in to cancel this checkout.');
+    }
+
+    final idToken = await user.getIdToken();
+    if (idToken == null || idToken.trim().isEmpty) {
+      throw Exception('Unable to verify your session. Please sign in again.');
+    }
+
+    final uri = _functionsUri(_cancelAttemptFunctionName);
+    final response =
+        await (_httpOverride?.post(
+              uri,
+              headers: {
+                'Authorization': 'Bearer $idToken',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({
+                'attemptId': attemptId,
+                'campaignId': campaignId,
+              }),
+            ) ??
+            http.post(
+              uri,
+              headers: {
+                'Authorization': 'Bearer $idToken',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({
+                'attemptId': attemptId,
+                'campaignId': campaignId,
+              }),
+            ));
+
+    Map<String, dynamic>? payload;
+    if (response.body.trim().isNotEmpty) {
+      try {
+        payload = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {
+        payload = null;
+      }
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message =
+          payload?['error'] as String? ??
+          'Unable to cancel the checkout attempt right now.';
+      throw Exception(message);
+    }
+
+    return payload?['status'] as String?;
   }
 }

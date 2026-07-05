@@ -36,21 +36,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   final CrowdfundingService service = CrowdfundingService();
   final CrowdfundingPaymentService paymentService =
       CrowdfundingPaymentService();
-  late Future<Campaign?> _future;
 
   String _categoryLabel(String value) => _categoryLabels[value] ?? value;
 
-  @override
-  void initState() {
-    super.initState();
-    _future = service.getCampaignById(widget.campaignId);
-  }
-
   Future<void> _reload() async {
-    setState(() {
-      _future = service.getCampaignById(widget.campaignId);
-    });
-    await _future;
+    if (!mounted) return;
+    setState(() {});
   }
 
   bool _isCampaignEnded(Campaign campaign) {
@@ -143,9 +134,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   String _latestAttemptLabel(PaymentAttempt attempt) {
     switch (attempt.status) {
       case PaymentAttemptStatus.created:
-        return 'May naihandang support attempt na naghihintay pa ng checkout.';
+        return 'May support attempt ka nang inihahanda para sa campaign na ito.';
       case PaymentAttemptStatus.pendingCheckout:
-        return 'May huli kang checkout attempt para sa campaign na ito.';
+        return 'May checkout ka nang bukas para sa campaign na ito.';
       case PaymentAttemptStatus.processing:
         return 'Pinoproseso pa ang huli mong bayad para sa campaign na ito.';
       case PaymentAttemptStatus.paid:
@@ -161,6 +152,54 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       default:
         return 'May naitalang support attempt para sa campaign na ito.';
     }
+  }
+
+  bool _canResumeCheckout(PaymentAttempt attempt) {
+    return attempt.status == PaymentAttemptStatus.pendingCheckout &&
+        attempt.providerCheckoutUrl?.trim().isNotEmpty == true;
+  }
+
+  Future<bool> _resumeCheckoutAttempt(
+    PaymentAttempt attempt, {
+    bool showSuccessMessage = true,
+  }) async {
+    final checkoutUrl = attempt.providerCheckoutUrl?.trim();
+    if (checkoutUrl == null || checkoutUrl.isEmpty) {
+      if (!mounted) return false;
+      showErrorSnackbar(
+        context: context,
+        title: 'Walang checkout link',
+        message:
+            'May payment attempt ka pero wala nang available na checkout link. Tingnan ang payment status o hintayin munang maging terminal ang kasalukuyang attempt.',
+      );
+      return false;
+    }
+
+    final launched = await launchUrl(
+      Uri.parse(checkoutUrl),
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!mounted) return false;
+    if (!launched) {
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi mabuksan ang checkout',
+        message:
+            'May umiiral kang checkout pero hindi ito mabuksan sa device na ito.',
+      );
+      return false;
+    }
+
+    if (showSuccessMessage) {
+      showConfirmSnackbar(
+        context: context,
+        title: 'Ipinagpatuloy ang checkout',
+        message:
+            'May nauna ka nang checkout para sa campaign na ito, kaya iyon ang binuksan sa halip na gumawa ng bago.',
+      );
+    }
+    return true;
   }
 
   void _openPaymentStatus(PaymentAttempt attempt) {
@@ -180,7 +219,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
   Widget _buildLatestAttemptCard(Campaign campaign) {
     return StreamBuilder<PaymentAttempt?>(
-      stream: paymentService.watchLatestAttemptForCurrentUser(
+      stream: paymentService.watchRecoverableAttemptForCurrentUser(
         campaignId: campaign.id,
       ),
       builder: (context, snapshot) {
@@ -247,10 +286,22 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: () => _openPaymentStatus(attempt),
-                    icon: const Icon(Icons.open_in_new_outlined),
-                    label: const Text('Tingnan ang payment status'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (_canResumeCheckout(attempt))
+                        ElevatedButton.icon(
+                          onPressed: () => _resumeCheckoutAttempt(attempt),
+                          icon: const Icon(Icons.open_in_new_outlined),
+                          label: const Text('Ipagpatuloy ang checkout'),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: () => _openPaymentStatus(attempt),
+                        icon: const Icon(Icons.receipt_long_outlined),
+                        label: const Text('Tingnan ang payment status'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -516,6 +567,62 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                   setModalState(() {
                                     isSubmitting = true;
                                     checkoutStatusMessage =
+                                        'Sinusuri kung may kasalukuyan ka nang pledge o checkout...';
+                                  });
+
+                                  final hasPaidPledge = await paymentService
+                                      .currentUserHasPaidPledge(
+                                        campaignId: campaign.id,
+                                      );
+                                  if (hasPaidPledge) {
+                                    throw Exception(
+                                      'May kumpirmado ka nang pledge para sa campaign na ito.',
+                                    );
+                                  }
+
+                                  final recoverableAttempt =
+                                      await paymentService
+                                          .getRecoverableAttemptForCurrentUser(
+                                            campaignId: campaign.id,
+                                          );
+                                  if (recoverableAttempt != null) {
+                                    if (_canResumeCheckout(
+                                      recoverableAttempt,
+                                    )) {
+                                      final resumed =
+                                          await _resumeCheckoutAttempt(
+                                            recoverableAttempt,
+                                            showSuccessMessage: false,
+                                          );
+                                      if (!resumed) {
+                                        setModalState(() {
+                                          isSubmitting = false;
+                                          checkoutStatusMessage = null;
+                                        });
+                                        return;
+                                      }
+
+                                      if (!mounted || !sheetContext.mounted) {
+                                        return;
+                                      }
+
+                                      Navigator.pop(sheetContext);
+                                      showConfirmSnackbar(
+                                        context: this.context,
+                                        title: 'May checkout ka na',
+                                        message:
+                                            'Ang dati mong secure checkout ang binuksan sa halip na gumawa ng panibagong pledge.',
+                                      );
+                                      return;
+                                    }
+
+                                    throw Exception(
+                                      _latestAttemptLabel(recoverableAttempt),
+                                    );
+                                  }
+
+                                  setModalState(() {
+                                    checkoutStatusMessage =
                                         'Inihahanda ang secure checkout...';
                                   });
 
@@ -632,12 +739,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
     return Theme(
       data: campaignTheme,
-      child: FutureBuilder<Campaign?>(
-        future: _future,
+      child: StreamBuilder<Campaign?>(
+        stream: service.watchCampaignById(widget.campaignId),
         builder: (context, snapshot) {
           final c = snapshot.data;
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );

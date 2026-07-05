@@ -19,7 +19,7 @@ void main() async {
   await configureFirebaseLocalEmulators();
 
   if (kUseFirebaseEmulators) {
-    await CrowdfundingService().seedIfEmpty();
+    unawaited(_seedCrowdfundingSafely());
   } else {
     FirestoreService firestoreService = FirestoreService();
     await firestoreService.validateAllEquipmentAvailability();
@@ -29,6 +29,16 @@ void main() async {
   }
 
   runApp(const MyApp());
+}
+
+Future<void> _seedCrowdfundingSafely() async {
+  try {
+    await CrowdfundingService().seedIfEmpty().timeout(
+      const Duration(seconds: 8),
+    );
+  } catch (_) {
+    // Allow the app shell to load even when the local emulator is unavailable.
+  }
 }
 
 class MyApp extends StatelessWidget {

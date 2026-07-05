@@ -171,17 +171,21 @@ class FirestoreService {
   }
 
   Future<void> saveCropPreferences(String userId, List<String> crops) async {
-    await _firestore.collection('users').doc(userId).update({
+    await _firestore.collection('users').doc(userId).set({
       'cropPreferences': crops,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
   }
 
   // ── Category seeding ─────────────────────────────────────────────────────
 
   /// Ensures the three new categories exist in the Firestore categories doc.
   Future<void> ensureNewCategoriesExist() async {
-    const newCategories = ['Hand Tractor (Kuliglig)', 'Floating Tiller (Pagong)', 'Implements'];
+    const newCategories = [
+      'Hand Tractor (Kuliglig)',
+      'Floating Tiller (Pagong)',
+      'Implements',
+    ];
     final docRef = _firestore
         .collection('categories')
         .doc('equipment_categories');

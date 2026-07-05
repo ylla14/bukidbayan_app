@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bukidbayan_app/models/payment_attempt.dart';
 import 'package:bukidbayan_app/screens/campaign_detail_screen.dart';
 import 'package:bukidbayan_app/screens/welcome_screen.dart';
@@ -6,7 +8,7 @@ import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
 import 'package:flutter/material.dart';
 
-class CrowdfundingPaymentReturnScreen extends StatelessWidget {
+class CrowdfundingPaymentReturnScreen extends StatefulWidget {
   static const routePath = '/crowdfunding/payment-return';
 
   const CrowdfundingPaymentReturnScreen({
@@ -22,14 +24,80 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
   final String? paymentStatusHint;
   final CrowdfundingPaymentService? _paymentService;
 
+  @override
+  State<CrowdfundingPaymentReturnScreen> createState() =>
+      _CrowdfundingPaymentReturnScreenState();
+}
+
+class _CrowdfundingPaymentReturnScreenState
+    extends State<CrowdfundingPaymentReturnScreen> {
+  bool _isSyncingCancelledReturn = false;
+  String? _cancelSyncError;
+
   CrowdfundingPaymentService get _service =>
-      _paymentService ?? CrowdfundingPaymentService();
+      widget._paymentService ?? CrowdfundingPaymentService();
 
   bool get _hasRequiredIds =>
-      campaignId != null &&
-      campaignId!.trim().isNotEmpty &&
-      attemptId != null &&
-      attemptId!.trim().isNotEmpty;
+      widget.campaignId != null &&
+      widget.campaignId!.trim().isNotEmpty &&
+      widget.attemptId != null &&
+      widget.attemptId!.trim().isNotEmpty;
+
+  bool get _shouldSyncCancelledReturn =>
+      _hasRequiredIds &&
+      (widget.paymentStatusHint ?? '').toLowerCase() == 'cancelled';
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_syncCancelledReturnIfNeeded());
+  }
+
+  Future<void> _syncCancelledReturnIfNeeded({bool force = false}) async {
+    if (!_shouldSyncCancelledReturn) {
+      return;
+    }
+    if (_isSyncingCancelledReturn && !force) {
+      return;
+    }
+
+    setState(() {
+      _cancelSyncError = null;
+      _isSyncingCancelledReturn = true;
+    });
+
+    try {
+      await _service.cancelCheckoutAttempt(
+        campaignId: widget.campaignId!,
+        attemptId: widget.attemptId!,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isSyncingCancelledReturn = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _cancelSyncError = error.toString().replaceFirst('Exception: ', '');
+        _isSyncingCancelledReturn = false;
+      });
+    }
+  }
+
+  void _openCampaign(BuildContext context, String campaignId) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => CampaignDetailScreen(campaignId: campaignId),
+      ),
+    );
+  }
+
+  void _goToWelcome(BuildContext context) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,11 +110,49 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: _hasRequiredIds
+          child: _shouldSyncCancelledReturn && _isSyncingCancelledReturn
+              ? _PaymentReturnCard(
+                  icon: Icons.sync_outlined,
+                  iconColor: lightColorScheme.primary,
+                  title: 'Ina-update ang checkout',
+                  message:
+                      'Minamarkahan ang checkout bilang kinansela para hindi ito magpatuloy bilang aktibong pledge attempt.',
+                  attemptId: widget.attemptId,
+                  trailingText:
+                      'Sandali lang ito. Kapag natapos, magiging terminal ang attempt na ito.',
+                )
+              : _shouldSyncCancelledReturn && _cancelSyncError != null
+              ? _PaymentReturnCard(
+                  icon: Icons.error_outline,
+                  iconColor: Colors.orange.shade700,
+                  title: 'Hindi ma-update ang checkout',
+                  message: _cancelSyncError!,
+                  attemptId: widget.attemptId,
+                  trailingText:
+                      'Subukan ulit para ma-markang cancelled ang checkout at hindi ito manatiling reusable.',
+                  actions: [
+                    _PaymentAction(
+                      label: 'Subukan ulit',
+                      onPressed: () =>
+                          _syncCancelledReturnIfNeeded(force: true),
+                    ),
+                    if (_hasRequiredIds)
+                      _PaymentAction(
+                        label: 'Buksan ang campaign',
+                        onPressed: () =>
+                            _openCampaign(context, widget.campaignId!),
+                      ),
+                    _PaymentAction(
+                      label: 'Bumalik sa Welcome',
+                      onPressed: () => _goToWelcome(context),
+                    ),
+                  ],
+                )
+              : _hasRequiredIds
               ? StreamBuilder<PaymentAttempt?>(
                   stream: _service.watchPaymentAttempt(
-                    campaignId: campaignId!,
-                    attemptId: attemptId!,
+                    campaignId: widget.campaignId!,
+                    attemptId: widget.attemptId!,
                   ),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
@@ -63,20 +169,13 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
                         message: isPermissionIssue
                             ? 'Mag-sign in gamit ang account na ginamit sa checkout para makita ang tunay na kalagayan ng bayad.'
                             : 'Hindi mabasa ang payment attempt sa ngayon. Subukan ulit pagkalipas ng ilang sandali.',
-                        attemptId: attemptId!,
+                        attemptId: widget.attemptId!,
                         trailingText:
                             'Ang pledge ay hindi bibilangin hangga\'t walang backend confirmation.',
                         actions: [
                           _PaymentAction(
                             label: 'Bumalik sa Welcome',
-                            onPressed: () {
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (_) => const WelcomeScreen(),
-                                ),
-                                (route) => false,
-                              );
-                            },
+                            onPressed: () => _goToWelcome(context),
                           ),
                         ],
                       );
@@ -89,7 +188,7 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
                         title: 'Tinitingnan ang payment attempt',
                         message:
                             'Sandaling hinihintay ang pinakabagong status mula sa backend.',
-                        attemptId: attemptId!,
+                        attemptId: widget.attemptId!,
                         trailingText:
                             'Kapag na-verify ang bayad, dito lalabas ang kumpirmadong resulta.',
                       );
@@ -103,19 +202,12 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
                         title: 'Hindi nakita ang payment attempt',
                         message:
                             'Walang tumugmang crowdfunding payment attempt para sa ibinigay na detalye.',
-                        attemptId: attemptId!,
+                        attemptId: widget.attemptId!,
                         actions: [
                           _PaymentAction(
                             label: 'Buksan ang campaign',
-                            onPressed: () {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                  builder: (_) => CampaignDetailScreen(
-                                    campaignId: campaignId!,
-                                  ),
-                                ),
-                              );
-                            },
+                            onPressed: () =>
+                                _openCampaign(context, widget.campaignId!),
                           ),
                         ],
                       );
@@ -133,26 +225,12 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
                       actions: [
                         _PaymentAction(
                           label: 'Buksan ang campaign',
-                          onPressed: () {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => CampaignDetailScreen(
-                                  campaignId: attempt.campaignId,
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: () =>
+                              _openCampaign(context, attempt.campaignId),
                         ),
                         _PaymentAction(
                           label: 'Bumalik sa Welcome',
-                          onPressed: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const WelcomeScreen(),
-                              ),
-                              (route) => false,
-                            );
-                          },
+                          onPressed: () => _goToWelcome(context),
                         ),
                       ],
                     );
@@ -169,14 +247,7 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
                   actions: [
                     _PaymentAction(
                       label: 'Bumalik sa Welcome',
-                      onPressed: () {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (_) => const WelcomeScreen(),
-                          ),
-                          (route) => false,
-                        );
-                      },
+                      onPressed: () => _goToWelcome(context),
                     ),
                   ],
                 ),
@@ -229,13 +300,13 @@ class CrowdfundingPaymentReturnScreen extends StatelessWidget {
               'Kailangan gumawa ng panibagong checkout attempt para magpatuloy.',
         );
       default:
-        if ((paymentStatusHint ?? '').toLowerCase() == 'cancelled') {
+        if ((widget.paymentStatusHint ?? '').toLowerCase() == 'cancelled') {
           return _PaymentStatusView(
             icon: Icons.cancel_outlined,
             iconColor: Colors.orange.shade700,
             title: 'Kinansela mo ang checkout',
             message:
-                'Walang naitalang bayad mula sa redirect na ito. Hindi ito bibilang bilang pledge maliban kung may hiwalay na backend confirmation.',
+                'Walang naitalang bayad mula sa redirect na ito. Minamarkahan ng backend ang attempt na ito bilang cancelled para hindi na ito maipagpatuloy.',
             trailingText:
                 'Kung gusto mong tumuloy, bumalik sa campaign at gumawa ng panibagong checkout.',
           );

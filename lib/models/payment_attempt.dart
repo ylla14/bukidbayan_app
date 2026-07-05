@@ -16,7 +16,15 @@ class PaymentAttemptStatus {
     refunded,
   };
 
+  static const Set<String> activeStatuses = {
+    created,
+    pendingCheckout,
+    processing,
+  };
+
   static bool isTerminal(String status) => terminalStatuses.contains(status);
+
+  static bool isActive(String status) => activeStatuses.contains(status);
 }
 
 class PaymentProvider {
@@ -81,6 +89,8 @@ class PaymentAttempt {
   });
 
   bool get isTerminal => PaymentAttemptStatus.isTerminal(status);
+
+  bool get isActive => PaymentAttemptStatus.isActive(status);
 
   PaymentAttempt copyWith({
     String? id,

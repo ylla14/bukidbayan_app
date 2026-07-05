@@ -5,8 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
+
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   static const String _shadowEmailDomain = '@phone.bukidbayan.app';
 
@@ -24,15 +28,18 @@ class AuthService {
   static bool isValidIdentifier(String input) {
     final trimmed = input.trim();
     if (RegExp(r'^\d{11}$').hasMatch(trimmed)) return true;
-    if (RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z]+\.[a-zA-Z]{2,}$').hasMatch(trimmed)) return true;
+    if (RegExp(
+      r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(trimmed)) {
+      return true;
+    }
     return false;
   }
 
   bool _isPhoneNumber(String input) =>
       RegExp(r'^\d{11}$').hasMatch(input.trim());
 
-  String _toShadowEmail(String phone) =>
-      '${phone.trim()}$_shadowEmailDomain';
+  String _toShadowEmail(String phone) => '${phone.trim()}$_shadowEmailDomain';
 
   // Validate an address string via Nominatim (OpenStreetMap).
   // Returns {'latitude': ..., 'longitude': ...} on success.
@@ -45,28 +52,34 @@ class AuthService {
         '&q=${Uri.encodeQueryComponent(address)}'
         '&limit=1',
       );
-      final response = await http.get(uri, headers: {
-        'Accept-Language': 'en',
-        'User-Agent': 'BukidbayanApp/1.0',
-      });
+      final response = await http.get(
+        uri,
+        headers: {'Accept-Language': 'en', 'User-Agent': 'BukidbayanApp/1.0'},
+      );
 
       if (response.statusCode != 200) {
-        throw Exception('Could not validate address. Check your connection and try again.');
+        throw Exception(
+          'Could not validate address. Check your connection and try again.',
+        );
       }
 
       final List<dynamic> results = jsonDecode(response.body);
       if (results.isEmpty) {
-        throw Exception('Address not found. Please enter a more specific address.');
+        throw Exception(
+          'Address not found. Please enter a more specific address.',
+        );
       }
 
       final first = results.first as Map<String, dynamic>;
       return {
-        'latitude':  double.parse(first['lat'] as String),
+        'latitude': double.parse(first['lat'] as String),
         'longitude': double.parse(first['lon'] as String),
       };
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception('Could not validate address. Check your connection and try again.');
+      throw Exception(
+        'Could not validate address. Check your connection and try again.',
+      );
     }
   }
 
@@ -89,10 +102,11 @@ class AuthService {
     final shadowEmail = _toShadowEmail(phoneNumber);
     try {
       // Create user in Firebase Auth using the shadow email
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: shadowEmail,
-        password: password,
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(
+            email: shadowEmail,
+            password: password,
+          );
 
       User? user = userCredential.user;
 
@@ -181,11 +195,14 @@ class AuthService {
         .limit(1)
         .get();
     if (existing.docs.isNotEmpty && existing.docs.first.id != uid) {
-      throw Exception('That phone number is already registered to another account.');
+      throw Exception(
+        'That phone number is already registered to another account.',
+      );
     }
-    await _firestore.collection('users').doc(uid).update({
+    await _firestore.collection('users').doc(uid).set({
       'phoneNumber': phone,
-    });
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   // Co-op account constants
@@ -231,7 +248,9 @@ class AuthService {
         );
         debugPrint('[seedCoopAccount] Recovered existing Auth account.');
       } catch (e2) {
-        debugPrint('[seedCoopAccount] Could not sign in to recover account: $e2');
+        debugPrint(
+          '[seedCoopAccount] Could not sign in to recover account: $e2',
+        );
         return;
       }
     }
@@ -245,7 +264,9 @@ class AuthService {
         'accountType': 'coop',
         'isPhoneUser': true,
       }, SetOptions(merge: true));
-      debugPrint('[seedCoopAccount] Firestore doc written for uid=${cred.user!.uid}');
+      debugPrint(
+        '[seedCoopAccount] Firestore doc written for uid=${cred.user!.uid}',
+      );
     } catch (e) {
       debugPrint('[seedCoopAccount] Firestore write failed: $e');
     } finally {
@@ -271,7 +292,10 @@ class AuthService {
   // Get user data from Firestore
   Future<Map<String, dynamic>?> getUserData(String uid) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      DocumentSnapshot doc = await _firestore
+          .collection('users')
+          .doc(uid)
+          .get();
       return doc.data() as Map<String, dynamic>?;
     } catch (e) {
       print('Error getting user data: $e');
@@ -279,10 +303,47 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>> ensureUserDocument(User user) async {
+    final docRef = _firestore.collection('users').doc(user.uid);
+    final existing = await docRef.get();
+    final existingData = existing.data();
+    if (existingData != null) return existingData;
+
+    final displayNameParts = (user.displayName ?? '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+
+    final firstName = displayNameParts.isNotEmpty ? displayNameParts.first : '';
+    final lastName = displayNameParts.length > 1
+        ? displayNameParts.sublist(1).join(' ')
+        : '';
+    final email = user.email?.trim();
+
+    final profileData = <String, dynamic>{
+      if (email != null && email.isNotEmpty) 'email': email,
+      if (firstName.isNotEmpty) 'firstName': firstName,
+      if (lastName.isNotEmpty) 'lastName': lastName,
+      'isPhoneUser': email?.endsWith(_shadowEmailDomain) ?? false,
+    };
+
+    await docRef.set({
+      ...profileData,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    return profileData;
+  }
+
   // Update user data in Firestore
   Future<void> updateUserData(String uid, Map<String, dynamic> data) async {
     try {
-      await _firestore.collection('users').doc(uid).update(data);
+      await _firestore.collection('users').doc(uid).set({
+        ...data,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Error updating user data: $e');
     }
@@ -293,11 +354,12 @@ class AuthService {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? 'An error occurred while resetting password.');
+      throw Exception(
+        e.message ?? 'An error occurred while resetting password.',
+      );
     }
   }
 }
-
 
 // //import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
@@ -312,7 +374,7 @@ class AuthService {
 //   // Auth state changes stream
 //   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-//   //  PHONE AUTH 
+//   //  PHONE AUTH
 
 //   /// Step 1 — Send OTP to the given phone number.
 //   /// [onCodeSent] receives the verificationId you must keep for step 2.
@@ -404,7 +466,7 @@ class AuthService {
 //     }
 //   }
 
-//   //  PROFILE 
+//   //  PROFILE
 
 //   // Get user data from Firestore
 //   Future<Map<String, dynamic>?> getUserData(String uid) async {
@@ -442,7 +504,7 @@ class AuthService {
 //     });
 //   }
 
-//   // SESSION 
+//   // SESSION
 
 //   Future<void> logout() async => _auth.signOut();
 // }

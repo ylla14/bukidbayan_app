@@ -403,6 +403,18 @@ class CrowdfundingService {
     return campaign;
   }
 
+  /// Watches a single campaign by ID and reflects live total updates.
+  Stream<Campaign?> watchCampaignById(String id) {
+    return _campaigns.doc(id).snapshots().map((snap) {
+      if (!snap.exists) return null;
+      final campaign = _fromDoc(snap);
+      if (campaign.status == 'draft' && !_isOwnedByUser(campaign)) {
+        return null;
+      }
+      return campaign;
+    });
+  }
+
   Future<String?> getCurrentUserEmail() async => _email;
 
   /// Returns all campaigns (any status) owned by the current user.

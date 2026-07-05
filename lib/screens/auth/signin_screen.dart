@@ -31,7 +31,10 @@ class _SignInScreenState extends State<SignInScreen> {
       child: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 28.0,
+              vertical: 24.0,
+            ),
             child: Form(
               key: _formSignInKey,
               child: Column(
@@ -83,69 +86,81 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   // ── Identifier Field ──────────────────────────────────────
                   Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Email or Phone Number',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Email or Phone Number',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: identifierController,
-                      keyboardType: TextInputType.text,
-                      style: const TextStyle(fontSize: 17),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email or phone number';
-                        }
-                        if (!AuthService.isValidIdentifier(value)) {
-                          return 'Enter a valid email or 11-digit phone number';
-                        }
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Email or 09XX XXX XXXX',
-                        hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
-                        prefixIcon: Icon(
-                          Icons.contact_phone_outlined,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: identifierController,
+                    keyboardType: TextInputType.text,
+                    style: const TextStyle(fontSize: 17),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email or phone number';
+                      }
+                      if (!AuthService.isValidIdentifier(value)) {
+                        return 'Enter a valid email or 11-digit phone number';
+                      }
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Email or 09XX XXX XXXX',
+                      hintStyle: const TextStyle(
+                        color: Colors.black38,
+                        fontSize: 16,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.contact_phone_outlined,
+                        color: lightColorScheme.primary,
+                        size: 24,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 18,
+                        horizontal: 16,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.black12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Colors.black12,
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
                           color: lightColorScheme.primary,
-                          size: 24,
+                          width: 2,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 18,
-                          horizontal: 16,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 1.5,
                         ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black12),
-                          borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 2,
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.black12, width: 1.5),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: lightColorScheme.primary,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
+                  ),
                   const SizedBox(height: 22),
 
                   // ── Password Field ────────────────────────────────────────
@@ -174,7 +189,10 @@ class _SignInScreenState extends State<SignInScreen> {
                     },
                     decoration: InputDecoration(
                       hintText: 'Enter your password',
-                      hintStyle: const TextStyle(color: Colors.black38, fontSize: 16),
+                      hintStyle: const TextStyle(
+                        color: Colors.black38,
+                        fontSize: 16,
+                      ),
                       prefixIcon: Icon(
                         Icons.lock_outline_rounded,
                         color: lightColorScheme.primary,
@@ -190,7 +208,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                 : Icons.visibility_outlined,
                             color: Colors.black45,
                           ),
-                          tooltip: _isPasswordHidden ? 'Show password' : 'Hide password',
+                          tooltip: _isPasswordHidden
+                              ? 'Show password'
+                              : 'Hide password',
                           onPressed: () {
                             setState(() {
                               _isPasswordHidden = !_isPasswordHidden;
@@ -209,7 +229,10 @@ class _SignInScreenState extends State<SignInScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.black12, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: Colors.black12,
+                          width: 1.5,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -220,11 +243,17 @@ class _SignInScreenState extends State<SignInScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       errorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 1.5,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       focusedErrorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+                        borderSide: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 2,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
@@ -266,7 +295,10 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       GestureDetector(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 6,
+                            horizontal: 2,
+                          ),
                           child: Text(
                             'Forgot password?',
                             style: TextStyle(
@@ -324,7 +356,9 @@ class _SignInScreenState extends State<SignInScreen> {
                       onPressed: _isSigningIn
                           ? null
                           : () async {
-                              if (!_formSignInKey.currentState!.validate()) return;
+                              if (!_formSignInKey.currentState!.validate()) {
+                                return;
+                              }
 
                               if (!rememberPassword) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -350,22 +384,30 @@ class _SignInScreenState extends State<SignInScreen> {
                                 if (!mounted) return;
 
                                 if (user != null) {
-                                  final isCoop = await authService.isCoopAccount(user.uid);
+                                  final isCoop = await authService
+                                      .isCoopAccount(user.uid);
 
                                   if (!mounted) return;
 
                                   if (isCoop) {
                                     Navigator.pushReplacement(
                                       context,
-                                      MaterialPageRoute(builder: (_) => const CoopBottomNav()),
+                                      MaterialPageRoute(
+                                        builder: (_) => const CoopBottomNav(),
+                                      ),
                                     );
                                     return;
                                   }
 
                                   // Prosumer flow: prompt for phone if missing
-                                  final userData = await authService.getUserData(user.uid);
-                                  final hasPhone = (userData?['phoneNumber'] as String?)?.isNotEmpty == true;
-                                  final isPhoneUser = userData?['isPhoneUser'] == true;
+                                  final userData = await authService
+                                      .ensureUserDocument(user);
+                                  final hasPhone =
+                                      (userData['phoneNumber'] as String?)
+                                          ?.isNotEmpty ==
+                                      true;
+                                  final isPhoneUser =
+                                      userData['isPhoneUser'] == true;
 
                                   if (!mounted) return;
                                   if (!hasPhone && !isPhoneUser) {
@@ -379,7 +421,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                   if (!mounted) return;
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => BottomNav()),
+                                    MaterialPageRoute(
+                                      builder: (_) => BottomNav(),
+                                    ),
                                   );
                                 }
                               } catch (e) {
@@ -388,7 +432,10 @@ class _SignInScreenState extends State<SignInScreen> {
                                 showErrorSnackbar(
                                   context: context,
                                   title: 'Error',
-                                  message: e.toString().replaceAll('Exception: ', ''),
+                                  message: e.toString().replaceAll(
+                                    'Exception: ',
+                                    '',
+                                  ),
                                 );
                               } finally {
                                 if (mounted) {
@@ -404,7 +451,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   // ── Divider ───────────────────────────────────────────────
                   Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.black12, thickness: 1.2)),
+                      Expanded(
+                        child: Divider(color: Colors.black12, thickness: 1.2),
+                      ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
@@ -412,7 +461,9 @@ class _SignInScreenState extends State<SignInScreen> {
                           style: TextStyle(color: Colors.black38, fontSize: 14),
                         ),
                       ),
-                      Expanded(child: Divider(color: Colors.black12, thickness: 1.2)),
+                      Expanded(
+                        child: Divider(color: Colors.black12, thickness: 1.2),
+                      ),
                     ],
                   ),
 
@@ -459,7 +510,6 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
-
 
 // //import 'package:bukidbayan_app/widgets/sign_button.dart';
 // import 'package:flutter/material.dart';

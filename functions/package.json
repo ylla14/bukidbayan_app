@@ -6,7 +6,8 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "node --check index.js"
+    "test": "node --check index.js",
+    "seed:local:crowdfunding": "node ./scripts/seed_local_crowdfunding_campaigns.js"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",

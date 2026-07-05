@@ -228,5 +228,71 @@ void main() {
         );
       },
     );
+
+    test(
+      'returns the recoverable attempt even when a newer failed attempt exists',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth(uid: 'watcher-uid');
+        final campaign = _campaign(
+          id: 'c_recoverable_attempt',
+          creatorUid: 'owner-uid',
+          creatorEmail: 'owner@example.com',
+        );
+        final service = CrowdfundingPaymentService(
+          firestore: firestore,
+          auth: auth,
+        );
+
+        await _seedCampaign(firestore, campaign);
+
+        await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .collection('payment_attempts')
+            .doc('pending')
+            .set(
+              PaymentAttempt(
+                id: 'pending',
+                campaignId: campaign.id,
+                createdByUid: 'watcher-uid',
+                donorName: 'Pending Attempt',
+                amount: 500,
+                provider: PaymentProvider.payMongoCheckout,
+                status: PaymentAttemptStatus.pendingCheckout,
+                providerCheckoutUrl: 'https://checkout.paymongo.com/pending',
+                createdAt: DateTime(2026, 6, 21, 10),
+                updatedAt: DateTime(2026, 6, 21, 10),
+              ).toFirestore(),
+            );
+
+        await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .collection('payment_attempts')
+            .doc('failed')
+            .set(
+              PaymentAttempt(
+                id: 'failed',
+                campaignId: campaign.id,
+                createdByUid: 'watcher-uid',
+                donorName: 'Failed Attempt',
+                amount: 700,
+                provider: PaymentProvider.payMongoCheckout,
+                status: PaymentAttemptStatus.failed,
+                failureReason: 'Duplicate attempt',
+                createdAt: DateTime(2026, 6, 21, 11),
+                updatedAt: DateTime(2026, 6, 21, 11),
+              ).toFirestore(),
+            );
+
+        final recoverableAttempt = await service
+            .getRecoverableAttemptForCurrentUser(campaignId: campaign.id);
+
+        expect(recoverableAttempt, isNotNull);
+        expect(recoverableAttempt!.id, 'pending');
+        expect(recoverableAttempt.providerCheckoutUrl, isNotEmpty);
+      },
+    );
   });
 }

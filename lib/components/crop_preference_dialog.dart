@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bukidbayan_app/models/crop_preference.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -27,14 +29,18 @@ class _CropPreferenceDialogState extends State<CropPreferenceDialog> {
     setState(() => _saving = true);
     try {
       await FirestoreService()
-          .saveCropPreferences(widget.userId, _selected.toList());
+          .saveCropPreferences(widget.userId, _selected.toList())
+          .timeout(const Duration(seconds: 12));
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save preferences: $e')),
-        );
+        final message = e is TimeoutException
+            ? 'Saving your crop preferences took too long. Please try again.'
+            : 'Failed to save preferences: $e';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -52,7 +58,11 @@ class _CropPreferenceDialogState extends State<CropPreferenceDialog> {
             // Header
             Row(
               children: [
-                Icon(Icons.eco_rounded, color: lightColorScheme.primary, size: 28),
+                Icon(
+                  Icons.eco_rounded,
+                  color: lightColorScheme.primary,
+                  size: 28,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -85,7 +95,10 @@ class _CropPreferenceDialogState extends State<CropPreferenceDialog> {
                   }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? lightColorScheme.primary
@@ -103,8 +116,11 @@ class _CropPreferenceDialogState extends State<CropPreferenceDialog> {
                         if (isSelected)
                           const Padding(
                             padding: EdgeInsets.only(right: 6),
-                            child: Icon(Icons.check_circle,
-                                color: Colors.white, size: 16),
+                            child: Icon(
+                              Icons.check_circle,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
                         Text(
                           crop,
@@ -133,17 +149,22 @@ class _CropPreferenceDialogState extends State<CropPreferenceDialog> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 child: _saving
                     ? const SizedBox(
                         height: 18,
                         width: 18,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('Save Preferences',
-                        style: TextStyle(fontSize: 15)),
+                    : const Text(
+                        'Save Preferences',
+                        style: TextStyle(fontSize: 15),
+                      ),
               ),
             ),
           ],

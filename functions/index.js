@@ -12,6 +12,15 @@ const db = admin.firestore();
 const REGION = 'asia-southeast1';
 const PAYMONGO_API_BASE = 'https://api.paymongo.com';
 const DEFAULT_PAYMENT_METHOD_TYPES = ['qrph'];
+const ACTIVE_PAYMENT_ATTEMPT_STATUSES = new Set([
+  'created',
+  'pending_checkout',
+  'processing',
+]);
+const CANCELLABLE_PAYMENT_ATTEMPT_STATUSES = new Set([
+  'created',
+  'pending_checkout',
+]);
 
 function nowIso() {
   return new Date().toISOString();
@@ -75,6 +84,108 @@ function extractCheckoutData(json) {
     throw new Error('PayMongo response did not include a checkout URL.');
   }
   return data;
+}
+
+function compareAttemptsByCreatedAt(left, right) {
+  const leftCreatedAt = String(left?.createdAt || '');
+  const rightCreatedAt = String(right?.createdAt || '');
+  if (leftCreatedAt !== rightCreatedAt) {
+    return leftCreatedAt.localeCompare(rightCreatedAt);
+  }
+  return String(left?.id || '').localeCompare(String(right?.id || ''));
+}
+
+function isCampaignEnded(campaign) {
+  const status = String(campaign?.status || '');
+  if (status.startsWith('ended')) {
+    return true;
+  }
+
+  const endTime = Date.parse(String(campaign?.endDate || ''));
+  return Number.isFinite(endTime) && Date.now() > endTime;
+}
+
+function findSelectedReward(campaign, rewardId) {
+  if (!rewardId || !Array.isArray(campaign?.rewards)) {
+    return null;
+  }
+
+  return campaign.rewards.find((item) => item?.id === rewardId) || null;
+}
+
+function validateAttemptAgainstCampaign({attempt, campaign}) {
+  const amount = Number(attempt?.amount || 0);
+  if (!attempt?.createdByUid) {
+    return 'You must be signed in before creating a checkout.';
+  }
+  if (!attempt?.donorName || !String(attempt.donorName).trim()) {
+    return 'Supporter name is required.';
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return 'Amount must be greater than zero.';
+  }
+  if (
+    (attempt.createdByUid && campaign?.creatorUid &&
+      attempt.createdByUid === campaign.creatorUid) ||
+    (attempt.createdByEmail && campaign?.creatorEmail &&
+      attempt.createdByEmail === campaign.creatorEmail)
+  ) {
+    return 'You cannot support your own campaign.';
+  }
+  if (isCampaignEnded(campaign)) {
+    return 'This campaign has already ended.';
+  }
+
+  if (attempt.rewardId) {
+    const reward = findSelectedReward(campaign, attempt.rewardId);
+    if (!reward) {
+      return 'Selected reward tier is no longer available.';
+    }
+
+    const minPledge = Number(reward.minPledge || 0);
+    if (amount < minPledge) {
+      return `Amount is below the minimum pledge for this reward tier (${minPledge}).`;
+    }
+  }
+
+  return null;
+}
+
+async function findPaymentAttemptConflict({campaignId, attempt}) {
+  const createdByUid = attempt?.createdByUid;
+  if (!createdByUid) {
+    return null;
+  }
+
+  const [pledgeSnap, attemptsSnap] = await Promise.all([
+    db.collection(`campaigns/${campaignId}/pledges`)
+        .where('backerUid', '==', createdByUid)
+        .limit(1)
+        .get(),
+    db.collection(`campaigns/${campaignId}/payment_attempts`)
+        .where('createdByUid', '==', createdByUid)
+        .get(),
+  ]);
+
+  if (!pledgeSnap.empty) {
+    return {type: 'paid_pledge'};
+  }
+
+  const activeAttempts = attemptsSnap.docs
+      .map((doc) => ({id: doc.id, ...doc.data()}))
+      .filter((item) => ACTIVE_PAYMENT_ATTEMPT_STATUSES.has(item.status))
+      .sort(compareAttemptsByCreatedAt);
+
+  if (!activeAttempts.length) {
+    return null;
+  }
+
+  const canonicalAttempt = activeAttempts[0];
+  if (canonicalAttempt.id !== attempt.id) {
+    return {type: 'active_attempt', attempt: canonicalAttempt};
+  }
+
+  return null;
 }
 
 async function markAttemptFailed(attemptRef, reason, extra = {}) {
@@ -256,6 +367,38 @@ function verifyWebhookSignature(rawBody, signatureHeader, webhookSecret) {
   );
 }
 
+function applyClientCors(res) {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Max-Age', '3600');
+}
+
+function extractBearerToken(req) {
+  const header = String(req.get('Authorization') || '').trim();
+  if (!header.toLowerCase().startsWith('bearer ')) {
+    return '';
+  }
+
+  return header.slice(7).trim();
+}
+
+async function authenticateClientRequest(req) {
+  const idToken = extractBearerToken(req);
+  if (!idToken) {
+    return null;
+  }
+
+  try {
+    return await admin.auth().verifyIdToken(idToken);
+  } catch (error) {
+    logger.warn('Unable to verify Firebase ID token for client request.', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
 async function finalizePaidAttempt({
   campaignId,
   attemptId,
@@ -434,6 +577,43 @@ exports.onCrowdfundingPaymentAttemptCreated = onDocumentCreated(
       }
 
       const campaign = {id: campaignSnap.id, ...campaignSnap.data()};
+      const validationError = validateAttemptAgainstCampaign({
+        attempt,
+        campaign,
+      });
+      if (validationError) {
+        await markAttemptFailed(attemptRef, validationError);
+        return;
+      }
+
+      const conflict = await findPaymentAttemptConflict({
+        campaignId,
+        attempt,
+      });
+      if (conflict?.type === 'paid_pledge') {
+        await markAttemptFailed(
+            attemptRef,
+            'You already have a confirmed pledge for this campaign.',
+        );
+        return;
+      }
+      if (conflict?.type === 'active_attempt') {
+        const hasCheckoutUrl =
+          conflict.attempt?.providerCheckoutUrl &&
+          String(conflict.attempt.providerCheckoutUrl).trim();
+        await markAttemptFailed(
+            attemptRef,
+            hasCheckoutUrl
+                ? 'You already have a checkout in progress for this campaign. Please continue that checkout instead of creating a new pledge.'
+                : 'You already have a pledge attempt being prepared for this campaign. Please wait a moment before trying again.',
+            {
+              duplicateOfAttemptId: conflict.attempt.id,
+              duplicateOfStatus: conflict.attempt.status,
+            },
+        );
+        return;
+      }
+
       try {
         const payload = buildCheckoutPayload({attempt, campaign, config});
         const checkoutData = await createPaymongoCheckoutSession(
@@ -463,6 +643,128 @@ exports.onCrowdfundingPaymentAttemptCreated = onDocumentCreated(
             attemptRef,
             error instanceof Error ? error.message : 'Unable to create PayMongo checkout session.',
         );
+      }
+    },
+);
+
+exports.cancelCrowdfundingPaymentAttempt = onRequest(
+    {region: REGION},
+    async (req, res) => {
+      applyClientCors(res);
+      if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+      }
+
+      if (req.method !== 'POST') {
+        res.status(405).json({error: 'Method not allowed'});
+        return;
+      }
+
+      const decodedToken = await authenticateClientRequest(req);
+      if (!decodedToken?.uid) {
+        res.status(401).json({
+          error: 'You must be signed in to cancel this checkout.',
+        });
+        return;
+      }
+
+      const campaignId = String(req.body?.campaignId || '').trim();
+      const attemptId = String(req.body?.attemptId || '').trim();
+      if (!campaignId || !attemptId) {
+        res.status(400).json({
+          error: 'campaignId and attemptId are required.',
+        });
+        return;
+      }
+
+      const attemptRef =
+        db.doc(`campaigns/${campaignId}/payment_attempts/${attemptId}`);
+
+      try {
+        const result = await db.runTransaction(async (transaction) => {
+          const attemptDoc = await transaction.get(attemptRef);
+          if (!attemptDoc.exists) {
+            return {
+              error: 'Payment attempt not found.',
+              httpStatus: 404,
+            };
+          }
+
+          const attempt = {id: attemptDoc.id, ...attemptDoc.data()};
+          if (attempt.createdByUid !== decodedToken.uid) {
+            return {
+              error: 'You can only cancel your own checkout attempt.',
+              httpStatus: 403,
+            };
+          }
+
+          const attemptStatus = String(attempt.status || '');
+          if (attemptStatus === 'paid') {
+            return {
+              attemptId,
+              campaignId,
+              ignored: true,
+              message:
+                'This pledge has already been confirmed and can no longer be cancelled.',
+              status: attemptStatus,
+            };
+          }
+
+          if (attemptStatus === 'processing') {
+            return {
+              attemptId,
+              campaignId,
+              ignored: true,
+              message:
+                'This payment is already being processed and can no longer be cancelled from the return page.',
+              status: attemptStatus,
+            };
+          }
+
+          if (!CANCELLABLE_PAYMENT_ATTEMPT_STATUSES.has(attemptStatus)) {
+            return {
+              attemptId,
+              campaignId,
+              ignored: true,
+              status: attemptStatus || 'unknown',
+            };
+          }
+
+          const cancelledAt = nowIso();
+          transaction.update(attemptRef, {
+            cancelledAt,
+            failureReason:
+              attempt.failureReason ||
+              'Checkout was cancelled by the supporter before payment confirmation.',
+            status: 'cancelled',
+            updatedAt: cancelledAt,
+          });
+
+          return {
+            attemptId,
+            campaignId,
+            cancelledAt,
+            status: 'cancelled',
+          };
+        });
+
+        if (result.error) {
+          res.status(result.httpStatus || 400).json({error: result.error});
+          return;
+        }
+
+        res.status(200).json(result);
+      } catch (error) {
+        logger.error('Failed to cancel crowdfunding payment attempt.', {
+          attemptId,
+          campaignId,
+          error: error instanceof Error ? error.message : String(error),
+          uid: decodedToken.uid,
+        });
+        res.status(500).json({
+          error: 'Unable to cancel the checkout attempt right now.',
+        });
       }
     },
 );
