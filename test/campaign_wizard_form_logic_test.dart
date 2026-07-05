@@ -60,6 +60,7 @@ CampaignWizardFormState _validState() {
     shippingCoverage: 'Local delivery',
     shippingCostHandling: 'included',
     shippingNotes: 'Delivered to co-op office.',
+    gcashQrImagePath: 'data:image/png;base64,qr-test-image',
     warranty: 'Manufacturer warranty for one year.',
     spareParts: 'Replacement parts stocked locally.',
     risks: 'Supplier delays may happen.',
@@ -109,6 +110,7 @@ void main() {
           shippingCoverage: state.shippingCoverage,
           shippingCostHandling: state.shippingCostHandling,
           shippingNotes: state.shippingNotes,
+          gcashQrImagePath: state.gcashQrImagePath,
           warranty: state.warranty,
           spareParts: state.spareParts,
           risks: state.risks,
@@ -152,6 +154,7 @@ void main() {
         shippingCoverage: state.shippingCoverage,
         shippingCostHandling: state.shippingCostHandling,
         shippingNotes: state.shippingNotes,
+        gcashQrImagePath: state.gcashQrImagePath,
         warranty: state.warranty,
         spareParts: state.spareParts,
         risks: state.risks,
@@ -186,6 +189,7 @@ void main() {
         shippingCoverage: state.shippingCoverage,
         shippingCostHandling: state.shippingCostHandling,
         shippingNotes: state.shippingNotes,
+        gcashQrImagePath: state.gcashQrImagePath,
         warranty: state.warranty,
         spareParts: state.spareParts,
         risks: state.risks,
@@ -195,6 +199,40 @@ void main() {
       final error = logic.validateStep(step: 5, state: invalidState);
       expect(error, isNotNull);
       expect(error, contains('benepisyo'));
+    });
+
+    test('returns error when GCash QR is missing on step 5', () {
+      final logic = CampaignWizardFormLogic();
+      final state = _validState();
+      final invalidState = CampaignWizardFormState(
+        title: state.title,
+        category: state.category,
+        isAssetImage: state.isAssetImage,
+        imagePath: state.imagePath,
+        shortBlurb: state.shortBlurb,
+        fullStory: state.fullStory,
+        equipmentType: state.equipmentType,
+        specs: state.specs,
+        includedItemsRaw: state.includedItemsRaw,
+        hasVariants: state.hasVariants,
+        variant: state.variant,
+        variantNotes: state.variantNotes,
+        fundingGoalRaw: state.fundingGoalRaw,
+        selectedEndDate: state.selectedEndDate,
+        productionTimeline: state.productionTimeline,
+        rewards: state.rewards,
+        shippingCoverage: state.shippingCoverage,
+        shippingCostHandling: state.shippingCostHandling,
+        shippingNotes: state.shippingNotes,
+        gcashQrImagePath: '',
+        warranty: state.warranty,
+        spareParts: state.spareParts,
+        risks: state.risks,
+        safetyNotes: state.safetyNotes,
+      );
+
+      final error = logic.validateStep(step: 5, state: invalidState);
+      expect(error, contains('GCash QR'));
     });
 
     test('returns null for valid funding step', () {

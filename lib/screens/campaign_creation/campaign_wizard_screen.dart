@@ -38,7 +38,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     'Detalye ng Kagamitan',
     'Saklaw ng Bibilhin',
     'Pondo at Iskedyul',
-    'Benepisyo at Delivery',
+    'Benepisyo, Delivery at Bayad',
     'Suporta at Maintenance',
     'Pagsusuri',
   ];
@@ -49,7 +49,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     'Ilagay ang mahahalagang detalye ng kagamitan para malinaw ang eksaktong bibilhin.',
     'Ilista ang kumpletong laman ng bibilhin at anumang mahalagang pagpipilian o variant.',
     'Itakda ang tamang target na pondo, petsa ng pagtatapos, at plano ng pagpapatupad.',
-    'Ilatag ang benepisyo para sa supporters at kung paano hahawakan ang delivery o shipping.',
+    'Ilatag ang benepisyo, delivery details, at ilagay ang GCash QR na gagamitin sa bayad.',
     'Ipaliwanag ang warranty, maintenance, at plano sa spare parts pagkatapos mabili ang kagamitan.',
     'Suriin ang draft, ilagay ang mga panganib at paalala sa kaligtasan, saka i-publish.',
   ];
@@ -95,6 +95,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
   String? _selectedShippingCoverage;
   String? _selectedShippingCostHandling;
   late TextEditingController _shippingNotesController;
+  late TextEditingController _gcashQrImageController;
 
   // Form controllers - Step 7
   late TextEditingController _warrantyController;
@@ -261,6 +262,9 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     _shippingNotesController = TextEditingController(
       text: _draft.shippingNotes ?? '',
     );
+    _gcashQrImageController = TextEditingController(
+      text: _draft.gcashQrImage ?? '',
+    );
     _warrantyController = TextEditingController(text: _draft.warranty ?? '');
     _sparePartsController = TextEditingController(
       text: _draft.spareParts ?? '',
@@ -285,6 +289,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     _fundingGoalController.dispose();
     _productionTimelineController.dispose();
     _shippingNotesController.dispose();
+    _gcashQrImageController.dispose();
     _warrantyController.dispose();
     _sparePartsController.dispose();
     _risksController.dispose();
@@ -390,6 +395,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
       shippingCoverage: _selectedShippingCoverage,
       shippingCostHandling: _selectedShippingCostHandling,
       shippingNotes: _shippingNotesController.text,
+      gcashQrImagePath: _gcashQrImageController.text,
       warranty: _warrantyController.text,
       spareParts: _sparePartsController.text,
       risks: _risksController.text,
@@ -440,6 +446,11 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         !_isRemoteImagePath(imagePath);
   }
 
+  bool get _hasSelectedGcashQr {
+    final imagePath = _gcashQrImageController.text.trim();
+    return imagePath.isNotEmpty && !_isRemoteImagePath(imagePath);
+  }
+
   String _resolveMimeType(XFile pickedFile) {
     final normalized = pickedFile.name.toLowerCase();
     if (normalized.endsWith('.png')) {
@@ -479,7 +490,9 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: lightColorScheme.primary.withOpacity(0.28)),
+        border: Border.all(
+          color: lightColorScheme.primary.withValues(alpha: 0.28),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,10 +511,7 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  message,
-                  style: const TextStyle(fontSize: 13),
-                ),
+                Text(message, style: const TextStyle(fontSize: 13)),
               ],
             ),
           ),
@@ -537,6 +547,36 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
         context: context,
         title: 'Hindi naidagdag ang larawan',
         message: 'Nagkaroon ng problema sa pagdagdag ng larawan: $e',
+      );
+    }
+  }
+
+  Future<void> _pickGcashQrPhoto(ImageSource source) async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 88,
+      );
+      if (pickedFile == null) {
+        return;
+      }
+
+      final savedPath = await _encodePickedImage(pickedFile);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _gcashQrImageController.text = savedPath;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi naidagdag ang GCash QR',
+        message: 'Nagkaroon ng problema sa pagdagdag ng GCash QR: $e',
       );
     }
   }
@@ -1182,18 +1222,20 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
 
   // STEP 6: REWARDS & SHIPPING
   Widget _buildStep6Rewards() {
+    final gcashQrImagePath = _gcashQrImageController.text.trim();
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
           Text(
-            'Benepisyo at Delivery',
+            'Benepisyo, Delivery at Bayad',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Ang benepisyo para sa supporters ay maaaring diskuwento o perk. Ilahad din kung paano darating ang kagamitan.',
+            'Ang benepisyo para sa supporters ay maaaring diskuwento o perk. Ilahad din ang delivery at ang GCash QR na gagamitin sa bayad.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
@@ -1310,6 +1352,99 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
             },
             icon: const Icon(Icons.add),
             label: const Text('Magdagdag ng Benepisyo'),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'GCash QR ng Kampanya*',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          _buildTipCard(
+            title: 'Manual na bayad sa GCash',
+            message:
+                'Ito ang QR na makikita ng supporters kapag susuporta sila. Gumamit ng malinaw na screenshot o photo ng tamang GCash QR ng campaign o kooperatiba.',
+            icon: Icons.qr_code_2_outlined,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _pickGcashQrPhoto(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Piliin sa Gallery'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _pickGcashQrPhoto(ImageSource.camera),
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: const Text('Kunan ng Larawan'),
+              ),
+            ],
+          ),
+          if (_hasSelectedGcashQr) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Ang napiling GCash QR ay mase-save kasama ng draft at ipapakita sa supporters sa app.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Text(
+            'O maglagay ng direct image URL para sa GCash QR',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          CustomTextFormField(
+            controller: _gcashQrImageController,
+            hint: 'https://example.com/gcash-qr.png',
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Puwedeng naka-host na image link o ang na-upload mong QR mula sa gallery/camera.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Preview ng GCash QR',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: CampaignCoverImage(
+                      imagePath: gcashQrImagePath,
+                      isAssetImage: false,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -1547,6 +1682,33 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  Text(
+                    previewDraft.gcashQrImage?.trim().isNotEmpty == true
+                        ? 'Mode of payment: GCash QR'
+                        : 'Mode of payment: wala pang GCash QR',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color:
+                          previewDraft.gcashQrImage?.trim().isNotEmpty == true
+                          ? lightColorScheme.primary
+                          : Colors.red.shade700,
+                    ),
+                  ),
+                  if (previewDraft.gcashQrImage?.trim().isNotEmpty == true) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: CampaignCoverImage(
+                          imagePath: previewDraft.gcashQrImage!,
+                          isAssetImage: false,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1562,9 +1724,9 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     final campaignTheme = Theme.of(context).copyWith(
       scaffoldBackgroundColor: Colors.white,
       cardTheme: Theme.of(context).cardTheme.copyWith(
-            color: Colors.white,
-            surfaceTintColor: Colors.transparent,
-          ),
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -1575,162 +1737,165 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
       data: campaignTheme,
       child: WillPopScope(
         onWillPop: () async {
-        if (_allowImmediatePop) {
+          if (_allowImmediatePop) {
+            return true;
+          }
+          if (_currentStep > 0) {
+            _previousStep();
+            return false;
+          }
           return true;
-        }
-        if (_currentStep > 0) {
-          _previousStep();
-          return false;
-        }
-        return true;
-      },
+        },
         child: Scaffold(
           appBar: AppBar(
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [lightColorScheme.primary, lightColorScheme.secondary],
-                stops: const [0.0, 0.9],
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    lightColorScheme.primary,
+                    lightColorScheme.secondary,
+                  ],
+                  stops: const [0.0, 0.9],
+                ),
               ),
             ),
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: 'I-save ang draft at lumabas',
-            onPressed: _saveDraftAndExit,
-          ),
-          title: Text(_currentStepTitle),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(24),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Hakbang ${_currentStep + 1} ng 8',
-                style: const TextStyle(color: Colors.white70),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'I-save ang draft at lumabas',
+              onPressed: _saveDraftAndExit,
+            ),
+            title: Text(_currentStepTitle),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(24),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Hakbang ${_currentStep + 1} ng 8',
+                  style: const TextStyle(color: Colors.white70),
+                ),
               ),
             ),
+            centerTitle: true,
+            elevation: 0,
           ),
-          centerTitle: true,
-          elevation: 0,
-        ),
           body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                children: [
-                  StepProgressIndicator(
-                    currentStep: _currentStep + 1,
-                    totalSteps: 8,
-                    primaryColor: lightColorScheme.primary,
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Column(
+                  children: [
+                    StepProgressIndicator(
+                      currentStep: _currentStep + 1,
+                      totalSteps: 8,
+                      primaryColor: lightColorScheme.primary,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _currentStepTitle,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _currentStepTitle,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _currentStepDescription,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Ang back sa itaas ay magse-save at lalabas. Ang device back o ang button sa ibaba ay babalik ng isang hakbang.',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildStepContent(),
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: SafeArea(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _currentStep > 0 ? _previousStep : null,
+                          child: const Text('Back'),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _currentStepDescription,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: Colors.grey.shade700),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Ang back sa itaas ay magse-save at lalabas. Ang device back o ang button sa ibaba ay babalik ng isang hakbang.',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey.shade600),
-                        ),
-                      ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _currentStep < 7
+                            ? ElevatedButton(
+                                onPressed: _isLoading ? null : _nextStep,
+                                child: const Text('Next'),
+                              )
+                            : ElevatedButton(
+                                onPressed: _isLoading ? null : _publishCampaign,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: lightColorScheme.primary,
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text('I-publish'),
+                              ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : () => _saveDraft(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade400,
+                      ),
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('Save Draft'),
                     ),
                   ),
                 ],
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildStepContent(),
-              ),
-            ),
-          ],
-        ),
-          bottomNavigationBar: SafeArea(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey.shade300)),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _currentStep > 0 ? _previousStep : null,
-                        child: const Text('Back'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _currentStep < 7
-                          ? ElevatedButton(
-                              onPressed: _isLoading ? null : _nextStep,
-                              child: const Text('Next'),
-                            )
-                          : ElevatedButton(
-                              onPressed: _isLoading ? null : _publishCampaign,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: lightColorScheme.primary,
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text('I-publish'),
-                            ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : () => _saveDraft(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade400,
-                    ),
-                    icon: const Icon(Icons.save_outlined),
-                    label: const Text('Save Draft'),
-                  ),
-                ),
-              ],
-            ),
-          ),
           ),
         ),
       ),

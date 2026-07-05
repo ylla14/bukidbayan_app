@@ -98,6 +98,7 @@ class Campaign {
   final String? shippingCoverage; // Pickup, Local delivery, Nationwide, Other
   final String? shippingCostHandling; // Included in goal / Separate estimate
   final String? shippingNotes;
+  final String? gcashQrImage;
 
   // WIZARD FIELDS - Step 7: Support
   final String? warranty;
@@ -140,6 +141,7 @@ class Campaign {
     this.shippingCoverage,
     this.shippingCostHandling,
     this.shippingNotes,
+    this.gcashQrImage,
     this.warranty,
     this.spareParts,
     this.risks,
@@ -190,6 +192,7 @@ class Campaign {
     String? shippingCoverage,
     String? shippingCostHandling,
     String? shippingNotes,
+    String? gcashQrImage,
     bool clearPublishedAt = false,
     bool clearLastEditedAt = false,
   }) {
@@ -229,6 +232,7 @@ class Campaign {
       shippingCoverage: shippingCoverage ?? this.shippingCoverage,
       shippingCostHandling: shippingCostHandling ?? this.shippingCostHandling,
       shippingNotes: shippingNotes ?? this.shippingNotes,
+      gcashQrImage: gcashQrImage ?? this.gcashQrImage,
     );
   }
 
@@ -268,6 +272,7 @@ class Campaign {
       shippingCoverage: json['shippingCoverage'] as String?,
       shippingCostHandling: json['shippingCostHandling'] as String?,
       shippingNotes: json['shippingNotes'] as String?,
+      gcashQrImage: json['gcashQrImage'] as String?,
       warranty: json['warranty'] as String?,
       spareParts: json['spareParts'] as String?,
       risks: json['risks'] as String?,
@@ -315,6 +320,7 @@ class Campaign {
     'shippingCoverage': shippingCoverage,
     'shippingCostHandling': shippingCostHandling,
     'shippingNotes': shippingNotes,
+    'gcashQrImage': gcashQrImage,
     'warranty': warranty,
     'spareParts': spareParts,
     'risks': risks,
@@ -365,7 +371,9 @@ class Pledge {
 
   /// Firestore-compatible map (excludes `id` and `campaignId` — stored as doc/parent IDs).
   Map<String, dynamic> toFirestore() {
-    final map = toJson()..remove('id')..remove('campaignId');
+    final map = toJson()
+      ..remove('id')
+      ..remove('campaignId');
     return map;
   }
 
