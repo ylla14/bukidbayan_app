@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/components/dashboard/asset_performance.dart';
+import 'package:bukidbayan_app/components/dashboard/equipment_reliability.dart';
 import 'package:bukidbayan_app/components/dashboard/utilization_rate.dart';
 import 'package:flutter/material.dart';
 
@@ -21,7 +22,7 @@ class _KpiDashboardPageState extends State<KpiDashboardPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -51,6 +52,7 @@ class _KpiDashboardPageState extends State<KpiDashboardPage>
           tabs: const [
             Tab(text: 'Utilization & Uptime'),
             Tab(text: 'Top Performing'),
+            Tab(text: 'Reliability'),
           ],
         ),
       ),
@@ -59,6 +61,7 @@ class _KpiDashboardPageState extends State<KpiDashboardPage>
         children: const [
           UtilizationAnalyticsPage(embedded: true),
           AssetPerformancePage(embedded: true),
+          ReliabilityScorePage(embedded: true),
         ],
       ),
     );
