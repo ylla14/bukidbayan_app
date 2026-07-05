@@ -13,6 +13,7 @@ This setup is for:
 - local Firebase Functions emulator
 - Flutter web app running locally
 - local seeded crowdfunding campaigns for pledge testing
+- optional reusable Firestore demo snapshots
 
 ## What This Local Setup Can Test
 
@@ -123,6 +124,47 @@ Expected local app URL:
 
 - `http://127.0.0.1:7357`
 
+## Snapshot Demo Mode
+
+If you want the demo to reopen with nearly the same Firestore data every time, use snapshot mode:
+
+```powershell
+.\start_teammate_test.ps1 -SnapshotPath .\demo-snapshot
+```
+
+How it works:
+
+- if `demo-snapshot` already contains an emulator export, the script imports it and skips the default crowdfunding seed
+- if `demo-snapshot` does not exist yet, the script starts normally, seeds the default campaigns, and saves the Firestore emulator state into that folder when the emulator window is closed
+- after you finish a demo session, closing the Firebase emulator window writes the latest Firestore snapshot back to the same folder
+
+Use a dedicated folder like `.\demo-snapshot` or `.\teammate-demo-snapshot`.
+
+Important notes:
+
+- this snapshot is for emulator data, mainly Firestore in the current setup
+- Firebase Auth is still real project Auth unless you explicitly wire the app to an Auth emulator
+- do not commit or share a snapshot that contains real user or payment data unless you have sanitized it
+
+## How To Build a Shared Demo Snapshot
+
+If you want your teammates to all open the same demo data:
+
+1. On one computer, run:
+
+```powershell
+.\start_teammate_test.ps1 -SnapshotPath .\demo-snapshot
+```
+
+2. Use the app and prepare the demo data you want visible in Firestore.
+3. Close the Firebase emulator window when you are done.
+4. Share the `demo-snapshot` folder with your teammates, or commit a sanitized demo snapshot to the branch.
+5. Each teammate runs:
+
+```powershell
+.\start_teammate_test.ps1 -SnapshotPath .\demo-snapshot
+```
+
 ## Manual Startup
 
 If you prefer not to use the helper script:
@@ -190,6 +232,14 @@ Check:
 - `firebase login` has already been done
 - Firebase CLI is installed
 - ports `8080`, `5001`, and `4000` are not already taken
+
+### Snapshot mode does not import anything
+
+Check:
+
+- the snapshot folder contains `firebase-export-metadata.json`
+- the snapshot folder came from `firebase emulators:export` or from a previous `--export-on-exit` emulator session
+- you passed the same path again, for example `.\start_teammate_test.ps1 -SnapshotPath .\demo-snapshot`
 
 ### Checkout opens but never becomes paid
 
