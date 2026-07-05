@@ -581,6 +581,27 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
     }
   }
 
+  void _openRewardTierSheet({
+    RewardTier? initialTier,
+    required ValueChanged<RewardTier> onSave,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      builder: (_) => RewardTierForm(
+        initialTier: initialTier,
+        onSave: (tier) {
+          onSave(tier);
+          Navigator.of(context).pop();
+        },
+        onCancel: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
+
   Future<void> _saveDraftAndExit() async {
     if (_isLoading) {
       return;
@@ -1294,34 +1315,47 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                               ],
                             ),
                           ),
-                          PopupMenuButton(
-                            itemBuilder: (_) => [
-                              PopupMenuItem(
-                                child: const Text('Edit'),
-                                onTap: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    useSafeArea: true,
-                                    backgroundColor: Colors.white,
-                                    builder: (_) => RewardTierForm(
-                                      initialTier: reward,
-                                      onSave: (updatedTier) {
-                                        setState(() {
-                                          _rewards[index] = updatedTier;
-                                        });
-                                        Navigator.pop(context);
-                                      },
-                                      onCancel: () => Navigator.pop(context),
-                                    ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  _openRewardTierSheet(
+                                    initialTier: reward,
+                                    onSave: (updatedTier) {
+                                      setState(() {
+                                        _rewards[index] = updatedTier;
+                                      });
+                                    },
                                   );
                                 },
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                ),
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                label: const Text('I-edit'),
                               ),
-                              PopupMenuItem(
-                                child: const Text('Tanggalin'),
-                                onTap: () {
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: () {
                                   setState(() => _rewards.removeAt(index));
                                 },
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.error,
+                                ),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                ),
+                                label: const Text('Tanggalin'),
                               ),
                             ],
                           ),
@@ -1334,24 +1368,22 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
             },
           ),
           const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                useSafeArea: true,
-                backgroundColor: Colors.white,
-                builder: (_) => RewardTierForm(
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _openRewardTierSheet(
                   onSave: (newTier) {
                     setState(() => _rewards.add(newTier));
-                    Navigator.pop(context);
                   },
-                  onCancel: () => Navigator.pop(context),
-                ),
-              );
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Magdagdag ng Benepisyo'),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('Magdagdag ng Benepisyo'),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -1368,21 +1400,48 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
             icon: Icons.qr_code_2_outlined,
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _pickGcashQrPhoto(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Piliin sa Gallery'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _pickGcashQrPhoto(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Kunan ng Larawan'),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final useFullWidthButtons = constraints.maxWidth < 430;
+
+              Widget buildQrButton({
+                required VoidCallback onPressed,
+                required IconData icon,
+                required String label,
+              }) {
+                return SizedBox(
+                  width: useFullWidthButtons ? double.infinity : null,
+                  child: OutlinedButton.icon(
+                    onPressed: onPressed,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    icon: Icon(icon),
+                    label: Text(label),
+                  ),
+                );
+              }
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  buildQrButton(
+                    onPressed: () => _pickGcashQrPhoto(ImageSource.gallery),
+                    icon: Icons.photo_library_outlined,
+                    label: 'Piliin sa Gallery',
+                  ),
+                  buildQrButton(
+                    onPressed: () => _pickGcashQrPhoto(ImageSource.camera),
+                    icon: Icons.photo_camera_outlined,
+                    label: 'Kunan ng Larawan',
+                  ),
+                ],
+              );
+            },
           ),
           if (_hasSelectedGcashQr) ...[
             const SizedBox(height: 8),
@@ -1853,7 +1912,10 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: _currentStep > 0 ? _previousStep : null,
-                          child: const Text('Back'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text('Bumalik'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1861,12 +1923,20 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                         child: _currentStep < 7
                             ? ElevatedButton(
                                 onPressed: _isLoading ? null : _nextStep,
-                                child: const Text('Next'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                ),
+                                child: const Text('Susunod'),
                               )
                             : ElevatedButton(
                                 onPressed: _isLoading ? null : _publishCampaign,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: lightColorScheme.primary,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                 ),
                                 child: _isLoading
                                     ? const SizedBox(
@@ -1884,13 +1954,13 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : () => _saveDraft(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade400,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       icon: const Icon(Icons.save_outlined),
-                      label: const Text('Save Draft'),
+                      label: const Text('I-save ang Draft'),
                     ),
                   ),
                 ],
