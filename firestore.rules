@@ -129,14 +129,19 @@ service cloud.firestore {
 
     // Users collection rules
     match /users/{userId} {
+      function keepsCreatedAtImmutable() {
+        return !exists(/databases/$(database)/documents/users/$(userId))
+               || !resource.data.keys().hasAny(['createdAt'])
+               || request.resource.data.createdAt == resource.data.createdAt;
+      }
+
       // Users can read their own profile
       allow read: if isOwner(userId);
 
       // Users can update their own profile
       // Prevent changing critical fields like createdAt
       allow update: if isOwner(userId)
-                    && !request.resource.data.diff(resource.data).affectedKeys()
-                      .hasAny(['createdAt']);
+                    && keepsCreatedAtImmutable();
 
       // Users create their own document during sign-up (signUp() calls .set())
       allow create: if isOwner(userId);
