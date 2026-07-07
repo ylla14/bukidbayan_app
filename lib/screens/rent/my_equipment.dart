@@ -761,11 +761,14 @@ class _MyEquipmentState extends State<MyEquipment> {
         );
 
         final avgRating = _ratingCache[equipment.id] ?? -1;
+        final suggestRetirement = equipment.retirementFlaggedByAdmin ||
+            (StrikeService.isMotorizedEquipment(equipment.name)
+                ? equipment.majorBreakdownCount >= StrikeService.kMajorBreakdownThreshold
+                : equipment.damageReportCount >= StrikeService.kDamageRetirementThreshold);
         final hasBadge = avgRating >= 0 ||
             equipment.isForMaintenance ||
             equipment.isUpcomingMaintenance ||
-            equipment.damageReportCount >=
-                StrikeService.kDamageRetirementThreshold;
+            suggestRetirement;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -870,8 +873,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                                     bgColor: Colors.amber.shade50,
                                     borderColor: Colors.amber.shade300,
                                   ),
-                                if (equipment.damageReportCount >=
-                                    StrikeService.kDamageRetirementThreshold)
+                                if (suggestRetirement)
                                   _BadgePill(
                                     label: 'Suggest Retirement',
                                     icon: Icons.archive_outlined,
