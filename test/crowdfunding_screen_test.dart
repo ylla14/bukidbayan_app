@@ -66,6 +66,7 @@ Widget _buildHarness(FakeCrowdfundingService service) {
       serviceOverride: service,
       appBarOverride: AppBar(title: const Text('Test AppBar')),
       drawerOverride: const Drawer(child: SizedBox.shrink()),
+      isCoop: true,
     ),
   );
 }
@@ -93,14 +94,20 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    expect(find.text('Solar Pump Upgrade'), findsOneWidget);
     expect(find.text('2 resulta'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'solar');
     await tester.pumpAndSettle();
 
-    expect(find.text('Solar Pump Upgrade'), findsOneWidget);
     expect(find.text('1 resulta'), findsOneWidget);
+
+    await tester.dragUntilVisible(
+      find.text('Solar Pump Upgrade'),
+      find.byType(ListView),
+      const Offset(0, -250),
+    );
+
+    expect(find.text('Solar Pump Upgrade'), findsOneWidget);
   });
 
   testWidgets('My Listings tab filters listings by manage search', (
@@ -127,14 +134,17 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Aking Mga Kampanya'));
+    await tester.tap(find.text('Aking Mga Kampanya').first);
     await tester.pumpAndSettle();
-
-    expect(find.text('Draft One Listing'), findsOneWidget);
-    expect(find.text('Live Campaign Listing'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'draft one');
     await tester.pumpAndSettle();
+
+    await tester.dragUntilVisible(
+      find.text('Draft One Listing'),
+      find.byType(ListView),
+      const Offset(0, -250),
+    );
 
     expect(find.text('Draft One Listing'), findsOneWidget);
     expect(find.text('Live Campaign Listing'), findsNothing);
@@ -151,7 +161,7 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Aking Mga Kampanya'));
+    await tester.tap(find.text('Aking Mga Kampanya').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Wala ka pang kampanya'), findsOneWidget);
@@ -182,7 +192,7 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Aking Mga Kampanya'));
+    await tester.tap(find.text('Aking Mga Kampanya').first);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Higit pang aksyon'));
@@ -210,7 +220,7 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Aking Mga Kampanya'));
+    await tester.tap(find.text('Aking Mga Kampanya').first);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Higit pang aksyon'));

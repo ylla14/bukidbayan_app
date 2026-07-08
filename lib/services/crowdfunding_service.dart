@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/models/campaign_report.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CrowdfundingService {
   CrowdfundingService({FirebaseFirestore? firestore, FirebaseAuth? auth})
@@ -12,8 +13,31 @@ class CrowdfundingService {
   final FirebaseFirestore? _firestoreOverride;
   final FirebaseAuth? _authOverride;
 
-  FirebaseFirestore get _db => _firestoreOverride ?? FirebaseFirestore.instance;
-  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
+  static const _campaignsPrefsKey = 'campaigns_v2';
+  static const _pledgesPrefsKey = 'pledges_v1';
+  static const _currentUserEmailPrefsKey = 'current_user_email';
+
+  FirebaseFirestore? get _dbOrNull {
+    if (_firestoreOverride != null) return _firestoreOverride;
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  FirebaseAuth? get _authOrNull {
+    if (_authOverride != null) return _authOverride;
+    try {
+      return FirebaseAuth.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  FirebaseFirestore get _db =>
+      _dbOrNull ?? (throw StateError('FirebaseFirestore is unavailable.'));
+  FirebaseAuth? get _auth => _authOrNull;
 
   CollectionReference<Map<String, dynamic>> get _campaigns =>
       _db.collection('campaigns');
@@ -21,9 +45,9 @@ class CrowdfundingService {
   CollectionReference<Map<String, dynamic>> _pledgesRef(String campaignId) =>
       _campaigns.doc(campaignId).collection('pledges');
 
-  String? get _uid => _auth.currentUser?.uid;
-  String? get _email => _auth.currentUser?.email;
-  String? get _displayName => _auth.currentUser?.displayName;
+  String? get _uid => _auth?.currentUser?.uid;
+  String? get _email => _auth?.currentUser?.email;
+  String? get _displayName => _auth?.currentUser?.displayName;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -60,10 +84,275 @@ class CrowdfundingService {
       campaign.status.startsWith('ended') ||
       DateTime.now().isAfter(campaign.endDate);
 
+  Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
+
+  Future<List<Campaign>> _readLocalCampaigns() async {
+    final raw = (await _prefs()).getString(_campaignsPrefsKey);
+    if (raw == null || raw.trim().isEmpty) return [];
+    return decodeCampaigns(raw);
+  }
+
+  Future<void> _writeLocalCampaigns(List<Campaign> campaigns) async {
+    await (await _prefs()).setString(
+      _campaignsPrefsKey,
+      encodeCampaigns(campaigns),
+    );
+  }
+
+  Future<List<Pledge>> _readLocalPledges() async {
+    final raw = (await _prefs()).getString(_pledgesPrefsKey);
+    if (raw == null || raw.trim().isEmpty) return [];
+    return decodePledges(raw);
+  }
+
+  Future<void> _writeLocalPledges(List<Pledge> pledges) async {
+    await (await _prefs()).setString(_pledgesPrefsKey, encodePledges(pledges));
+  }
+
+  Future<String?> _currentLocalEmail({String? override}) async {
+    if (override != null) {
+      final trimmed = override.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    final runtimeEmail = _email;
+    if (runtimeEmail != null) {
+      final trimmed = runtimeEmail.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    final stored = (await _prefs()).getString(_currentUserEmailPrefsKey);
+    if (stored == null) return null;
+    final trimmed = stored.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  void _sortCampaignsByRecency(List<Campaign> campaigns) {
+    campaigns.sort((a, b) {
+      final aTime = a.lastEditedAt ?? a.publishedAt ?? a.createdAt;
+      final bTime = b.lastEditedAt ?? b.publishedAt ?? b.createdAt;
+      return bTime.compareTo(aTime);
+    });
+  }
+
+  void _upsertLocalCampaign(List<Campaign> campaigns, Campaign campaign) {
+    final index = campaigns.indexWhere(
+      (existing) => existing.id == campaign.id,
+    );
+    if (index == -1) {
+      campaigns.add(campaign);
+    } else {
+      campaigns[index] = campaign;
+    }
+  }
+
+  CampaignReport _buildCampaignReport({
+    required Campaign campaign,
+    required List<Pledge> campaignPledges,
+  }) {
+    final pledgeAmountTotal = campaignPledges.fold<int>(
+      0,
+      (sum, pledge) => sum + pledge.amount,
+    );
+    final totalPledges = campaignPledges.length;
+    final totalRaised = campaign.pledgedAmount;
+    final firstPledgeAt = totalPledges > 0
+        ? campaignPledges.first.createdAt
+        : null;
+    final lastPledgeAt = totalPledges > 0
+        ? campaignPledges.last.createdAt
+        : null;
+    final averagePledge = totalPledges > 0
+        ? pledgeAmountTotal / totalPledges
+        : (campaign.backersCount > 0
+              ? campaign.pledgedAmount / campaign.backersCount
+              : 0.0);
+
+    final rewardBreakdown = campaign.rewards.map((tier) {
+      final related = campaignPledges.where(
+        (pledge) => pledge.rewardId == tier.id,
+      );
+      return CampaignRewardReportItem(
+        rewardTier: tier,
+        pledgeCount: related.length,
+        totalAmount: related.fold<int>(0, (sum, pledge) => sum + pledge.amount),
+      );
+    }).toList();
+
+    final noRewardPledges = campaignPledges
+        .where(
+          (pledge) =>
+              pledge.rewardId == null || pledge.rewardId!.trim().isEmpty,
+        )
+        .toList();
+
+    final campaignStart = campaign.publishedAt ?? campaign.createdAt;
+    final campaignDurationDays = campaign.endDate
+        .difference(campaignStart)
+        .inDays
+        .clamp(0, 99999);
+
+    final isSuccessful = campaign.status == 'ended_success'
+        ? true
+        : campaign.status == 'ended_fail'
+        ? false
+        : totalRaised >= campaign.goalAmount;
+
+    return CampaignReport(
+      campaign: campaign,
+      isEnded: _isCampaignEnded(campaign),
+      isSuccessful: isSuccessful,
+      totalRaised: totalRaised,
+      fundingDifference: totalRaised - campaign.goalAmount,
+      totalPledges: totalPledges,
+      totalBackers: campaign.backersCount,
+      averagePledge: averagePledge,
+      firstPledgeAt: firstPledgeAt,
+      lastPledgeAt: lastPledgeAt,
+      campaignDurationDays: campaignDurationDays,
+      pledges: campaignPledges,
+      rewardBreakdown: rewardBreakdown,
+      noRewardPledgeCount: noRewardPledges.length,
+      noRewardAmount: noRewardPledges.fold<int>(
+        0,
+        (sum, pledge) => sum + pledge.amount,
+      ),
+    );
+  }
+
+  Future<void> _publishCampaignLocal(Campaign campaign) async {
+    final localCampaigns = await _readLocalCampaigns();
+    final now = DateTime.now();
+    final published = campaign.copyWith(
+      creatorEmail: campaign.creatorEmail ?? await _currentLocalEmail(),
+      creatorUid: campaign.creatorUid ?? _uid,
+      status: 'live',
+      publishedAt: now,
+      lastEditedAt: now,
+    );
+    _upsertLocalCampaign(localCampaigns, published);
+    await _writeLocalCampaigns(localCampaigns);
+  }
+
+  Future<void> _backCampaignLocal({
+    required String campaignId,
+    required int amount,
+    String? rewardId,
+    String? backerName,
+    String? backerPhone,
+    String? backerNote,
+  }) async {
+    final campaigns = await _readLocalCampaigns();
+    final campaignIndex = campaigns.indexWhere(
+      (campaign) => campaign.id == campaignId,
+    );
+    if (campaignIndex == -1) throw Exception('Campaign not found.');
+
+    final campaign = campaigns[campaignIndex];
+    final email = await _currentLocalEmail();
+
+    if (_isOwnedByUser(campaign, email: email)) {
+      throw Exception('You cannot support your own campaign.');
+    }
+    if (DateTime.now().isAfter(campaign.endDate)) {
+      throw Exception('This campaign has already ended.');
+    }
+    if (campaign.gcashQrImage == null ||
+        campaign.gcashQrImage!.trim().isEmpty) {
+      throw Exception(
+        'This campaign does not have a GCash QR payment photo yet.',
+      );
+    }
+
+    RewardTier? selectedReward;
+    if (rewardId != null && rewardId.trim().isNotEmpty) {
+      for (final tier in campaign.rewards) {
+        if (tier.id == rewardId) {
+          selectedReward = tier;
+          break;
+        }
+      }
+      if (selectedReward == null) {
+        throw Exception('Selected reward tier is no longer available.');
+      }
+      if (amount < selectedReward.minPledge) {
+        throw Exception(
+          'Amount is below the minimum pledge for this reward tier (${selectedReward.minPledge}).',
+        );
+      }
+    }
+
+    final pledges = await _readLocalPledges();
+    final isNewBacker =
+        email == null ||
+        pledges.every(
+          (pledge) =>
+              pledge.campaignId != campaignId || pledge.backerEmail != email,
+        );
+    final pledge = Pledge(
+      id: 'p${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(999)}',
+      campaignId: campaignId,
+      backerUid: _uid,
+      backerEmail: email,
+      backerName: backerName?.trim().isNotEmpty == true
+          ? backerName!.trim()
+          : _displayName,
+      backerPhone: backerPhone?.trim().isNotEmpty == true
+          ? backerPhone!.trim()
+          : null,
+      backerNote: backerNote?.trim().isNotEmpty == true
+          ? backerNote!.trim()
+          : null,
+      amount: amount,
+      rewardId: rewardId,
+      createdAt: DateTime.now(),
+    );
+
+    campaigns[campaignIndex] = campaign.copyWith(
+      pledgedAmount: campaign.pledgedAmount + amount,
+      backersCount: isNewBacker
+          ? campaign.backersCount + 1
+          : campaign.backersCount,
+    );
+    pledges.add(pledge);
+
+    await _writeLocalCampaigns(campaigns);
+    await _writeLocalPledges(pledges);
+  }
+
+  Future<CampaignReport> _generateCampaignReportLocal({
+    required String campaignId,
+    String? userEmail,
+  }) async {
+    final campaigns = await _readLocalCampaigns();
+    final campaignIndex = campaigns.indexWhere(
+      (campaign) => campaign.id == campaignId,
+    );
+    if (campaignIndex == -1) throw Exception('Campaign not found.');
+
+    final campaign = campaigns[campaignIndex];
+    final email = await _currentLocalEmail(override: userEmail);
+    if (!_isOwnedByUser(campaign, email: email)) {
+      throw Exception(
+        'Only the campaign owner can generate a report for this campaign.',
+      );
+    }
+
+    final campaignPledges =
+        (await _readLocalPledges())
+            .where((pledge) => pledge.campaignId == campaignId)
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    return _buildCampaignReport(
+      campaign: campaign,
+      campaignPledges: campaignPledges,
+    );
+  }
+
   // ── Seed ─────────────────────────────────────────────────────────────────
 
   /// Seeds demo campaigns into Firestore if they don't already exist.
   Future<void> seedIfEmpty() async {
+    if (_dbOrNull == null) return;
     final doc = await _campaigns.doc('c1').get();
     if (doc.exists) return;
 
@@ -379,6 +668,16 @@ class CrowdfundingService {
 
   /// Public discover list — excludes drafts.
   Future<List<Campaign>> getCampaigns() async {
+    if (_dbOrNull == null) {
+      final campaigns = await _readLocalCampaigns();
+      final visible = campaigns.where((campaign) {
+        return campaign.status == 'live' ||
+            campaign.status == 'ended_success' ||
+            campaign.status == 'ended_fail';
+      }).toList();
+      _sortCampaignsByRecency(visible);
+      return visible;
+    }
     await seedIfEmpty();
     final snap = await _campaigns
         .where('status', whereIn: ['live', 'ended_success', 'ended_fail'])
@@ -388,6 +687,17 @@ class CrowdfundingService {
 
   /// Fetches a single campaign by ID. Drafts are only returned to their owner.
   Future<Campaign?> getCampaignById(String id) async {
+    if (_dbOrNull == null) {
+      final campaigns = await _readLocalCampaigns();
+      final index = campaigns.indexWhere((campaign) => campaign.id == id);
+      if (index == -1) return null;
+      final campaign = campaigns[index];
+      if (campaign.status == 'draft' &&
+          !_isOwnedByUser(campaign, email: await _currentLocalEmail())) {
+        return null;
+      }
+      return campaign;
+    }
     final snap = await _campaigns.doc(id).get();
     if (!snap.exists) return null;
     final campaign = _fromDoc(snap);
@@ -395,13 +705,25 @@ class CrowdfundingService {
     return campaign;
   }
 
-  Future<String?> getCurrentUserEmail() async => _email;
+  Future<String?> getCurrentUserEmail() async => _currentLocalEmail();
 
   /// Returns all campaigns (any status) owned by the current user.
   Future<List<Campaign>> getMyCampaigns({
     String? userEmail,
     String? status,
   }) async {
+    if (_dbOrNull == null) {
+      final email = await _currentLocalEmail(override: userEmail);
+      if (email == null) return [];
+      final campaigns = (await _readLocalCampaigns())
+          .where((campaign) => _isOwnedByUser(campaign, email: email))
+          .toList();
+      final filtered = status == null
+          ? campaigns
+          : campaigns.where((campaign) => campaign.status == status).toList();
+      _sortCampaignsByRecency(filtered);
+      return filtered;
+    }
     final uid = _uid;
     if (uid == null) return [];
 
@@ -424,6 +746,15 @@ class CrowdfundingService {
   /// Returns all pledges made by the current user across all campaigns.
   /// Requires a Firestore collectionGroup index on pledges.backerUid.
   Future<List<Pledge>> getMyPledges() async {
+    if (_dbOrNull == null) {
+      final email = await _currentLocalEmail();
+      if (email == null) return [];
+      final pledges = (await _readLocalPledges())
+          .where((pledge) => pledge.backerEmail == email)
+          .toList();
+      pledges.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return pledges;
+    }
     final uid = _uid;
     if (uid == null) return [];
     final snap = await _db
@@ -437,6 +768,19 @@ class CrowdfundingService {
   }
 
   Future<List<Campaign>> getDrafts({String? userEmail}) async {
+    if (_dbOrNull == null) {
+      final email = await _currentLocalEmail(override: userEmail);
+      if (email == null) return [];
+      final drafts = (await _readLocalCampaigns())
+          .where(
+            (campaign) =>
+                campaign.status == 'draft' &&
+                _isOwnedByUser(campaign, email: email),
+          )
+          .toList();
+      _sortCampaignsByRecency(drafts);
+      return drafts;
+    }
     final uid = _uid;
     if (uid == null) return [];
     final snap = await _campaigns
@@ -453,6 +797,17 @@ class CrowdfundingService {
   }
 
   Future<Campaign?> getDraftById(String draftId) async {
+    if (_dbOrNull == null) {
+      final campaigns = await _readLocalCampaigns();
+      final index = campaigns.indexWhere((campaign) => campaign.id == draftId);
+      if (index == -1) return null;
+      final campaign = campaigns[index];
+      if (campaign.status != 'draft') return null;
+      if (!_isOwnedByUser(campaign, email: await _currentLocalEmail())) {
+        return null;
+      }
+      return campaign;
+    }
     final snap = await _campaigns.doc(draftId).get();
     if (!snap.exists) return null;
     final campaign = _fromDoc(snap);
@@ -464,6 +819,18 @@ class CrowdfundingService {
   // ── Write ─────────────────────────────────────────────────────────────────
 
   Future<void> saveDraft(Campaign draft) async {
+    if (_dbOrNull == null) {
+      final localCampaigns = await _readLocalCampaigns();
+      final saved = draft.copyWith(
+        creatorEmail: draft.creatorEmail ?? await _currentLocalEmail(),
+        creatorUid: draft.creatorUid ?? _uid,
+        status: 'draft',
+        lastEditedAt: DateTime.now(),
+      );
+      _upsertLocalCampaign(localCampaigns, saved);
+      await _writeLocalCampaigns(localCampaigns);
+      return;
+    }
     final saved = draft.copyWith(
       creatorEmail: draft.creatorEmail ?? _email,
       creatorUid: draft.creatorUid ?? _uid,
@@ -474,6 +841,21 @@ class CrowdfundingService {
   }
 
   Future<void> deleteDraft(String draftId) async {
+    if (_dbOrNull == null) {
+      final localCampaigns = await _readLocalCampaigns();
+      final index = localCampaigns.indexWhere(
+        (campaign) => campaign.id == draftId,
+      );
+      if (index == -1) return;
+      final campaign = localCampaigns[index];
+      if (campaign.status != 'draft' ||
+          !_isOwnedByUser(campaign, email: await _currentLocalEmail())) {
+        return;
+      }
+      localCampaigns.removeAt(index);
+      await _writeLocalCampaigns(localCampaigns);
+      return;
+    }
     final snap = await _campaigns.doc(draftId).get();
     if (!snap.exists) return;
     final campaign = _fromDoc(snap);
@@ -510,6 +892,39 @@ class CrowdfundingService {
     }
     if (endDate.isBefore(DateTime.now())) {
       throw Exception('End date must be in the future.');
+    }
+
+    if (_dbOrNull == null) {
+      final id =
+          'c${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(9999)}';
+      final campaign = Campaign(
+        id: id,
+        title: title,
+        creatorName: creatorName,
+        creatorEmail: await _currentLocalEmail(),
+        creatorUid: _uid,
+        shortBlurb: shortBlurb,
+        description: description,
+        isAssetImage: isAssetImage,
+        image: image,
+        category: category,
+        goalAmount: goalAmount,
+        pledgedAmount: 0,
+        backersCount: 0,
+        endDate: endDate,
+        createdAt: DateTime.now(),
+        rewards: rewards,
+        gcashQrImage: gcashQrImage,
+        productionTimeline: productionTimeline,
+        warranty: warranty,
+        spareParts: spareParts,
+        risks: risks,
+        safetyNotes: safetyNotes,
+      );
+      final localCampaigns = await _readLocalCampaigns();
+      _upsertLocalCampaign(localCampaigns, campaign);
+      await _writeLocalCampaigns(localCampaigns);
+      return;
     }
 
     final id =
@@ -551,6 +966,18 @@ class CrowdfundingService {
     String? backerNote,
   }) async {
     if (amount <= 0) throw Exception('Amount must be greater than zero.');
+
+    if (_dbOrNull == null) {
+      await _backCampaignLocal(
+        campaignId: campaignId,
+        amount: amount,
+        rewardId: rewardId,
+        backerName: backerName,
+        backerPhone: backerPhone,
+        backerNote: backerNote,
+      );
+      return;
+    }
 
     final uid = _uid;
     final email = _email;
@@ -643,6 +1070,10 @@ class CrowdfundingService {
     if (errors.isNotEmpty) {
       throw Exception('Cannot publish: ${errors.join(', ')}');
     }
+    if (_dbOrNull == null) {
+      await _publishCampaignLocal(campaign);
+      return;
+    }
     final now = DateTime.now();
     final published = campaign.copyWith(
       creatorEmail: campaign.creatorEmail ?? _email,
@@ -660,6 +1091,12 @@ class CrowdfundingService {
     required String campaignId,
     String? userEmail,
   }) async {
+    if (_dbOrNull == null) {
+      return _generateCampaignReportLocal(
+        campaignId: campaignId,
+        userEmail: userEmail,
+      );
+    }
     final snap = await _campaigns.doc(campaignId).get();
     if (!snap.exists) throw Exception('Campaign not found.');
     final campaign = _fromDoc(snap);
@@ -669,8 +1106,6 @@ class CrowdfundingService {
         'Only the campaign owner can generate a report for this campaign.',
       );
     }
-    final isEnded = _isCampaignEnded(campaign);
-
     final pledgesSnap = await _pledgesRef(
       campaignId,
     ).orderBy('createdAt').get();
@@ -678,65 +1113,9 @@ class CrowdfundingService {
         .map((d) => _pledgeFromDoc(d, campaignId))
         .toList();
 
-    final pledgeAmountTotal = campaignPledges.fold<int>(
-      0,
-      (s, p) => s + p.amount,
-    );
-    final totalPledges = campaignPledges.length;
-    final totalRaised = campaign.pledgedAmount;
-    final firstPledgeAt = totalPledges > 0
-        ? campaignPledges.first.createdAt
-        : null;
-    final lastPledgeAt = totalPledges > 0
-        ? campaignPledges.last.createdAt
-        : null;
-    final averagePledge = totalPledges > 0
-        ? pledgeAmountTotal / totalPledges
-        : (campaign.backersCount > 0
-              ? campaign.pledgedAmount / campaign.backersCount
-              : 0.0);
-
-    final rewardBreakdown = campaign.rewards.map((tier) {
-      final related = campaignPledges.where((p) => p.rewardId == tier.id);
-      return CampaignRewardReportItem(
-        rewardTier: tier,
-        pledgeCount: related.length,
-        totalAmount: related.fold<int>(0, (s, p) => s + p.amount),
-      );
-    }).toList();
-
-    final noRewardPledges = campaignPledges
-        .where((p) => p.rewardId == null || p.rewardId!.trim().isEmpty)
-        .toList();
-
-    final campaignStart = campaign.publishedAt ?? campaign.createdAt;
-    final campaignDurationDays = campaign.endDate
-        .difference(campaignStart)
-        .inDays
-        .clamp(0, 99999);
-
-    final isSuccessful = campaign.status == 'ended_success'
-        ? true
-        : campaign.status == 'ended_fail'
-        ? false
-        : totalRaised >= campaign.goalAmount;
-
-    return CampaignReport(
+    return _buildCampaignReport(
       campaign: campaign,
-      isEnded: isEnded,
-      isSuccessful: isSuccessful,
-      totalRaised: totalRaised,
-      fundingDifference: totalRaised - campaign.goalAmount,
-      totalPledges: totalPledges,
-      totalBackers: campaign.backersCount,
-      averagePledge: averagePledge,
-      firstPledgeAt: firstPledgeAt,
-      lastPledgeAt: lastPledgeAt,
-      campaignDurationDays: campaignDurationDays,
-      pledges: campaignPledges,
-      rewardBreakdown: rewardBreakdown,
-      noRewardPledgeCount: noRewardPledges.length,
-      noRewardAmount: noRewardPledges.fold<int>(0, (s, p) => s + p.amount),
+      campaignPledges: campaignPledges,
     );
   }
 
