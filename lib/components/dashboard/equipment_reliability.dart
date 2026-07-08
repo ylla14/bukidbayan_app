@@ -13,28 +13,45 @@ import 'package:bukidbayan_app/models/rent_request.dart'; // adjust path as need
 class _EquipmentReliability {
   final String itemId;
   final String itemName;
-  final int totalRentals;      // completed rentals
-  final int totalBreakdowns;   // damageReportCount
-  final int maintenanceCount;  // lifetime maintenance events
+  final int totalRentals;        // completed rentals
+  final int totalBreakdowns;     // damageReportCount — ALL reports (major + minor)
+  final int majorBreakdowns;     // majorBreakdownCount — capital/major breakdowns only
+  final int maintenanceCount;    // lifetime maintenance events
+  final bool retirementFlagged;  // retirementFlaggedByAdmin
 
   const _EquipmentReliability({
     required this.itemId,
     required this.itemName,
     required this.totalRentals,
     required this.totalBreakdowns,
+    required this.majorBreakdowns,
     required this.maintenanceCount,
+    required this.retirementFlagged,
   });
 
-  /// The core metric: average rentals completed between reported breakdowns.
+  /// Non-major reports, derived (damageReportCount includes majors already).
+  int get minorBreakdowns =>
+      (totalBreakdowns - majorBreakdowns) < 0 ? 0 : totalBreakdowns - majorBreakdowns;
+
+  /// Majors hurt the score 3x harder than minors — a major breakdown is a much
+  /// stronger reliability signal than a minor one.
+  int get _weightedBreakdowns => (majorBreakdowns * 3) + minorBreakdowns;
+
+  /// The core metric: average rentals completed between (weighted) breakdowns.
   /// Null means "no breakdowns yet" — can't divide, and that's a good thing.
   double? get rentalsPerBreakdown =>
-      totalBreakdowns == 0 ? null : totalRentals / totalBreakdowns;
+      _weightedBreakdowns == 0 ? null : totalRentals / _weightedBreakdowns;
 }
 
 enum _Tier { excellent, good, attention, critical, unknown }
 
 _Tier _tierFor(_EquipmentReliability r) {
   if (r.totalRentals == 0) return _Tier.unknown;
+
+  // 3-strike rule: 3+ major breakdowns (or admin-flagged) = overhaul,
+  // regardless of how good the ratio looks otherwise.
+  if (r.majorBreakdowns >= 3 || r.retirementFlagged) return _Tier.critical;
+
   if (r.totalBreakdowns == 0) return _Tier.excellent;
   final rpb = r.rentalsPerBreakdown!;
   if (rpb >= 8) return _Tier.excellent;
@@ -71,10 +88,10 @@ class ReliabilityScorePage extends StatefulWidget {
 
 class _ReliabilityScorePageState extends State<ReliabilityScorePage>
     with SingleTickerProviderStateMixin {
-  static const _green = Color(0xFF2D6A4F);
+  static const _green = Color(0xFF21825C);
   static const _greenLight = Color(0xFF52B788);
   static const _greenPale = Color(0xFFD8F3DC);
-  static const _amber = Color(0xFFE9C46A);
+  static const _amber = Color(0xFFBA1A1A);
   static const _red = Color(0xFFE76F51);
   static const _bg = Color(0xFFF8FAF8);
   static const _ink = Color(0xFF1B2E1F);
@@ -144,7 +161,9 @@ class _ReliabilityScorePageState extends State<ReliabilityScorePage>
           itemName: eq.name,
           totalRentals: rentalCounts[eq.id] ?? 0,
           totalBreakdowns: eq.damageReportCount,
+          majorBreakdowns: eq.majorBreakdownCount,
           maintenanceCount: eq.maintenanceCount,
+          retirementFlagged: eq.retirementFlaggedByAdmin,
         );
       }).toList();
 
@@ -192,6 +211,11 @@ class _ReliabilityScorePageState extends State<ReliabilityScorePage>
   }
 
   String _insightFor(_EquipmentReliability r, _Tier t) {
+    // 3-strike rule gets its own message, takes priority over tier text.
+    if (r.majorBreakdowns >= 3 || r.retirementFlagged) {
+      return 'Hit ${r.majorBreakdowns} major breakdown${r.majorBreakdowns == 1 ? '' : 's'} — flagged for retirement under the 3-strike rule.';
+    }
+
     switch (t) {
       case _Tier.unknown:
         return 'No completed rentals yet — reliability data will appear once this equipment has rental history.';
@@ -199,13 +223,13 @@ class _ReliabilityScorePageState extends State<ReliabilityScorePage>
         if (r.totalBreakdowns == 0) {
           return 'No breakdowns reported across ${r.totalRentals} completed rental${r.totalRentals == 1 ? '' : 's'}.';
         }
-        return 'Breaks down roughly every ${r.rentalsPerBreakdown!.toStringAsFixed(1)} rentals — holding up well.';
+        return '${r.majorBreakdowns} major, ${r.minorBreakdowns} minor breakdown${r.totalBreakdowns == 1 ? '' : 's'} across ${r.totalRentals} rentals — holding up well.';
       case _Tier.good:
-        return 'Breaks down roughly every ${r.rentalsPerBreakdown!.toStringAsFixed(1)} rentals. Worth a routine check-up.';
+        return '${r.majorBreakdowns} major, ${r.minorBreakdowns} minor breakdown${r.totalBreakdowns == 1 ? '' : 's'} so far. Worth a routine check-up.';
       case _Tier.attention:
-        return 'Breaks down roughly every ${r.rentalsPerBreakdown!.toStringAsFixed(1)} rentals. Consider a closer inspection soon.';
+        return '${r.majorBreakdowns} major, ${r.minorBreakdowns} minor breakdown${r.totalBreakdowns == 1 ? '' : 's'}. Consider a closer inspection soon.';
       case _Tier.critical:
-        return 'Breaks down roughly every ${r.rentalsPerBreakdown!.toStringAsFixed(1)} rentals — this may need a major overhaul or replacement rather than quick fixes.';
+        return '${r.majorBreakdowns} major, ${r.minorBreakdowns} minor breakdown${r.totalBreakdowns == 1 ? '' : 's'} — this may need a major overhaul or replacement rather than quick fixes.';
     }
   }
 
@@ -259,10 +283,13 @@ class _ReliabilityScorePageState extends State<ReliabilityScorePage>
       final t = _tierFor(r);
       return t == _Tier.critical || t == _Tier.attention;
     }).toList();
+    final totalMajor = _items.fold<int>(0, (sum, r) => sum + r.majorBreakdowns);
+    final totalMinor = _items.fold<int>(0, (sum, r) => sum + r.minorBreakdowns);
 
     return Column(
       children: [
-        _buildHeader(avgRpb, flagged.length),
+        _buildHeader(avgRpb, flagged.length, totalMajor, totalMinor),
+
         if (flagged.isNotEmpty) _buildFlaggedBanner(flagged),
         Expanded(
           child: ListView.builder(
@@ -291,7 +318,7 @@ class _ReliabilityScorePageState extends State<ReliabilityScorePage>
     );
   }
 
-  Widget _buildHeader(double? avgRpb, int flaggedCount) {
+  Widget _buildHeader(double? avgRpb, int flaggedCount, int totalMajor, int totalMinor) {
     return Container(
       color: _green,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -317,6 +344,25 @@ class _ReliabilityScorePageState extends State<ReliabilityScorePage>
                   label: 'Flagged Equipment',
                   value: '$flaggedCount',
                   valueColor: flaggedCount > 0 ? _amber : Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _StatChip(
+                  label: 'Total Major Breakdowns',
+                  value: '$totalMajor',
+                  valueColor: totalMajor > 0 ? _red : Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatChip(
+                  label: 'Total Minor Breakdowns',
+                  value: '$totalMinor',
                 ),
               ),
             ],
@@ -481,7 +527,8 @@ class _ReliabilityCard extends StatelessWidget {
                   runSpacing: 4,
                   children: [
                     _MiniStat(label: 'Rentals', value: '${r.totalRentals}'),
-                    _MiniStat(label: 'Breakdowns', value: '${r.totalBreakdowns}'),
+                    _MiniStat(label: 'Major breakdowns', value: '${r.majorBreakdowns}'),
+                    _MiniStat(label: 'Minor breakdowns', value: '${r.minorBreakdowns}'),
                     _MiniStat(label: 'Maintenance events', value: '${r.maintenanceCount}'),
                   ],
                 ),
@@ -559,8 +606,8 @@ class _ReliabilityRingState extends State<_ReliabilityRing> with SingleTickerPro
       centerText = '–';
       subtitle = 'no data';
     } else if (r.rentalsPerBreakdown == null) {
-      centerText = '∞';
-      subtitle = 'no breakdowns';
+      centerText = '—';
+      subtitle = 'no\nbreakdowns';
     } else {
       centerText = r.rentalsPerBreakdown!.toStringAsFixed(1);
       subtitle = 'rentals/\nbreakdown';
