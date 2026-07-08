@@ -76,7 +76,25 @@ class StrikeService {
   /// Immediately bans the renter for [kBlockDurationMisuse] days without
   /// touching their strike count. Used for equipment damage and misuse reports.
   static const kDamageReasons = {'damaged_equipment', 'missing_parts', 'misuse'};
+
+  /// General damage report threshold for non-motorized equipment.
   static const kDamageRetirementThreshold = 5;
+
+  /// Major breakdown threshold for motorized agricultural equipment (PAES/ASABE standard).
+  static const kMajorBreakdownThreshold = 3;
+
+  /// Keywords used to classify equipment as motorized agricultural machinery.
+  static const _motorizedKeywords = [
+    'tractor', 'harvester', 'tiller', 'rice mill', 'gilingan',
+    'thresher', 'reaper', 'transplanter', 'combine', 'kuliglig',
+    'pagong', 'halimaw', 'power sprayer', 'pump',
+  ];
+
+  /// Returns true if [name] matches a motorized agricultural equipment type.
+  static bool isMotorizedEquipment(String name) {
+    final lower = name.toLowerCase();
+    return _motorizedKeywords.any((kw) => lower.contains(kw));
+  }
 
   Future<void> issueMisuseBan({
     required String requestId,
@@ -86,6 +104,7 @@ class StrikeService {
     required String details,
     String? equipmentId,
     List<String> evidenceUrls = const [],
+    String severity = 'minor',
   }) async {
     final userRef   = _db.collection('users').doc(renterId);
     final reportRef = _db.collection('reports').doc();
@@ -94,13 +113,14 @@ class StrikeService {
 
     await _db.runTransaction((tx) async {
       tx.set(reportRef, {
-        'requestId'   : requestId,
-        'renterId'    : renterId,
-        'ownerId'     : ownerId,
-        'reason'      : reason,
-        'details'     : details,
-        'evidenceUrls': evidenceUrls,
-        'createdAt'   : FieldValue.serverTimestamp(),
+        'requestId'        : requestId,
+        'renterId'         : renterId,
+        'ownerId'          : ownerId,
+        'reason'           : reason,
+        'details'          : details,
+        'evidenceUrls'     : evidenceUrls,
+        'breakdownSeverity': severity,
+        'createdAt'        : FieldValue.serverTimestamp(),
       });
 
       tx.update(userRef, {
@@ -108,9 +128,14 @@ class StrikeService {
       });
 
       if (equipmentId != null && kDamageReasons.contains(reason)) {
-        tx.update(_db.collection('equipment').doc(equipmentId), {
+        final equipRef = _db.collection('equipment').doc(equipmentId);
+        final Map<String, dynamic> equipUpdate = {
           'damageReportCount': FieldValue.increment(1),
-        });
+        };
+        if (severity == 'major') {
+          equipUpdate['majorBreakdownCount'] = FieldValue.increment(1);
+        }
+        tx.update(equipRef, equipUpdate);
       }
     });
 

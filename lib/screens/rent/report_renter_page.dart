@@ -41,6 +41,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
   final _detailsController = TextEditingController();
 
   String? _selectedReason;
+  String _breakdownSeverity = 'minor';
   final List<XFile> _evidenceImages = [];
   bool _isSubmitting = false;
 
@@ -185,6 +186,7 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
         details: _detailsController.text.trim(),
         equipmentId: widget.equipmentId,
         evidenceUrls: evidenceUrls,
+        severity: _breakdownSeverity,
       );
 
       if (!mounted) return;
@@ -602,6 +604,17 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
             _buildSectionLabel('Dahilan ng Reklamo', cs, required: true),
             const SizedBox(height: 12),
             _buildReasonSelector(cs),
+            if (StrikeService.kDamageReasons.contains(_selectedReason)) ...[
+              const SizedBox(height: 24),
+              _buildSectionLabel(
+                'Uri ng Breakdown',
+                cs,
+                required: true,
+                subtitle: 'Tukuyin kung ito ay karaniwang pagkasira (Minor) o kritikal na kasira ng makinarya (Major).',
+              ),
+              const SizedBox(height: 12),
+              _buildBreakdownSeveritySelector(cs),
+            ],
             const SizedBox(height: 24),
             _buildSectionLabel('Paglalarawan', cs, required: true),
             const SizedBox(height: 12),
@@ -829,6 +842,112 @@ class _ReportRenterPageState extends State<ReportRenterPage> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  // ── breakdown severity selector ──────────────
+  Widget _buildBreakdownSeveritySelector(ColorScheme cs) {
+    return Column(
+      children: [
+        _buildSeverityTile(
+          cs: cs,
+          value: 'minor',
+          label: 'Minor na Breakdown',
+          description: 'Karaniwang pagkasira: kapalit ng correa, pagpapalit ng oil, pagsasaayos ng brake.',
+          icon: Icons.build_outlined,
+          activeColor: Colors.orange,
+        ),
+        const SizedBox(height: 10),
+        _buildSeverityTile(
+          cs: cs,
+          value: 'major',
+          label: 'Major na Breakdown',
+          description: 'Kritikal na pagkasira: engine block, crankshaft, o transmission ng makinarya.',
+          icon: Icons.warning_rounded,
+          activeColor: Colors.red,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSeverityTile({
+    required ColorScheme cs,
+    required String value,
+    required String label,
+    required String description,
+    required IconData icon,
+    required MaterialColor activeColor,
+  }) {
+    final isSelected = _breakdownSeverity == value;
+    return GestureDetector(
+      onTap: () => setState(() => _breakdownSeverity = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? activeColor.shade400 : cs.outlineVariant.withOpacity(0.5),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor.shade100 : cs.surface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: isSelected ? activeColor.shade700 : cs.onSurface.withOpacity(0.4),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? activeColor.shade800 : cs.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isSelected ? activeColor.shade700 : cs.onSurface.withOpacity(0.5),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? activeColor.shade400 : cs.outlineVariant,
+                  width: isSelected ? 6 : 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

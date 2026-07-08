@@ -131,6 +131,8 @@ final bool maintenanceRequired;
 final double maintenanceIntervalHrs;        // default 240
 final double hoursUsedSinceLastMaintenance; // accumulated rental hours
 final int maintenanceCount;                 // lifetime completed maintenance events
+final int majorBreakdownCount;              // major (capital) breakdown reports; 3-strike threshold for motorized equipment
+final bool retirementFlaggedByAdmin;        // explicitly flagged by coop/admin for owner retirement suggestion
 
 /// Hours remaining before maintenance is due.
 double get remainingMaintenanceHrs =>
@@ -201,6 +203,8 @@ this.maintenanceRequired = false,
 this.maintenanceIntervalHrs = 240,
 this.hoursUsedSinceLastMaintenance = 0,
 this.maintenanceCount = 0,
+this.majorBreakdownCount = 0,
+this.retirementFlaggedByAdmin = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -259,6 +263,8 @@ this.maintenanceCount = 0,
 'maintenanceIntervalHrs': maintenanceIntervalHrs,
 'hoursUsedSinceLastMaintenance': hoursUsedSinceLastMaintenance,
 'maintenanceCount': maintenanceCount,
+'majorBreakdownCount': majorBreakdownCount,
+'retirementFlaggedByAdmin': retirementFlaggedByAdmin,
     };
   }
 
@@ -345,6 +351,8 @@ maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 
 hoursUsedSinceLastMaintenance:
     (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
 maintenanceCount: (data['maintenanceCount'] as int?) ?? 0,
+majorBreakdownCount: (data['majorBreakdownCount'] as int?) ?? 0,
+retirementFlaggedByAdmin: (data['retirementFlaggedByAdmin'] as bool?) ?? false,
     );
   }
 
@@ -427,6 +435,8 @@ maintenanceIntervalHrs: (data['maintenanceIntervalHrs'] as num?)?.toDouble() ?? 
 hoursUsedSinceLastMaintenance:
     (data['hoursUsedSinceLastMaintenance'] as num?)?.toDouble() ?? 0,
 maintenanceCount: (data['maintenanceCount'] as int?) ?? 0,
+majorBreakdownCount: (data['majorBreakdownCount'] as int?) ?? 0,
+retirementFlaggedByAdmin: (data['retirementFlaggedByAdmin'] as bool?) ?? false,
     );
   }
 
@@ -485,6 +495,8 @@ bool? maintenanceRequired,
 double? maintenanceIntervalHrs,
 double? hoursUsedSinceLastMaintenance,
 int? maintenanceCount,
+int? majorBreakdownCount,
+bool? retirementFlaggedByAdmin,
   }) {
     return Equipment(
       id: id,
@@ -543,6 +555,8 @@ int? maintenanceCount,
       hoursUsedSinceLastMaintenance:
           hoursUsedSinceLastMaintenance ?? this.hoursUsedSinceLastMaintenance,
       maintenanceCount: maintenanceCount ?? this.maintenanceCount,
+      majorBreakdownCount: majorBreakdownCount ?? this.majorBreakdownCount,
+      retirementFlaggedByAdmin: retirementFlaggedByAdmin ?? this.retirementFlaggedByAdmin,
     );
   }
 }
