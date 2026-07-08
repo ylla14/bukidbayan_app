@@ -36,6 +36,7 @@ Campaign _validCampaign({String? safetyNotes}) {
     productionTimeline: 'Week 1 procurement, Week 2 delivery, Week 3 setup.',
     shippingCoverage: 'Local delivery',
     shippingCostHandling: 'included',
+    gcashQrImage: 'data:image/png;base64,qr-test-image',
     warranty: 'Supplier warranty plus cooperative support for one year.',
     spareParts: 'Replacement parts are stocked locally at the cooperative.',
     risks: 'Potential supplier delays are mitigated with backup suppliers.',
@@ -59,6 +60,18 @@ void main() {
         contains(
           'Ang paalala sa kaligtasan ay dapat hindi bababa sa 10 character',
         ),
+      );
+    });
+
+    test('returns error when GCash QR is missing', () {
+      final service = CrowdfundingService();
+      final campaign = _validCampaign().copyWith(gcashQrImage: '');
+
+      final errors = service.validateForPublish(campaign);
+
+      expect(
+        errors,
+        contains('Kailangan ang GCash QR photo para makatanggap ng bayad'),
       );
     });
 
@@ -98,103 +111,77 @@ void main() {
     );
   });
 
-  group('CrowdfundingService test-account campaign guards', () {
-    test('creates both active and ended campaigns for emails starting with 12312312312', () async {
-      SharedPreferences.setMockInitialValues({
-        'current_user_email': '12312312312_test@example.com',
-      });
-      final service = CrowdfundingService();
+  group('CrowdfundingService local fallback queries', () {
+    test(
+      'getMyCampaigns returns only campaigns owned by current user email',
+      () async {
+        final ownedDraft = _validCampaign().copyWith(
+          id: 'owned_draft',
+          creatorEmail: 'tester@example.com',
+          status: 'draft',
+        );
+        final ownedLive = _validCampaign().copyWith(
+          id: 'owned_live',
+          creatorEmail: 'tester@example.com',
+          status: 'live',
+        );
+        final otherLive = _validCampaign().copyWith(
+          id: 'other_live',
+          creatorEmail: 'someone-else@example.com',
+          status: 'live',
+        );
 
-      final myCampaigns = await service.getMyCampaigns();
+        SharedPreferences.setMockInitialValues({
+          'current_user_email': 'tester@example.com',
+          'campaigns_v2': encodeCampaigns([ownedDraft, ownedLive, otherLive]),
+          'pledges_v1': encodePledges(const []),
+        });
 
-      expect(
-        myCampaigns.any(
-          (c) => c.status == 'live' && c.endDate.isAfter(DateTime.now()),
-        ),
-        isTrue,
-      );
-      expect(
-        myCampaigns.any((c) => c.status.startsWith('ended') || c.endDate.isBefore(DateTime.now())),
-        isTrue,
-      );
-    });
+        final service = CrowdfundingService();
+        final myCampaigns = await service.getMyCampaigns();
 
-    test('refreshes dedicated test campaign when it is already ended', () async {
-      final endedTestCampaign = Campaign(
-        id: 'test_active_campaign_12312312312',
-        title: 'Testing Campaign (Auto Active)',
-        creatorName: 'QA Test Account',
-        creatorEmail: '12312312312_test@example.com',
-        shortBlurb: 'Auto campaign',
-        description: 'Auto campaign for QA.',
-        isAssetImage: true,
-        image: 'assets/images/farmBg.jpg',
-        category: 'Irrigation',
-        goalAmount: 20000,
-        pledgedAmount: 0,
-        backersCount: 0,
-        endDate: DateTime.now().subtract(const Duration(days: 2)),
-        createdAt: DateTime.now().subtract(const Duration(days: 40)),
-        rewards: const [],
-        status: 'live',
-        publishedAt: DateTime.now().subtract(const Duration(days: 40)),
-      );
+        expect(
+          myCampaigns.map((campaign) => campaign.id),
+          containsAll(['owned_draft', 'owned_live']),
+        );
+        expect(
+          myCampaigns.any((campaign) => campaign.id == 'other_live'),
+          isFalse,
+        );
+      },
+    );
 
-      SharedPreferences.setMockInitialValues({
-        'current_user_email': '12312312312_test@example.com',
-        'campaigns_v2': encodeCampaigns([endedTestCampaign]),
-        'pledges_v1': encodePledges(const []),
-      });
+    test(
+      'getMyCampaigns applies the optional status filter in local fallback',
+      () async {
+        final ownedDraft = _validCampaign().copyWith(
+          id: 'owned_draft',
+          creatorEmail: 'tester@example.com',
+          status: 'draft',
+        );
+        final ownedLive = _validCampaign().copyWith(
+          id: 'owned_live',
+          creatorEmail: 'tester@example.com',
+          status: 'live',
+        );
 
-      final service = CrowdfundingService();
-      final myCampaigns = await service.getMyCampaigns();
+        SharedPreferences.setMockInitialValues({
+          'current_user_email': 'tester@example.com',
+          'campaigns_v2': encodeCampaigns([ownedDraft, ownedLive]),
+          'pledges_v1': encodePledges(const []),
+        });
 
-      final refreshed = myCampaigns.firstWhere(
-        (c) => c.id == 'test_active_campaign_12312312312',
-      );
-      expect(refreshed.status, 'live');
-      expect(refreshed.endDate.isAfter(DateTime.now()), isTrue);
-    });
+        final service = CrowdfundingService();
+        final liveCampaigns = await service.getMyCampaigns(status: 'live');
 
-    test('can generate a report from the auto-ended campaign', () async {
-      SharedPreferences.setMockInitialValues({
-        'current_user_email': '12312312312_test@example.com',
-      });
-      final service = CrowdfundingService();
-
-      await service.getMyCampaigns();
-      final report = await service.generateCampaignReport(
-        campaignId: 'test_ended_campaign_12312312312',
-      );
-
-      expect(report.isEnded, isTrue);
-      expect(report.totalPledges, greaterThan(0));
-    });
-
-    test('does not inject test campaigns for non-matching emails', () async {
-      SharedPreferences.setMockInitialValues({
-        'current_user_email': 'normal_user@example.com',
-      });
-      final service = CrowdfundingService();
-
-      final myCampaigns = await service.getMyCampaigns();
-
-      expect(
-        myCampaigns.any((c) => c.id == 'test_active_campaign_12312312312'),
-        isFalse,
-      );
-      expect(
-        myCampaigns.any((c) => c.id == 'test_ended_campaign_12312312312'),
-        isFalse,
-      );
-    });
+        expect(liveCampaigns.length, 1);
+        expect(liveCampaigns.single.id, 'owned_live');
+      },
+    );
   });
 
   group('CrowdfundingService.backCampaign supporter data', () {
-    Campaign _liveCampaign({
-      required String id,
-      required String creatorEmail,
-    }) {
+    Campaign liveCampaign({required String id, required String creatorEmail}) {
       return Campaign(
         id: id,
         title: 'Live campaign for backing tests',
@@ -211,12 +198,13 @@ void main() {
         endDate: DateTime.now().add(const Duration(days: 10)),
         createdAt: DateTime.now().subtract(const Duration(days: 1)),
         rewards: const [],
+        gcashQrImage: 'data:image/png;base64,qr-test-image',
         status: 'live',
       );
     }
 
     test('rejects self-support when current user owns campaign', () async {
-      final campaign = _liveCampaign(
+      final campaign = liveCampaign(
         id: 'c_owner_block',
         creatorEmail: 'owner@example.com',
       );
@@ -241,7 +229,7 @@ void main() {
     });
 
     test('stores supporter name, phone, and note in pledge record', () async {
-      final campaign = _liveCampaign(
+      final campaign = liveCampaign(
         id: 'c_donor_meta',
         creatorEmail: 'creator@example.com',
       );

@@ -52,6 +52,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
         DateTime.now().isAfter(campaign.endDate);
   }
 
+  bool _hasGcashQr(Campaign campaign) =>
+      campaign.gcashQrImage?.trim().isNotEmpty == true;
+
   bool _isOwnedByCurrentUser(Campaign campaign) {
     String? email;
     String? displayName;
@@ -84,6 +87,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     if (_isOwnedByCurrentUser(campaign)) {
       return 'Hindi ka puwedeng mag-support sa sarili mong campaign.';
     }
+    if (!_hasGcashQr(campaign)) {
+      return 'Wala pang GCash QR ang campaign na ito. Pakisabihan muna ang manager bago tumanggap ng support.';
+    }
     return null;
   }
 
@@ -98,7 +104,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: lightColorScheme.primary.withOpacity(0.28)),
+        border: Border.all(
+          color: lightColorScheme.primary.withValues(alpha: 0.28),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,11 +125,64 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: const TextStyle(fontSize: 13),
-                ),
+                Text(description, style: const TextStyle(fontSize: 13)),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGcashPaymentCard(Campaign campaign, {int? amount}) {
+    final qrPath = campaign.gcashQrImage?.trim() ?? '';
+    final amountLabel = amount != null && amount > 0
+        ? formatPeso(amount)
+        : 'ang halagang napili mo';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: lightColorScheme.primary.withValues(alpha: 0.22),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.qr_code_2_outlined, color: lightColorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Mode of payment: GCash QR',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: lightColorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'I-scan ang QR at ipadala muna ang $amountLabel bago mo kumpirmahin ang pledge.',
+            style: const TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: CampaignCoverImage(
+                imagePath: qrPath,
+                isAssetImage: false,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ],
@@ -157,6 +218,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     final donorNameCtrl = TextEditingController(text: fallbackName ?? '');
     final donorPhoneCtrl = TextEditingController();
     final donorNoteCtrl = TextEditingController();
+    var hasConfirmedGcashPayment = false;
 
     showModalBottomSheet(
       context: context,
@@ -174,9 +236,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
             final sortedSuggestions = suggestedAmounts.toList()..sort();
             final minRequired = selected?.minPledge;
             final parsedAmount = int.tryParse(amountCtrl.text.trim());
-            final isBelowMinimum = minRequired != null &&
+            final isBelowMinimum =
+                minRequired != null &&
                 parsedAmount != null &&
                 parsedAmount < minRequired;
+            final qrAmount = parsedAmount != null && parsedAmount > 0
+                ? parsedAmount
+                : minRequired;
 
             return Padding(
               padding: EdgeInsets.only(
@@ -203,8 +269,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       icon: Icons.info_outline,
                       title: 'Paano sumuporta',
                       description:
-                          'Pumili ng benepisyo (opsyonal), ilagay ang halaga, at pindutin ang kumpirmahin.',
+                          'Pumili ng benepisyo (opsyonal), ilagay ang halaga, i-scan ang GCash QR, at kumpirmahin lang kapag naipadala mo na ang bayad.',
                     ),
+                    const SizedBox(height: 12),
+                    _buildGcashPaymentCard(campaign, amount: qrAmount),
                     const SizedBox(height: 12),
                     if (campaign.rewards.isNotEmpty) ...[
                       const Text(
@@ -220,7 +288,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         return Card(
                           elevation: 0,
                           color: isSelected
-                              ? lightColorScheme.secondary.withOpacity(0.35)
+                              ? lightColorScheme.secondary.withValues(
+                                  alpha: 0.35,
+                                )
                               : Colors.white,
                           child: ListTile(
                             title: Text(
@@ -257,15 +327,16 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           .map(
                             (amount) => ChoiceChip(
                               label: Text(formatPeso(amount)),
-                              selected: amountCtrl.text.trim() == amount.toString(),
+                              selected:
+                                  amountCtrl.text.trim() == amount.toString(),
                               onSelected:
                                   minRequired != null && amount < minRequired
-                                      ? null
-                                      : (_) {
-                                          setModalState(() {
-                                            amountCtrl.text = amount.toString();
-                                          });
-                                        },
+                                  ? null
+                                  : (_) {
+                                      setModalState(() {
+                                        amountCtrl.text = amount.toString();
+                                      });
+                                    },
                             ),
                           )
                           .toList(),
@@ -282,7 +353,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             ? 'Maglagay ng halagang nais mong ibigay.'
                             : 'Minimum para sa napiling benepisyo: ${formatPeso(minRequired)}',
                         errorText: isBelowMinimum
-                            ? 'Dapat hindi bababa sa ${formatPeso(minRequired!)}.'
+                            ? 'Dapat hindi bababa sa ${formatPeso(minRequired)}.'
                             : null,
                         border: const OutlineInputBorder(),
                       ),
@@ -311,6 +382,44 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Mensahe / Tala (opsyonal)',
                         border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: qrAmount == null
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: qrAmount.toString()),
+                              );
+                              if (!sheetContext.mounted) {
+                                return;
+                              }
+                              showConfirmSnackbar(
+                                context: sheetContext,
+                                title: 'Nakopya ang halaga',
+                                message:
+                                    'Nakopya na ang ${formatPeso(qrAmount)} para madali mong ma-paste sa GCash.',
+                              );
+                            },
+                      icon: const Icon(Icons.copy_all_outlined),
+                      label: const Text('Kopyahin ang Halaga'),
+                    ),
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      value: hasConfirmedGcashPayment,
+                      onChanged: (value) {
+                        setModalState(() {
+                          hasConfirmedGcashPayment = value ?? false;
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text(
+                        'Naipadala ko na ang bayad sa GCash QR na ito.',
+                      ),
+                      subtitle: const Text(
+                        'Pindutin lang ito pagkatapos mong mag-transfer dahil mabibilang agad ang pledge kapag kinumpirma mo.',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -347,6 +456,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             );
                             return;
                           }
+                          if (!hasConfirmedGcashPayment) {
+                            showErrorSnackbar(
+                              context: context,
+                              title: 'Hindi pa kumpirmado ang bayad',
+                              message:
+                                  'I-scan muna ang GCash QR at i-check ang kumpirmasyon bago maitala ang pledge.',
+                            );
+                            return;
+                          }
 
                           try {
                             await service.backCampaign(
@@ -357,25 +475,35 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               backerPhone: donorPhoneCtrl.text.trim(),
                               backerNote: donorNoteCtrl.text.trim(),
                             );
-                            if (mounted) {
-                              Navigator.pop(context);
+                            if (!mounted) {
+                              return;
+                            }
+                            if (sheetContext.mounted) {
+                              Navigator.pop(sheetContext);
                             }
                             showConfirmSnackbar(
-                              context: context,
+                              context: this.context,
                               title: 'Salamat!',
-                              message: 'Natanggap na ang pledge mo.',
+                              message:
+                                  'Nairecord na ang pledge mo bilang GCash payment para sa campaign na ito.',
                             );
                             _reload();
                           } catch (e) {
+                            if (!sheetContext.mounted) {
+                              return;
+                            }
                             showErrorSnackbar(
-                              context: context,
+                              context: sheetContext,
                               title: 'May problema',
-                              message: e.toString().replaceFirst('Exception: ', ''),
+                              message: e.toString().replaceFirst(
+                                'Exception: ',
+                                '',
+                              ),
                             );
                           }
                         },
                         icon: const Icon(Icons.volunteer_activism_outlined),
-                        label: const Text('Confirm pledge'),
+                        label: const Text('Kinumpirma ko ang GCash payment'),
                       ),
                     ),
                   ],
@@ -393,9 +521,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     final campaignTheme = Theme.of(context).copyWith(
       scaffoldBackgroundColor: Colors.white,
       cardTheme: Theme.of(context).cardTheme.copyWith(
-            color: Colors.white,
-            surfaceTintColor: Colors.transparent,
-          ),
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -407,264 +535,273 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       child: FutureBuilder<Campaign?>(
         future: _future,
         builder: (context, snapshot) {
-        final c = snapshot.data;
+          final c = snapshot.data;
 
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
 
-        if (snapshot.hasError) {
+          if (snapshot.hasError) {
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Detalye ng Kampanya'),
+                backgroundColor: lightColorScheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'May problema sa pag-load ng kampanya.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: _reload,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Try again'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          if (c == null) {
+            return const Scaffold(
+              body: Center(child: Text('Hindi nakita ang kampanya.')),
+            );
+          }
+
+          final progress = c.progress.clamp(0.0, 1.0);
+          final progressPercent = (progress * 100).round();
+          final safeDaysLeft = c.daysLeft < 0 ? 0 : c.daysLeft;
+          final supportDisabledReason = _supportDisabledReason(c);
+          final canSupport = supportDisabledReason == null;
+
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Detalye ng Kampanya'),
+              title: Text(c.title),
               backgroundColor: lightColorScheme.primary,
               foregroundColor: Colors.white,
             ),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'May problema sa pag-load ng kampanya.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: _reload,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Try again'),
-                    ),
-                  ],
+            body: ListView(
+              padding: const EdgeInsets.only(bottom: 90),
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: CampaignCoverImage(
+                    imagePath: c.image,
+                    isAssetImage: c.isAssetImage,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
-            ),
-          );
-        }
-
-        if (c == null) {
-          return const Scaffold(
-            body: Center(child: Text('Hindi nakita ang kampanya.')),
-          );
-        }
-
-        final progress = c.progress.clamp(0.0, 1.0);
-        final progressPercent = (progress * 100).round();
-        final safeDaysLeft = c.daysLeft < 0 ? 0 : c.daysLeft;
-        final supportDisabledReason = _supportDisabledReason(c);
-        final canSupport = supportDisabledReason == null;
-
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(c.title),
-            backgroundColor: lightColorScheme.primary,
-            foregroundColor: Colors.white,
-          ),
-          body: ListView(
-            padding: const EdgeInsets.only(bottom: 90),
-            children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: CampaignCoverImage(
-                  imagePath: c.image,
-                  isAssetImage: c.isAssetImage,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Text(
-                  c.shortBlurb,
-                  style: const TextStyle(fontSize: 16, color: Colors.black87),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Text(
-                  'Ni ${c.creatorName} | ${_categoryLabel(c.category)}',
-                  style: const TextStyle(color: Colors.black54),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildGuideCard(
-                  icon: Icons.lightbulb_outline,
-                  title: 'Bago sumuporta',
-                  description:
-                      'Basahin ang target, benepisyo, at panganib para malinaw ang iyong desisyon.',
-                ),
-              ),
-              if (!canSupport)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Card(
-                    color: Colors.grey.shade100,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              supportDisabledReason!,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                  child: Text(
+                    c.shortBlurb,
+                    style: const TextStyle(fontSize: 16, color: Colors.black87),
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 10,
-                          backgroundColor: Colors.black12,
-                          color: lightColorScheme.primary,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '${formatPeso(c.pledgedAmount)} naipon',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Target: ${formatPeso(c.goalAmount)} ($progressPercent% kumpleto)',
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${c.backersCount} supporters | $safeDaysLeft araw na lang',
-                        ),
-                      ],
-                    ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Text(
+                    'Ni ${c.creatorName} | ${_categoryLabel(c.category)}',
+                    style: const TextStyle(color: Colors.black54),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                child: Text(
-                  'Tungkol sa Kampanya',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: lightColorScheme.primary,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildGuideCard(
+                    icon: Icons.lightbulb_outline,
+                    title: 'Bago sumuporta',
+                    description:
+                        'Basahin ang target, benepisyo, at panganib para malinaw ang iyong desisyon.',
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(c.description),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Text(
-                  'Mga Benepisyo',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: lightColorScheme.primary,
+                if (_hasGcashQr(c))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildGcashPaymentCard(c),
                   ),
-                ),
-              ),
-              if (c.rewards.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text(
-                        'Walang nakatalagang benepisyo sa ngayon. Maaari ka pa ring sumuporta gamit ang kahit anong halaga.',
-                      ),
-                    ),
-                  ),
-                )
-              else
-                ...c.rewards.map((r) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                if (!canSupport)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      color: Colors.grey.shade100,
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
                           children: [
-                            Text(
-                              '${r.title} (minimum ${formatPeso(r.minPledge)})',
-                              style: const TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              r.discountType == 'percent'
-                                  ? '${r.discountValue.toStringAsFixed(0)}% na diskuwento sa renta'
-                                  : '${formatPeso(r.discountValue.round())} na diskuwento sa renta',
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Balido sa loob ng ${r.validityDays} araw matapos makuha',
-                            ),
-                            if (r.notes != null) ...[
-                              const SizedBox(height: 8),
-                              Text(r.notes!),
-                            ],
-                            const SizedBox(height: 12),
-                             SizedBox(
-                               width: double.infinity,
-                               child: OutlinedButton.icon(
-                                onPressed: canSupport
-                                    ? () => _openBackSheet(c, preselect: r)
-                                    : null,
-                                icon: const Icon(Icons.check_circle_outline),
-                                label: const Text('Select this reward'),
+                            const Icon(Icons.info_outline),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                supportDisabledReason,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  );
-                }),
-            ],
-          ),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: canSupport ? () => _openBackSheet(c) : null,
-                  icon: const Icon(Icons.volunteer_activism_outlined),
-                  label: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 4),
-                    child: Text('Suportahan ang proyektong ito'),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 10,
+                            backgroundColor: Colors.black12,
+                            color: lightColorScheme.primary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            '${formatPeso(c.pledgedAmount)} naipon',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Target: ${formatPeso(c.goalAmount)} ($progressPercent% kumpleto)',
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${c.backersCount} supporters | $safeDaysLeft araw na lang',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                  child: Text(
+                    'Tungkol sa Kampanya',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: lightColorScheme.primary,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(c.description),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                  child: Text(
+                    'Mga Benepisyo',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: lightColorScheme.primary,
+                    ),
+                  ),
+                ),
+                if (c.rewards.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(14),
+                        child: Text(
+                          'Walang nakatalagang benepisyo sa ngayon. Maaari ka pa ring sumuporta gamit ang kahit anong halaga.',
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...c.rewards.map((r) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${r.title} (minimum ${formatPeso(r.minPledge)})',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                r.discountType == 'percent'
+                                    ? '${r.discountValue.toStringAsFixed(0)}% na diskuwento sa renta'
+                                    : '${formatPeso(r.discountValue.round())} na diskuwento sa renta',
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Balido sa loob ng ${r.validityDays} araw matapos makuha',
+                              ),
+                              if (r.notes != null) ...[
+                                const SizedBox(height: 8),
+                                Text(r.notes!),
+                              ],
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: canSupport
+                                      ? () => _openBackSheet(c, preselect: r)
+                                      : null,
+                                  icon: const Icon(Icons.check_circle_outline),
+                                  label: const Text('Select this reward'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+              ],
+            ),
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: canSupport ? () => _openBackSheet(c) : null,
+                    icon: const Icon(Icons.volunteer_activism_outlined),
+                    label: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Text('Suportahan ang proyektong ito'),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
+          );
         },
       ),
     );

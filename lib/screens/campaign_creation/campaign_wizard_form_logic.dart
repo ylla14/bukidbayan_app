@@ -20,6 +20,7 @@ class CampaignWizardFormState {
   final String? shippingCoverage;
   final String? shippingCostHandling;
   final String shippingNotes;
+  final String gcashQrImagePath;
   final String warranty;
   final String spareParts;
   final String risks;
@@ -45,6 +46,7 @@ class CampaignWizardFormState {
     required this.shippingCoverage,
     required this.shippingCostHandling,
     required this.shippingNotes,
+    required this.gcashQrImagePath,
     required this.warranty,
     required this.spareParts,
     required this.risks,
@@ -106,6 +108,9 @@ class CampaignWizardFormLogic {
           shippingCoverage: state.shippingCoverage,
           shippingCostHandling: state.shippingCostHandling,
           shippingNotes: state.shippingNotes.trim(),
+          gcashQrImage: state.gcashQrImagePath.trim().isEmpty
+              ? null
+              : state.gcashQrImagePath.trim(),
         );
       case 6:
         return draft.copyWith(
@@ -176,6 +181,9 @@ class CampaignWizardFormLogic {
         if (state.shippingCostHandling == null ||
             state.shippingCostHandling!.trim().isEmpty) {
           return 'Kailangan kung paano isasama ang gastos sa delivery.';
+        }
+        if (state.gcashQrImagePath.trim().isEmpty) {
+          return 'Kailangan ang GCash QR photo para sa mode of payment.';
         }
         return null;
       case 6:
