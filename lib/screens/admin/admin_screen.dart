@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/screens/admin/admin_user_management_screen.dart';
 import 'package:bukidbayan_app/screens/admin/admin_analytics_screen.dart';
+import 'package:bukidbayan_app/screens/admin/admin_equipment_screen.dart';
 import 'package:bukidbayan_app/services/analytics/admin_analytics_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -234,6 +235,19 @@ class _AdminScreenState extends State<AdminScreen> {
                           isCoop: widget.isCoop,
                           serviceOverride: widget.adminAnalyticsServiceOverride,
                         ),
+                      ),
+                    );
+                  },
+                ),
+
+                AdminCard(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Equipment Inventory',
+                  description: 'View and manage equipment stock and status',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AdminEquipmentScreen(),
                       ),
                     );
                   },
