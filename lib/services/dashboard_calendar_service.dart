@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:bukidbayan_app/models/crop_preference.dart';
 import 'package:bukidbayan_app/models/dashboard_calendar.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/services/analytics/demand_forecast_service.dart';
 import 'package:bukidbayan_app/services/crop_calendar_service.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/rent_request_service.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
 
@@ -24,16 +26,22 @@ class DashboardCalendarService implements DashboardCalendarController {
   RentRequestService? _rentRequestService;
   WeatherService? _weatherService;
   CropCalendarService? _cropCalendarService;
+  FirestoreService? _firestoreService;
+  DemandForecastService? _demandForecastService;
   final DateTime Function() _now;
 
   DashboardCalendarService({
     RentRequestService? rentRequestService,
     WeatherService? weatherService,
     CropCalendarService? cropCalendarService,
+    FirestoreService? firestoreService,
+    DemandForecastService? demandForecastService,
     DateTime Function()? now,
   }) : _rentRequestService = rentRequestService,
        _weatherService = weatherService,
        _cropCalendarService = cropCalendarService,
+       _firestoreService = firestoreService,
+       _demandForecastService = demandForecastService,
        _now = now ?? DateTime.now;
 
   RentRequestService get _requestService =>
@@ -44,6 +52,12 @@ class DashboardCalendarService implements DashboardCalendarController {
 
   CropCalendarService get _resolvedCropService =>
       _cropCalendarService ??= CropCalendarService();
+
+  FirestoreService get _resolvedFirestoreService =>
+      _firestoreService ??= FirestoreService();
+
+  DemandForecastService get _resolvedDemandForecastService =>
+      _demandForecastService ??= DemandForecastService(now: _now);
 
   @override
   Stream<DashboardCalendarContext> watchCalendar({
@@ -56,6 +70,7 @@ class DashboardCalendarService implements DashboardCalendarController {
     List<RentRequest> ownerRequests = const [];
     List<WeatherDay> forecast = const [];
     List<String> seasonalCrops = const [];
+    List<String> savedCrops = const [];
     Map<String, List<String>> cropsBySeason = const {};
     Map<int, List<String>> cropsByMonth = const {};
     final season = _resolvedCropService.detectSeason(_now().month);
@@ -68,6 +83,13 @@ class DashboardCalendarService implements DashboardCalendarController {
       if (closed || !hasRenter || !hasOwner) return;
 
       final mergedRequests = _mergeRequests(renterRequests, ownerRequests);
+      final demandForecast = _resolvedDemandForecastService.buildWeeklyForecast(
+        requests: mergedRequests,
+        seasonalCrops: seasonalCrops,
+        cropsByMonth: cropsByMonth,
+        savedCrops: savedCrops,
+        now: _now(),
+      );
       controller.add(
         DashboardCalendarContext(
           userId: userId,
@@ -77,6 +99,8 @@ class DashboardCalendarService implements DashboardCalendarController {
           seasonalCrops: seasonalCrops,
           cropsBySeason: cropsBySeason,
           cropsByMonth: cropsByMonth,
+          savedCrops: savedCrops,
+          demandForecast: demandForecast,
         ),
       );
     }
@@ -102,6 +126,14 @@ class DashboardCalendarService implements DashboardCalendarController {
         seasonalCrops = const [];
         cropsBySeason = const {};
         cropsByMonth = const {};
+      }
+
+      try {
+        savedCrops =
+            await _resolvedFirestoreService.getCropPreferences(userId) ??
+            const [];
+      } catch (_) {
+        savedCrops = const [];
       }
       await emit();
     }

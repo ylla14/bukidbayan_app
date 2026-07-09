@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/models/demand_forecast.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/services/weather_service.dart';
 
@@ -116,6 +117,8 @@ class DashboardCalendarContext {
   final List<String> seasonalCrops;
   final Map<String, List<String>> cropsBySeason;
   final Map<int, List<String>> cropsByMonth;
+  final List<String> savedCrops;
+  final DemandForecastSnapshot? demandForecast;
 
   const DashboardCalendarContext({
     required this.userId,
@@ -125,6 +128,8 @@ class DashboardCalendarContext {
     required this.seasonalCrops,
     this.cropsBySeason = const {},
     this.cropsByMonth = const {},
+    this.savedCrops = const [],
+    this.demandForecast,
   });
 }
 

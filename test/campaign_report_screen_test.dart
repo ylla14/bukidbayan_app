@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/models/campaign_report.dart';
+import 'package:bukidbayan_app/models/payment_attempt.dart';
 import 'package:bukidbayan_app/screens/campaign_report_screen.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
@@ -106,6 +107,40 @@ CampaignReport _buildReport() {
     lastPledgeAt: DateTime(2026, 3, 11),
     campaignDurationDays: 14,
     pledges: pledges,
+    paymentAttempts: [
+      PaymentAttempt(
+        id: 'a1',
+        campaignId: 'campaign_report_test',
+        createdByUid: 'backer-1',
+        donorName: 'Attempt One',
+        amount: 1000,
+        provider: PaymentProvider.gcashManual,
+        status: PaymentAttemptStatus.paid,
+        createdAt: DateTime(2026, 3, 9),
+        updatedAt: DateTime(2026, 3, 9),
+        completedAt: DateTime(2026, 3, 9),
+      ),
+      PaymentAttempt(
+        id: 'a2',
+        campaignId: 'campaign_report_test',
+        createdByUid: 'backer-2',
+        donorName: 'Attempt Two',
+        amount: 500,
+        provider: PaymentProvider.gcashManual,
+        status: PaymentAttemptStatus.failed,
+        createdAt: DateTime(2026, 3, 10),
+        updatedAt: DateTime(2026, 3, 10),
+      ),
+    ],
+    paymentFunnel: CampaignPaymentFunnelSummary(
+      totalAttempts: 2,
+      totalAttemptAmount: 1500,
+      paidCount: 1,
+      failedCount: 1,
+      paidAttemptAmount: 1000,
+      firstAttemptAt: DateTime(2026, 3, 9),
+      lastAttemptAt: DateTime(2026, 3, 10),
+    ),
     rewardBreakdown: const [
       CampaignRewardReportItem(
         rewardTier: RewardTier(
@@ -143,6 +178,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.text('Payment Funnel', skipOffstage: false), findsOneWidget);
+
       await tester.dragUntilVisible(
         find.byKey(const Key('supporter_sort_dropdown')),
         find.byType(ListView),
@@ -169,7 +206,6 @@ void main() {
         'Munting',
       );
       await tester.pumpAndSettle();
-
       expect(find.text('Munting Donor'), findsOneWidget);
       expect(find.text('Malaking Donor'), findsNothing);
       expect(find.text('Gitnang Donor'), findsNothing);

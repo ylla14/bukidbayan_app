@@ -1,5 +1,7 @@
 import 'dart:math';
+
 import 'package:bukidbayan_app/models/campaign_report.dart';
+import 'package:bukidbayan_app/services/analytics/campaign_analytics_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -1097,26 +1099,10 @@ class CrowdfundingService {
         userEmail: userEmail,
       );
     }
-    final snap = await _campaigns.doc(campaignId).get();
-    if (!snap.exists) throw Exception('Campaign not found.');
-    final campaign = _fromDoc(snap);
-
-    if (!_isOwnedByUser(campaign, email: userEmail)) {
-      throw Exception(
-        'Only the campaign owner can generate a report for this campaign.',
-      );
-    }
-    final pledgesSnap = await _pledgesRef(
-      campaignId,
-    ).orderBy('createdAt').get();
-    final campaignPledges = pledgesSnap.docs
-        .map((d) => _pledgeFromDoc(d, campaignId))
-        .toList();
-
-    return _buildCampaignReport(
-      campaign: campaign,
-      campaignPledges: campaignPledges,
-    );
+    return CampaignAnalyticsService(
+      firestore: _db,
+      auth: _auth,
+    ).generateCampaignReport(campaignId: campaignId, userEmail: userEmail);
   }
 
   // ── Validation ────────────────────────────────────────────────────────────

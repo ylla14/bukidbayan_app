@@ -137,7 +137,9 @@ void main() {
     await tester.tap(find.text('Aking Mga Kampanya').first);
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, 'draft one');
+    expect(find.text('Draft One Listing'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).last, 'draft one');
     await tester.pumpAndSettle();
 
     await tester.dragUntilVisible(
@@ -147,6 +149,7 @@ void main() {
     );
 
     expect(find.text('Draft One Listing'), findsOneWidget);
+    expect(find.byTooltip('Higit pang aksyon'), findsOneWidget);
     expect(find.text('Live Campaign Listing'), findsNothing);
   });
 

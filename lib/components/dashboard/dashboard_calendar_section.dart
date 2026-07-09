@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/models/dashboard_calendar.dart';
+import 'package:bukidbayan_app/models/demand_forecast.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
@@ -51,7 +52,9 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
       return _buildCard(
         child: const Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Mag-sign in para makita ang iyong matalinong kalendaryo.'),
+          child: Text(
+            'Mag-sign in para makita ang iyong matalinong kalendaryo.',
+          ),
         ),
       );
     }
@@ -123,6 +126,10 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
                 const SizedBox(height: 8),
                 _buildMonthGrid(monthData),
                 const SizedBox(height: 14),
+                if (contextData.demandForecast != null) ...[
+                  _buildDemandForecastPanel(contextData.demandForecast!),
+                  const SizedBox(height: 14),
+                ],
                 _buildSelectedDayPanel(selectedDayData),
               ],
             ),
@@ -379,6 +386,173 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
     );
   }
 
+  Widget _buildDemandForecastPanel(DemandForecastSnapshot snapshot) {
+    final weekRange =
+        '${DateFormat('MMM d').format(snapshot.weekStart)} - '
+        '${DateFormat('MMM d').format(snapshot.weekEnd)}';
+
+    return Container(
+      key: const Key('dashboard_calendar_demand_forecast_panel'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.insights_rounded, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Demand Forecast',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _confidenceColor(
+                    snapshot.confidence,
+                  ).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _confidenceLabel(snapshot.confidence),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _confidenceColor(snapshot.confidence),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$weekRange • ${snapshot.locationLabel}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(snapshot.summary, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 10),
+          if (!snapshot.hasInsights)
+            const Text(
+              'Maglagay pa ng booking details tulad ng crop type, farming phase, at intended use para luminaw ang demand forecast.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            )
+          else
+            ...snapshot.insights.map(_buildForecastInsightCard),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForecastInsightCard(DemandForecastInsight insight) {
+    final levelColor = _forecastLevelColor(insight.level);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: levelColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: levelColor.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  insight.equipmentCategory,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: levelColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _forecastLevelLabel(insight.level),
+                  style: TextStyle(
+                    color: levelColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(insight.recommendation, style: const TextStyle(fontSize: 12)),
+          if (insight.drivers.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...insight.drivers.map(
+              (driver) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.circle, size: 7, color: levelColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        driver,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: Key(
+              'dashboard_calendar_forecast_action_${insight.equipmentCategory}',
+            ),
+            onPressed: () => _handleAction(
+              DashboardCalendarActionTarget(
+                kind: DashboardCalendarActionKind.openEquipmentCatalog,
+                label: 'Browse Equipment',
+                categoryFilter: insight.equipmentCategory,
+                searchQuery: insight.equipmentCategory,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: const Text('Browse Equipment'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSuggestionCard(DashboardCalendarSuggestion suggestion) {
     final actionTargets = <DashboardCalendarActionTarget>[
       if (suggestion.actionTarget != null) suggestion.actionTarget!,
@@ -539,6 +713,50 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
         return Colors.blue.shade600;
       case DashboardCalendarMarker.actionNeeded:
         return Colors.amber.shade700;
+    }
+  }
+
+  Color _forecastLevelColor(DemandForecastLevel level) {
+    switch (level) {
+      case DemandForecastLevel.high:
+        return Colors.red.shade700;
+      case DemandForecastLevel.medium:
+        return Colors.orange.shade700;
+      case DemandForecastLevel.low:
+        return Colors.blue.shade700;
+    }
+  }
+
+  String _forecastLevelLabel(DemandForecastLevel level) {
+    switch (level) {
+      case DemandForecastLevel.high:
+        return 'High Demand';
+      case DemandForecastLevel.medium:
+        return 'Medium Demand';
+      case DemandForecastLevel.low:
+        return 'Early Signal';
+    }
+  }
+
+  Color _confidenceColor(DemandForecastConfidence confidence) {
+    switch (confidence) {
+      case DemandForecastConfidence.high:
+        return Colors.green.shade700;
+      case DemandForecastConfidence.medium:
+        return Colors.orange.shade700;
+      case DemandForecastConfidence.low:
+        return Colors.blueGrey.shade700;
+    }
+  }
+
+  String _confidenceLabel(DemandForecastConfidence confidence) {
+    switch (confidence) {
+      case DemandForecastConfidence.high:
+        return 'High confidence';
+      case DemandForecastConfidence.medium:
+        return 'Medium confidence';
+      case DemandForecastConfidence.low:
+        return 'Early forecast';
     }
   }
 

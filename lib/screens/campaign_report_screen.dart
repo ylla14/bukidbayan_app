@@ -148,6 +148,10 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
     }
   }
 
+  String _formatPercent(double value) {
+    return '${(value * 100).toStringAsFixed(1)}%';
+  }
+
   List<Pledge> _buildVisibleSupporters({
     required CampaignReport report,
     required Map<String, String> rewardTitleById,
@@ -226,7 +230,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
             TableRow(
               decoration: BoxDecoration(
                 color: i.isEven
-                    ? lightColorScheme.primary.withOpacity(0.04)
+                    ? lightColorScheme.primary.withValues(alpha: 0.04)
                     : Colors.white,
               ),
               children: [
@@ -263,8 +267,8 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columnSpacing: 18,
-        headingRowColor: MaterialStateProperty.resolveWith(
-          (_) => lightColorScheme.primary.withOpacity(0.08),
+        headingRowColor: WidgetStateProperty.resolveWith(
+          (_) => lightColorScheme.primary.withValues(alpha: 0.08),
         ),
         columns: const [
           DataColumn(label: Text('Benepisyo')),
@@ -294,7 +298,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
           ),
           if (report.noRewardPledgeCount > 0)
             DataRow(
-              color: MaterialStateProperty.resolveWith(
+              color: WidgetStateProperty.resolveWith(
                 (_) => Colors.grey.shade100,
               ),
               cells: [
@@ -316,6 +320,149 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPaymentFunnelSection(CampaignReport report) {
+    final funnel = report.paymentFunnel;
+    if (!funnel.hasAttempts) {
+      return const Text('Wala pang payment attempts para sa campaign na ito.');
+    }
+
+    final pledgeCaptureRate = funnel.totalAttempts == 0
+        ? 0.0
+        : report.totalPledges / funnel.totalAttempts;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInfoTable(
+          rows: [
+            _InfoRow(
+              label: 'Kabuuang payment attempts',
+              value: funnel.totalAttempts.toString(),
+            ),
+            _InfoRow(
+              label: 'Active checkout attempts',
+              value: funnel.activeCheckoutCount.toString(),
+            ),
+            _InfoRow(
+              label: 'Paid attempts',
+              value: funnel.paidCount.toString(),
+            ),
+            _InfoRow(
+              label: 'Failed attempts',
+              value: funnel.failedCount.toString(),
+            ),
+            _InfoRow(
+              label: 'Cancelled attempts',
+              value: funnel.cancelledCount.toString(),
+            ),
+            _InfoRow(
+              label: 'Expired attempts',
+              value: funnel.expiredCount.toString(),
+            ),
+            _InfoRow(
+              label: 'Refunded attempts',
+              value: funnel.refundedCount.toString(),
+            ),
+            _InfoRow(
+              label: 'Kabuuang attempted amount',
+              value: formatPeso(funnel.totalAttemptAmount),
+            ),
+            _InfoRow(
+              label: 'Kabuuang paid amount',
+              value: formatPeso(funnel.paidAttemptAmount),
+            ),
+            _InfoRow(
+              label: 'Attempt -> paid conversion',
+              value: _formatPercent(funnel.paidConversionRate),
+            ),
+            _InfoRow(
+              label: 'Attempt -> pledge capture',
+              value: _formatPercent(pledgeCaptureRate),
+            ),
+            _InfoRow(
+              label: 'Unang payment attempt',
+              value: _formatDate(funnel.firstAttemptAt),
+            ),
+            _InfoRow(
+              label: 'Huling payment attempt',
+              value: _formatDate(funnel.lastAttemptAt),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columnSpacing: 18,
+            headingRowColor: WidgetStateProperty.resolveWith(
+              (_) => lightColorScheme.primary.withValues(alpha: 0.08),
+            ),
+            columns: const [
+              DataColumn(label: Text('Status')),
+              DataColumn(label: Text('Attempts'), numeric: true),
+            ],
+            rows: [
+              DataRow(
+                cells: [
+                  const DataCell(Text('Created')),
+                  DataCell(Text(funnel.createdCount.toString())),
+                ],
+              ),
+              DataRow(
+                cells: [
+                  const DataCell(Text('Pending checkout')),
+                  DataCell(Text(funnel.pendingCheckoutCount.toString())),
+                ],
+              ),
+              DataRow(
+                cells: [
+                  const DataCell(Text('Processing')),
+                  DataCell(Text(funnel.processingCount.toString())),
+                ],
+              ),
+              DataRow(
+                cells: [
+                  const DataCell(Text('Paid')),
+                  DataCell(Text(funnel.paidCount.toString())),
+                ],
+              ),
+              DataRow(
+                cells: [
+                  const DataCell(Text('Failed')),
+                  DataCell(Text(funnel.failedCount.toString())),
+                ],
+              ),
+              DataRow(
+                cells: [
+                  const DataCell(Text('Cancelled')),
+                  DataCell(Text(funnel.cancelledCount.toString())),
+                ],
+              ),
+              DataRow(
+                cells: [
+                  const DataCell(Text('Expired')),
+                  DataCell(Text(funnel.expiredCount.toString())),
+                ],
+              ),
+              if (funnel.refundedCount > 0)
+                DataRow(
+                  cells: [
+                    const DataCell(Text('Refunded')),
+                    DataCell(Text(funnel.refundedCount.toString())),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Magkaibang linya ang pledges at payment attempts. Ginagamit ang funnel para makita ang checkout conversion, hindi para palitan ang pledge totals.',
+          style: TextStyle(color: Colors.grey.shade700),
+        ),
+      ],
     );
   }
 
@@ -364,7 +511,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                   width: sortWidth,
                   child: DropdownButtonFormField<_SupporterSortOption>(
                     key: const Key('supporter_sort_dropdown'),
-                    value: _supporterSort,
+                    initialValue: _supporterSort,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Ayusin ang supporters',
@@ -393,7 +540,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                   width: filterWidth,
                   child: DropdownButtonFormField<_SupporterRewardFilter>(
                     key: const Key('supporter_reward_filter_dropdown'),
-                    value: _supporterRewardFilter,
+                    initialValue: _supporterRewardFilter,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Filter',
@@ -466,8 +613,8 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
             scrollDirection: Axis.horizontal,
             child: DataTable(
               columnSpacing: 16,
-              headingRowColor: MaterialStateProperty.resolveWith(
-                (_) => lightColorScheme.primary.withOpacity(0.1),
+              headingRowColor: WidgetStateProperty.resolveWith(
+                (_) => lightColorScheme.primary.withValues(alpha: 0.1),
               ),
               columns: const [
                 DataColumn(label: Text('Supporter')),
@@ -554,8 +701,8 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                   );
                 }),
                 DataRow(
-                  color: MaterialStateProperty.resolveWith(
-                    (_) => lightColorScheme.primary.withOpacity(0.08),
+                  color: WidgetStateProperty.resolveWith(
+                    (_) => lightColorScheme.primary.withValues(alpha: 0.08),
                   ),
                   cells: [
                     DataCell(
@@ -764,40 +911,42 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                                 Chip(
                                   label: const Text('Tumatakbo pa'),
                                   backgroundColor: lightColorScheme.primary
-                                      .withOpacity(0.12),
+                                      .withValues(alpha: 0.12),
                                   labelStyle: TextStyle(
                                     color: lightColorScheme.primary,
                                     fontWeight: FontWeight.w700,
                                   ),
                                   side: BorderSide(
-                                    color: lightColorScheme.primary.withOpacity(
-                                      0.35,
+                                    color: lightColorScheme.primary.withValues(
+                                      alpha: 0.35,
                                     ),
                                   ),
                                 ),
                               Chip(
                                 label: Text(outcomeLabel),
-                                backgroundColor: outcomeColor.withOpacity(0.14),
+                                backgroundColor: outcomeColor.withValues(
+                                  alpha: 0.14,
+                                ),
                                 labelStyle: TextStyle(
                                   color: outcomeColor,
                                   fontWeight: FontWeight.w700,
                                 ),
                                 side: BorderSide(
-                                  color: outcomeColor.withOpacity(0.35),
+                                  color: outcomeColor.withValues(alpha: 0.35),
                                 ),
                               ),
                               if (isOngoing)
                                 Chip(
                                   label: Text(targetProgressLabel),
                                   backgroundColor: targetProgressColor
-                                      .withOpacity(0.14),
+                                      .withValues(alpha: 0.14),
                                   labelStyle: TextStyle(
                                     color: targetProgressColor,
                                     fontWeight: FontWeight.w700,
                                   ),
                                   side: BorderSide(
-                                    color: targetProgressColor.withOpacity(
-                                      0.35,
+                                    color: targetProgressColor.withValues(
+                                      alpha: 0.35,
                                     ),
                                   ),
                                 ),
@@ -820,7 +969,9 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
-                          color: lightColorScheme.primary.withOpacity(0.25),
+                          color: lightColorScheme.primary.withValues(
+                            alpha: 0.25,
+                          ),
                         ),
                       ),
                       child: Padding(
@@ -865,6 +1016,10 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                         ],
                       ),
                     ],
+                  ),
+                  _buildSection(
+                    title: 'Payment Funnel',
+                    children: [_buildPaymentFunnelSection(report)],
                   ),
                   _buildSection(
                     title: 'Timeline ng Kampanya',

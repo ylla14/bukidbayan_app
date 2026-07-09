@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:bukidbayan_app/models/rent_request.dart';
+import 'package:bukidbayan_app/services/platform_telemetry_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -49,23 +50,23 @@ class WeatherDay {
   }
 
   Map<String, dynamic> toMap() => {
-        'date': Timestamp.fromDate(date),
-        'weatherCode': weatherCode,
-        'precipitationMm': precipitationMm,
-        'windSpeedMaxKmh': windSpeedMaxKmh,
-        'precipitationProbabilityMax': precipitationProbabilityMax,
-        'tempMaxC': tempMaxC,
-      };
+    'date': Timestamp.fromDate(date),
+    'weatherCode': weatherCode,
+    'precipitationMm': precipitationMm,
+    'windSpeedMaxKmh': windSpeedMaxKmh,
+    'precipitationProbabilityMax': precipitationProbabilityMax,
+    'tempMaxC': tempMaxC,
+  };
 
   factory WeatherDay.fromMap(Map<String, dynamic> map) => WeatherDay(
-        date: (map['date'] as Timestamp).toDate(),
-        weatherCode: (map['weatherCode'] as num).toInt(),
-        precipitationMm: (map['precipitationMm'] as num).toDouble(),
-        windSpeedMaxKmh: (map['windSpeedMaxKmh'] as num).toDouble(),
-        precipitationProbabilityMax:
-            (map['precipitationProbabilityMax'] as num).toDouble(),
-        tempMaxC: (map['tempMaxC'] as num).toDouble(),
-      );
+    date: (map['date'] as Timestamp).toDate(),
+    weatherCode: (map['weatherCode'] as num).toInt(),
+    precipitationMm: (map['precipitationMm'] as num).toDouble(),
+    windSpeedMaxKmh: (map['windSpeedMaxKmh'] as num).toDouble(),
+    precipitationProbabilityMax: (map['precipitationProbabilityMax'] as num)
+        .toDouble(),
+    tempMaxC: (map['tempMaxC'] as num).toDouble(),
+  );
 }
 
 // ── Service ────────────────────────────────────────────────────────────────
@@ -78,16 +79,27 @@ class WeatherService {
   // Re-fetch at most once every 6 hours.
   static const Duration _cacheTtl = Duration(hours: 6);
 
-  final _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore? _firestoreOverride;
+  final PlatformTelemetryService _telemetry;
+
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseFirestore.instance;
+
+  WeatherService({
+    FirebaseFirestore? firestore,
+    PlatformTelemetryService? telemetry,
+  }) : _firestoreOverride = firestore,
+       _telemetry = telemetry ?? PlatformTelemetryService(firestore: firestore);
 
   DocumentReference _cacheDocFor(double lat, double lng) {
     final latKey = lat.toStringAsFixed(2);
     final lngKey = lng.toStringAsFixed(2);
-    return _firestore.collection('system').doc('weatherCache_${latKey}_$lngKey');
+    return _firestore
+        .collection('system')
+        .doc('weatherCache_${latKey}_$lngKey');
   }
 
-  CollectionReference get _requests =>
-      _firestore.collection('rentRequests');
+  CollectionReference get _requests => _firestore.collection('rentRequests');
 
   CollectionReference _userNotifs(String userId) =>
       _firestore.collection('notifications').doc(userId).collection('items');
@@ -200,7 +212,8 @@ class WeatherService {
         permission = await Geolocator.requestPermission();
       }
 
-      final canUseLocation = permission == LocationPermission.always ||
+      final canUseLocation =
+          permission == LocationPermission.always ||
           permission == LocationPermission.whileInUse;
       if (!canUseLocation) {
         return (lat: _fallbackLat, lng: _fallbackLng);
@@ -231,12 +244,7 @@ class WeatherService {
       if (cached != null) return cached;
     }
     final forecast = await _fetchFromApi(lat: coords.lat, lng: coords.lng);
-    await _saveToCache(
-      cacheDoc,
-      forecast,
-      lat: coords.lat,
-      lng: coords.lng,
-    );
+    await _saveToCache(cacheDoc, forecast, lat: coords.lat, lng: coords.lng);
     return forecast;
   }
 
@@ -252,7 +260,18 @@ class WeatherService {
         requestLocationPermission: false,
       );
       await _flagAffectedRequests(forecast);
-    } catch (_) {
+      await _telemetry.logBackgroundTaskResult(
+        taskName: 'weather_check',
+        success: true,
+        metadata: {'forecastDays': forecast.length},
+      );
+    } catch (error, stackTrace) {
+      await _telemetry.logBackgroundTaskResult(
+        taskName: 'weather_check',
+        success: false,
+        message: error.toString(),
+        metadata: {'stackTrace': stackTrace.toString()},
+      );
       // Silently ignore — weather check is best-effort
     }
   }
@@ -276,10 +295,16 @@ class WeatherService {
     for (final doc in snapshot.docs) {
       final request = RentRequest.fromDoc(doc);
 
-      final reqStart =
-          DateTime(request.start.year, request.start.month, request.start.day);
-      final reqEnd =
-          DateTime(request.end.year, request.end.month, request.end.day);
+      final reqStart = DateTime(
+        request.start.year,
+        request.start.month,
+        request.start.day,
+      );
+      final reqEnd = DateTime(
+        request.end.year,
+        request.end.month,
+        request.end.day,
+      );
 
       final affected = badDays.where((d) {
         final day = DateTime(d.date.year, d.date.month, d.date.day);
@@ -372,8 +397,11 @@ class WeatherService {
   Future<void> injectTestBadWeather(List<DateTime> dates) async {
     final today = DateTime.now();
     final forecast = List.generate(7, (i) {
-      final day = DateTime(today.year, today.month, today.day)
-          .add(Duration(days: i));
+      final day = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).add(Duration(days: i));
       final isBad = dates.any(
         (d) => d.year == day.year && d.month == day.month && d.day == day.day,
       );

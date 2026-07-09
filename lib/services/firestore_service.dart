@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/models/review.dart';
+import 'package:bukidbayan_app/services/geography_normalization_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'dart:math' show sin, cos, sqrt, atan2;
@@ -16,6 +17,8 @@ class NearbyEquipmentResult {
 
 class FirestoreService {
   final FirebaseFirestore? _firestoreOverride;
+  final GeographyNormalizationService _geography =
+      const GeographyNormalizationService();
   FirebaseFirestore get _firestore =>
       _firestoreOverride ?? FirebaseFirestore.instance;
 
@@ -29,6 +32,7 @@ class FirestoreService {
     try {
       DocumentReference docRef = await _firestore.collection('equipment').add({
         ...equipmentData,
+        ..._normalizeEquipmentData(equipmentData, includeNulls: false),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -68,6 +72,10 @@ class FirestoreService {
     try {
       await _firestore.collection('equipment').doc(equipmentId).update({
         ...data,
+        ..._normalizeEquipmentData(
+          data,
+          includeNulls: data.containsKey('location'),
+        ),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -146,6 +154,11 @@ class FirestoreService {
     try {
       await _firestore.collection('users').doc(userId).update({
         ...data,
+        ..._normalizeUserData(
+          data,
+          includeNulls:
+              data.containsKey('address') || data.containsKey('farmAddress'),
+        ),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -181,7 +194,11 @@ class FirestoreService {
 
   /// Ensures the three new categories exist in the Firestore categories doc.
   Future<void> ensureNewCategoriesExist() async {
-    const newCategories = ['Hand Tractor (Kuliglig)', 'Floating Tiller (Pagong)', 'Implements'];
+    const newCategories = [
+      'Hand Tractor (Kuliglig)',
+      'Floating Tiller (Pagong)',
+      'Implements',
+    ];
     final docRef = _firestore
         .collection('categories')
         .doc('equipment_categories');
@@ -1093,5 +1110,39 @@ class FirestoreService {
       print('❌ Rollback failed: $e');
       throw Exception('Rollback failed: $e');
     }
+  }
+
+  Map<String, dynamic> _normalizeEquipmentData(
+    Map<String, dynamic> data, {
+    required bool includeNulls,
+  }) {
+    if (!data.containsKey('location')) {
+      return <String, dynamic>{};
+    }
+
+    final location = data['location'] as String?;
+    return _geography.normalizeAddressFields(
+      address: location,
+      includeNulls: includeNulls,
+    );
+  }
+
+  Map<String, dynamic> _normalizeUserData(
+    Map<String, dynamic> data, {
+    required bool includeNulls,
+  }) {
+    return {
+      if (data.containsKey('address'))
+        ..._geography.normalizeAddressFields(
+          address: data['address'] as String?,
+          includeNulls: includeNulls,
+        ),
+      if (data.containsKey('farmAddress'))
+        ..._geography.normalizeAddressFields(
+          address: data['farmAddress'] as String?,
+          prefix: 'farm',
+          includeNulls: includeNulls,
+        ),
+    };
   }
 }

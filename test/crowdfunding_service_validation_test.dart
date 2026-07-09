@@ -1,14 +1,22 @@
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Campaign _validCampaign({String? safetyNotes}) {
+Campaign _validCampaign({
+  String id = 'c_test',
+  String creatorUid = 'creator-uid',
+  String creatorEmail = 'tester@example.com',
+  String? safetyNotes,
+}) {
   return Campaign(
-    id: 'c_test',
+    id: id,
     title: 'Solar Pump for Cooperative Use',
     creatorName: 'Tester',
-    creatorEmail: 'tester@example.com',
+    creatorEmail: creatorEmail,
+    creatorUid: creatorUid,
     shortBlurb: 'Help us fund a shared solar pump for irrigation access.',
     description:
         'This campaign funds a shared solar pump that cooperative members can rent to improve irrigation reliability and reduce costs.',
@@ -45,6 +53,34 @@ Campaign _validCampaign({String? safetyNotes}) {
         'Operators are required to use PPE and complete handling training.',
     status: 'draft',
   );
+}
+
+MockFirebaseAuth _buildAuth({
+  String uid = 'user-1',
+  String email = 'tester@example.com',
+  String displayName = 'Test User',
+}) {
+  return MockFirebaseAuth(
+    signedIn: true,
+    mockUser: MockUser(uid: uid, email: email, displayName: displayName),
+  );
+}
+
+CrowdfundingService _buildService({
+  required FakeFirebaseFirestore firestore,
+  required MockFirebaseAuth auth,
+}) {
+  return CrowdfundingService(firestore: firestore, auth: auth);
+}
+
+Future<void> _seedCampaign(
+  FakeFirebaseFirestore firestore,
+  Campaign campaign,
+) async {
+  await firestore
+      .collection('campaigns')
+      .doc(campaign.id)
+      .set(campaign.toFirestore());
 }
 
 void main() {
@@ -94,19 +130,26 @@ void main() {
     test(
       'publishCampaign saves a new live campaign even if draft was never saved',
       () async {
-        SharedPreferences.setMockInitialValues({
-          'current_user_email': 'tester@example.com',
-        });
-        final service = CrowdfundingService();
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth();
+        final service = _buildService(firestore: firestore, auth: auth);
         final campaign = _validCampaign();
 
         await service.publishCampaign(campaign);
-        final campaigns = await service.getCampaigns();
 
-        expect(campaigns.any((c) => c.id == campaign.id), isTrue);
-        final published = campaigns.firstWhere((c) => c.id == campaign.id);
+        final publishedSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        final published = Campaign.fromJson({
+          ...publishedSnap.data()!,
+          'id': publishedSnap.id,
+        });
+
+        expect(publishedSnap.exists, isTrue);
         expect(published.status, 'live');
         expect(published.publishedAt, isNotNull);
+        expect(published.creatorUid, campaign.creatorUid);
       },
     );
   });
@@ -180,41 +223,22 @@ void main() {
     );
   });
 
-  group('CrowdfundingService.backCampaign supporter data', () {
-    Campaign liveCampaign({required String id, required String creatorEmail}) {
-      return Campaign(
-        id: id,
-        title: 'Live campaign for backing tests',
-        creatorName: 'Creator',
-        creatorEmail: creatorEmail,
-        shortBlurb: 'Backing test campaign.',
-        description: 'A valid campaign description used for backing tests.',
-        isAssetImage: true,
-        image: 'assets/images/farmBg.jpg',
-        category: 'Irrigation',
-        goalAmount: 10000,
-        pledgedAmount: 0,
-        backersCount: 0,
-        endDate: DateTime.now().add(const Duration(days: 10)),
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        rewards: const [],
-        gcashQrImage: 'data:image/png;base64,qr-test-image',
-        status: 'live',
-      );
-    }
-
+  group('CrowdfundingService.backCampaign', () {
     test('rejects self-support when current user owns campaign', () async {
-      final campaign = liveCampaign(
-        id: 'c_owner_block',
-        creatorEmail: 'owner@example.com',
+      final firestore = FakeFirebaseFirestore();
+      final auth = _buildAuth(
+        uid: 'owner-uid',
+        email: 'owner@example.com',
+        displayName: 'Owner Name',
       );
-      SharedPreferences.setMockInitialValues({
-        'current_user_email': 'owner@example.com',
-        'campaigns_v2': encodeCampaigns([campaign]),
-        'pledges_v1': encodePledges(const []),
-      });
+      final service = _buildService(firestore: firestore, auth: auth);
+      final campaign = _validCampaign(
+        id: 'c_owner_block',
+        creatorUid: 'owner-uid',
+        creatorEmail: 'owner@example.com',
+      ).copyWith(status: 'live');
 
-      final service = CrowdfundingService();
+      await _seedCampaign(firestore, campaign);
 
       expect(
         () => service.backCampaign(campaignId: campaign.id, amount: 500),
@@ -228,18 +252,54 @@ void main() {
       );
     });
 
-    test('stores supporter name, phone, and note in pledge record', () async {
-      final campaign = liveCampaign(
-        id: 'c_donor_meta',
-        creatorEmail: 'creator@example.com',
+    test('rejects amounts below the selected reward minimum', () async {
+      final firestore = FakeFirebaseFirestore();
+      final auth = _buildAuth(
+        uid: 'backer-uid',
+        email: 'backer@example.com',
+        displayName: 'Backer Name',
       );
-      SharedPreferences.setMockInitialValues({
-        'current_user_email': 'donor@example.com',
-        'campaigns_v2': encodeCampaigns([campaign]),
-        'pledges_v1': encodePledges(const []),
-      });
+      final service = _buildService(firestore: firestore, auth: auth);
+      final campaign = _validCampaign(
+        id: 'c_reward_minimum',
+        creatorUid: 'creator-uid',
+        creatorEmail: 'creator@example.com',
+      ).copyWith(status: 'live');
 
-      final service = CrowdfundingService();
+      await _seedCampaign(firestore, campaign);
+
+      expect(
+        () => service.backCampaign(
+          campaignId: campaign.id,
+          amount: 400,
+          rewardId: 'r1',
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('below the minimum pledge'),
+          ),
+        ),
+      );
+    });
+
+    test('stores supporter metadata and updates campaign counters', () async {
+      final firestore = FakeFirebaseFirestore();
+      final auth = _buildAuth(
+        uid: 'backer-uid',
+        email: 'donor@example.com',
+        displayName: 'Donor Display Name',
+      );
+      final service = _buildService(firestore: firestore, auth: auth);
+      final campaign = _validCampaign(
+        id: 'c_donor_meta',
+        creatorUid: 'creator-uid',
+        creatorEmail: 'creator@example.com',
+      ).copyWith(status: 'live');
+
+      await _seedCampaign(firestore, campaign);
+
       await service.backCampaign(
         campaignId: campaign.id,
         amount: 750,
@@ -248,12 +308,27 @@ void main() {
         backerNote: 'Support para sa proyekto!',
       );
 
-      final prefs = await SharedPreferences.getInstance();
-      final pledgesJson = prefs.getString('pledges_v1');
-      expect(pledgesJson, isNotNull);
-      final pledges = decodePledges(pledgesJson!);
-      final pledge = pledges.firstWhere((p) => p.campaignId == campaign.id);
+      final updatedCampaignSnap = await firestore
+          .collection('campaigns')
+          .doc(campaign.id)
+          .get();
+      final pledgesSnap = await firestore
+          .collection('campaigns')
+          .doc(campaign.id)
+          .collection('pledges')
+          .get();
 
+      expect(updatedCampaignSnap.data()!['pledgedAmount'], 750);
+      expect(updatedCampaignSnap.data()!['backersCount'], 1);
+      expect(pledgesSnap.docs, hasLength(1));
+
+      final pledge = Pledge.fromJson({
+        ...pledgesSnap.docs.single.data(),
+        'id': pledgesSnap.docs.single.id,
+        'campaignId': campaign.id,
+      });
+
+      expect(pledge.backerUid, 'backer-uid');
       expect(pledge.backerEmail, 'donor@example.com');
       expect(pledge.backerName, 'Juan Dela Cruz');
       expect(pledge.backerPhone, '09171234567');
