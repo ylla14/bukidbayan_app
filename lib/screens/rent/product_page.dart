@@ -749,7 +749,11 @@ class _ProductPageState extends State<ProductPage> {
                   _buildOwnerKpiSection(liveItem),
                   CustomDivider(),
                 ],
-                CommunityImpactBar(equipmentId: liveItem.id!),
+                CommunityImpactBar(
+                  equipmentId: liveItem.id!,
+                  rentalUnit: liveItem.rentalUnit,
+                  landSizeRequirement: liveItem.landSizeRequirement,
+                ),
                 const SizedBox(height: 4),
 
                 // ── Location ─────────────────────────────────────────────────

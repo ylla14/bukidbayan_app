@@ -153,11 +153,11 @@ class _UtilizationAnalyticsPageState extends State<UtilizationAnalyticsPage>
   static const _monthsBack = 12;
 
   // Design tokens
-  static const _green = Color(0xFF2D6A4F);
+  static const _green = Color(0xFF21825C);
   static const _greenLight = Color(0xFF52B788);
   static const _greenPale = Color(0xFFD8F3DC);
-  static const _amber = Color(0xFFE9C46A);
-  static const _red = Color(0xFFE76F51);
+  static const _amber = Color(0xFFF59E0B);
+  static const _red = Color(0xFFBA1A1A);
   static const _bg = Color(0xFFF8FAF8);
   static const _surface = Color(0xFFFFFFFF);
   static const _ink = Color(0xFF1B2E1F);
