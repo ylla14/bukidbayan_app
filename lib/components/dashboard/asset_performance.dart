@@ -45,10 +45,10 @@ class AssetPerformancePage extends StatefulWidget {
 class _AssetPerformancePageState extends State<AssetPerformancePage>
     with SingleTickerProviderStateMixin {
   // Design tokens — matches utilization page palette
-  static const _green = Color(0xFF2D6A4F);
+  static const _green = Color(0xFF21825C);
   static const _greenLight = Color(0xFF40916C);
   static const _greenPale = Color(0xFFD8F3DC);
-  static const _gold = Color(0xFFE9C46A);
+  static const _gold = Color(0xFFF59E0B); 
   static const _bg = Color(0xFFF8FAF8);
   static const _ink = Color(0xFF1B2E1F);
   static const _inkLight = Color(0xFF6B7F6E);
@@ -613,7 +613,7 @@ class _AssetRankCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: isTop
-            ? Border.all(color: const Color(0xFFE9C46A), width: 1.5)
+            ? Border.all(color: const Color(0xFFF59E0B), width: 1.5)
             : null,
         boxShadow: [
           BoxShadow(
@@ -630,7 +630,7 @@ class _AssetRankCard extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: isTop
-                  ? const Color(0xFFE9C46A)
+                  ? const Color(0xFFF59E0B)
                   : const Color(0xFFD8F3DC),
               shape: BoxShape.circle,
             ),

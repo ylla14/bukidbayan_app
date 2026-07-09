@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/dashboard/asset_performance.dart';
 import 'package:bukidbayan_app/components/dashboard/equipment_reliability.dart';
 import 'package:bukidbayan_app/components/dashboard/utilization_rate.dart';
+import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
 /// Tabbed host combining UtilizationAnalyticsPage and AssetPerformancePage
@@ -35,7 +36,7 @@ class _KpiDashboardPageState extends State<KpiDashboardPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: _green,
+        backgroundColor: lightColorScheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
