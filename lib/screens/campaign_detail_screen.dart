@@ -34,6 +34,31 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
   String _categoryLabel(String value) => _categoryLabels[value] ?? value;
 
+  TextStyle _sectionTitleStyle(BuildContext context) {
+    return Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          color: lightColorScheme.primary,
+        ) ??
+        TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: lightColorScheme.primary,
+        );
+  }
+
+  TextStyle _actionLabelStyle(BuildContext context, {Color? color}) {
+    return Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          color: color,
+        ) ??
+        TextStyle(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          color: color,
+        );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +123,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     required String title,
     required String description,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -119,13 +146,28 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
+                  style:
+                      textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: lightColorScheme.onSurface,
+                      ) ??
+                      const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                 ),
                 const SizedBox(height: 2),
-                Text(description, style: const TextStyle(fontSize: 13)),
+                Text(
+                  description,
+                  style:
+                      textTheme.bodySmall?.copyWith(
+                        height: 1.35,
+                        color: lightColorScheme.onSurface.withValues(
+                          alpha: 0.9,
+                        ),
+                      ) ??
+                      const TextStyle(fontSize: 13),
+                ),
               ],
             ),
           ),
@@ -159,11 +201,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Mode of payment: GCash QR',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: lightColorScheme.primary,
-                  ),
+                  'Paraan ng bayad: GCash QR',
+                  style: _sectionTitleStyle(context).copyWith(fontSize: 16),
                 ),
               ),
             ],
@@ -258,11 +297,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   children: [
                     Text(
                       'Suportahan ang proyektong ito',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: lightColorScheme.primary,
-                      ),
+                      style: _sectionTitleStyle(context),
                     ),
                     const SizedBox(height: 10),
                     _buildGuideCard(
@@ -403,7 +438,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               );
                             },
                       icon: const Icon(Icons.copy_all_outlined),
-                      label: const Text('Kopyahin ang Halaga'),
+                      label: Text(
+                        'Kopyahin ang Halaga',
+                        style: _actionLabelStyle(context),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     CheckboxListTile(
@@ -503,7 +541,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           }
                         },
                         icon: const Icon(Icons.volunteer_activism_outlined),
-                        label: const Text('Kinumpirma ko ang GCash payment'),
+                        label: Text(
+                          'Kinumpirma ko ang GCash payment',
+                          style: _actionLabelStyle(
+                            context,
+                            color: lightColorScheme.onPrimary,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -564,7 +608,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       ElevatedButton.icon(
                         onPressed: _reload,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Try again'),
+                        label: Text(
+                          'Subukan muli',
+                          style: _actionLabelStyle(
+                            context,
+                            color: lightColorScheme.onPrimary,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -606,14 +656,19 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                   child: Text(
                     c.shortBlurb,
-                    style: const TextStyle(fontSize: 16, color: Colors.black87),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.black87,
+                      height: 1.35,
+                    ),
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: Text(
                     'Ni ${c.creatorName} | ${_categoryLabel(c.category)}',
-                    style: const TextStyle(color: Colors.black54),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
                   ),
                 ),
                 Padding(
@@ -644,9 +699,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             Expanded(
                               child: Text(
                                 supportDisabledReason,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                             ),
                           ],
@@ -675,10 +729,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           const SizedBox(height: 10),
                           Text(
                             '${formatPeso(c.pledgedAmount)} naipon',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 18,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -698,11 +750,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
                   child: Text(
                     'Tungkol sa Kampanya',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: lightColorScheme.primary,
-                    ),
+                    style: _sectionTitleStyle(context),
                   ),
                 ),
                 Padding(
@@ -714,11 +762,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                   child: Text(
                     'Mga Benepisyo',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: lightColorScheme.primary,
-                    ),
+                    style: _sectionTitleStyle(context),
                   ),
                 ),
                 if (c.rewards.isEmpty)
@@ -748,9 +792,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             children: [
                               Text(
                                 '${r.title} (minimum ${formatPeso(r.minPledge)})',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(height: 6),
                               Text(
@@ -774,7 +817,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                       ? () => _openBackSheet(c, preselect: r)
                                       : null,
                                   icon: const Icon(Icons.check_circle_outline),
-                                  label: const Text('Select this reward'),
+                                  label: Text(
+                                    'Piliin ang benepisyong ito',
+                                    style: _actionLabelStyle(context),
+                                  ),
                                 ),
                               ),
                             ],
@@ -793,9 +839,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   child: ElevatedButton.icon(
                     onPressed: canSupport ? () => _openBackSheet(c) : null,
                     icon: const Icon(Icons.volunteer_activism_outlined),
-                    label: const Padding(
+                    label: Padding(
                       padding: EdgeInsets.symmetric(vertical: 4),
-                      child: Text('Suportahan ang proyektong ito'),
+                      child: Text(
+                        'Suportahan ang proyektong ito',
+                        style: _actionLabelStyle(
+                          context,
+                          color: lightColorScheme.onPrimary,
+                        ),
+                      ),
                     ),
                   ),
                 ),

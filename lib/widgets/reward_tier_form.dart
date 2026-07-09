@@ -364,7 +364,11 @@ class _RewardTierFormState extends State<RewardTierForm> {
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: const Text('Isara'),
+                          child: Text(
+                            'Isara',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       );
                       final saveButton = SizedBox(
@@ -378,6 +382,13 @@ class _RewardTierFormState extends State<RewardTierForm> {
                             isEditing
                                 ? 'I-update ang Benepisyo'
                                 : 'I-save ang Benepisyo',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
                           ),
                         ),
                       );

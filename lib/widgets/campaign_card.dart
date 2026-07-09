@@ -25,6 +25,7 @@ class CampaignCard extends StatelessWidget {
     final progress = campaign.progress.clamp(0.0, 1.0);
     final progressPercent = (progress * 100).round();
     final safeDaysLeft = campaign.daysLeft < 0 ? 0 : campaign.daysLeft;
+    final textTheme = Theme.of(context).textTheme;
 
     return Card(
       color: lightColorScheme.onPrimary,
@@ -87,9 +88,10 @@ class CampaignCard extends StatelessWidget {
                     campaign.title.isEmpty
                         ? 'Kampanyang walang pamagat'
                         : campaign.title,
-                    style: const TextStyle(
+                    style: textTheme.titleMedium?.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
+                      color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -97,7 +99,10 @@ class CampaignCard extends StatelessWidget {
                     campaign.shortBlurb,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black54),
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Colors.black54,
+                      height: 1.35,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   LinearProgressIndicator(
@@ -113,18 +118,22 @@ class CampaignCard extends StatelessWidget {
                     children: [
                       Text(
                         '${formatPeso(campaign.pledgedAmount)} naipon',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       Text(
                         '$safeDaysLeft araw na lang',
-                        style: const TextStyle(color: Colors.black54),
+                        style: textTheme.bodySmall?.copyWith(
+                          color: Colors.black54,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Target: ${formatPeso(campaign.goalAmount)} | ${campaign.backersCount} supporters',
-                    style: const TextStyle(color: Colors.black54),
+                    style: textTheme.bodySmall?.copyWith(color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -137,20 +146,21 @@ class CampaignCard extends StatelessWidget {
                       color: lightColorScheme.secondary.withOpacity(0.16),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.touch_app_outlined, size: 18),
-                        SizedBox(width: 8),
+                        const Icon(Icons.touch_app_outlined, size: 18),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Pindutin para buksan ang detalye at pagsuporta',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
+                            style: textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
                               fontSize: 13,
+                              color: lightColorScheme.onSurface,
                             ),
                           ),
                         ),
-                        Icon(Icons.arrow_forward_ios, size: 14),
+                        const Icon(Icons.arrow_forward_ios, size: 14),
                       ],
                     ),
                   ),

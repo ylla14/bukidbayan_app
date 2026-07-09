@@ -20,6 +20,7 @@ class CrowdfundingScreen extends StatefulWidget {
   final FirebaseAuth? authOverride;
   final PreferredSizeWidget? appBarOverride;
   final Widget? drawerOverride;
+
   /// True when the logged-in user is the co-op account.
   /// Shows both tabs and create buttons. Prosumers see only the Discover tab.
   final bool isCoop;
@@ -93,11 +94,38 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
 
   String _categoryLabel(String value) => _categoryLabels[value] ?? value;
 
+  TextStyle _sectionTitleStyle(BuildContext context) {
+    return Theme.of(context).textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w800,
+          color: lightColorScheme.primary,
+        ) ??
+        TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          color: lightColorScheme.primary,
+        );
+  }
+
+  TextStyle _actionLabelStyle(BuildContext context, {Color? color}) {
+    return Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          color: color,
+        ) ??
+        TextStyle(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          color: color,
+        );
+  }
+
   Widget _buildGuideCard({
     required IconData icon,
     required String title,
     required String description,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -117,15 +145,27 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
+                  style:
+                      textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: lightColorScheme.onSurface,
+                      ) ??
+                      const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: const TextStyle(fontSize: 13),
+                  style:
+                      textTheme.bodySmall?.copyWith(
+                        height: 1.35,
+                        color: lightColorScheme.onSurface.withValues(
+                          alpha: 0.9,
+                        ),
+                      ) ??
+                      const TextStyle(fontSize: 13),
                 ),
               ],
             ),
@@ -301,13 +341,19 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: Text(
+                  'I-cancel',
+                  style: _actionLabelStyle(
+                    context,
+                    color: lightColorScheme.primary,
+                  ),
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text(
+                child: Text(
                   'Burahin',
-                  style: TextStyle(color: Colors.red),
+                  style: _actionLabelStyle(context, color: Colors.red),
                 ),
               ),
             ],
@@ -350,11 +396,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                         children: [
                           Text(
                             'Tuklasin ang mga Kampanya',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: lightColorScheme.primary,
-                            ),
+                            style: _sectionTitleStyle(context),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -369,10 +411,16 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                       ElevatedButton.icon(
                         onPressed: () => _openCreate(),
                         icon: const Icon(Icons.add),
-                        label: const Text('Gumawa'),
+                        label: Text(
+                          'Gumawa',
+                          style: _actionLabelStyle(
+                            context,
+                            color: lightColorScheme.onPrimary,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: lightColorScheme.primary,
-                          foregroundColor: Colors.white,
+                          foregroundColor: lightColorScheme.onPrimary,
                         ),
                       ),
                     ],
@@ -490,7 +538,9 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                 const Padding(
                   padding: EdgeInsets.all(20),
                   child: Center(
-                    child: Text('May problema sa pag-load. Hilahin pababa para subukan ulit.'),
+                    child: Text(
+                      'May problema sa pag-load. Hilahin pababa para subukan ulit.',
+                    ),
                   ),
                 )
               else if (visible.isEmpty)
@@ -509,7 +559,10 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                           });
                         },
                         icon: const Icon(Icons.refresh),
-                        label: const Text('I-reset ang filter'),
+                        label: Text(
+                          'I-reset ang filter',
+                          style: _actionLabelStyle(context),
+                        ),
                       ),
                     ],
                   ),
@@ -569,9 +622,11 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               const SizedBox(height: 4),
               Text('Target: ${formatPeso(campaign.goalAmount)}'),
               const SizedBox(height: 2),
-              const Text(
+              Text(
                 'Pindutin ang card para buksan at i-manage.',
-                style: TextStyle(fontSize: 12),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.black54),
               ),
               Text(
                 'Huling update: ${edited.month}/${edited.day}/${edited.year}',
@@ -602,7 +657,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               items.addAll(const [
                 PopupMenuItem<String>(
                   value: 'edit',
-                  child: Text('Edit Draft'),
+                  child: Text('I-edit ang Draft'),
                 ),
                 PopupMenuItem<String>(
                   value: 'delete',
@@ -614,9 +669,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                 PopupMenuItem<String>(
                   value: 'report',
                   child: Text(
-                    _isEnded(campaign)
-                        ? 'Gumawa ng Ulat'
-                        : 'Kasalukuyang Ulat',
+                    _isEnded(campaign) ? 'Gumawa ng Ulat' : 'Kasalukuyang Ulat',
                   ),
                 ),
               );
@@ -656,11 +709,7 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                       children: [
                         Text(
                           'Aking Mga Kampanya',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: lightColorScheme.primary,
-                          ),
+                          style: _sectionTitleStyle(context),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -675,10 +724,16 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                     ElevatedButton.icon(
                       onPressed: () => _openCreate(),
                       icon: const Icon(Icons.add),
-                      label: const Text('Bago'),
+                      label: Text(
+                        'Bago',
+                        style: _actionLabelStyle(
+                          context,
+                          color: lightColorScheme.onPrimary,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: lightColorScheme.primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: lightColorScheme.onPrimary,
                       ),
                     ),
                   ],
@@ -729,22 +784,22 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
               ),
               const SizedBox(height: 12),
               SegmentedButton<ListingFilter>(
-                segments: const [
+                segments: [
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.all,
-                    label: Text('Lahat'),
+                    label: Text('Lahat', style: _actionLabelStyle(context)),
                   ),
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.drafts,
-                    label: Text('Draft'),
+                    label: Text('Draft', style: _actionLabelStyle(context)),
                   ),
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.live,
-                    label: Text('Aktibo'),
+                    label: Text('Aktibo', style: _actionLabelStyle(context)),
                   ),
                   ButtonSegment<ListingFilter>(
                     value: ListingFilter.ended,
-                    label: Text('Ended'),
+                    label: Text('Tapos na', style: _actionLabelStyle(context)),
                   ),
                 ],
                 selected: {_listingFilter},
@@ -763,7 +818,9 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                 const Padding(
                   padding: EdgeInsets.all(20),
                   child: Center(
-                    child: Text('May problema sa pag-load. Hilahin pababa para subukan ulit.'),
+                    child: Text(
+                      'May problema sa pag-load. Hilahin pababa para subukan ulit.',
+                    ),
                   ),
                 )
               else if (listings.isEmpty)
@@ -773,12 +830,16 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Wala ka pang kampanya',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ) ??
+                              const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
                         ),
                         const SizedBox(height: 8),
                         const Text(
@@ -789,7 +850,13 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                           ElevatedButton.icon(
                             onPressed: () => _openCreate(),
                             icon: const Icon(Icons.add),
-                            label: const Text('Gumawa ng Kampanya'),
+                            label: Text(
+                              'Gumawa ng Kampanya',
+                              style: _actionLabelStyle(
+                                context,
+                                color: lightColorScheme.onPrimary,
+                              ),
+                            ),
                           ),
                         ],
                       ],
@@ -802,7 +869,9 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                   child: Center(
                     child: Column(
                       children: [
-                        const Text('Walang kampanyang tugma sa napiling filter.'),
+                        const Text(
+                          'Walang kampanyang tugma sa napiling filter.',
+                        ),
                         const SizedBox(height: 8),
                         OutlinedButton.icon(
                           onPressed: () {
@@ -810,7 +879,10 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
                             setState(() => _listingFilter = ListingFilter.all);
                           },
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Ipakita lahat'),
+                          label: Text(
+                            'Ipakita lahat',
+                            style: _actionLabelStyle(context),
+                          ),
                         ),
                       ],
                     ),
@@ -830,9 +902,9 @@ class _CrowdfundingScreenState extends State<CrowdfundingScreen> {
     final campaignTheme = Theme.of(context).copyWith(
       scaffoldBackgroundColor: Colors.white,
       cardTheme: Theme.of(context).cardTheme.copyWith(
-            color: Colors.white,
-            surfaceTintColor: Colors.transparent,
-          ),
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
     );
 
     if (!widget.isCoop) {

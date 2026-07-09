@@ -1931,7 +1931,11 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: const Text('Bumalik'),
+                          child: Text(
+                            'Bumalik',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1944,7 +1948,14 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                                     vertical: 16,
                                   ),
                                 ),
-                                child: const Text('Susunod'),
+                                child: Text(
+                                  'Susunod',
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: lightColorScheme.onPrimary,
+                                      ),
+                                ),
                               )
                             : ElevatedButton(
                                 onPressed: _isLoading ? null : _publishCampaign,
@@ -1956,18 +1967,27 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                                   ),
                                 ),
                                 child: _isLoading
-                                    ? const SizedBox(
+                                    ? SizedBox(
                                         width: 20,
                                         height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
+                                                lightColorScheme.onPrimary,
                                               ),
                                         ),
                                       )
-                                    : const Text('I-publish'),
+                                    : Text(
+                                        'I-publish',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: lightColorScheme.onPrimary,
+                                            ),
+                                      ),
                               ),
                       ),
                     ],
@@ -1981,7 +2001,12 @@ class _CampaignWizardScreenState extends State<CampaignWizardScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       icon: const Icon(Icons.save_outlined),
-                      label: const Text('I-save ang Draft'),
+                      label: Text(
+                        'I-save ang Draft',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ],
