@@ -188,11 +188,11 @@ class RentRequest {
     }
 
     return RentRequest(
-      requestId: doc.id,
-      itemId: map['itemId'],
-      itemName: map['itemName'],
-      name: map['name'],
-      address: map['address'],
+       requestId: doc.id,
+      itemId: map['itemId'] ?? '',
+      itemName: map['itemName'] ?? '',
+      name: map['name'] ?? '',
+      address: map['address'] ?? '',
       start: (map['start'] as Timestamp?)?.toDate() ?? DateTime.now(),
       end:
           (map['end'] as Timestamp?)?.toDate() ??
@@ -212,8 +212,8 @@ class RentRequest {
         (e) => e.name == (map['status'] ?? 'pending'),
         orElse: () => RentRequestStatus.pending,
       ),
-      renterId: map['renterId'],
-      ownerId: map['ownerId'],
+      renterId: map['renterId'] ?? '',
+      ownerId: map['ownerId'] ?? '',
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : null,
