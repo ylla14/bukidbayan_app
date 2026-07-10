@@ -1,4 +1,7 @@
+import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/models/renter_analytics_report.dart';
+import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
+import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/analytics/renter_analytics_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,6 +14,19 @@ final NumberFormat _renterAnalyticsCurrency = NumberFormat.currency(
   decimalDigits: 0,
 );
 final DateFormat _renterAnalyticsDate = DateFormat('MMM d, yyyy');
+final DateFormat _renterAnalyticsDateTime = DateFormat('MMM d, yyyy - hh:mm a');
+
+enum _RenterRequestBucket {
+  waitingReview,
+  confirmedUpcoming,
+  inUse,
+  closingOut,
+  confirmedAndActive,
+  completed,
+  cancelled,
+  declined,
+  weatherRisk,
+}
 
 class RenterAnalyticsScreen extends StatefulWidget {
   final RenterAnalyticsService? serviceOverride;
@@ -27,6 +43,29 @@ class RenterAnalyticsScreen extends StatefulWidget {
 }
 
 class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
+  static const Set<RentRequestStatus> _confirmedUpcomingStatuses = {
+    RentRequestStatus.approved,
+    RentRequestStatus.readyForPickup,
+    RentRequestStatus.onTheWay,
+  };
+
+  static const Set<RentRequestStatus> _inUseStatuses = {
+    RentRequestStatus.pickedUp,
+    RentRequestStatus.inProgress,
+  };
+
+  static const Set<RentRequestStatus> _closingStatuses = {
+    RentRequestStatus.retrieving,
+    RentRequestStatus.returned,
+    RentRequestStatus.finished,
+  };
+
+  static const Set<RentRequestStatus> _confirmedAndActiveStatuses = {
+    ..._confirmedUpcomingStatuses,
+    ..._inUseStatuses,
+    ..._closingStatuses,
+  };
+
   RenterAnalyticsService? _service;
   Future<RenterAnalyticsReport>? _future;
   String? _renterId;
@@ -66,6 +105,431 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   String _formatDate(DateTime? value) =>
       value == null ? '-' : _renterAnalyticsDate.format(value);
 
+  String _formatCountLabel(int count) =>
+      '$count request${count == 1 ? '' : 's'}';
+
+  String _formatDateRange(RentRequest request) {
+    return '${_renterAnalyticsDate.format(request.start)} - ${_renterAnalyticsDate.format(request.end)}';
+  }
+
+  double _requestValue(RentRequest request) {
+    if (request.agreedPrice != null) return request.agreedPrice!;
+    if (request.estimatedMillingFee != null) {
+      return request.estimatedMillingFee!;
+    }
+    return 0;
+  }
+
+  Color _statusColor(RentRequestStatus status) {
+    switch (status) {
+      case RentRequestStatus.pending:
+        return const Color(0xFFF59E0B);
+      case RentRequestStatus.approved:
+        return const Color(0xFF2563EB);
+      case RentRequestStatus.readyForPickup:
+      case RentRequestStatus.onTheWay:
+        return const Color(0xFFEA580C);
+      case RentRequestStatus.pickedUp:
+      case RentRequestStatus.inProgress:
+        return lightColorScheme.primary;
+      case RentRequestStatus.retrieving:
+      case RentRequestStatus.returned:
+      case RentRequestStatus.finished:
+        return const Color(0xFF0F766E);
+      case RentRequestStatus.completed:
+        return const Color(0xFF15803D);
+      case RentRequestStatus.declined:
+      case RentRequestStatus.canceled:
+        return lightColorScheme.error;
+    }
+  }
+
+  String _statusLabel(RentRequestStatus status) {
+    switch (status) {
+      case RentRequestStatus.readyForPickup:
+        return 'Ready for pick up';
+      case RentRequestStatus.pickedUp:
+        return 'Picked up';
+      case RentRequestStatus.onTheWay:
+        return 'On the way';
+      case RentRequestStatus.inProgress:
+        return 'In progress';
+      default:
+        final raw = status.name;
+        return raw[0].toUpperCase() + raw.substring(1);
+    }
+  }
+
+  IconData _statusIcon(RentRequestStatus status) {
+    switch (status) {
+      case RentRequestStatus.pending:
+        return Icons.hourglass_top_rounded;
+      case RentRequestStatus.approved:
+        return Icons.check_circle_outline_rounded;
+      case RentRequestStatus.readyForPickup:
+        return Icons.storefront_outlined;
+      case RentRequestStatus.pickedUp:
+        return Icons.backpack_outlined;
+      case RentRequestStatus.onTheWay:
+        return Icons.local_shipping_outlined;
+      case RentRequestStatus.inProgress:
+        return Icons.agriculture_rounded;
+      case RentRequestStatus.retrieving:
+        return Icons.assignment_return_outlined;
+      case RentRequestStatus.returned:
+        return Icons.inventory_2_outlined;
+      case RentRequestStatus.finished:
+        return Icons.task_alt_outlined;
+      case RentRequestStatus.completed:
+        return Icons.verified_outlined;
+      case RentRequestStatus.declined:
+        return Icons.cancel_outlined;
+      case RentRequestStatus.canceled:
+        return Icons.remove_circle_outline_rounded;
+    }
+  }
+
+  String _bucketLabel(_RenterRequestBucket bucket) {
+    switch (bucket) {
+      case _RenterRequestBucket.waitingReview:
+        return 'Waiting for review';
+      case _RenterRequestBucket.confirmedUpcoming:
+        return 'Confirmed booking';
+      case _RenterRequestBucket.inUse:
+        return 'Equipment in use';
+      case _RenterRequestBucket.closingOut:
+        return 'Return & closeout';
+      case _RenterRequestBucket.confirmedAndActive:
+        return 'Confirmed & active';
+      case _RenterRequestBucket.completed:
+        return 'Completed rentals';
+      case _RenterRequestBucket.cancelled:
+        return 'Cancelled requests';
+      case _RenterRequestBucket.declined:
+        return 'Declined requests';
+      case _RenterRequestBucket.weatherRisk:
+        return 'Weather-risk bookings';
+    }
+  }
+
+  String _bucketDescription(_RenterRequestBucket bucket) {
+    switch (bucket) {
+      case _RenterRequestBucket.waitingReview:
+        return 'Pending requests that still need an owner decision.';
+      case _RenterRequestBucket.confirmedUpcoming:
+        return 'Approved requests that are being prepared for pickup or delivery.';
+      case _RenterRequestBucket.inUse:
+        return 'Rentals that are currently picked up or actively in progress.';
+      case _RenterRequestBucket.closingOut:
+        return 'Rentals that are being returned or waiting for final closeout.';
+      case _RenterRequestBucket.confirmedAndActive:
+        return 'Everything from approved bookings through final wrap-up.';
+      case _RenterRequestBucket.completed:
+        return 'Finished rentals that were fully completed.';
+      case _RenterRequestBucket.cancelled:
+        return 'Requests that were cancelled before completion.';
+      case _RenterRequestBucket.declined:
+        return 'Requests that owners declined.';
+      case _RenterRequestBucket.weatherRisk:
+        return 'Requests that were flagged by the weather monitor.';
+    }
+  }
+
+  IconData _bucketIcon(_RenterRequestBucket bucket) {
+    switch (bucket) {
+      case _RenterRequestBucket.waitingReview:
+        return Icons.hourglass_top_rounded;
+      case _RenterRequestBucket.confirmedUpcoming:
+        return Icons.event_available_outlined;
+      case _RenterRequestBucket.inUse:
+        return Icons.agriculture_rounded;
+      case _RenterRequestBucket.closingOut:
+        return Icons.assignment_return_outlined;
+      case _RenterRequestBucket.confirmedAndActive:
+        return Icons.swap_horiz_outlined;
+      case _RenterRequestBucket.completed:
+        return Icons.verified_outlined;
+      case _RenterRequestBucket.cancelled:
+        return Icons.block_outlined;
+      case _RenterRequestBucket.declined:
+        return Icons.cancel_outlined;
+      case _RenterRequestBucket.weatherRisk:
+        return Icons.cloud_outlined;
+    }
+  }
+
+  Color _bucketColor(_RenterRequestBucket bucket) {
+    switch (bucket) {
+      case _RenterRequestBucket.waitingReview:
+        return const Color(0xFFF59E0B);
+      case _RenterRequestBucket.confirmedUpcoming:
+        return const Color(0xFF2563EB);
+      case _RenterRequestBucket.inUse:
+        return lightColorScheme.primary;
+      case _RenterRequestBucket.closingOut:
+        return const Color(0xFF0F766E);
+      case _RenterRequestBucket.confirmedAndActive:
+        return const Color(0xFF1D4ED8);
+      case _RenterRequestBucket.completed:
+        return const Color(0xFF15803D);
+      case _RenterRequestBucket.cancelled:
+      case _RenterRequestBucket.declined:
+        return lightColorScheme.error;
+      case _RenterRequestBucket.weatherRisk:
+        return const Color(0xFFD97706);
+    }
+  }
+
+  List<RentRequest> _sortedRequests(Iterable<RentRequest> requests) {
+    final items = requests.toList();
+    items.sort((a, b) {
+      final aDate = a.createdAt ?? a.start;
+      final bDate = b.createdAt ?? b.start;
+      final dateCompare = bDate.compareTo(aDate);
+      if (dateCompare != 0) return dateCompare;
+      return b.requestId.compareTo(a.requestId);
+    });
+    return items;
+  }
+
+  List<RentRequest> _requestsForBucket(
+    RenterAnalyticsReport report,
+    _RenterRequestBucket bucket,
+  ) {
+    switch (bucket) {
+      case _RenterRequestBucket.waitingReview:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => request.status == RentRequestStatus.pending,
+          ),
+        );
+      case _RenterRequestBucket.confirmedUpcoming:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => _confirmedUpcomingStatuses.contains(request.status),
+          ),
+        );
+      case _RenterRequestBucket.inUse:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => _inUseStatuses.contains(request.status),
+          ),
+        );
+      case _RenterRequestBucket.closingOut:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => _closingStatuses.contains(request.status),
+          ),
+        );
+      case _RenterRequestBucket.confirmedAndActive:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => _confirmedAndActiveStatuses.contains(request.status),
+          ),
+        );
+      case _RenterRequestBucket.completed:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => request.status == RentRequestStatus.completed,
+          ),
+        );
+      case _RenterRequestBucket.cancelled:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => request.status == RentRequestStatus.canceled,
+          ),
+        );
+      case _RenterRequestBucket.declined:
+        return _sortedRequests(
+          report.requests.where(
+            (request) => request.status == RentRequestStatus.declined,
+          ),
+        );
+      case _RenterRequestBucket.weatherRisk:
+        return _sortedRequests(
+          report.requests.where((request) => request.weatherFlag),
+        );
+    }
+  }
+
+  int _bucketCount(RenterAnalyticsReport report, _RenterRequestBucket bucket) {
+    return _requestsForBucket(report, bucket).length;
+  }
+
+  String _confirmedAndActiveSubtitle(RenterAnalyticsReport report) {
+    final parts = <String>[];
+    final upcoming = _bucketCount(
+      report,
+      _RenterRequestBucket.confirmedUpcoming,
+    );
+    final inUse = _bucketCount(report, _RenterRequestBucket.inUse);
+    final closing = _bucketCount(report, _RenterRequestBucket.closingOut);
+    if (upcoming > 0) parts.add('$upcoming upcoming');
+    if (inUse > 0) parts.add('$inUse in use');
+    if (closing > 0) parts.add('$closing closing out');
+    if (parts.isEmpty) {
+      return 'Approved bookings through final wrap-up';
+    }
+    return parts.join(', ');
+  }
+
+  void _openRequestDetails(RentRequest request) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RequestSentPage(requestId: request.requestId),
+      ),
+    );
+  }
+
+  void _openMyRequestsList() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const RentalsList(mode: RentalsListMode.myRequests),
+      ),
+    );
+  }
+
+  void _showDrillDownSheet(
+    RenterAnalyticsReport report,
+    _RenterRequestBucket bucket,
+  ) {
+    final requests = _requestsForBucket(report, bucket);
+    final bucketColor = _bucketColor(bucket);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.72,
+          minChildSize: 0.4,
+          maxChildSize: 0.94,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: bucketColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(_bucketIcon(bucket), color: bucketColor),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _bucketLabel(bucket),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _formatCountLabel(requests.length),
+                                style: TextStyle(
+                                  color: bucketColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _bucketDescription(bucket),
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(color: Colors.grey.shade200, height: 1),
+                  Expanded(
+                    child: requests.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'There are no requests in this stage right now.',
+                                style: TextStyle(color: Colors.grey.shade700),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            controller: scrollController,
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                            itemBuilder: (_, index) {
+                              final request = requests[index];
+                              return _RequestPreviewCard(
+                                request: request,
+                                amountLabel: _requestValue(request) > 0
+                                    ? _formatCurrency(_requestValue(request))
+                                    : null,
+                                onTap: () {
+                                  Navigator.of(sheetContext).pop();
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    if (!mounted) return;
+                                    _openRequestDetails(request);
+                                  });
+                                },
+                                statusLabel: _statusLabel(request.status),
+                                statusColor: _statusColor(request.status),
+                                statusIcon: _statusIcon(request.status),
+                                dateRangeLabel: _formatDateRange(request),
+                                submittedAtLabel: request.createdAt == null
+                                    ? null
+                                    : _renterAnalyticsDateTime.format(
+                                        request.createdAt!,
+                                      ),
+                              );
+                            },
+                            separatorBuilder: (_, index) =>
+                                const SizedBox(height: 12),
+                            itemCount: requests.length,
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildMissingUserState() {
     return Scaffold(
       appBar: AppBar(title: const Text('My Rental Analytics')),
@@ -99,27 +563,45 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
     );
   }
 
-  Widget _buildPrivacyCard() {
+  Widget _buildGuideCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: lightColorScheme.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: lightColorScheme.primary.withValues(alpha: 0.18),
+          color: lightColorScheme.primary.withValues(alpha: 0.16),
         ),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lock_person_outlined, color: lightColorScheme.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'This report only uses your own rental requests, your own completed-rental spending, and your own weather-risk booking history.',
-              style: TextStyle(color: Colors.grey.shade800, height: 1.35),
+          Text(
+            'How to read this page',
+            style: TextStyle(
+              color: lightColorScheme.primary,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
             ),
+          ),
+          const SizedBox(height: 12),
+          _GuidePoint(
+            icon: Icons.lock_person_outlined,
+            text:
+                'Only your own rental requests, completed-rental spending, and weather-risk flags are included.',
+          ),
+          const SizedBox(height: 10),
+          const _GuidePoint(
+            icon: Icons.insights_outlined,
+            text:
+                'Waiting for review only means pending approval. Confirmed & active covers approved bookings, delivery steps, in-progress rentals, and closeout steps.',
+          ),
+          const SizedBox(height: 10),
+          const _GuidePoint(
+            icon: Icons.touch_app_outlined,
+            text:
+                'Tap any stage with activity to drill down into the matching requests and open full request details.',
           ),
         ],
       ),
@@ -127,31 +609,54 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   }
 
   Widget _buildSummaryCards(RenterAnalyticsReport report) {
+    final completedCount = report.summary.completedRentals;
     final cards = [
       _KpiCard(
-        label: 'Total Requests',
-        value: report.summary.totalRequests.toString(),
-        subtitle: 'All requests you have submitted',
-        icon: Icons.list_alt_rounded,
+        key: const Key('renter_analytics_summary_waiting_review'),
+        label: 'Waiting for Review',
+        value: report.summary.pendingRequests.toString(),
+        subtitle: 'Still pending owner approval',
+        icon: Icons.hourglass_top_rounded,
+        onTap: report.summary.pendingRequests == 0
+            ? null
+            : () => _showDrillDownSheet(
+                report,
+                _RenterRequestBucket.waitingReview,
+              ),
       ),
       _KpiCard(
-        label: 'Completed Rentals',
-        value: report.summary.completedRentals.toString(),
-        subtitle: 'Finished bookings with completed status',
-        icon: Icons.check_circle_outline_rounded,
-      ),
-      _KpiCard(
-        label: 'Active Rentals',
+        key: const Key('renter_analytics_summary_confirmed_active'),
+        label: 'Confirmed & Active',
         value: report.summary.activeRentals.toString(),
-        subtitle:
-            '${report.summary.pendingRequests} pending request${report.summary.pendingRequests == 1 ? '' : 's'}',
-        icon: Icons.agriculture_rounded,
+        subtitle: _confirmedAndActiveSubtitle(report),
+        icon: Icons.swap_horiz_outlined,
+        onTap: report.summary.activeRentals == 0
+            ? null
+            : () => _showDrillDownSheet(
+                report,
+                _RenterRequestBucket.confirmedAndActive,
+              ),
       ),
       _KpiCard(
+        key: const Key('renter_analytics_summary_completed'),
+        label: 'Completed Rentals',
+        value: completedCount.toString(),
+        subtitle: 'Finished and marked complete',
+        icon: Icons.verified_outlined,
+        onTap: completedCount == 0
+            ? null
+            : () => _showDrillDownSheet(report, _RenterRequestBucket.completed),
+      ),
+      _KpiCard(
+        key: const Key('renter_analytics_summary_spending'),
         label: 'Total Spending',
         value: _formatCurrency(report.summary.totalSpending),
-        subtitle: 'Completed rentals only',
+        subtitle:
+            'From $completedCount completed rental${completedCount == 1 ? '' : 's'}',
         icon: Icons.payments_outlined,
+        onTap: completedCount == 0
+            ? null
+            : () => _showDrillDownSheet(report, _RenterRequestBucket.completed),
       ),
     ];
 
@@ -173,43 +678,168 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
     );
   }
 
-  Widget _buildActivitySection(RenterAnalyticsReport report) {
+  Widget _buildJourneySection(RenterAnalyticsReport report) {
+    Widget stageTile({
+      required Key key,
+      required String label,
+      required String subtitle,
+      required _RenterRequestBucket bucket,
+    }) {
+      final count = _bucketCount(report, bucket);
+      return _StageTile(
+        key: key,
+        label: label,
+        subtitle: subtitle,
+        count: count,
+        icon: _bucketIcon(bucket),
+        color: _bucketColor(bucket),
+        onTap: count == 0 ? null : () => _showDrillDownSheet(report, bucket),
+      );
+    }
+
     return _SectionCard(
-      title: 'Request Activity',
-      subtitle: 'Status counts from your rental history',
-      child: _InfoTable(
-        rows: [
-          _InfoRow(
-            label: 'Total requests',
-            value: report.summary.totalRequests.toString(),
+      title: 'Request Journey',
+      subtitle:
+          'Each request belongs to one stage below, so the counts do not overlap.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Open now',
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
           ),
-          _InfoRow(
+          const SizedBox(height: 10),
+          stageTile(
+            key: const Key('renter_analytics_stage_waiting_review'),
+            label: 'Waiting for review',
+            subtitle: 'Pending requests that still need an owner decision',
+            bucket: _RenterRequestBucket.waitingReview,
+          ),
+          const SizedBox(height: 10),
+          stageTile(
+            key: const Key('renter_analytics_stage_confirmed_booking'),
+            label: 'Confirmed booking',
+            subtitle: 'Approved, ready for pickup, or already on the way',
+            bucket: _RenterRequestBucket.confirmedUpcoming,
+          ),
+          const SizedBox(height: 10),
+          stageTile(
+            key: const Key('renter_analytics_stage_in_use'),
+            label: 'Equipment in use',
+            subtitle: 'Picked up or currently being used',
+            bucket: _RenterRequestBucket.inUse,
+          ),
+          const SizedBox(height: 10),
+          stageTile(
+            key: const Key('renter_analytics_stage_closing_out'),
+            label: 'Return & closeout',
+            subtitle: 'Returning, returned, or waiting for final completion',
+            bucket: _RenterRequestBucket.closingOut,
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Closed',
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          stageTile(
+            key: const Key('renter_analytics_stage_completed'),
             label: 'Completed rentals',
-            value: report.summary.completedRentals.toString(),
+            subtitle: 'Finished rentals that were fully completed',
+            bucket: _RenterRequestBucket.completed,
           ),
-          _InfoRow(
-            label: 'Active rentals',
-            value: report.summary.activeRentals.toString(),
-          ),
-          _InfoRow(
-            label: 'Pending requests',
-            value: report.summary.pendingRequests.toString(),
-          ),
-          _InfoRow(
-            label: 'Cancelled or declined',
-            value: report.summary.cancelledOrDeclinedRequests.toString(),
-          ),
-          _InfoRow(
+          const SizedBox(height: 10),
+          stageTile(
+            key: const Key('renter_analytics_stage_cancelled'),
             label: 'Cancelled requests',
-            value: report.summary.cancelledRequests.toString(),
+            subtitle: 'Requests that were cancelled before completion',
+            bucket: _RenterRequestBucket.cancelled,
           ),
-          _InfoRow(
+          const SizedBox(height: 10),
+          stageTile(
+            key: const Key('renter_analytics_stage_declined'),
             label: 'Declined requests',
-            value: report.summary.declinedRequests.toString(),
+            subtitle: 'Requests that owners declined',
+            bucket: _RenterRequestBucket.declined,
           ),
-          _InfoRow(
-            label: 'Weather-risk bookings',
-            value: report.summary.weatherRiskBookings.toString(),
+          if (report.summary.weatherRiskBookings > 0) ...[
+            const SizedBox(height: 18),
+            Text(
+              'Watchlist',
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            stageTile(
+              key: const Key('renter_analytics_stage_weather_risk'),
+              label: 'Weather-risk bookings',
+              subtitle: 'Requests that were flagged by the weather monitor',
+              bucket: _RenterRequestBucket.weatherRisk,
+            ),
+          ],
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _openMyRequestsList,
+              icon: const Icon(Icons.list_alt_rounded),
+              label: const Text('Open My Requests'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentRequestsSection(RenterAnalyticsReport report) {
+    final recentRequests = _sortedRequests(report.requests).take(5).toList();
+
+    return _SectionCard(
+      title: 'Recent Requests',
+      subtitle: 'Newest first. Tap a request to open the full request page.',
+      child: Column(
+        children: [
+          for (var i = 0; i < recentRequests.length; i++) ...[
+            _RequestPreviewCard(
+              key: Key(
+                'renter_analytics_recent_request_${recentRequests[i].requestId}',
+              ),
+              request: recentRequests[i],
+              amountLabel: _requestValue(recentRequests[i]) > 0
+                  ? _formatCurrency(_requestValue(recentRequests[i]))
+                  : null,
+              onTap: () => _openRequestDetails(recentRequests[i]),
+              statusLabel: _statusLabel(recentRequests[i].status),
+              statusColor: _statusColor(recentRequests[i].status),
+              statusIcon: _statusIcon(recentRequests[i].status),
+              dateRangeLabel: _formatDateRange(recentRequests[i]),
+              submittedAtLabel: recentRequests[i].createdAt == null
+                  ? null
+                  : _renterAnalyticsDateTime.format(
+                      recentRequests[i].createdAt!,
+                    ),
+            ),
+            if (i != recentRequests.length - 1) const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _openMyRequestsList,
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: const Text('View all rental requests'),
+            ),
           ),
         ],
       ),
@@ -218,10 +848,14 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
 
   Widget _buildSpendingSection(RenterAnalyticsReport report) {
     return _SectionCard(
-      title: 'Spending & Duration',
-      subtitle: 'Based on your completed rentals only',
+      title: 'Spending & Timing',
+      subtitle: 'Spending totals only use completed rentals',
       child: _InfoTable(
         rows: [
+          _InfoRow(
+            label: 'Total requests',
+            value: report.summary.totalRequests.toString(),
+          ),
           _InfoRow(
             label: 'Total spending',
             value: _formatCurrency(report.summary.totalSpending),
@@ -247,7 +881,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   Widget _buildCategorySection(RenterAnalyticsReport report) {
     return _SectionCard(
       title: 'Most-used Equipment Categories',
-      subtitle: 'Ranked by how often you booked each category',
+      subtitle: 'Ranked by how often you requested each category',
       child: report.categoryUsage.isEmpty
           ? const Text('No category usage data is available yet.')
           : _RenterTableScrollFrame(
@@ -336,7 +970,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Generated ${_renterAnalyticsDate.format(report.generatedAt)}',
+            'Generated ${_renterAnalyticsDate.format(report.generatedAt)} | ${_formatCountLabel(report.summary.totalRequests)}',
             style: TextStyle(
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w600,
@@ -345,11 +979,13 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           const SizedBox(height: 6),
           const _RenterPullToRefreshHint(),
           const SizedBox(height: 16),
-          _buildPrivacyCard(),
+          _buildGuideCard(),
           const SizedBox(height: 16),
           _buildSummaryCards(report),
           const SizedBox(height: 16),
-          _buildActivitySection(report),
+          _buildJourneySection(report),
+          const SizedBox(height: 16),
+          _buildRecentRequestsSection(report),
           const SizedBox(height: 16),
           _buildSpendingSection(report),
           const SizedBox(height: 16),
@@ -427,6 +1063,30 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   }
 }
 
+class _GuidePoint extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _GuidePoint({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: lightColorScheme.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: Colors.grey.shade800, height: 1.35),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _SectionCard extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -470,17 +1130,20 @@ class _KpiCard extends StatelessWidget {
   final String value;
   final String subtitle;
   final IconData icon;
+  final VoidCallback? onTap;
 
   const _KpiCard({
+    super.key,
     required this.label,
     required this.value,
     required this.subtitle,
     required this.icon,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -502,35 +1165,362 @@ class _KpiCard extends StatelessWidget {
                   label,
                   style: TextStyle(
                     color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+              ),
+              if (onTap != null)
+                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade500),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: lightColorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(color: Colors.grey.shade700, height: 1.3),
+          ),
+          const SizedBox(height: 10),
+          Opacity(
+            opacity: onTap != null ? 1 : 0,
+            child: Text(
+              'Tap to inspect matching requests',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: content,
+      ),
+    );
+  }
+}
+
+class _StageTile extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final int count;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _StageTile({
+    super.key,
+    required this.label,
+    required this.subtitle,
+    required this.count,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: onTap == null
+              ? Colors.grey.shade300
+              : color.withValues(alpha: 0.24),
+        ),
+        color: onTap == null
+            ? Colors.grey.shade50
+            : color.withValues(alpha: 0.04),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.3),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap to view these requests',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (onTap != null) ...[
+                const SizedBox(height: 8),
+                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade500),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return tile;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: tile,
+      ),
+    );
+  }
+}
+
+class _RequestPreviewCard extends StatelessWidget {
+  final RentRequest request;
+  final String statusLabel;
+  final Color statusColor;
+  final IconData statusIcon;
+  final String dateRangeLabel;
+  final String? submittedAtLabel;
+  final String? amountLabel;
+  final VoidCallback? onTap;
+
+  const _RequestPreviewCard({
+    super.key,
+    required this.request,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.statusIcon,
+    required this.dateRangeLabel,
+    this.submittedAtLabel,
+    this.amountLabel,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  request.itemName,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _StatusPill(
+                icon: statusIcon,
+                label: statusLabel,
+                color: statusColor,
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: lightColorScheme.primary,
+              _MetaChip(
+                icon: Icons.calendar_today_outlined,
+                label: dateRangeLabel,
+              ),
+              if (submittedAtLabel != null)
+                _MetaChip(
+                  icon: Icons.schedule_outlined,
+                  label: 'Submitted $submittedAtLabel',
+                ),
+              if (amountLabel != null)
+                _MetaChip(icon: Icons.payments_outlined, label: amountLabel!),
+              if (request.weatherFlag)
+                const _MetaChip(
+                  icon: Icons.cloud_outlined,
+                  label: 'Weather risk',
+                  color: Color(0xFFD97706),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  request.address,
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.3),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 3),
-                  child: Text(
-                    subtitle,
-                    style: TextStyle(color: Colors.grey.shade700, height: 1.25),
+              if (onTap != null) ...[
+                const SizedBox(width: 12),
+                Text(
+                  'Open',
+                  style: TextStyle(
+                    color: lightColorScheme.primary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: lightColorScheme.primary,
+                ),
+              ],
             ],
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: content,
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _StatusPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  const _MetaChip({required this.icon, required this.label, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedColor = color ?? Colors.grey.shade700;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: resolvedColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: resolvedColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: resolvedColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
