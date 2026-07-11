@@ -761,10 +761,10 @@ class _MyEquipmentState extends State<MyEquipment> {
         );
 
         final avgRating = _ratingCache[equipment.id] ?? -1;
-        final suggestRetirement = equipment.retirementFlaggedByAdmin ||
-            (StrikeService.isMotorizedEquipment(equipment.name)
-                ? equipment.majorBreakdownCount >= StrikeService.kMajorBreakdownThreshold
-                : equipment.damageReportCount >= StrikeService.kDamageRetirementThreshold);
+final suggestRetirement = equipment.retirementFlaggedByAdmin ||
+    equipment.damageReportCount >= StrikeService.kDamageRetirementThreshold ||
+    (StrikeService.isMotorizedEquipment(equipment.name) &&
+        equipment.majorBreakdownCount >= StrikeService.kMajorBreakdownThreshold);
         final hasBadge = avgRating >= 0 ||
             equipment.isForMaintenance ||
             equipment.isUpcomingMaintenance ||
@@ -793,21 +793,19 @@ class _MyEquipmentState extends State<MyEquipment> {
                     Stack(
                       children: [
                         SizedBox(
-                          height: 160,
+                          height: 100, // was 160
                           child: equipment.imageUrls.isNotEmpty
                               ? Image.network(
                                   equipment.imageUrls.first,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      _bannerPlaceholder(),
+                                  errorBuilder: (_, __, ___) => _bannerPlaceholder(),
                                 )
                               : _bannerPlaceholder(),
                         ),
-                        // Status pill overlay
                         Positioned(
-                          top: 10,
-                          right: 10,
+                          top: 8,
+                          right: 8,
                           child: _StatusPill(status: equipment.status),
                         ),
                       ],
@@ -815,47 +813,49 @@ class _MyEquipmentState extends State<MyEquipment> {
 
                     // ── Content ─────────────────────────────────
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0), // was 14,12,14,0
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            equipment.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.2,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  equipment.name,
+                                  style: const TextStyle(
+                                    fontSize: 14, // was 16
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '₱${equipment.price}/${equipment.rentalUnit}',
+                                style: TextStyle(
+                                  fontSize: 12, // was 15, moved inline to save a row
+                                  fontWeight: FontWeight.w700,
+                                  color: lightColorScheme.primary,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
                             equipment.category ?? 'No category',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '₱${equipment.price} / ${equipment.rentalUnit}',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: lightColorScheme.primary,
-                            ),
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade500), // was 12
                           ),
 
                           // ── Badge row ────────────────────────
                           if (hasBadge) ...[
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6), // was 8
                             Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
+                              spacing: 5,
+                              runSpacing: 5,
                               children: [
-                                if (avgRating >= 0)
-                                  _RatingBadge(rating: avgRating),
+                                if (avgRating >= 0) _RatingBadge(rating: avgRating),
                                 if (equipment.isForMaintenance)
                                   _BadgePill(
                                     label: 'For Maintenance',
@@ -864,8 +864,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                                     bgColor: Colors.red.shade50,
                                     borderColor: Colors.red.shade200,
                                   ),
-                                if (!equipment.isForMaintenance &&
-                                    equipment.isUpcomingMaintenance)
+                                if (!equipment.isForMaintenance && equipment.isUpcomingMaintenance)
                                   _BadgePill(
                                     label: 'Upcoming Maintenance',
                                     icon: Icons.warning_amber_rounded,
@@ -884,7 +883,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                               ],
                             ),
                           ],
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8), // was 12
                         ],
                       ),
                     ),
@@ -894,7 +893,7 @@ class _MyEquipmentState extends State<MyEquipment> {
                     IntrinsicHeight(
                       child: Row(
                         children: [
-                          _CardAction(
+                         _CardAction(
                             icon: Icons.edit_outlined,
                             label: 'Edit',
                             color: lightColorScheme.primary,

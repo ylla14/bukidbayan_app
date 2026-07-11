@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -204,53 +205,82 @@ class _RetirementBanner extends StatelessWidget {
           ),
 
           // ── Equipment chips (if multiple) ────────────────────────────────
-          if (!isSingle) ...[
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: retiring.map((e) {
-                  return Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: lightColorScheme.error,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: lightColorScheme.error, width: 1),
+         // ── Equipment chips (if multiple) ────────────────────────────────
+if (!isSingle) ...[
+  const SizedBox(height: 8),
+  SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    child: Row(
+      children: retiring.map((e) {
+        return Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+  borderRadius: BorderRadius.circular(20),
+  onTap: () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ProductPage(item: e),
+    ),
+  ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: lightColorScheme.error,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: lightColorScheme.error, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.agriculture_rounded,
+                        size: 12, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      e.name,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.agriculture_rounded,
-                            size: 12,
-                            color: lightColorScheme.error),
-                        const SizedBox(width: 4),
-                        Text(
-                          e.name,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '(${e.damageReportCount})',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: lightColorScheme.error
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 4),
+                    Text(
+                      '(${e.damageReportCount})',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.white70,
+                      ),
                     ),
-                  );
-                }).toList(),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.chevron_right,
+                        size: 12, color: Colors.white70),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
+        );
+      }).toList(),
+    ),
+  ),
+  const SizedBox(height: 4),
+  Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    child: Text(
+      'Tap a name to view its equipment',
+      style: TextStyle(
+        fontSize: 10.5,
+        color: lightColorScheme.error.withOpacity(0.75),
+        fontStyle: FontStyle.italic,
+      ),
+    ),
+  ),
+],
 
           // ── Divider + CTA ────────────────────────────────────────────────
           const SizedBox(height: 10),
