@@ -234,6 +234,17 @@ class CrowdfundingService {
     await _writeLocalCampaigns(localCampaigns);
   }
 
+  void _assertAtMostOneProof(String? proofImageUrl, String? proofReferenceNumber) {
+    final hasImage = proofImageUrl != null && proofImageUrl.trim().isNotEmpty;
+    final hasReference =
+        proofReferenceNumber != null && proofReferenceNumber.trim().isNotEmpty;
+    if (hasImage && hasReference) {
+      throw Exception(
+        'Pumili lang ng isa: larawan o reference number, hindi pareho.',
+      );
+    }
+  }
+
   Future<void> _backCampaignLocal({
     required String campaignId,
     required int amount,
@@ -241,7 +252,10 @@ class CrowdfundingService {
     String? backerName,
     String? backerPhone,
     String? backerNote,
+    String? proofImageUrl,
+    String? proofReferenceNumber,
   }) async {
+    _assertAtMostOneProof(proofImageUrl, proofReferenceNumber);
     final campaigns = await _readLocalCampaigns();
     final campaignIndex = campaigns.indexWhere(
       (campaign) => campaign.id == campaignId,
@@ -282,12 +296,18 @@ class CrowdfundingService {
       }
     }
 
+    final hasProof =
+        (proofImageUrl != null && proofImageUrl.trim().isNotEmpty) ||
+        (proofReferenceNumber != null && proofReferenceNumber.trim().isNotEmpty);
+
     final pledges = await _readLocalPledges();
     final isNewBacker =
         email == null ||
         pledges.every(
           (pledge) =>
-              pledge.campaignId != campaignId || pledge.backerEmail != email,
+              pledge.campaignId != campaignId ||
+              pledge.backerEmail != email ||
+              !pledge.countedInTotal,
         );
     final pledge = Pledge(
       id: 'p${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(999)}',
@@ -306,15 +326,81 @@ class CrowdfundingService {
       amount: amount,
       rewardId: rewardId,
       createdAt: DateTime.now(),
+      proofImageUrl: proofImageUrl,
+      proofReferenceNumber: proofReferenceNumber,
+      proofSubmittedAt: hasProof ? DateTime.now() : null,
+      countedInTotal: hasProof,
     );
 
+    if (hasProof) {
+      campaigns[campaignIndex] = campaign.copyWith(
+        pledgedAmount: campaign.pledgedAmount + amount,
+        backersCount: isNewBacker
+            ? campaign.backersCount + 1
+            : campaign.backersCount,
+      );
+    }
+    pledges.add(pledge);
+
+    await _writeLocalCampaigns(campaigns);
+    await _writeLocalPledges(pledges);
+  }
+
+  Future<void> _submitPledgeProofLocal({
+    required String campaignId,
+    required String pledgeId,
+    String? proofImageUrl,
+    String? proofReferenceNumber,
+  }) async {
+    _assertAtMostOneProof(proofImageUrl, proofReferenceNumber);
+    final campaigns = await _readLocalCampaigns();
+    final campaignIndex = campaigns.indexWhere((c) => c.id == campaignId);
+    if (campaignIndex == -1) throw Exception('Campaign not found.');
+
+    final pledges = await _readLocalPledges();
+    final pledgeIndex = pledges.indexWhere(
+      (p) => p.id == pledgeId && p.campaignId == campaignId,
+    );
+    if (pledgeIndex == -1) throw Exception('Pledge not found.');
+
+    final pledge = pledges[pledgeIndex];
+    final email = await _currentLocalEmail();
+    if (pledge.backerEmail != null && pledge.backerEmail != email) {
+      throw Exception('You cannot edit another supporter\'s pledge.');
+    }
+    if (pledge.countedInTotal) return;
+
+    final campaign = campaigns[campaignIndex];
+    final isNewBacker = pledges.every(
+      (p) =>
+          p.id == pledgeId ||
+          p.campaignId != campaignId ||
+          p.backerEmail != pledge.backerEmail ||
+          !p.countedInTotal,
+    );
+
+    pledges[pledgeIndex] = Pledge(
+      id: pledge.id,
+      campaignId: pledge.campaignId,
+      backerUid: pledge.backerUid,
+      backerEmail: pledge.backerEmail,
+      backerName: pledge.backerName,
+      backerPhone: pledge.backerPhone,
+      backerNote: pledge.backerNote,
+      amount: pledge.amount,
+      rewardId: pledge.rewardId,
+      createdAt: pledge.createdAt,
+      proofImageUrl: proofImageUrl,
+      proofReferenceNumber: proofReferenceNumber,
+      proofSubmittedAt: DateTime.now(),
+      countedInTotal: true,
+    );
     campaigns[campaignIndex] = campaign.copyWith(
-      pledgedAmount: campaign.pledgedAmount + amount,
+      pledgedAmount: campaign.pledgedAmount + pledge.amount,
       backersCount: isNewBacker
           ? campaign.backersCount + 1
           : campaign.backersCount,
     );
-    pledges.add(pledge);
 
     await _writeLocalCampaigns(campaigns);
     await _writeLocalPledges(pledges);
@@ -958,7 +1044,10 @@ class CrowdfundingService {
     await _campaigns.doc(id).set(campaign.toFirestore());
   }
 
-  /// Records a pledge atomically and increments the campaign counters.
+  /// Records a pledge atomically and increments the campaign counters
+  /// (only when proof of payment is attached now — otherwise the pledge is
+  /// recorded as pending and the backer can add proof later via
+  /// [submitPledgeProof]).
   Future<void> backCampaign({
     required String campaignId,
     required int amount,
@@ -966,8 +1055,14 @@ class CrowdfundingService {
     String? backerName,
     String? backerPhone,
     String? backerNote,
+    String? proofImageUrl,
+    String? proofReferenceNumber,
   }) async {
     if (amount <= 0) throw Exception('Amount must be greater than zero.');
+    _assertAtMostOneProof(proofImageUrl, proofReferenceNumber);
+    final hasProof =
+        (proofImageUrl != null && proofImageUrl.trim().isNotEmpty) ||
+        (proofReferenceNumber != null && proofReferenceNumber.trim().isNotEmpty);
 
     if (_dbOrNull == null) {
       await _backCampaignLocal(
@@ -977,6 +1072,8 @@ class CrowdfundingService {
         backerName: backerName,
         backerPhone: backerPhone,
         backerNote: backerNote,
+        proofImageUrl: proofImageUrl,
+        proofReferenceNumber: proofReferenceNumber,
       );
       return;
     }
@@ -985,12 +1082,14 @@ class CrowdfundingService {
     final email = _email;
     final displayName = _displayName;
 
-    // Check for existing pledge outside the transaction (acceptable trade-off)
-    final existingSnap = uid == null
+    // Check for existing counted pledge outside the transaction (acceptable trade-off)
+    final existingSnap = uid == null || !hasProof
         ? null
-        : await _pledgesRef(
-            campaignId,
-          ).where('backerUid', isEqualTo: uid).limit(1).get();
+        : await _pledgesRef(campaignId)
+            .where('backerUid', isEqualTo: uid)
+            .where('countedInTotal', isEqualTo: true)
+            .limit(1)
+            .get();
     final isNewBacker = uid == null || (existingSnap?.docs.isEmpty ?? true);
 
     final pledgeId =
@@ -1055,16 +1154,152 @@ class CrowdfundingService {
         amount: amount,
         rewardId: rewardId,
         createdAt: DateTime.now(),
+        proofImageUrl: proofImageUrl,
+        proofReferenceNumber: proofReferenceNumber,
+        proofSubmittedAt: hasProof ? DateTime.now() : null,
+        countedInTotal: hasProof,
       );
 
+      if (hasProof) {
+        tx.update(campaignRef, {
+          'pledgedAmount': campaign.pledgedAmount + amount,
+          'backersCount': isNewBacker
+              ? campaign.backersCount + 1
+              : campaign.backersCount,
+        });
+      }
+      tx.set(pledgeRef, pledge.toFirestore());
+    });
+  }
+
+  /// Attaches proof of payment to a previously created pending pledge and,
+  /// if not already counted, adds its amount into the campaign totals.
+  /// Idempotent — calling this again on an already-counted pledge is a no-op.
+  Future<void> submitPledgeProof({
+    required String campaignId,
+    required String pledgeId,
+    String? proofImageUrl,
+    String? proofReferenceNumber,
+  }) async {
+    _assertAtMostOneProof(proofImageUrl, proofReferenceNumber);
+    if ((proofImageUrl == null || proofImageUrl.trim().isEmpty) &&
+        (proofReferenceNumber == null || proofReferenceNumber.trim().isEmpty)) {
+      throw Exception('Magbigay ng larawan o reference number.');
+    }
+
+    if (_dbOrNull == null) {
+      await _submitPledgeProofLocal(
+        campaignId: campaignId,
+        pledgeId: pledgeId,
+        proofImageUrl: proofImageUrl,
+        proofReferenceNumber: proofReferenceNumber,
+      );
+      return;
+    }
+
+    final uid = _uid;
+    final campaignRef = _campaigns.doc(campaignId);
+    final pledgeRef = _pledgesRef(campaignId).doc(pledgeId);
+
+    // Preliminary, non-transactional read so we know the backer to check
+    // for an existing counted pledge (Firestore transactions can only
+    // `tx.get()` document references, not run queries) — the same
+    // "acceptable trade-off" pattern backCampaign() uses.
+    final preliminarySnap = await pledgeRef.get();
+    if (!preliminarySnap.exists) throw Exception('Pledge not found.');
+    final preliminaryPledge = _pledgeFromDoc(preliminarySnap, campaignId);
+    if (preliminaryPledge.backerUid != null &&
+        preliminaryPledge.backerUid != uid) {
+      throw Exception('You cannot edit another supporter\'s pledge.');
+    }
+    final existingSnap = preliminaryPledge.backerUid == null
+        ? null
+        : await _pledgesRef(campaignId)
+            .where('backerUid', isEqualTo: preliminaryPledge.backerUid)
+            .where('countedInTotal', isEqualTo: true)
+            .limit(1)
+            .get();
+    final isNewBacker =
+        preliminaryPledge.backerUid == null ||
+        (existingSnap?.docs.isEmpty ?? true);
+
+    await _db.runTransaction((tx) async {
+      final pledgeSnap = await tx.get(pledgeRef);
+      if (!pledgeSnap.exists) throw Exception('Pledge not found.');
+      final pledge = _pledgeFromDoc(pledgeSnap, campaignId);
+
+      if (pledge.backerUid != null && pledge.backerUid != uid) {
+        throw Exception('You cannot edit another supporter\'s pledge.');
+      }
+      if (pledge.countedInTotal) return;
+
+      final campaignSnap = await tx.get(campaignRef);
+      if (!campaignSnap.exists) throw Exception('Campaign not found.');
+      final campaign = _fromDoc(campaignSnap);
+
+      tx.update(pledgeRef, {
+        'proofImageUrl': proofImageUrl,
+        'proofReferenceNumber': proofReferenceNumber,
+        'proofSubmittedAt': DateTime.now().toIso8601String(),
+        'countedInTotal': true,
+      });
       tx.update(campaignRef, {
-        'pledgedAmount': campaign.pledgedAmount + amount,
+        'pledgedAmount': campaign.pledgedAmount + pledge.amount,
         'backersCount': isNewBacker
             ? campaign.backersCount + 1
             : campaign.backersCount,
       });
-      tx.set(pledgeRef, pledge.toFirestore());
     });
+  }
+
+  /// The current user's most recent pending (not-yet-counted) pledge on a
+  /// specific campaign, if any — used to show a "submit proof" reminder.
+  Future<Pledge?> getMyPledgeForCampaign(String campaignId) async {
+    if (_dbOrNull == null) {
+      final email = await _currentLocalEmail();
+      if (email == null) return null;
+      final pledges = (await _readLocalPledges())
+          .where(
+            (p) =>
+                p.campaignId == campaignId &&
+                p.backerEmail == email &&
+                !p.countedInTotal,
+          )
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return pledges.isEmpty ? null : pledges.first;
+    }
+    final uid = _uid;
+    if (uid == null) return null;
+    final snap = await _pledgesRef(campaignId)
+        .where('backerUid', isEqualTo: uid)
+        .where('countedInTotal', isEqualTo: false)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    final pledges = snap.docs
+        .map((d) => _pledgeFromDoc(d, campaignId))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return pledges.first;
+  }
+
+  /// All pledges for a specific campaign, newest first. Used by the
+  /// admin/co-op backers view — deliberately not owner-gated the way
+  /// [generateCampaignReport] is, since it only returns pledge records.
+  Future<List<Pledge>> getPledgesForCampaign(String campaignId) async {
+    if (_dbOrNull == null) {
+      final pledges = (await _readLocalPledges())
+          .where((p) => p.campaignId == campaignId)
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return pledges;
+    }
+    final snap = await _pledgesRef(campaignId).get();
+    final pledges = snap.docs
+        .map((d) => _pledgeFromDoc(d, campaignId))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return pledges;
   }
 
   Future<void> publishCampaign(Campaign campaign) async {

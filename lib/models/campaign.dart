@@ -346,6 +346,15 @@ class Pledge {
   final String? provider;
   final String? providerPaymentId;
   final DateTime? paidAt;
+  final String? proofImageUrl;
+  final String? proofReferenceNumber;
+  final DateTime? proofSubmittedAt;
+
+  /// Whether this pledge's amount has been added to the campaign's
+  /// `pledgedAmount`/`backersCount` totals. Defaults to `true` so pledges
+  /// created before proof-of-payment tracking existed (which already
+  /// contributed to the totals) are not misrepresented as pending.
+  final bool countedInTotal;
 
   const Pledge({
     required this.id,
@@ -362,6 +371,10 @@ class Pledge {
     this.provider,
     this.providerPaymentId,
     this.paidAt,
+    this.proofImageUrl,
+    this.proofReferenceNumber,
+    this.proofSubmittedAt,
+    this.countedInTotal = true,
   });
 
   factory Pledge.fromJson(Map<String, dynamic> json) => Pledge(
@@ -381,6 +394,12 @@ class Pledge {
     paidAt: json['paidAt'] != null
         ? DateTime.parse(json['paidAt'] as String)
         : null,
+    proofImageUrl: json['proofImageUrl'] as String?,
+    proofReferenceNumber: json['proofReferenceNumber'] as String?,
+    proofSubmittedAt: json['proofSubmittedAt'] != null
+        ? DateTime.parse(json['proofSubmittedAt'] as String)
+        : null,
+    countedInTotal: json['countedInTotal'] as bool? ?? true,
   );
 
   /// Firestore-compatible map (excludes `id` and `campaignId` — stored as doc/parent IDs).
@@ -406,6 +425,10 @@ class Pledge {
     'provider': provider,
     'providerPaymentId': providerPaymentId,
     'paidAt': paidAt?.toIso8601String(),
+    'proofImageUrl': proofImageUrl,
+    'proofReferenceNumber': proofReferenceNumber,
+    'proofSubmittedAt': proofSubmittedAt?.toIso8601String(),
+    'countedInTotal': countedInTotal,
   };
 }
 

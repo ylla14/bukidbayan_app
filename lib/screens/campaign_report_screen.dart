@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/components/rent/proof_page_viewer.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/models/campaign_report.dart';
 import 'package:bukidbayan_app/services/campaign_report_pdf_service.dart';
@@ -480,14 +481,15 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
       rewardTitleById: rewardTitleById,
     );
 
-    final filteredTotalAmount = visibleSupporters.fold<int>(
-      0,
-      (sum, pledge) => sum + pledge.amount,
-    );
-    final overallTotalAmount = report.pledges.fold<int>(
-      0,
-      (sum, pledge) => sum + pledge.amount,
-    );
+    final filteredTotalAmount = visibleSupporters
+        .where((pledge) => pledge.countedInTotal)
+        .fold<int>(0, (sum, pledge) => sum + pledge.amount);
+    final filteredPendingAmount = visibleSupporters
+        .where((pledge) => !pledge.countedInTotal)
+        .fold<int>(0, (sum, pledge) => sum + pledge.amount);
+    final overallTotalAmount = report.pledges
+        .where((pledge) => pledge.countedInTotal)
+        .fold<int>(0, (sum, pledge) => sum + pledge.amount);
     final isFiltered =
         _supporterSearchQuery.trim().isNotEmpty ||
         _supporterRewardFilter != _SupporterRewardFilter.all;
@@ -623,6 +625,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                 DataColumn(label: Text('Petsa')),
                 DataColumn(label: Text('Halaga'), numeric: true),
                 DataColumn(label: Text('Tala')),
+                DataColumn(label: Text('Patunay')),
               ],
               rows: [
                 ...visibleSupporters.map((pledge) {
@@ -697,6 +700,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                           ),
                         ),
                       ),
+                      DataCell(_buildProofCell(pledge)),
                     ],
                   );
                 }),
@@ -734,12 +738,59 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                             : 'Overall total',
                       ),
                     ),
+                    DataCell(
+                      Text(
+                        filteredPendingAmount > 0
+                            ? 'Naghihintay: ${formatPeso(filteredPendingAmount)}'
+                            : '-',
+                        key: const Key('supporter_pending_amount'),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildProofCell(Pledge pledge) {
+    final imageUrl = pledge.proofImageUrl?.trim();
+    final referenceNumber = pledge.proofReferenceNumber?.trim();
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProofViewerPage(urls: [imageUrl], initialIndex: 0),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.network(
+            imageUrl,
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) =>
+                const Icon(Icons.broken_image_outlined),
+          ),
+        ),
+      );
+    }
+
+    if (referenceNumber != null && referenceNumber.isNotEmpty) {
+      return Chip(
+        label: Text(referenceNumber, style: const TextStyle(fontSize: 11)),
+        visualDensity: VisualDensity.compact,
+      );
+    }
+
+    return Chip(
+      label: const Text('Naghihintay', style: TextStyle(fontSize: 11)),
+      backgroundColor: Colors.grey.shade200,
+      visualDensity: VisualDensity.compact,
     );
   }
 

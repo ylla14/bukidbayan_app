@@ -37,7 +37,11 @@ class CloudinaryService {
   /// Upload a single image OR video to Cloudinary.
   /// Automatically routes to /image/upload or /video/upload.
   /// Returns the secure URL.
-  Future<String> uploadImage(XFile file) async {
+  Future<String> uploadImage(
+    XFile file, {
+    String tags = 'bukidbayan,equipment',
+    String folder = 'bukidbayan/equipment',
+  }) async {
     final isVideo = _isVideo(file.name);
     // ── Key fix: use /video/upload for videos, /image/upload for images ──
     final uploadUrl = '$_BASE_URL/${isVideo ? 'video' : 'image'}/upload';
@@ -52,8 +56,8 @@ class CloudinaryService {
 
       final request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
       request.fields['upload_preset'] = UPLOAD_PRESET;
-      request.fields['tags'] = 'bukidbayan,equipment';
-      request.fields['folder'] = 'bukidbayan/equipment';
+      request.fields['tags'] = tags;
+      request.fields['folder'] = folder;
 
       // ── Correct MIME so Cloudinary doesn't reject the file ──
       final mime = _mimeType(file.name).split('/');

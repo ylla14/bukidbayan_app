@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/models/campaign.dart';
+import 'package:bukidbayan_app/services/cloudinary_service.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
@@ -7,6 +8,7 @@ import 'package:bukidbayan_app/widgets/custom_snackbars.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
   final String campaignId;
@@ -31,6 +33,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
   final CrowdfundingService service = CrowdfundingService();
   late Future<Campaign?> _future;
+  Future<Pledge?>? _pendingPledgeFuture;
 
   String _categoryLabel(String value) => _categoryLabels[value] ?? value;
 
@@ -63,11 +66,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   void initState() {
     super.initState();
     _future = service.getCampaignById(widget.campaignId);
+    _pendingPledgeFuture = service.getMyPledgeForCampaign(widget.campaignId);
   }
 
   Future<void> _reload() async {
     setState(() {
       _future = service.getCampaignById(widget.campaignId);
+      _pendingPledgeFuture = service.getMyPledgeForCampaign(widget.campaignId);
     });
     await _future;
   }
@@ -229,6 +234,119 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     );
   }
 
+  Widget _buildPendingProofBanner(Pledge pledge) {
+    return Card(
+      color: lightColorScheme.secondary.withValues(alpha: 0.25),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: lightColorScheme.primary.withValues(alpha: 0.25)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.hourglass_top_outlined, color: lightColorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'May naka-pending kang pledge na ${formatPeso(pledge.amount)}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Isumite ang patunay ng bayad para maidagdag ito sa kabuuang nalikom ng campaign.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () => _openSubmitProofDialog(pledge),
+                    child: Text(
+                      'Magsumite ng Patunay',
+                      style: _actionLabelStyle(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSubmitProofDialog(Pledge pledge) async {
+    String? imageUrl;
+    String? referenceNumber;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Magsumite ng Patunay ng Bayad'),
+          content: SingleChildScrollView(
+            child: _ProofOfPaymentField(
+              allowSkip: false,
+              onChanged: (result) {
+                imageUrl = result.imageUrl;
+                referenceNumber = result.referenceNumber;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Kanselahin'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Isumite'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+    if ((imageUrl == null || imageUrl!.trim().isEmpty) &&
+        (referenceNumber == null || referenceNumber!.trim().isEmpty)) {
+      if (!mounted) return;
+      showErrorSnackbar(
+        context: context,
+        title: 'Kulang ang detalye',
+        message: 'Magbigay ng larawan o reference number.',
+      );
+      return;
+    }
+
+    try {
+      await service.submitPledgeProof(
+        campaignId: pledge.campaignId,
+        pledgeId: pledge.id,
+        proofImageUrl: imageUrl,
+        proofReferenceNumber: referenceNumber,
+      );
+      if (!mounted) return;
+      showConfirmSnackbar(
+        context: context,
+        title: 'Salamat!',
+        message: 'Naidagdag na ang pledge mo sa kabuuang nalikom.',
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(
+        context: context,
+        title: 'May problema',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
   void _openBackSheet(Campaign campaign, {RewardTier? preselect}) {
     final disabledReason = _supportDisabledReason(campaign);
     if (disabledReason != null) {
@@ -258,6 +376,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     final donorPhoneCtrl = TextEditingController();
     final donorNoteCtrl = TextEditingController();
     var hasConfirmedGcashPayment = false;
+    String? proofImageUrl;
+    String? proofReferenceNumber;
 
     showModalBottomSheet(
       context: context,
@@ -460,6 +580,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         'Pindutin lang ito pagkatapos mong mag-transfer dahil mabibilang agad ang pledge kapag kinumpirma mo.',
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    _ProofOfPaymentField(
+                      onChanged: (result) {
+                        proofImageUrl = result.imageUrl;
+                        proofReferenceNumber = result.referenceNumber;
+                      },
+                    ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
@@ -505,6 +632,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           }
 
                           try {
+                            final hasProof =
+                                (proofImageUrl?.isNotEmpty ?? false) ||
+                                (proofReferenceNumber?.isNotEmpty ?? false);
                             await service.backCampaign(
                               campaignId: campaign.id,
                               amount: raw,
@@ -512,6 +642,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               backerName: donorName,
                               backerPhone: donorPhoneCtrl.text.trim(),
                               backerNote: donorNoteCtrl.text.trim(),
+                              proofImageUrl: proofImageUrl,
+                              proofReferenceNumber: proofReferenceNumber,
                             );
                             if (!mounted) {
                               return;
@@ -522,8 +654,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             showConfirmSnackbar(
                               context: this.context,
                               title: 'Salamat!',
-                              message:
-                                  'Nairecord na ang pledge mo bilang GCash payment para sa campaign na ito.',
+                              message: hasProof
+                                  ? 'Naidagdag na ang pledge mo sa kabuuang nalikom.'
+                                  : 'Nairecord ang pledge mo. Bumalik dito anumang oras para magsumite ng patunay ng bayad.',
                             );
                             _reload();
                           } catch (e) {
@@ -540,6 +673,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             );
                           }
                         },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B5E20),
+                        ),
                         icon: const Icon(Icons.volunteer_activism_outlined),
                         label: Text(
                           'Kinumpirma ko ang GCash payment',
@@ -670,6 +806,17 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
                   ),
+                ),
+                FutureBuilder<Pledge?>(
+                  future: _pendingPledgeFuture,
+                  builder: (context, pendingSnapshot) {
+                    final pending = pendingSnapshot.data;
+                    if (pending == null) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: _buildPendingProofBanner(pending),
+                    );
+                  },
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -838,6 +985,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: canSupport ? () => _openBackSheet(c) : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1B5E20),
+                    ),
                     icon: const Icon(Icons.volunteer_activism_outlined),
                     label: Padding(
                       padding: EdgeInsets.symmetric(vertical: 4),
@@ -856,6 +1006,167 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+enum _ProofMode { none, image, reference }
+
+/// Mutually-exclusive proof-of-payment input: an uploaded image OR a typed
+/// reference number, never both. Reports whichever one is set (or neither)
+/// via [onChanged]. Used both when pledging and when submitting proof later
+/// for a pending pledge.
+class _ProofOfPaymentField extends StatefulWidget {
+  final ValueChanged<({String? imageUrl, String? referenceNumber})> onChanged;
+
+  /// When false, the "wala pa" (skip) segment is omitted — used when the
+  /// backer has explicitly chosen to submit proof now and must pick one.
+  final bool allowSkip;
+
+  const _ProofOfPaymentField({required this.onChanged, this.allowSkip = true});
+
+  @override
+  State<_ProofOfPaymentField> createState() => _ProofOfPaymentFieldState();
+}
+
+class _ProofOfPaymentFieldState extends State<_ProofOfPaymentField> {
+  late _ProofMode _mode = widget.allowSkip ? _ProofMode.none : _ProofMode.image;
+  final _referenceController = TextEditingController();
+  final _picker = ImagePicker();
+  final _cloudinary = CloudinaryService();
+  String? _imageUrl;
+  bool _uploading = false;
+
+  @override
+  void dispose() {
+    _referenceController.dispose();
+    super.dispose();
+  }
+
+  void _emit() {
+    widget.onChanged((
+      imageUrl: _mode == _ProofMode.image ? _imageUrl : null,
+      referenceNumber: _mode == _ProofMode.reference &&
+              _referenceController.text.trim().isNotEmpty
+          ? _referenceController.text.trim()
+          : null,
+    ));
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final XFile? file;
+    try {
+      file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi na-pick',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+      return;
+    }
+    if (file == null) return;
+
+    setState(() => _uploading = true);
+    try {
+      final url = await _cloudinary.uploadImage(
+        file,
+        folder: 'bukidbayan/campaign_proofs',
+        tags: 'bukidbayan,campaign,proof',
+      );
+      if (!mounted) return;
+      setState(() {
+        _imageUrl = url;
+        _uploading = false;
+      });
+      _emit();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploading = false);
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi na-upload',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Patunay ng Bayad',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        SegmentedButton<_ProofMode>(
+          segments: [
+            if (widget.allowSkip)
+              const ButtonSegment(
+                value: _ProofMode.none,
+                label: Text('Wala pa'),
+              ),
+            const ButtonSegment(
+              value: _ProofMode.image,
+              label: Text('Larawan'),
+            ),
+            const ButtonSegment(
+              value: _ProofMode.reference,
+              label: Text('Reference #'),
+            ),
+          ],
+          selected: {_mode},
+          onSelectionChanged: (selection) {
+            setState(() {
+              _mode = selection.first;
+              if (_mode != _ProofMode.image) _imageUrl = null;
+              if (_mode != _ProofMode.reference) _referenceController.clear();
+            });
+            _emit();
+          },
+        ),
+        const SizedBox(height: 8),
+        if (_mode == _ProofMode.none)
+          Text(
+            'Puwede mo itong isumite sa ibang pagkakataon — bumalik lang sa campaign na ito.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+          )
+        else if (_mode == _ProofMode.image) ...[
+          if (_imageUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(_imageUrl!, height: 120, fit: BoxFit.cover),
+              ),
+            ),
+          OutlinedButton.icon(
+            onPressed: _uploading ? null : _pickAndUploadImage,
+            icon: _uploading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.upload_outlined),
+            label: Text(_imageUrl == null ? 'Mag-upload ng Larawan' : 'Palitan ang Larawan'),
+          ),
+        ] else
+          TextField(
+            controller: _referenceController,
+            onChanged: (_) => _emit(),
+            decoration: const InputDecoration(
+              labelText: 'GCash Reference Number',
+              border: OutlineInputBorder(),
+            ),
+          ),
+      ],
     );
   }
 }

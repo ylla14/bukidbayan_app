@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/components/app_bar.dart';
 import 'package:bukidbayan_app/components/customDrawer.dart';
 import 'package:bukidbayan_app/screens/admin/admin_user_management_screen.dart';
 import 'package:bukidbayan_app/screens/admin/admin_analytics_screen.dart';
+import 'package:bukidbayan_app/screens/admin/admin_campaign_management_screen.dart';
 import 'package:bukidbayan_app/screens/admin/admin_equipment_screen.dart';
 import 'package:bukidbayan_app/services/analytics/admin_analytics_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -202,9 +203,9 @@ class _AdminScreenState extends State<AdminScreen> {
                   title: 'Campaign Management',
                   description: 'Manage, approve, and monitor campaigns',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming soon: Campaign Management'),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AdminCampaignManagementScreen(),
                       ),
                     );
                   },

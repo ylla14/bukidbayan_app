@@ -284,56 +284,117 @@ void main() {
       );
     });
 
-    test('stores supporter metadata and updates campaign counters', () async {
-      final firestore = FakeFirebaseFirestore();
-      final auth = _buildAuth(
-        uid: 'backer-uid',
-        email: 'donor@example.com',
-        displayName: 'Donor Display Name',
-      );
-      final service = _buildService(firestore: firestore, auth: auth);
-      final campaign = _validCampaign(
-        id: 'c_donor_meta',
-        creatorUid: 'creator-uid',
-        creatorEmail: 'creator@example.com',
-      ).copyWith(status: 'live');
+    test(
+      'stores supporter metadata and updates campaign counters when proof is attached',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'donor@example.com',
+          displayName: 'Donor Display Name',
+        );
+        final service = _buildService(firestore: firestore, auth: auth);
+        final campaign = _validCampaign(
+          id: 'c_donor_meta',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+        ).copyWith(status: 'live');
 
-      await _seedCampaign(firestore, campaign);
+        await _seedCampaign(firestore, campaign);
 
-      await service.backCampaign(
-        campaignId: campaign.id,
-        amount: 750,
-        backerName: 'Juan Dela Cruz',
-        backerPhone: '09171234567',
-        backerNote: 'Support para sa proyekto!',
-      );
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 750,
+          backerName: 'Juan Dela Cruz',
+          backerPhone: '09171234567',
+          backerNote: 'Support para sa proyekto!',
+          proofReferenceNumber: 'GC123456789',
+        );
 
-      final updatedCampaignSnap = await firestore
-          .collection('campaigns')
-          .doc(campaign.id)
-          .get();
-      final pledgesSnap = await firestore
-          .collection('campaigns')
-          .doc(campaign.id)
-          .collection('pledges')
-          .get();
+        final updatedCampaignSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        final pledgesSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .collection('pledges')
+            .get();
 
-      expect(updatedCampaignSnap.data()!['pledgedAmount'], 750);
-      expect(updatedCampaignSnap.data()!['backersCount'], 1);
-      expect(pledgesSnap.docs, hasLength(1));
+        expect(updatedCampaignSnap.data()!['pledgedAmount'], 750);
+        expect(updatedCampaignSnap.data()!['backersCount'], 1);
+        expect(pledgesSnap.docs, hasLength(1));
 
-      final pledge = Pledge.fromJson({
-        ...pledgesSnap.docs.single.data(),
-        'id': pledgesSnap.docs.single.id,
-        'campaignId': campaign.id,
-      });
+        final pledge = Pledge.fromJson({
+          ...pledgesSnap.docs.single.data(),
+          'id': pledgesSnap.docs.single.id,
+          'campaignId': campaign.id,
+        });
 
-      expect(pledge.backerUid, 'backer-uid');
-      expect(pledge.backerEmail, 'donor@example.com');
-      expect(pledge.backerName, 'Juan Dela Cruz');
-      expect(pledge.backerPhone, '09171234567');
-      expect(pledge.backerNote, 'Support para sa proyekto!');
-      expect(pledge.amount, 750);
-    });
+        expect(pledge.backerUid, 'backer-uid');
+        expect(pledge.backerEmail, 'donor@example.com');
+        expect(pledge.backerName, 'Juan Dela Cruz');
+        expect(pledge.backerPhone, '09171234567');
+        expect(pledge.backerNote, 'Support para sa proyekto!');
+        expect(pledge.amount, 750);
+        expect(pledge.proofReferenceNumber, 'GC123456789');
+        expect(pledge.countedInTotal, isTrue);
+      },
+    );
+
+    test(
+      'without proof, pledge is recorded as pending and campaign totals are untouched until submitPledgeProof is called',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'donor@example.com',
+          displayName: 'Donor Display Name',
+        );
+        final service = _buildService(firestore: firestore, auth: auth);
+        final campaign = _validCampaign(
+          id: 'c_pending_proof',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+        ).copyWith(status: 'live');
+
+        await _seedCampaign(firestore, campaign);
+
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 300,
+          backerName: 'Maria Santos',
+        );
+
+        final campaignAfterPledge = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignAfterPledge.data()!['pledgedAmount'], 0);
+        expect(campaignAfterPledge.data()!['backersCount'], 0);
+
+        final pending = await service.getMyPledgeForCampaign(campaign.id);
+        expect(pending, isNotNull);
+        expect(pending!.countedInTotal, isFalse);
+
+        await service.submitPledgeProof(
+          campaignId: campaign.id,
+          pledgeId: pending.id,
+          proofReferenceNumber: 'GC987654321',
+        );
+
+        final campaignAfterProof = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignAfterProof.data()!['pledgedAmount'], 300);
+        expect(campaignAfterProof.data()!['backersCount'], 1);
+
+        final stillPending = await service.getMyPledgeForCampaign(
+          campaign.id,
+        );
+        expect(stillPending, isNull);
+      },
+    );
   });
 }
