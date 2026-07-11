@@ -243,8 +243,9 @@ class _AdminScreenState extends State<AdminScreen> {
 
                 AdminCard(
                   icon: Icons.inventory_2_outlined,
-                  title: 'Equipment Inventory',
-                  description: 'View and manage equipment stock and status',
+                  title: 'Equipment Management',
+                  description:
+                      'View equipment, monitor status, and set category price limits',
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(

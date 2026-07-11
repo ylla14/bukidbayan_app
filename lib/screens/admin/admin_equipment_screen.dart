@@ -1,3 +1,8 @@
+import 'package:bukidbayan_app/models/equipment_price_limit.dart';
+import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart'
+    show getCategoryPriceLimits;
+import 'package:bukidbayan_app/services/equipment_price_limit_service.dart';
+import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -18,6 +23,8 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
   List<Map<String, dynamic>> _equipment = [];
   Map<String, String> _activeRenters = {};
   Map<String, int> _categoryCounts = {};
+  Map<String, EquipmentPriceLimit> _priceLimits = {};
+  List<String> _allCategories = [];
   String? _sortColumn;
   bool _sortAscending = false;
   String? _filterCategory;
@@ -195,10 +202,15 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
         catCounts[key] = (catCounts[key] ?? 0) + 1;
       }
 
+      final allCategories = await FirestoreService().getUniqueEquipmentCategories();
+      final priceLimits = await EquipmentPriceLimitService().getAll();
+
       setState(() {
         _equipment = equipment;
         _activeRenters = activeRenters;
         _categoryCounts = catCounts;
+        _allCategories = allCategories;
+        _priceLimits = priceLimits;
         _loading = false;
       });
     } catch (e) {
@@ -1107,6 +1119,174 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
     );
   }
 
+  (double, double) _effectivePriceLimit(String category) {
+    final override = _priceLimits[category];
+    if (override != null) return (override.minPrice, override.maxPrice);
+    final fallback = getCategoryPriceLimits(category);
+    return fallback ?? (0, 0);
+  }
+
+  Future<void> _openEditPriceLimitDialog(String category) async {
+    final current = _effectivePriceLimit(category);
+    final minCtrl = TextEditingController(
+      text: current.$1 > 0 ? current.$1.toStringAsFixed(0) : '',
+    );
+    final maxCtrl = TextEditingController(
+      text: current.$2 > 0 ? current.$2.toStringAsFixed(0) : '',
+    );
+    String? errorText;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text('Price Limits — $category'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: minCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Minimum Price (₱)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: maxCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Maximum Price (₱)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      errorText!,
+                      style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final min = double.tryParse(minCtrl.text.trim());
+                    final max = double.tryParse(maxCtrl.text.trim());
+                    if (min == null || max == null) {
+                      setDialogState(() => errorText = 'Enter valid numbers.');
+                      return;
+                    }
+                    if (min < 0 || max <= min) {
+                      setDialogState(
+                        () => errorText =
+                            'Maximum must be greater than minimum, and minimum cannot be negative.',
+                      );
+                      return;
+                    }
+                    Navigator.pop(ctx, true);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved != true || !mounted) return;
+
+    final min = double.parse(minCtrl.text.trim());
+    final max = double.parse(maxCtrl.text.trim());
+    try {
+      await EquipmentPriceLimitService().setLimit(
+        categoryLabel: category,
+        minPrice: min,
+        maxPrice: max,
+      );
+      if (mounted) await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save price limit: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildPriceLimitEditor() {
+    final categories = List<String>.from(_allCategories)..sort();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('Category Price Limits', categories.length),
+        const SizedBox(height: 4),
+        Text(
+          'Tap a category to set the minimum and maximum price listers can enter for it.',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        if (categories.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'No categories found.',
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              children: categories.map((category) {
+                final (min, max) = _effectivePriceLimit(category);
+                final isOverridden = _priceLimits.containsKey(category);
+                return ListTile(
+                  title: Text(category),
+                  subtitle: Text(
+                    max > 0
+                        ? '₱${min.toStringAsFixed(0)} – ₱${max.toStringAsFixed(0)}'
+                        : 'No limit set',
+                  ),
+                  trailing: isOverridden
+                      ? Chip(
+                          label: const Text(
+                            'Admin-set',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          backgroundColor:
+                              lightColorScheme.primary.withValues(alpha: 0.1),
+                          visualDensity: VisualDensity.compact,
+                        )
+                      : const Icon(Icons.chevron_right),
+                  onTap: () => _openEditPriceLimitDialog(category),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1165,6 +1345,8 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildCategoryTable(),
+                    const SizedBox(height: 28),
+                    _buildPriceLimitEditor(),
                     const SizedBox(height: 28),
                     _buildEquipmentTable(),
                     const SizedBox(height: 24),

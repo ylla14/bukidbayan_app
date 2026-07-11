@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
+import 'package:bukidbayan_app/services/equipment_price_limit_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/services/auth_services.dart';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
@@ -29,7 +30,7 @@ const List<String> rentalUnit = <String>[
   if (c.contains('hand tractor') || c.contains('kuliglig'))    return (2000, 5000);
   if (c.contains('tractor'))         return (5000, 10000);
   if (c.contains('harvester') || c.contains('halimaw')) return (3500, 8000);
-  if (c.contains('floating tiller') || c.contains('Pagong')) return (2000, 5000);
+  if (c.contains('floating tiller') || c.contains('pagong')) return (2000, 5000);
   if (c.contains('machine'))         return (500,  5000);
   if (c.contains('hand tool'))       return (50,   1000);
   if (c.contains('implement'))       return (1000, 3000);
@@ -131,6 +132,7 @@ class _EquipmentListingScreenState extends State<EquipmentListingScreen> {
 
   List<String> uniqueCategories    = [];
   bool         isLoadingCategories = true;
+  Map<String, (double, double)> _adminPriceLimits = {};
 
   List<String> brandOptions    = [];
   List<String> fuelOptions     = [];
@@ -165,6 +167,7 @@ String? _currentDraftId;
     super.initState();
     _loadCategoriesFromFirestore();
     _loadDropdownOptionsFromFirestore();
+    _loadPriceLimitsFromFirestore();
     _loadProfileAddress();
 
     if (widget.existingEquipment != null) {
@@ -371,6 +374,20 @@ String? _currentDraftId;
     }
   }
 
+  Future<void> _loadPriceLimitsFromFirestore() async {
+    try {
+      final limits = await EquipmentPriceLimitService().getAll();
+      setState(() {
+        _adminPriceLimits = {
+          for (final entry in limits.entries)
+            entry.key: (entry.value.minPrice, entry.value.maxPrice),
+        };
+      });
+    } catch (e) {
+      debugPrint('Failed to load price limits: $e');
+    }
+  }
+
   Future<void> _loadDropdownOptionsFromFirestore() async {
     final firestoreService = FirestoreService();
     try {
@@ -514,8 +531,11 @@ String? _currentDraftId;
 
   @override
   Widget build(BuildContext context) {
-    // Resolve price limits for the currently selected category
-    final priceLimits = getCategoryPriceLimits(selectedCategory);
+    // Resolve price limits for the currently selected category — an
+    // admin-configured override takes precedence over the hardcoded default.
+    final priceLimits =
+        _adminPriceLimits[selectedCategory] ??
+        getCategoryPriceLimits(selectedCategory);
 
     return PopScope(
        canPop: false,
