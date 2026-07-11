@@ -32,7 +32,7 @@ class RenterAnalyticsService {
 
     final equipmentById = await _loadEquipmentMap(requests);
     final completedRequests = requests
-        .where((request) => request.status == RentRequestStatus.completed)
+        .where((request) => _completedStatuses.contains(request.status))
         .toList();
     final activeRentals = requests
         .where((request) => _activeStatuses.contains(request.status))
@@ -69,7 +69,7 @@ class RenterAnalyticsService {
         () => _CategoryUsageAccumulator(categoryLabel: categoryLabel),
       );
       accumulator.requestCount += 1;
-      if (request.status == RentRequestStatus.completed) {
+      if (_completedStatuses.contains(request.status)) {
         accumulator.completedRentals += 1;
         accumulator.totalSpending += _requestValue(request);
       }
@@ -159,6 +159,11 @@ class RenterAnalyticsService {
     return 0;
   }
 
+  static const Set<RentRequestStatus> _completedStatuses = {
+    RentRequestStatus.finished,
+    RentRequestStatus.completed,
+  };
+
   static const Set<RentRequestStatus> _activeStatuses = {
     RentRequestStatus.approved,
     RentRequestStatus.readyForPickup,
@@ -167,7 +172,6 @@ class RenterAnalyticsService {
     RentRequestStatus.inProgress,
     RentRequestStatus.retrieving,
     RentRequestStatus.returned,
-    RentRequestStatus.finished,
   };
 }
 

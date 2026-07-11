@@ -132,7 +132,7 @@ void main() {
           itemName: harvester.name,
           renterId: 'renter-1',
           ownerId: 'owner-2',
-          status: RentRequestStatus.completed,
+          status: RentRequestStatus.finished,
           createdAt: DateTime(2026, 4, 10),
           start: DateTime(2026, 4, 12),
           end: DateTime(2026, 4, 13),

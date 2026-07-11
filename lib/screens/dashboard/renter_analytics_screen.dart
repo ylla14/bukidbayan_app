@@ -57,7 +57,11 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   static const Set<RentRequestStatus> _closingStatuses = {
     RentRequestStatus.retrieving,
     RentRequestStatus.returned,
+  };
+
+  static const Set<RentRequestStatus> _completedStatuses = {
     RentRequestStatus.finished,
+    RentRequestStatus.completed,
   };
 
   static const Set<RentRequestStatus> _confirmedAndActiveStatuses = {
@@ -225,7 +229,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
       case _RenterRequestBucket.confirmedAndActive:
         return 'Everything from approved bookings through final wrap-up.';
       case _RenterRequestBucket.completed:
-        return 'Finished rentals that were fully completed.';
+        return 'Finished and completed rentals are both counted here.';
       case _RenterRequestBucket.cancelled:
         return 'Requests that were cancelled before completion.';
       case _RenterRequestBucket.declined:
@@ -330,7 +334,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
       case _RenterRequestBucket.completed:
         return _sortedRequests(
           report.requests.where(
-            (request) => request.status == RentRequestStatus.completed,
+            (request) => _completedStatuses.contains(request.status),
           ),
         );
       case _RenterRequestBucket.cancelled:
@@ -595,7 +599,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           const _GuidePoint(
             icon: Icons.insights_outlined,
             text:
-                'Waiting for review only means pending approval. Confirmed & active covers approved bookings, delivery steps, in-progress rentals, and closeout steps.',
+                'Waiting for review only means pending approval. Confirmed & active covers approved bookings, delivery steps, in-progress rentals, and closeout steps. Finished requests are counted with completed rentals.',
           ),
           const SizedBox(height: 10),
           const _GuidePoint(
@@ -641,7 +645,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
         key: const Key('renter_analytics_summary_completed'),
         label: 'Completed Rentals',
         value: completedCount.toString(),
-        subtitle: 'Finished and marked complete',
+        subtitle: 'Includes finished and completed requests',
         icon: Icons.verified_outlined,
         onTap: completedCount == 0
             ? null
@@ -753,7 +757,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           stageTile(
             key: const Key('renter_analytics_stage_completed'),
             label: 'Completed rentals',
-            subtitle: 'Finished rentals that were fully completed',
+            subtitle: 'Finished and completed rentals',
             bucket: _RenterRequestBucket.completed,
           ),
           const SizedBox(height: 10),
@@ -849,7 +853,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   Widget _buildSpendingSection(RenterAnalyticsReport report) {
     return _SectionCard(
       title: 'Spending & Timing',
-      subtitle: 'Spending totals only use completed rentals',
+      subtitle: 'Spending totals use finished and completed rentals',
       child: _InfoTable(
         rows: [
           _InfoRow(

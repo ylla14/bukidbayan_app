@@ -107,7 +107,7 @@ class FakeRenterAnalyticsService extends RenterAnalyticsService {
           address: 'Barangay Quatro',
           start: DateTime(2026, 4, 9),
           end: DateTime(2026, 4, 11),
-          status: RentRequestStatus.completed,
+          status: RentRequestStatus.finished,
           renterId: 'renter-1',
           ownerId: 'owner-4',
           createdAt: DateTime(2026, 4, 1, 13),
