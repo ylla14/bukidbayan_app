@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/rent/proof_page_viewer.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/models/campaign_report.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/campaign_report_pdf_service.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -47,6 +48,8 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
   _SupporterSortOption _supporterSort = _SupporterSortOption.amountHighToLow;
   _SupporterRewardFilter _supporterRewardFilter = _SupporterRewardFilter.all;
   String _supporterSearchQuery = '';
+
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
 
   @override
   void initState() {
@@ -879,7 +882,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
           if (snapshot.hasError) {
             return Scaffold(
               appBar: AppBar(
-                title: const Text('Ulat ng Kampanya'),
+                title: Text(_t('Campaign Report', 'Ulat ng Kampanya')),
                 backgroundColor: lightColorScheme.primary,
                 foregroundColor: Colors.white,
               ),
@@ -900,7 +903,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                       ElevatedButton.icon(
                         onPressed: _reload,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Try again'),
+                        label: Text(_t('Try again', 'Subukan muli')),
                       ),
                     ],
                   ),
@@ -911,8 +914,12 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
 
           final report = snapshot.data;
           if (report == null) {
-            return const Scaffold(
-              body: Center(child: Text('Walang report na nahanap.')),
+            return Scaffold(
+              body: Center(
+                child: Text(
+                  _t('No report found.', 'Walang report na nahanap.'),
+                ),
+              ),
             );
           }
 
@@ -920,20 +927,26 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
           final startDate = campaign.publishedAt ?? campaign.createdAt;
           final isOngoing = !report.isEnded;
           final differenceLabel = report.fundingDifference >= 0
-              ? (isOngoing ? 'Lamang sa target' : 'Sobra')
-              : (isOngoing ? 'Kulang pa sa target' : 'Kulang');
+              ? (isOngoing
+                    ? _t('Ahead of target', 'Lamang sa target')
+                    : _t('Over target', 'Sobra'))
+              : (isOngoing
+                    ? _t('Still below target', 'Kulang pa sa target')
+                    : _t('Short of target', 'Kulang'));
           final differenceValue = report.fundingDifference >= 0
               ? report.fundingDifference
               : -report.fundingDifference;
           final outcomeLabel = isOngoing
-              ? 'Kasalukuyang Ulat'
-              : (report.isSuccessful ? 'Matagumpay' : 'Hindi umabot');
+              ? _t('Current report', 'Kasalukuyang Ulat')
+              : (report.isSuccessful
+                    ? _t('Successful', 'Matagumpay')
+                    : _t('Did not reach target', 'Hindi umabot'));
           final outcomeColor = isOngoing
               ? lightColorScheme.primary
               : (report.isSuccessful ? Colors.green : Colors.red);
           final targetProgressLabel = report.fundingDifference >= 0
-              ? 'Naabot na ang target'
-              : 'Hindi pa abot ang target';
+              ? _t('Target reached', 'Naabot na ang target')
+              : _t('Target not reached yet', 'Hindi pa abot ang target');
           final targetProgressColor = report.fundingDifference >= 0
               ? Colors.green
               : Colors.orange;
@@ -946,8 +959,11 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
             appBar: AppBar(
               title: Text(
                 isOngoing
-                    ? 'Kasalukuyang Ulat ng Kampanya'
-                    : 'Ulat ng Kampanya',
+                    ? _t(
+                        'Current Campaign Report',
+                        'Kasalukuyang Ulat ng Kampanya',
+                      )
+                    : _t('Campaign Report', 'Ulat ng Kampanya'),
               ),
               backgroundColor: lightColorScheme.primary,
               foregroundColor: Colors.white,

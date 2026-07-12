@@ -104,25 +104,35 @@ class AdminAnalyticsRentalSnapshot {
 
 class AdminAnalyticsCrowdfundingSnapshot {
   final int liveCampaigns;
-  final int campaignsCreatedInWindow;
+  final int campaignsPublishedInWindow;
   final int totalPledges;
   final int totalPledgedAmount;
-  final int totalPaidAmount;
+  final int totalReceivedAmount;
   final int uniqueSupporters;
-  final int paidAttempts;
-  final int failedAttempts;
-  final int expiredAttempts;
+  final int pendingProofPledges;
+  final int pendingProofAmount;
+  final int pendingReviewPledges;
+  final int pendingReviewAmount;
+  final int invalidatedPledges;
+  final int invalidatedAmount;
+  final int canceledPledges;
+  final int canceledAmount;
 
   const AdminAnalyticsCrowdfundingSnapshot({
     required this.liveCampaigns,
-    required this.campaignsCreatedInWindow,
+    required this.campaignsPublishedInWindow,
     required this.totalPledges,
     required this.totalPledgedAmount,
-    required this.totalPaidAmount,
+    required this.totalReceivedAmount,
     required this.uniqueSupporters,
-    required this.paidAttempts,
-    required this.failedAttempts,
-    required this.expiredAttempts,
+    required this.pendingProofPledges,
+    required this.pendingProofAmount,
+    required this.pendingReviewPledges,
+    required this.pendingReviewAmount,
+    required this.invalidatedPledges,
+    required this.invalidatedAmount,
+    required this.canceledPledges,
+    required this.canceledAmount,
   });
 }
 
@@ -131,14 +141,14 @@ class AdminAnalyticsWatchlistSnapshot {
   final int weatherRiskBookings;
   final int underMaintenanceEquipment;
   final int pendingRentals;
-  final int failedPaymentAttempts;
+  final int contributionProofsAwaitingReview;
 
   const AdminAnalyticsWatchlistSnapshot({
     required this.blockedRenters,
     required this.weatherRiskBookings,
     required this.underMaintenanceEquipment,
     required this.pendingRentals,
-    required this.failedPaymentAttempts,
+    required this.contributionProofsAwaitingReview,
   });
 }
 

@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/models/admin_analytics_report.dart';
 import 'package:bukidbayan_app/models/demand_forecast.dart';
+import 'package:bukidbayan_app/services/admin_analytics_pdf_service.dart';
 import 'package:bukidbayan_app/services/analytics/admin_analytics_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   AdminAnalyticsService? _service;
   AdminAnalyticsTimePreset _preset = AdminAnalyticsTimePreset.allTime;
   Future<AdminAnalyticsReport>? _future;
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -66,6 +68,32 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   }
 
   String _formatRate(double value) => '${(value * 100).toStringAsFixed(0)}%';
+
+  String _formatPledgeState(int count, int amount) {
+    final pledgeLabel = count == 1 ? 'pledge' : 'pledges';
+    return '$count $pledgeLabel | ${_formatCurrency(amount)}';
+  }
+
+  Future<void> _printReport(AdminAnalyticsReport report) async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+    try {
+      await AdminAnalyticsPdfService.printOrSavePdf(report: report);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to print admin analytics: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
 
   String _forecastLevelLabel(DemandForecastLevel level) {
     switch (level) {
@@ -168,7 +196,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
               ),
             ),
             child: Text(
-              'Current snapshot metrics ignore the selected window: equipment availability, active rentals, live campaigns, blocked renters, and weather-risk bookings. Window-scoped totals use request dates, pledge dates, and paid-attempt completion dates.',
+              'Current snapshot metrics ignore the selected window: equipment availability, active rentals, live campaigns, blocked renters, weather-risk bookings, and unresolved contribution backlogs. Window-scoped totals use request dates, pledge creation dates, confirmation dates, invalidation dates, and cancellation dates where applicable.',
               style: TextStyle(color: Colors.grey.shade800, height: 1.35),
             ),
           ),
@@ -203,9 +231,11 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
           icon: Icons.swap_horiz_outlined,
         ),
         _KpiCard(
-          label: 'Paid Amount',
-          value: _formatCurrency(report.crowdfunding.totalPaidAmount),
-          subtitle: 'Within ${report.preset.label.toLowerCase()}',
+          label: 'Amount Received',
+          value: _formatCurrency(report.crowdfunding.totalReceivedAmount),
+          subtitle: report.timeWindow == null
+              ? 'All recorded confirmed contributions'
+              : 'Confirmed in selected window',
           icon: Icons.payments_outlined,
         ),
       ],
@@ -537,7 +567,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   Widget _buildCrowdfundingSection(AdminAnalyticsReport report) {
     return _SectionCard(
       title: 'Crowdfunding Overview',
-      subtitle: 'Pledged totals and paid checkout totals are kept separate',
+      subtitle:
+          'Tracks submitted pledges separately from confirmed campaign contributions',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -548,42 +579,59 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 value: report.crowdfunding.liveCampaigns.toString(),
               ),
               _InfoRow(
-                label: 'Campaigns launched in selected window',
-                value: report.crowdfunding.campaignsCreatedInWindow.toString(),
+                label: 'Campaigns published in selected window',
+                value: report.crowdfunding.campaignsPublishedInWindow
+                    .toString(),
               ),
               _InfoRow(
-                label: 'Pledges in selected window',
+                label: 'Pledge submissions in selected window',
                 value: report.crowdfunding.totalPledges.toString(),
               ),
               _InfoRow(
-                label: 'Total pledged amount',
+                label: 'Submitted pledge amount',
                 value: _formatCurrency(report.crowdfunding.totalPledgedAmount),
               ),
               _InfoRow(
-                label: 'Total paid amount',
-                value: _formatCurrency(report.crowdfunding.totalPaidAmount),
+                label: 'Amount received in selected window',
+                value: _formatCurrency(report.crowdfunding.totalReceivedAmount),
               ),
               _InfoRow(
                 label: 'Unique supporters in selected window',
                 value: report.crowdfunding.uniqueSupporters.toString(),
               ),
               _InfoRow(
-                label: 'Paid checkout attempts',
-                value: report.crowdfunding.paidAttempts.toString(),
+                label: 'Awaiting proof from supporters right now',
+                value: _formatPledgeState(
+                  report.crowdfunding.pendingProofPledges,
+                  report.crowdfunding.pendingProofAmount,
+                ),
               ),
               _InfoRow(
-                label: 'Failed checkout attempts',
-                value: report.crowdfunding.failedAttempts.toString(),
+                label: 'Proofs awaiting admin review right now',
+                value: _formatPledgeState(
+                  report.crowdfunding.pendingReviewPledges,
+                  report.crowdfunding.pendingReviewAmount,
+                ),
               ),
               _InfoRow(
-                label: 'Expired checkout attempts',
-                value: report.crowdfunding.expiredAttempts.toString(),
+                label: 'Invalidated contributions in selected window',
+                value: _formatPledgeState(
+                  report.crowdfunding.invalidatedPledges,
+                  report.crowdfunding.invalidatedAmount,
+                ),
+              ),
+              _InfoRow(
+                label: 'Canceled pledges in selected window',
+                value: _formatPledgeState(
+                  report.crowdfunding.canceledPledges,
+                  report.crowdfunding.canceledAmount,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Paid totals use payment-attempt records. Older campaign data without checkout attempts may still appear in pledged totals but not in paid totals.',
+            'A campaign pledge can still be awaiting proof, awaiting review, confirmed, invalidated, or canceled. Amount received only increases once a contribution has been confirmed.',
             style: TextStyle(color: Colors.grey.shade700, height: 1.35),
           ),
         ],
@@ -614,8 +662,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             value: report.watchlist.pendingRentals.toString(),
           ),
           _InfoRow(
-            label: 'Failed payment attempts in selected window',
-            value: report.watchlist.failedPaymentAttempts.toString(),
+            label: 'Contribution proofs awaiting review',
+            value: report.watchlist.contributionProofsAwaitingReview.toString(),
           ),
         ],
       ),
@@ -706,64 +754,85 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   Widget build(BuildContext context) {
     if (!widget.isCoop) return _buildRestrictedView();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Analytics'),
-        backgroundColor: Colors.white,
-        foregroundColor: lightColorScheme.primary,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: FutureBuilder<AdminAnalyticsReport>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 44,
-                      color: Colors.red.shade300,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Failed to load admin analytics.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      snapshot.error.toString().replaceFirst('Exception: ', ''),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _reload,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
-                    ),
-                  ],
+    return FutureBuilder<AdminAnalyticsReport>(
+      future: _future,
+      builder: (context, snapshot) {
+        final report = snapshot.data;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Admin Analytics'),
+            backgroundColor: Colors.white,
+            foregroundColor: lightColorScheme.primary,
+            surfaceTintColor: Colors.transparent,
+            actions: [
+              if (report != null)
+                IconButton(
+                  key: const Key('admin_analytics_print_button'),
+                  tooltip: 'Print report',
+                  onPressed: _isExporting ? null : () => _printReport(report),
+                  icon: _isExporting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.print_outlined),
                 ),
-              ),
-            );
-          }
+            ],
+          ),
+          body: () {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 44,
+                        color: Colors.red.shade300,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Failed to load admin analytics.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        snapshot.error.toString().replaceFirst(
+                          'Exception: ',
+                          '',
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _reload,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
 
-          final report = snapshot.data;
-          if (report == null) {
-            return const Center(child: Text('No admin analytics available.'));
-          }
+            if (report == null) {
+              return const Center(child: Text('No admin analytics available.'));
+            }
 
-          return _buildLoadedBody(report);
-        },
-      ),
+            return _buildLoadedBody(report);
+          }(),
+        );
+      },
     );
   }
 }

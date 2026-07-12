@@ -19,6 +19,7 @@ class CrowdfundingService {
   static const _campaignsPrefsKey = 'campaigns_v2';
   static const _pledgesPrefsKey = 'pledges_v1';
   static const _currentUserEmailPrefsKey = 'current_user_email';
+  static const _archivedPrefix = 'archived_';
 
   FirebaseFirestore? get _dbOrNull {
     if (_firestoreOverride != null) return _firestoreOverride;
@@ -84,8 +85,20 @@ class CrowdfundingService {
   }
 
   bool _isCampaignEnded(Campaign campaign) =>
-      campaign.status.startsWith('ended') ||
+      _baseCampaignStatus(campaign.status).startsWith('ended') ||
       DateTime.now().isAfter(campaign.endDate);
+
+  bool _isArchivedStatus(String status) => status.startsWith(_archivedPrefix);
+
+  String _baseCampaignStatus(String status) {
+    if (!_isArchivedStatus(status)) return status;
+    return status.substring(_archivedPrefix.length);
+  }
+
+  String _archivedStatus(String status) {
+    if (_isArchivedStatus(status)) return status;
+    return '$_archivedPrefix$status';
+  }
 
   Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -642,6 +655,7 @@ class CrowdfundingService {
     if (!pledge.isPendingReview) {
       throw Exception('Only pledges with submitted proof can be confirmed.');
     }
+    final confirmedAt = DateTime.now();
 
     final supporterPledges = await _getSupporterPledgesForCampaign(
       campaignId,
@@ -652,7 +666,10 @@ class CrowdfundingService {
       (existing) => existing.id != pledge.id && _isCountedPledge(existing),
     );
 
-    pledges[pledgeIndex] = pledge.copyWith(countedInTotal: true);
+    pledges[pledgeIndex] = pledge.copyWith(
+      countedInTotal: true,
+      paidAt: confirmedAt,
+    );
     campaigns[campaignIndex] = campaign.copyWith(
       pledgedAmount: campaign.pledgedAmount + pledge.amount,
       backersCount: isNewBacker
@@ -695,9 +712,7 @@ class CrowdfundingService {
     final pledge = pledges[pledgeIndex];
     if (pledge.isInvalidated) return;
     if (!pledge.hasProofSubmitted || pledge.isCanceled) {
-      throw Exception(
-        'Only pledges with submitted proof can be invalidated.',
-      );
+      throw Exception('Only pledges with submitted proof can be invalidated.');
     }
 
     final wasCounted = pledge.isCountedContribution;
@@ -1140,7 +1155,10 @@ class CrowdfundingService {
       final index = campaigns.indexWhere((campaign) => campaign.id == id);
       if (index == -1) return null;
       final campaign = campaigns[index];
-      if (campaign.status == 'draft' &&
+      final isRestricted =
+          _baseCampaignStatus(campaign.status) == 'draft' ||
+          _isArchivedStatus(campaign.status);
+      if (isRestricted &&
           !_isOwnedByUser(campaign, email: await _currentLocalEmail())) {
         return null;
       }
@@ -1149,7 +1167,10 @@ class CrowdfundingService {
     final snap = await _campaigns.doc(id).get();
     if (!snap.exists) return null;
     final campaign = _fromDoc(snap);
-    if (campaign.status == 'draft' && !_isOwnedByUser(campaign)) return null;
+    final isRestricted =
+        _baseCampaignStatus(campaign.status) == 'draft' ||
+        _isArchivedStatus(campaign.status);
+    if (isRestricted && !_isOwnedByUser(campaign)) return null;
     return campaign;
   }
 
@@ -1737,6 +1758,7 @@ class CrowdfundingService {
     if (!pledge.isPendingReview) {
       throw Exception('Only pledges with submitted proof can be confirmed.');
     }
+    final confirmedAt = DateTime.now();
 
     final supporterPledges = await _getSupporterPledgesForCampaign(
       campaignId,
@@ -1760,7 +1782,10 @@ class CrowdfundingService {
         throw Exception('Only pledges with submitted proof can be confirmed.');
       }
 
-      tx.update(pledgeRef, {'countedInTotal': true});
+      tx.update(pledgeRef, {
+        'countedInTotal': true,
+        'paidAt': confirmedAt.toIso8601String(),
+      });
       tx.update(campaignRef, {
         'pledgedAmount': liveCampaign.pledgedAmount + livePledge.amount,
         'backersCount': isNewBacker
@@ -1815,9 +1840,7 @@ class CrowdfundingService {
     final pledge = _pledgeFromDoc(pledgeSnap, campaignId);
     if (pledge.isInvalidated) return;
     if (!pledge.hasProofSubmitted || pledge.isCanceled) {
-      throw Exception(
-        'Only pledges with submitted proof can be invalidated.',
-      );
+      throw Exception('Only pledges with submitted proof can be invalidated.');
     }
 
     final supporterPledges = await _getSupporterPledgesForCampaign(
@@ -1959,6 +1982,86 @@ class CrowdfundingService {
       lastEditedAt: now,
     );
     await _campaigns.doc(campaign.id).set(published.toFirestore());
+  }
+
+  Future<void> archiveCampaign(Campaign campaign) async {
+    if (_dbOrNull == null) {
+      final localCampaigns = await _readLocalCampaigns();
+      final index = localCampaigns.indexWhere(
+        (existing) => existing.id == campaign.id,
+      );
+      if (index == -1) {
+        throw Exception('Campaign not found.');
+      }
+      final current = localCampaigns[index];
+      if (!_isOwnedByUser(current, email: await _currentLocalEmail())) {
+        throw Exception('Only the campaign owner can archive this campaign.');
+      }
+      if (_isArchivedStatus(current.status)) return;
+
+      localCampaigns[index] = current.copyWith(
+        status: _archivedStatus(current.status),
+        lastEditedAt: DateTime.now(),
+      );
+      await _writeLocalCampaigns(localCampaigns);
+      return;
+    }
+
+    final docRef = _campaigns.doc(campaign.id);
+    final snap = await docRef.get();
+    if (!snap.exists) {
+      throw Exception('Campaign not found.');
+    }
+    final current = _fromDoc(snap);
+    if (!_isOwnedByUser(current)) {
+      throw Exception('Only the campaign owner can archive this campaign.');
+    }
+    if (_isArchivedStatus(current.status)) return;
+
+    await docRef.update({
+      'status': _archivedStatus(current.status),
+      'lastEditedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> restoreCampaign(Campaign campaign) async {
+    if (_dbOrNull == null) {
+      final localCampaigns = await _readLocalCampaigns();
+      final index = localCampaigns.indexWhere(
+        (existing) => existing.id == campaign.id,
+      );
+      if (index == -1) {
+        throw Exception('Campaign not found.');
+      }
+      final current = localCampaigns[index];
+      if (!_isOwnedByUser(current, email: await _currentLocalEmail())) {
+        throw Exception('Only the campaign owner can restore this campaign.');
+      }
+      if (!_isArchivedStatus(current.status)) return;
+
+      localCampaigns[index] = current.copyWith(
+        status: _baseCampaignStatus(current.status),
+        lastEditedAt: DateTime.now(),
+      );
+      await _writeLocalCampaigns(localCampaigns);
+      return;
+    }
+
+    final docRef = _campaigns.doc(campaign.id);
+    final snap = await docRef.get();
+    if (!snap.exists) {
+      throw Exception('Campaign not found.');
+    }
+    final current = _fromDoc(snap);
+    if (!_isOwnedByUser(current)) {
+      throw Exception('Only the campaign owner can restore this campaign.');
+    }
+    if (!_isArchivedStatus(current.status)) return;
+
+    await docRef.update({
+      'status': _baseCampaignStatus(current.status),
+      'lastEditedAt': DateTime.now().toIso8601String(),
+    });
   }
 
   // ── Report ────────────────────────────────────────────────────────────────

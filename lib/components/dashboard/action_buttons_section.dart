@@ -99,7 +99,7 @@ class ActionButtonsSection extends StatelessWidget {
         _ActionCard(
           icon: Icons.payments_rounded,
           label: AppLanguage.text(
-            en: 'Total Earnings from Completed Rentals',
+            en: 'Earnings Report',
             tl: 'Kabuuang Kita mula sa Natapos na Renta',
           ),
           color: lightColorScheme.primary,

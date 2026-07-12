@@ -110,7 +110,7 @@ class Campaign {
 
   // Status and Timestamps
   final String
-  status; // draft, live, ended_success, ended_fail, purchased, cancelled
+  status; // draft, live, ended_success, ended_fail, archived_*, purchased, cancelled
   final DateTime? publishedAt;
   final DateTime? lastEditedAt;
 
@@ -411,7 +411,7 @@ class Pledge {
 
   /// Backer hasn't submitted proof of payment yet.
   bool get isPendingProof =>
-      !hasProofSubmitted && !isInvalidated && !isCanceled;
+      !countedInTotal && !hasProofSubmitted && !isInvalidated && !isCanceled;
 
   /// Proof was submitted but an admin hasn't confirmed or invalidated it yet.
   bool get isPendingReview =>

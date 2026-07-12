@@ -433,14 +433,10 @@ class _EarningsReportPageState extends State<EarningsReportPage>
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _sharePdf,
-                        icon: Icon(
-                          _showAnalyticsTab
-                              ? Icons.share_rounded
-                              : Icons.download_rounded,
-                        ),
-                        label: Text(
-                          _showAnalyticsTab ? 'Export PDF' : 'Download',
-                          style: const TextStyle(
+                        icon: const Icon(Icons.download_rounded),
+                        label: const Text(
+                          'Download',
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),

@@ -219,6 +219,10 @@ void main() {
         scrollable: scrollable,
       );
       expect(find.text('Recent Requests'), findsOneWidget);
+      expect(
+        find.byKey(const Key('renter_analytics_print_button')),
+        findsOneWidget,
+      );
 
       await tester.scrollUntilVisible(
         find.text('Spending & Timing'),

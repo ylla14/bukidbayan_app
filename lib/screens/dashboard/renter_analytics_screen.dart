@@ -4,6 +4,7 @@ import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/analytics/renter_analytics_service.dart';
 import 'package:bukidbayan_app/services/app_language.dart';
+import 'package:bukidbayan_app/services/renter_analytics_pdf_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -74,6 +75,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   RenterAnalyticsService? _service;
   Future<RenterAnalyticsReport>? _future;
   String? _renterId;
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -102,6 +104,33 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
     setState(() {
       _future = _loadReport();
     });
+  }
+
+  Future<void> _printReport(RenterAnalyticsReport report) async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+    try {
+      await RenterAnalyticsPdfService.printOrSavePdf(
+        report: report,
+        useTagalog: AppLanguage.isTagalog,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              'Failed to print your rental analytics: ${e.toString().replaceFirst('Exception: ', '')}',
+              'Hindi na-print ang iyong rental analytics: ${e.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
   }
 
   String _formatCurrency(num value) =>
@@ -1115,75 +1144,98 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   Widget build(BuildContext context) {
     if (_renterId == null) return _buildMissingUserState();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_t('My Rental Analytics', 'Aking Rental Analytics')),
-        backgroundColor: Colors.white,
-        foregroundColor: lightColorScheme.primary,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: FutureBuilder<RenterAnalyticsReport>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 44,
-                      color: Colors.red.shade300,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _t(
-                        'Failed to load your rental analytics.',
-                        'Hindi na-load ang iyong rental analytics.',
-                      ),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      snapshot.error.toString().replaceFirst('Exception: ', ''),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _reload,
-                      icon: const Icon(Icons.refresh),
-                      label: Text(_t('Retry', 'Subukan muli')),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
+    return FutureBuilder<RenterAnalyticsReport>(
+      future: _future,
+      builder: (context, snapshot) {
+        final report = snapshot.data;
+        final canPrint =
+            report != null && report.summary.totalRequests > 0 && !_isExporting;
 
-          final report = snapshot.data;
-          if (report == null) {
-            return Center(
-              child: Text(
-                _t(
-                  'No rental analytics available.',
-                  'Walang available na rental analytics.',
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_t('My Rental Analytics', 'Aking Rental Analytics')),
+            backgroundColor: Colors.white,
+            foregroundColor: lightColorScheme.primary,
+            surfaceTintColor: Colors.transparent,
+            actions: [
+              if (report != null && report.summary.totalRequests > 0)
+                IconButton(
+                  key: const Key('renter_analytics_print_button'),
+                  tooltip: _t('Print report', 'I-print ang report'),
+                  onPressed: canPrint ? () => _printReport(report) : null,
+                  icon: _isExporting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.print_outlined),
                 ),
-              ),
-            );
-          }
+            ],
+          ),
+          body: () {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 44,
+                        color: Colors.red.shade300,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _t(
+                          'Failed to load your rental analytics.',
+                          'Hindi na-load ang iyong rental analytics.',
+                        ),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        snapshot.error.toString().replaceFirst(
+                          'Exception: ',
+                          '',
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _reload,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(_t('Retry', 'Subukan muli')),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
 
-          return _buildLoadedBody(report);
-        },
-      ),
+            if (report == null) {
+              return Center(
+                child: Text(
+                  _t(
+                    'No rental analytics available.',
+                    'Walang available na rental analytics.',
+                  ),
+                ),
+              );
+            }
+
+            return _buildLoadedBody(report);
+          }(),
+        );
+      },
     );
   }
 }

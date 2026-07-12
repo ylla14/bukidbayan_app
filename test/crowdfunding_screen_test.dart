@@ -61,12 +61,19 @@ Campaign _campaign({
 }
 
 Widget _buildHarness(FakeCrowdfundingService service) {
+  return _buildHarnessWithRole(service, isCoop: true);
+}
+
+Widget _buildHarnessWithRole(
+  FakeCrowdfundingService service, {
+  required bool isCoop,
+}) {
   return MaterialApp(
     home: CrowdfundingScreen(
       serviceOverride: service,
       appBarOverride: AppBar(title: const Text('Test AppBar')),
       drawerOverride: const Drawer(child: SizedBox.shrink()),
-      isCoop: true,
+      isCoop: isCoop,
     ),
   );
 }
@@ -91,15 +98,15 @@ void main() {
       myCampaigns: const [],
     );
 
-    await tester.pumpWidget(_buildHarness(service));
+    await tester.pumpWidget(_buildHarnessWithRole(service, isCoop: false));
     await tester.pumpAndSettle();
 
-    expect(find.text('2 resulta'), findsOneWidget);
+    expect(find.text('2 results'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'solar');
     await tester.pumpAndSettle();
 
-    expect(find.text('1 resulta'), findsOneWidget);
+    expect(find.text('1 results'), findsOneWidget);
 
     await tester.dragUntilVisible(
       find.text('Solar Pump Upgrade'),
@@ -110,9 +117,7 @@ void main() {
     expect(find.text('Solar Pump Upgrade'), findsOneWidget);
   });
 
-  testWidgets('My Listings tab filters listings by manage search', (
-    tester,
-  ) async {
+  testWidgets('Live tab filters listings by manage search', (tester) async {
     final service = FakeCrowdfundingService(
       discoverCampaigns: const [],
       myCampaigns: [
@@ -134,28 +139,17 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Aking Mga Kampanya').first);
+    expect(find.text('Live Campaign Listing'), findsOneWidget);
+    expect(find.text('Draft One Listing'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, 'live campaign');
     await tester.pumpAndSettle();
 
-    expect(find.text('Draft One Listing'), findsOneWidget);
-
-    await tester.enterText(find.byType(TextField).last, 'draft one');
-    await tester.pumpAndSettle();
-
-    await tester.dragUntilVisible(
-      find.text('Draft One Listing'),
-      find.byType(ListView),
-      const Offset(0, -250),
-    );
-
-    expect(find.text('Draft One Listing'), findsOneWidget);
-    expect(find.byTooltip('Higit pang aksyon'), findsOneWidget);
-    expect(find.text('Live Campaign Listing'), findsNothing);
+    expect(find.text('Live Campaign Listing'), findsOneWidget);
+    expect(find.byTooltip('More actions'), findsOneWidget);
   });
 
-  testWidgets('My Listings tab shows empty state when no listings exist', (
-    tester,
-  ) async {
+  testWidgets('Drafts tab shows draft-specific empty state', (tester) async {
     final service = FakeCrowdfundingService(
       discoverCampaigns: const [],
       myCampaigns: const [],
@@ -164,58 +158,57 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Aking Mga Kampanya').first);
+    await tester.tap(find.text('Drafts').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Wala ka pang kampanya'), findsOneWidget);
+    expect(find.text('No drafts yet'), findsOneWidget);
     expect(
-      find.text(
-        'Gumawa ng unang draft ng kampanya para makapagsimulang mangalap ng pondo.',
-      ),
+      find.text('Create a draft to prepare your next campaign.'),
       findsOneWidget,
     );
   });
 
-  testWidgets('My Listings shows report action for ended campaigns', (
+  testWidgets(
+    'Ended tab shows check report and archive actions for finished campaigns',
+    (tester) async {
+      final service = FakeCrowdfundingService(
+        discoverCampaigns: const [],
+        myCampaigns: [
+          _campaign(
+            id: 'e1',
+            title: 'Ended Campaign',
+            category: 'Irrigation',
+            status: 'live',
+            endDate: DateTime.now().subtract(const Duration(days: 1)),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(_buildHarness(service));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Ended'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Check report'), findsOneWidget);
+      expect(find.text('Archive'), findsWidgets);
+    },
+  );
+
+  testWidgets('Archive tab shows restore action for archived campaigns', (
     tester,
   ) async {
     final service = FakeCrowdfundingService(
       discoverCampaigns: const [],
       myCampaigns: [
         _campaign(
-          id: 'e1',
-          title: 'Ended Campaign',
-          category: 'Irrigation',
-          status: 'live',
-          endDate: DateTime.now().subtract(const Duration(days: 1)),
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(_buildHarness(service));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Aking Mga Kampanya').first);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byTooltip('Higit pang aksyon'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Gumawa ng Ulat'), findsOneWidget);
-  });
-
-  testWidgets('My Listings shows interim report action for active campaigns', (
-    tester,
-  ) async {
-    final service = FakeCrowdfundingService(
-      discoverCampaigns: const [],
-      myCampaigns: [
-        _campaign(
-          id: 'l2',
-          title: 'Active Campaign',
+          id: 'a1',
+          title: 'Archived Campaign',
           category: 'Solar/Power',
-          status: 'live',
-          endDate: DateTime.now().add(const Duration(days: 4)),
+          status: 'archived_live',
         ),
       ],
     );
@@ -223,12 +216,13 @@ void main() {
     await tester.pumpWidget(_buildHarness(service));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Aking Mga Kampanya').first);
+    await tester.tap(find.text('Archive').first);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Higit pang aksyon'));
+    await tester.tap(find.byTooltip('More actions'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Kasalukuyang Ulat'), findsOneWidget);
+    expect(find.text('Check report'), findsOneWidget);
+    expect(find.text('Restore'), findsOneWidget);
   });
 }
