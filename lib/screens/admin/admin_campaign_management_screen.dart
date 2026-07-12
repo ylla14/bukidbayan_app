@@ -38,14 +38,23 @@ class _AdminCampaignManagementScreenState
     await _future;
   }
 
+  bool _isArchived(Campaign campaign) =>
+      campaign.status.startsWith('archived_');
+
+  String _baseStatus(Campaign campaign) {
+    if (!_isArchived(campaign)) return campaign.status;
+    return campaign.status.substring('archived_'.length);
+  }
+
   bool _isEnded(Campaign c) =>
-      c.status.startsWith('ended') || DateTime.now().isAfter(c.endDate);
+      _baseStatus(c).startsWith('ended') || DateTime.now().isAfter(c.endDate);
 
   String _statusLabel(Campaign c) {
-    if (c.status == 'draft') return _t('Draft', 'Draft');
+    if (_isArchived(c)) return _t('Archived', 'Naka-archive');
+    if (_baseStatus(c) == 'draft') return _t('Draft', 'Draft');
     if (_isEnded(c)) return _t('Ended', 'Tapos na');
-    if (c.status == 'live') return _t('Live', 'Aktibo');
-    return c.status;
+    if (_baseStatus(c) == 'live') return _t('Live', 'Aktibo');
+    return _baseStatus(c);
   }
 
   @override
@@ -54,7 +63,7 @@ class _AdminCampaignManagementScreenState
       builder: (context) => Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: Text(_t('Campaign Management', 'Pamamahala ng Kampanya')),
+          title: Text(_t('Supporter Reviews', 'Pagsusuri ng Mga Suporta')),
           backgroundColor: lightColorScheme.primary,
           foregroundColor: Colors.white,
         ),
@@ -63,7 +72,9 @@ class _AdminCampaignManagementScreenState
           child: FutureBuilder<List<Campaign>>(
             future: _future,
             builder: (context, snapshot) {
-              final campaigns = snapshot.data ?? [];
+              final campaigns = (snapshot.data ?? [])
+                  .where((campaign) => _baseStatus(campaign) != 'draft')
+                  .toList();
               if (snapshot.connectionState == ConnectionState.waiting &&
                   campaigns.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
@@ -73,8 +84,8 @@ class _AdminCampaignManagementScreenState
                 children: [
                   Text(
                     _t(
-                      'Choose a campaign to view supporters and their payment proofs.',
-                      'Piliin ang campaign para makita ang mga tagasuporta at ang kanilang patunay ng bayad.',
+                      'Choose a campaign to review supporters and their payment proofs.',
+                      'Piliin ang campaign para suriin ang mga tagasuporta at ang kanilang patunay ng bayad.',
                     ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),

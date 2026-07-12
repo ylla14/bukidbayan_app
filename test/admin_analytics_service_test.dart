@@ -375,8 +375,8 @@ Future<void> _seedCampaigns(FakeFirebaseFirestore firestore) async {
       createdAt: DateTime(2026, 6, 10),
       endDate: DateTime(2026, 7, 10),
       status: 'live',
-      pledgedAmount: 1000,
-      backersCount: 2,
+      pledgedAmount: 400,
+      backersCount: 1,
     ),
     _campaign(
       id: 'campaign-ended',
@@ -405,6 +405,7 @@ Future<void> _seedCampaigns(FakeFirebaseFirestore firestore) async {
       amount: 400,
       rewardId: null,
       createdAt: DateTime(2026, 6, 16),
+      paidAt: DateTime(2026, 6, 16, 1),
     ),
     Pledge(
       id: 'pledge-2',
@@ -413,6 +414,46 @@ Future<void> _seedCampaigns(FakeFirebaseFirestore firestore) async {
       amount: 600,
       rewardId: null,
       createdAt: DateTime(2026, 6, 17),
+      proofReferenceNumber: 'REF-600',
+      proofSubmittedAt: DateTime(2026, 6, 18, 9),
+      countedInTotal: false,
+    ),
+    Pledge(
+      id: 'pledge-4',
+      campaignId: 'campaign-live',
+      backerUid: 'renter-4',
+      backerEmail: 'r4@example.com',
+      amount: 250,
+      rewardId: null,
+      createdAt: DateTime(2026, 6, 18),
+      proofReferenceNumber: 'REF-250',
+      proofSubmittedAt: DateTime(2026, 6, 18, 10),
+      invalidatedAt: DateTime(2026, 6, 19, 8),
+      invalidatedByUid: 'coop-1',
+      invalidationReason: 'Proof did not match the submitted amount.',
+      countedInTotal: false,
+    ),
+    Pledge(
+      id: 'pledge-5',
+      campaignId: 'campaign-live',
+      backerUid: 'renter-5',
+      backerEmail: 'r5@example.com',
+      amount: 150,
+      rewardId: null,
+      createdAt: DateTime(2026, 6, 19),
+      canceledAt: DateTime(2026, 6, 19, 11),
+      canceledByUid: 'renter-5',
+      countedInTotal: false,
+    ),
+    Pledge(
+      id: 'pledge-6',
+      campaignId: 'campaign-live',
+      backerUid: 'renter-6',
+      backerEmail: 'r6@example.com',
+      amount: 300,
+      rewardId: null,
+      createdAt: DateTime(2026, 6, 20),
+      countedInTotal: false,
     ),
     Pledge(
       id: 'pledge-3',
@@ -422,6 +463,7 @@ Future<void> _seedCampaigns(FakeFirebaseFirestore firestore) async {
       amount: 800,
       rewardId: null,
       createdAt: DateTime(2026, 5, 10),
+      paidAt: DateTime(2026, 5, 10, 1),
     ),
   ];
 
@@ -523,24 +565,29 @@ void main() {
       expect(report.rentals.completedRentalValue, 5000);
 
       expect(report.crowdfunding.liveCampaigns, 1);
-      expect(report.crowdfunding.campaignsCreatedInWindow, 1);
-      expect(report.crowdfunding.totalPledges, 2);
-      expect(report.crowdfunding.totalPledgedAmount, 1000);
-      expect(report.crowdfunding.totalPaidAmount, 400);
-      expect(report.crowdfunding.uniqueSupporters, 2);
-      expect(report.crowdfunding.paidAttempts, 1);
-      expect(report.crowdfunding.failedAttempts, 1);
-      expect(report.crowdfunding.expiredAttempts, 0);
+      expect(report.crowdfunding.campaignsPublishedInWindow, 1);
+      expect(report.crowdfunding.totalPledges, 5);
+      expect(report.crowdfunding.totalPledgedAmount, 1700);
+      expect(report.crowdfunding.totalReceivedAmount, 400);
+      expect(report.crowdfunding.uniqueSupporters, 5);
+      expect(report.crowdfunding.pendingProofPledges, 1);
+      expect(report.crowdfunding.pendingProofAmount, 300);
+      expect(report.crowdfunding.pendingReviewPledges, 1);
+      expect(report.crowdfunding.pendingReviewAmount, 600);
+      expect(report.crowdfunding.invalidatedPledges, 1);
+      expect(report.crowdfunding.invalidatedAmount, 250);
+      expect(report.crowdfunding.canceledPledges, 1);
+      expect(report.crowdfunding.canceledAmount, 150);
 
       expect(report.watchlist.blockedRenters, 1);
       expect(report.watchlist.underMaintenanceEquipment, 1);
       expect(report.watchlist.weatherRiskBookings, 1);
       expect(report.watchlist.pendingRentals, 1);
-      expect(report.watchlist.failedPaymentAttempts, 1);
+      expect(report.watchlist.contributionProofsAwaitingReview, 1);
 
       expect(report.impact.totalFarmersServed, 2);
       expect(report.impact.totalEquipmentOwners, 2);
-      expect(report.impact.totalCampaignSupporters, 3);
+      expect(report.impact.totalCampaignSupporters, 6);
       expect(report.impact.totalCompletedRentals, 2);
 
       expect(report.systemHealth.currentStatus, 'healthy');
@@ -604,13 +651,15 @@ void main() {
         expect(report.rentals.completedRentals, 2);
         expect(report.rentals.uniqueFarmersServed, 2);
         expect(report.rentals.completedRentalValue, 6800);
-        expect(report.crowdfunding.campaignsCreatedInWindow, 2);
-        expect(report.crowdfunding.totalPledges, 3);
-        expect(report.crowdfunding.totalPledgedAmount, 1800);
-        expect(report.crowdfunding.totalPaidAmount, 1200);
-        expect(report.crowdfunding.uniqueSupporters, 3);
-        expect(report.crowdfunding.paidAttempts, 2);
-        expect(report.crowdfunding.failedAttempts, 1);
+        expect(report.crowdfunding.campaignsPublishedInWindow, 2);
+        expect(report.crowdfunding.totalPledges, 6);
+        expect(report.crowdfunding.totalPledgedAmount, 2500);
+        expect(report.crowdfunding.totalReceivedAmount, 1200);
+        expect(report.crowdfunding.uniqueSupporters, 6);
+        expect(report.crowdfunding.pendingProofPledges, 1);
+        expect(report.crowdfunding.pendingReviewPledges, 1);
+        expect(report.crowdfunding.invalidatedPledges, 1);
+        expect(report.crowdfunding.canceledPledges, 1);
         expect(report.systemHealth.telemetryEventsInWindow, 4);
         expect(report.systemHealth.heartbeatEventsInWindow, 2);
         expect(report.dataReadiness.requestsWithStatusHistory, 2);

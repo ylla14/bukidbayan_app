@@ -18,19 +18,21 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  runApp(const MyApp());
+  unawaited(_runDeferredStartupTasks());
+}
+
+Future<void> _runDeferredStartupTasks() async {
   final telemetry = PlatformTelemetryService();
   final firestoreService = FirestoreService();
   final benchmarkService = CommercialRateBenchmarkService();
-
-  await telemetry.logAppOpen(source: 'app_main');
-  await telemetry.recordHeartbeat(source: 'app_startup');
 
   Future<void> runStartupTask(
     String taskName,
     Future<void> Function() task,
   ) async {
     try {
-      await task();
+      await task().timeout(const Duration(seconds: 12));
       await telemetry.logBackgroundTaskResult(
         taskName: taskName,
         success: true,
@@ -45,6 +47,12 @@ void main() async {
     }
   }
 
+  await runStartupTask('log_app_open', () {
+    return telemetry.logAppOpen(source: 'app_main');
+  });
+  await runStartupTask('record_heartbeat', () {
+    return telemetry.recordHeartbeat(source: 'app_startup');
+  });
   await runStartupTask(
     'validate_equipment_availability',
     firestoreService.validateAllEquipmentAvailability,
@@ -61,7 +69,6 @@ void main() async {
   );
 
   unawaited(WeatherService().runWeatherCheck());
-  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

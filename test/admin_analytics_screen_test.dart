@@ -45,21 +45,26 @@ class FakeAdminAnalyticsService extends AdminAnalyticsService {
       ),
       crowdfunding: const AdminAnalyticsCrowdfundingSnapshot(
         liveCampaigns: 2,
-        campaignsCreatedInWindow: 1,
+        campaignsPublishedInWindow: 1,
         totalPledges: 6,
-        totalPledgedAmount: 5400,
-        totalPaidAmount: 4200,
+        totalPledgedAmount: 5900,
+        totalReceivedAmount: 4200,
         uniqueSupporters: 5,
-        paidAttempts: 4,
-        failedAttempts: 1,
-        expiredAttempts: 0,
+        pendingProofPledges: 1,
+        pendingProofAmount: 700,
+        pendingReviewPledges: 1,
+        pendingReviewAmount: 500,
+        invalidatedPledges: 1,
+        invalidatedAmount: 500,
+        canceledPledges: 0,
+        canceledAmount: 0,
       ),
       watchlist: const AdminAnalyticsWatchlistSnapshot(
         blockedRenters: 1,
         weatherRiskBookings: 1,
         underMaintenanceEquipment: 2,
         pendingRentals: 2,
-        failedPaymentAttempts: 1,
+        contributionProofsAwaitingReview: 1,
       ),
       impact: const AdminAnalyticsImpactSnapshot(
         totalFarmersServed: 9,
@@ -205,6 +210,11 @@ void main() {
         scrollable: scrollable,
       );
       expect(find.text('Crowdfunding Overview'), findsOneWidget);
+      expect(
+        find.text('Proofs awaiting admin review right now'),
+        findsOneWidget,
+      );
+      expect(find.text('Paid checkout attempts'), findsNothing);
 
       await tester.scrollUntilVisible(
         find.text('Risk & Watchlist'),
@@ -212,6 +222,10 @@ void main() {
         scrollable: scrollable,
       );
       expect(find.text('Risk & Watchlist'), findsOneWidget);
+      expect(
+        find.byKey(const Key('admin_analytics_print_button')),
+        findsOneWidget,
+      );
 
       await tester.scrollUntilVisible(
         find.text('Data Readiness'),

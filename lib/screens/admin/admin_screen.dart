@@ -225,12 +225,12 @@ class _AdminScreenState extends State<AdminScreen> {
                   AdminCard(
                     icon: Icons.campaign_outlined,
                     title: AppLanguage.text(
-                      en: 'Campaign Management',
-                      tl: 'Pamamahala ng Kampanya',
+                      en: 'Supporter Reviews',
+                      tl: 'Pagsusuri ng Mga Suporta',
                     ),
                     description: AppLanguage.text(
-                      en: 'Manage, approve, and monitor campaigns',
-                      tl: 'Pamahalaan, aprubahan, at subaybayan ang mga kampanya',
+                      en: 'Review campaign supporters and payment proofs',
+                      tl: 'Suriin ang mga tagasuporta ng kampanya at ang kanilang patunay ng bayad',
                     ),
                     onTap: () {
                       Navigator.of(context).push(

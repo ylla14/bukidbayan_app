@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:bukidbayan_app/models/demand_forecast.dart';
 import 'package:bukidbayan_app/models/owner_rental_report.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -213,7 +214,7 @@ class EarningsPdfService {
               mainAxisAlignment: pw.MainAxisAlignment.end,
               children: [
                 pw.Text(
-                  'Total Earnings from ${report.filteredRows.length} Completed Rental${report.filteredRows.length == 1 ? '' : 's'}:  ',
+                  'Earnings Report:  ',
                   style: pw.TextStyle(
                     font: fontRegular,
                     fontSize: 10,
@@ -370,6 +371,16 @@ class EarningsPdfService {
                 background: PdfColors.brown50,
               ),
             ],
+          ),
+          pw.SizedBox(height: 14),
+          _sectionTitle('Forecast for Your Tools', sectionTitleStyle),
+          pw.SizedBox(height: 6),
+          _forecastBlock(
+            report: report,
+            fontRegular: fontRegular,
+            fontBold: fontBold,
+            bodyStyle: bodyStyle,
+            titleStyle: sectionTitleStyle,
           ),
           pw.SizedBox(height: 14),
           _sectionTitle('Current Fleet Maintenance', sectionTitleStyle),
@@ -693,6 +704,173 @@ class EarningsPdfService {
     return pw.Text(title, style: style);
   }
 
+  static pw.Widget _forecastBlock({
+    required OwnerRentalReport report,
+    required pw.Font fontRegular,
+    required pw.Font fontBold,
+    required pw.TextStyle bodyStyle,
+    required pw.TextStyle titleStyle,
+  }) {
+    final snapshot = report.forecastSnapshot;
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _metricCard(
+              label: 'Signals used',
+              value: '${snapshot.requestsConsidered}',
+              fontRegular: fontRegular,
+              fontBold: fontBold,
+              background: PdfColors.blue50,
+            ),
+            _metricCard(
+              label: 'Forecast inputs',
+              value:
+                  '${snapshot.requestsWithForecastInputs} (${(snapshot.forecastInputCoverageRate * 100).toStringAsFixed(0)}%)',
+              fontRegular: fontRegular,
+              fontBold: fontBold,
+              background: PdfColors.teal50,
+            ),
+            _metricCard(
+              label: 'Confidence',
+              value: _forecastConfidenceLabel(snapshot.confidence),
+              fontRegular: fontRegular,
+              fontBold: fontBold,
+              background: PdfColors.indigo50,
+            ),
+            _metricCard(
+              label: 'Matched tools',
+              value: '${snapshot.equipmentMatches.length}',
+              fontRegular: fontRegular,
+              fontBold: fontBold,
+              background: PdfColors.green50,
+            ),
+            _metricCard(
+              label: 'Rising / emerging',
+              value:
+                  '${snapshot.risingTrendCount}/${snapshot.emergingTrendCount}',
+              fontRegular: fontRegular,
+              fontBold: fontBold,
+              background: PdfColors.orange50,
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(10),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.blue50,
+            borderRadius: pw.BorderRadius.circular(8),
+            border: pw.Border.all(color: PdfColors.blue200),
+          ),
+          child: pw.Text(snapshot.summary, style: bodyStyle),
+        ),
+        pw.SizedBox(height: 10),
+        if (!snapshot.hasInsights)
+          _infoBlock(
+            message:
+                'Not enough owner-side demand signals yet. This section improves as more requests are recorded, especially when renters fill in crop type, farming phase, and intended use.',
+            bodyStyle: bodyStyle,
+          )
+        else ...[
+          _sectionTitle('Category Signals', titleStyle),
+          pw.SizedBox(height: 6),
+          _buildTable(
+            headers: const [
+              'Category',
+              'Demand',
+              'Matched',
+              'Recent',
+              'Drivers',
+              'Recommendation',
+            ],
+            rows: snapshot.categoryInsights
+                .map(
+                  (insight) => [
+                    insight.equipmentCategory,
+                    _forecastLevelLabel(insight.level),
+                    '${insight.matchedRequests}',
+                    '${insight.recentRequests}',
+                    insight.drivers.isEmpty
+                        ? '-'
+                        : insight.drivers.take(2).join(', '),
+                    insight.recommendation,
+                  ],
+                )
+                .toList(),
+            fontRegular: fontRegular,
+            fontBold: fontBold,
+            numericColumns: const {2, 3},
+          ),
+          if (snapshot.equipmentMatches.isNotEmpty) ...[
+            pw.SizedBox(height: 10),
+            _sectionTitle('Matching Tools in Your Fleet', titleStyle),
+            pw.SizedBox(height: 6),
+            _buildTable(
+              headers: const [
+                'Tool',
+                'Category',
+                'Demand',
+                'Availability',
+                'Recommendation',
+              ],
+              rows: snapshot.equipmentMatches
+                  .map(
+                    (item) => [
+                      item.equipmentName,
+                      item.categoryLabel,
+                      _forecastLevelLabel(item.demandLevel),
+                      _forecastAvailabilityLabel(item),
+                      item.recommendation,
+                    ],
+                  )
+                  .toList(),
+              fontRegular: fontRegular,
+              fontBold: fontBold,
+            ),
+          ],
+          if (snapshot.equipmentTrends.isNotEmpty) ...[
+            pw.SizedBox(height: 10),
+            _sectionTitle('Recent Demand Trend by Tool', titleStyle),
+            pw.SizedBox(height: 6),
+            _buildTable(
+              headers: const [
+                'Tool',
+                'Category',
+                'Trend',
+                'Recent',
+                'Previous',
+                'Seasonal Signal',
+                'Note',
+              ],
+              rows: snapshot.equipmentTrends
+                  .map(
+                    (item) => [
+                      item.equipmentName,
+                      item.categoryLabel,
+                      _forecastTrendLabel(item.trend),
+                      '${item.recentRequestCount}',
+                      '${item.previousRequestCount}',
+                      _forecastSeasonalSignal(item),
+                      item.note,
+                    ],
+                  )
+                  .toList(),
+              fontRegular: fontRegular,
+              fontBold: fontBold,
+              numericColumns: const {3, 4},
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
   static pw.Widget _maintenanceBlock({
     required OwnerRentalReport report,
     required pw.Font fontRegular,
@@ -815,6 +993,86 @@ class EarningsPdfService {
         for (final index in numericColumns) index: pw.Alignment.centerRight,
       },
     );
+  }
+
+  static pw.Widget _infoBlock({
+    required String message,
+    required pw.TextStyle bodyStyle,
+  }) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey100,
+        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: PdfColors.grey300),
+      ),
+      child: pw.Text(message, style: bodyStyle),
+    );
+  }
+
+  static String _forecastConfidenceLabel(DemandForecastConfidence confidence) {
+    switch (confidence) {
+      case DemandForecastConfidence.high:
+        return 'High';
+      case DemandForecastConfidence.medium:
+        return 'Medium';
+      case DemandForecastConfidence.low:
+        return 'Early';
+    }
+  }
+
+  static String _forecastLevelLabel(DemandForecastLevel level) {
+    switch (level) {
+      case DemandForecastLevel.high:
+        return 'High demand';
+      case DemandForecastLevel.medium:
+        return 'Medium demand';
+      case DemandForecastLevel.low:
+        return 'Early signal';
+    }
+  }
+
+  static String _forecastAvailabilityLabel(
+    OwnerRentalForecastEquipmentMatch item,
+  ) {
+    if (item.isUnderMaintenance) return 'Under maintenance';
+    return item.isAvailable ? 'Available' : 'Unavailable';
+  }
+
+  static String _forecastTrendLabel(OwnerRentalDemandTrend trend) {
+    switch (trend) {
+      case OwnerRentalDemandTrend.emerging:
+        return 'Emerging';
+      case OwnerRentalDemandTrend.rising:
+        return 'Rising';
+      case OwnerRentalDemandTrend.steady:
+        return 'Steady';
+      case OwnerRentalDemandTrend.softening:
+        return 'Softening';
+    }
+  }
+
+  static String _forecastSeasonalSignal(OwnerRentalDemandTrendItem item) {
+    final signals = <String>[];
+
+    if (item.hasHistoricalMonthSignal) {
+      signals.add(
+        '${item.sameMonthHistoricalCount} in ${item.sameMonthLabel} across ${item.sameMonthHistoricalYears} yr',
+      );
+    }
+    if (item.hasPeakMonthSignal) {
+      signals.add(
+        'Peak: ${item.peakMonthLabel} (${item.peakMonthRequestCount})',
+      );
+    }
+    if (item.isCurrentMonthPeak) {
+      signals.add('Current month peak');
+    } else if (item.isCurrentMonthAboveAverage) {
+      signals.add('Current month above avg');
+    }
+
+    return signals.isEmpty ? '-' : signals.join('; ');
   }
 
   static String _utilizationStatus(OwnerRentalUtilizationItem item) {

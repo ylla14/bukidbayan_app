@@ -178,6 +178,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.text('Current Campaign Report'), findsOneWidget);
       expect(find.text('Payment Funnel', skipOffstage: false), findsOneWidget);
 
       await tester.dragUntilVisible(

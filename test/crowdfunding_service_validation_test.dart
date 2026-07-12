@@ -637,6 +637,13 @@ void main() {
           campaignId: campaign.id,
           pledgeId: firstPledge.id,
         );
+        final confirmedPledges = await service.getPledgesForCampaign(
+          campaign.id,
+        );
+        final confirmedFirstPledge = confirmedPledges.firstWhere(
+          (pledge) => pledge.id == firstPledge.id,
+        );
+        expect(confirmedFirstPledge.paidAt, isNotNull);
 
         await expectLater(
           () => service.backCampaign(
@@ -660,9 +667,7 @@ void main() {
           rewardId: 'r2',
           proofReferenceNumber: 'GC-UPGRADE-1000',
         );
-        final secondPledges = await service.getPledgesForCampaign(
-          campaign.id,
-        );
+        final secondPledges = await service.getPledgesForCampaign(campaign.id);
         final secondPledge = secondPledges.firstWhere(
           (pledge) => pledge.amount == 400,
         );
@@ -844,9 +849,7 @@ void main() {
           backerName: 'Maria Santos',
           proofReferenceNumber: 'GC-SUSPICIOUS',
         );
-        final pledges = await backerService.getPledgesForCampaign(
-          campaign.id,
-        );
+        final pledges = await backerService.getPledgesForCampaign(campaign.id);
         final pledge = pledges.firstWhere((p) => p.amount == 500);
         expect(pledge.isPendingReview, isTrue);
 
@@ -866,9 +869,7 @@ void main() {
         final updatedPledges = await ownerService.getPledgesForCampaign(
           campaign.id,
         );
-        final invalidated = updatedPledges.firstWhere(
-          (p) => p.id == pledge.id,
-        );
+        final invalidated = updatedPledges.firstWhere((p) => p.id == pledge.id);
         expect(invalidated.isInvalidated, isTrue);
         expect(invalidated.countedInTotal, isFalse);
 
@@ -935,9 +936,7 @@ void main() {
           backerName: 'Maria Santos',
           proofReferenceNumber: 'GC-500',
         );
-        final pledges = await backerService.getPledgesForCampaign(
-          campaign.id,
-        );
+        final pledges = await backerService.getPledgesForCampaign(campaign.id);
         final pledge = pledges.firstWhere((p) => p.amount == 500);
 
         await expectLater(

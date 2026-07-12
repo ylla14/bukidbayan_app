@@ -3,7 +3,6 @@ import 'package:bukidbayan_app/models/analytics_time_window.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/models/demand_forecast.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
-import 'package:bukidbayan_app/models/payment_attempt.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/services/analytics/demand_forecast_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -126,24 +125,33 @@ class AdminAnalyticsService {
     final pledgesInWindow = campaignFinance.pledges
         .where((pledge) => _isWithinWindow(pledge.createdAt, timeWindow))
         .toList();
-    final paidAttemptsInWindow = campaignFinance.attempts
-        .where((attempt) => attempt.status == PaymentAttemptStatus.paid)
+    final receivedPledgesInWindow = campaignFinance.pledges
+        .where((pledge) => pledge.isCountedContribution)
         .where(
-          (attempt) => _isWithinWindow(
-            attempt.completedAt ?? attempt.updatedAt,
+          (pledge) =>
+              _isWithinWindow(pledge.paidAt ?? pledge.createdAt, timeWindow),
+        )
+        .toList();
+    final pendingProofPledges = campaignFinance.pledges
+        .where((pledge) => pledge.isPendingProof)
+        .toList();
+    final pendingReviewPledges = campaignFinance.pledges
+        .where((pledge) => pledge.isPendingReview)
+        .toList();
+    final invalidatedPledgesInWindow = campaignFinance.pledges
+        .where((pledge) => pledge.isInvalidated)
+        .where(
+          (pledge) => _isWithinWindow(
+            pledge.invalidatedAt ?? pledge.createdAt,
             timeWindow,
           ),
         )
         .toList();
-    final failedAttemptsInWindow = campaignFinance.attempts
-        .where((attempt) => attempt.status == PaymentAttemptStatus.failed)
-        .where((attempt) => _isWithinWindow(attempt.updatedAt, timeWindow))
-        .toList();
-    final expiredAttemptsInWindow = campaignFinance.attempts
-        .where((attempt) => attempt.status == PaymentAttemptStatus.expired)
+    final canceledPledgesInWindow = campaignFinance.pledges
+        .where((pledge) => pledge.isCanceled)
         .where(
-          (attempt) => _isWithinWindow(
-            attempt.expiredAt ?? attempt.updatedAt,
+          (pledge) => _isWithinWindow(
+            pledge.canceledAt ?? pledge.createdAt,
             timeWindow,
           ),
         )
@@ -275,12 +283,11 @@ class AdminAnalyticsService {
         liveCampaigns: campaigns
             .where((campaign) => _isLiveCampaign(campaign, generatedAt))
             .length,
-        campaignsCreatedInWindow: campaigns
+        campaignsPublishedInWindow: campaigns
             .where(
-              (campaign) => _isWithinWindow(
-                campaign.publishedAt ?? campaign.createdAt,
-                timeWindow,
-              ),
+              (campaign) =>
+                  campaign.publishedAt != null &&
+                  _isWithinWindow(campaign.publishedAt, timeWindow),
             )
             .length,
         totalPledges: pledgesInWindow.length,
@@ -288,14 +295,31 @@ class AdminAnalyticsService {
           0,
           (total, pledge) => total + pledge.amount,
         ),
-        totalPaidAmount: paidAttemptsInWindow.fold<int>(
+        totalReceivedAmount: receivedPledgesInWindow.fold<int>(
           0,
-          (total, attempt) => total + attempt.amount,
+          (total, pledge) => total + pledge.amount,
         ),
         uniqueSupporters: uniqueSupportersInWindow,
-        paidAttempts: paidAttemptsInWindow.length,
-        failedAttempts: failedAttemptsInWindow.length,
-        expiredAttempts: expiredAttemptsInWindow.length,
+        pendingProofPledges: pendingProofPledges.length,
+        pendingProofAmount: pendingProofPledges.fold<int>(
+          0,
+          (total, pledge) => total + pledge.amount,
+        ),
+        pendingReviewPledges: pendingReviewPledges.length,
+        pendingReviewAmount: pendingReviewPledges.fold<int>(
+          0,
+          (total, pledge) => total + pledge.amount,
+        ),
+        invalidatedPledges: invalidatedPledgesInWindow.length,
+        invalidatedAmount: invalidatedPledgesInWindow.fold<int>(
+          0,
+          (total, pledge) => total + pledge.amount,
+        ),
+        canceledPledges: canceledPledgesInWindow.length,
+        canceledAmount: canceledPledgesInWindow.fold<int>(
+          0,
+          (total, pledge) => total + pledge.amount,
+        ),
       ),
       watchlist: AdminAnalyticsWatchlistSnapshot(
         blockedRenters: blockedRenters,
@@ -304,7 +328,7 @@ class AdminAnalyticsService {
             .where((item) => item.status == EquipmentStatus.underMaintenance)
             .length,
         pendingRentals: pendingRentals,
-        failedPaymentAttempts: failedAttemptsInWindow.length,
+        contributionProofsAwaitingReview: pendingReviewPledges.length,
       ),
       impact: AdminAnalyticsImpactSnapshot(
         totalFarmersServed: uniqueFarmersServedAllTime,
@@ -383,29 +407,15 @@ class AdminAnalyticsService {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) => Pledge.fromJson({...doc.data(), 'id': doc.id, 'campaignId': campaignId});
 
-  PaymentAttempt _attemptFromDoc(
-    String campaignId,
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) => PaymentAttempt.fromJson({
-    ...doc.data(),
-    'id': doc.id,
-    'campaignId': campaignId,
-  });
-
   Future<_CampaignFinanceLoadResult> _loadCampaignFinance(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> campaignDocs,
   ) async {
     if (campaignDocs.isEmpty) {
-      return const _CampaignFinanceLoadResult(pledges: [], attempts: []);
+      return const _CampaignFinanceLoadResult(pledges: []);
     }
 
     final pledgeSnapshots = await Future.wait(
       campaignDocs.map((doc) => doc.reference.collection('pledges').get()),
-    );
-    final attemptSnapshots = await Future.wait(
-      campaignDocs.map(
-        (doc) => doc.reference.collection('payment_attempts').get(),
-      ),
     );
 
     final pledges = <Pledge>[];
@@ -416,15 +426,7 @@ class AdminAnalyticsService {
       }
     }
 
-    final attempts = <PaymentAttempt>[];
-    for (var i = 0; i < campaignDocs.length; i++) {
-      final campaignId = campaignDocs[i].id;
-      for (final doc in attemptSnapshots[i].docs) {
-        attempts.add(_attemptFromDoc(campaignId, doc));
-      }
-    }
-
-    return _CampaignFinanceLoadResult(pledges: pledges, attempts: attempts);
+    return _CampaignFinanceLoadResult(pledges: pledges);
   }
 
   List<AdminAnalyticsCategoryDemandItem> _buildTopDemandCategories({
@@ -751,12 +753,8 @@ class AdminAnalyticsService {
 
 class _CampaignFinanceLoadResult {
   final List<Pledge> pledges;
-  final List<PaymentAttempt> attempts;
 
-  const _CampaignFinanceLoadResult({
-    required this.pledges,
-    required this.attempts,
-  });
+  const _CampaignFinanceLoadResult({required this.pledges});
 }
 
 class _CategoryDemandAccumulator {
