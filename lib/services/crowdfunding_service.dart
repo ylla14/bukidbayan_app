@@ -343,6 +343,25 @@ class CrowdfundingService {
     });
   }
 
+  Future<void> _sendCampaignContributionConfirmedNotification({
+    required String userId,
+    required String campaignId,
+    required String campaignTitle,
+    required int amount,
+  }) async {
+    if (_dbOrNull == null) return;
+
+    await _db.collection('notifications').doc(userId).collection('items').add({
+      'type': 'campaign_contribution_confirmed',
+      'title': 'Nakumpirma ang campaign contribution mo',
+      'body':
+          'Nakumpirma na ng admin ang pledge mong halagang PHP $amount para sa "$campaignTitle" at naidagdag na ito sa kabuuang nalikom. Salamat sa suporta!',
+      'campaignId': campaignId,
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   CampaignReport _buildCampaignReport({
     required Campaign campaign,
     required List<Pledge> campaignPledges,
@@ -516,17 +535,14 @@ class CrowdfundingService {
         (proofImageUrl != null && proofImageUrl.trim().isNotEmpty) ||
         (proofReferenceNumber != null &&
             proofReferenceNumber.trim().isNotEmpty);
-    final hasOpenPendingPledge = supporterPledges.any(
-      (pledge) => pledge.isPendingProof,
-    );
-    if (!hasProof && hasOpenPendingPledge) {
+    final hasOpenPledge = supporterPledges.any((pledge) => pledge.isUnresolved);
+    if (hasOpenPledge) {
       throw Exception(
-        'May naka-pending ka pang pledge sa campaign na ito. Kumpletuhin o kanselahin muna iyon bago gumawa ng panibagong pay-later pledge.',
+        'May naka-pending ka pang pledge sa campaign na ito. Kumpletuhin o kanselahin muna iyon bago gumawa ng panibagong pledge.',
       );
     }
 
     final pledges = await _readLocalPledges();
-    final isNewBacker = !supporterPledges.any(_isCountedPledge);
     final pledge = Pledge(
       id: 'p${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(999)}',
       campaignId: campaignId,
@@ -547,29 +563,11 @@ class CrowdfundingService {
       proofImageUrl: proofImageUrl,
       proofReferenceNumber: proofReferenceNumber,
       proofSubmittedAt: hasProof ? DateTime.now() : null,
-      countedInTotal: hasProof,
+      countedInTotal: false,
     );
 
-    if (hasProof) {
-      campaigns[campaignIndex] = campaign.copyWith(
-        pledgedAmount: campaign.pledgedAmount + amount,
-        backersCount: isNewBacker
-            ? campaign.backersCount + 1
-            : campaign.backersCount,
-      );
-    }
     pledges.add(pledge);
-
-    await _writeLocalCampaigns(campaigns);
     await _writeLocalPledges(pledges);
-    if (hasProof) {
-      await _syncSupporterRewardAssignment(
-        campaignId: campaignId,
-        rewards: campaign.rewards,
-        supporterUid: _uid,
-        supporterEmail: email,
-      );
-    }
   }
 
   Future<void> _submitPledgeProofLocal({
@@ -606,16 +604,6 @@ class CrowdfundingService {
     }
     if (pledge.countedInTotal) return;
 
-    final campaign = campaigns[campaignIndex];
-    final supporterPledges = await _getSupporterPledgesForCampaign(
-      campaignId,
-      supporterUid: pledge.backerUid,
-      supporterEmail: pledge.backerEmail,
-    );
-    final isNewBacker = !supporterPledges.any(
-      (existing) => existing.id != pledgeId && _isCountedPledge(existing),
-    );
-
     pledges[pledgeIndex] = pledge.copyWith(
       proofImageUrl: proofImageUrl,
       proofReferenceNumber: proofReferenceNumber,
@@ -623,8 +611,48 @@ class CrowdfundingService {
       clearRewardId: true,
       clearInvalidation: true,
       clearCancellation: true,
-      countedInTotal: true,
     );
+
+    await _writeLocalPledges(pledges);
+  }
+
+  Future<void> _confirmContributionLocal({
+    required String campaignId,
+    required String pledgeId,
+  }) async {
+    final campaigns = await _readLocalCampaigns();
+    final campaignIndex = campaigns.indexWhere(
+      (campaign) => campaign.id == campaignId,
+    );
+    if (campaignIndex == -1) throw Exception('Campaign not found.');
+
+    final campaign = campaigns[campaignIndex];
+    if (!_isOwnedByUser(campaign, email: await _currentLocalEmail())) {
+      throw Exception('Only the campaign owner can confirm contributions.');
+    }
+
+    final pledges = await _readLocalPledges();
+    final pledgeIndex = pledges.indexWhere(
+      (pledge) => pledge.campaignId == campaignId && pledge.id == pledgeId,
+    );
+    if (pledgeIndex == -1) throw Exception('Pledge not found.');
+
+    final pledge = pledges[pledgeIndex];
+    if (pledge.countedInTotal) return;
+    if (!pledge.isPendingReview) {
+      throw Exception('Only pledges with submitted proof can be confirmed.');
+    }
+
+    final supporterPledges = await _getSupporterPledgesForCampaign(
+      campaignId,
+      supporterUid: pledge.backerUid,
+      supporterEmail: pledge.backerEmail,
+    );
+    final isNewBacker = !supporterPledges.any(
+      (existing) => existing.id != pledge.id && _isCountedPledge(existing),
+    );
+
+    pledges[pledgeIndex] = pledge.copyWith(countedInTotal: true);
     campaigns[campaignIndex] = campaign.copyWith(
       pledgedAmount: campaign.pledgedAmount + pledge.amount,
       backersCount: isNewBacker
@@ -666,10 +694,13 @@ class CrowdfundingService {
 
     final pledge = pledges[pledgeIndex];
     if (pledge.isInvalidated) return;
-    if (!pledge.isCountedContribution) {
-      throw Exception('Only counted contributions can be invalidated.');
+    if (!pledge.hasProofSubmitted || pledge.isCanceled) {
+      throw Exception(
+        'Only pledges with submitted proof can be invalidated.',
+      );
     }
 
+    final wasCounted = pledge.isCountedContribution;
     final supporterPledges = await _getSupporterPledgesForCampaign(
       campaignId,
       supporterUid: pledge.backerUid,
@@ -687,12 +718,14 @@ class CrowdfundingService {
       clearRewardId: true,
       countedInTotal: false,
     );
-    campaigns[campaignIndex] = campaign.copyWith(
-      pledgedAmount: max(0, campaign.pledgedAmount - pledge.amount),
-      backersCount: hasOtherCounted
-          ? campaign.backersCount
-          : max(0, campaign.backersCount - 1),
-    );
+    if (wasCounted) {
+      campaigns[campaignIndex] = campaign.copyWith(
+        pledgedAmount: max(0, campaign.pledgedAmount - pledge.amount),
+        backersCount: hasOtherCounted
+            ? campaign.backersCount
+            : max(0, campaign.backersCount - 1),
+      );
+    }
 
     await _writeLocalCampaigns(campaigns);
     await _writeLocalPledges(pledges);
@@ -1418,9 +1451,7 @@ class CrowdfundingService {
       supporterUid: uid,
       supporterEmail: email,
     );
-    final hasOpenPendingPledge = supporterPledges.any(
-      (pledge) => pledge.isPendingProof,
-    );
+    final hasOpenPledge = supporterPledges.any((pledge) => pledge.isUnresolved);
     final currentCountedTotal = _countedContributionTotal(supporterPledges);
     final currentReward = _highestEligibleReward(
       preliminaryCampaign.rewards,
@@ -1449,13 +1480,11 @@ class CrowdfundingService {
         'You already unlocked a higher benefit for this campaign.',
       );
     }
-    if (!hasProof && hasOpenPendingPledge) {
+    if (hasOpenPledge) {
       throw Exception(
-        'May naka-pending ka pang pledge sa campaign na ito. Kumpletuhin o kanselahin muna iyon bago gumawa ng panibagong pay-later pledge.',
+        'May naka-pending ka pang pledge sa campaign na ito. Kumpletuhin o kanselahin muna iyon bago gumawa ng panibagong pledge.',
       );
     }
-
-    final isNewBacker = !supporterPledges.any(_isCountedPledge);
 
     final pledgeId =
         'p${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(999)}';
@@ -1525,33 +1554,17 @@ class CrowdfundingService {
         proofImageUrl: proofImageUrl,
         proofReferenceNumber: proofReferenceNumber,
         proofSubmittedAt: hasProof ? DateTime.now() : null,
-        countedInTotal: hasProof,
+        countedInTotal: false,
       );
 
-      if (hasProof) {
-        tx.update(campaignRef, {
-          'pledgedAmount': campaign.pledgedAmount + amount,
-          'backersCount': isNewBacker
-              ? campaign.backersCount + 1
-              : campaign.backersCount,
-        });
-      }
       tx.set(pledgeRef, pledge.toFirestore());
     });
-
-    if (hasProof) {
-      await _syncSupporterRewardAssignment(
-        campaignId: campaignId,
-        rewards: preliminaryCampaign.rewards,
-        supporterUid: uid,
-        supporterEmail: email,
-      );
-    }
   }
 
-  /// Attaches proof of payment to a previously created pending pledge and,
-  /// if not already counted, adds its amount into the campaign totals.
-  /// Idempotent — calling this again on an already-counted pledge is a no-op.
+  /// Attaches proof of payment to a previously created pending pledge,
+  /// moving it into admin review. Does not add anything to the campaign
+  /// totals — only [confirmContribution] does that. Idempotent — calling
+  /// this again on an already-counted pledge is a no-op.
   Future<void> submitPledgeProof({
     required String campaignId,
     required String pledgeId,
@@ -1575,13 +1588,8 @@ class CrowdfundingService {
     }
 
     final uid = _uid;
-    final campaignRef = _campaigns.doc(campaignId);
     final pledgeRef = _pledgesRef(campaignId).doc(pledgeId);
 
-    // Preliminary, non-transactional read so we know the backer to check
-    // for an existing counted pledge (Firestore transactions can only
-    // `tx.get()` document references, not run queries) — the same
-    // "acceptable trade-off" pattern backCampaign() uses.
     final preliminarySnap = await pledgeRef.get();
     if (!preliminarySnap.exists) throw Exception('Pledge not found.');
     final preliminaryPledge = _pledgeFromDoc(preliminarySnap, campaignId);
@@ -1599,17 +1607,6 @@ class CrowdfundingService {
         'This pending pledge was canceled and can no longer be completed.',
       );
     }
-    final supporterPledges = await _getSupporterPledgesForCampaign(
-      campaignId,
-      supporterUid: preliminaryPledge.backerUid,
-      supporterEmail: preliminaryPledge.backerEmail,
-    );
-    final isNewBacker = !supporterPledges.any(
-      (pledge) => pledge.id != preliminaryPledge.id && _isCountedPledge(pledge),
-    );
-    final campaignSnap = await campaignRef.get();
-    if (!campaignSnap.exists) throw Exception('Campaign not found.');
-    final campaign = _fromDoc(campaignSnap);
 
     await _db.runTransaction((tx) async {
       final pledgeSnap = await tx.get(pledgeRef);
@@ -1631,10 +1628,6 @@ class CrowdfundingService {
       }
       if (pledge.countedInTotal) return;
 
-      final liveCampaignSnap = await tx.get(campaignRef);
-      if (!liveCampaignSnap.exists) throw Exception('Campaign not found.');
-      final liveCampaign = _fromDoc(liveCampaignSnap);
-
       tx.update(pledgeRef, {
         'proofImageUrl': proofImageUrl,
         'proofReferenceNumber': proofReferenceNumber,
@@ -1646,22 +1639,8 @@ class CrowdfundingService {
         'canceledAt': null,
         'canceledByUid': null,
         'rewardId': null,
-        'countedInTotal': true,
-      });
-      tx.update(campaignRef, {
-        'pledgedAmount': liveCampaign.pledgedAmount + pledge.amount,
-        'backersCount': isNewBacker
-            ? liveCampaign.backersCount + 1
-            : liveCampaign.backersCount,
       });
     });
-
-    await _syncSupporterRewardAssignment(
-      campaignId: campaignId,
-      rewards: campaign.rewards,
-      supporterUid: preliminaryPledge.backerUid,
-      supporterEmail: preliminaryPledge.backerEmail,
-    );
   }
 
   Future<List<Pledge>> getMyPendingPledgesForCampaign(String campaignId) async {
@@ -1725,6 +1704,88 @@ class CrowdfundingService {
     );
   }
 
+  /// Confirms a pledge that has proof submitted and is awaiting review,
+  /// adding its amount into the campaign totals. Only the campaign owner
+  /// may confirm. Idempotent — calling this again on an already-counted
+  /// pledge is a no-op.
+  Future<void> confirmContribution({
+    required String campaignId,
+    required String pledgeId,
+  }) async {
+    if (_dbOrNull == null) {
+      await _confirmContributionLocal(
+        campaignId: campaignId,
+        pledgeId: pledgeId,
+      );
+      return;
+    }
+
+    final campaignRef = _campaigns.doc(campaignId);
+    final pledgeRef = _pledgesRef(campaignId).doc(pledgeId);
+    final campaignSnap = await campaignRef.get();
+    if (!campaignSnap.exists) throw Exception('Campaign not found.');
+    final campaign = _fromDoc(campaignSnap);
+
+    if (!_isOwnedByUser(campaign)) {
+      throw Exception('Only the campaign owner can confirm contributions.');
+    }
+
+    final pledgeSnap = await pledgeRef.get();
+    if (!pledgeSnap.exists) throw Exception('Pledge not found.');
+    final pledge = _pledgeFromDoc(pledgeSnap, campaignId);
+    if (pledge.countedInTotal) return;
+    if (!pledge.isPendingReview) {
+      throw Exception('Only pledges with submitted proof can be confirmed.');
+    }
+
+    final supporterPledges = await _getSupporterPledgesForCampaign(
+      campaignId,
+      supporterUid: pledge.backerUid,
+      supporterEmail: pledge.backerEmail,
+    );
+    final isNewBacker = !supporterPledges.any(
+      (existing) => existing.id != pledge.id && _isCountedPledge(existing),
+    );
+
+    await _db.runTransaction((tx) async {
+      final liveCampaignSnap = await tx.get(campaignRef);
+      if (!liveCampaignSnap.exists) throw Exception('Campaign not found.');
+      final liveCampaign = _fromDoc(liveCampaignSnap);
+
+      final livePledgeSnap = await tx.get(pledgeRef);
+      if (!livePledgeSnap.exists) throw Exception('Pledge not found.');
+      final livePledge = _pledgeFromDoc(livePledgeSnap, campaignId);
+      if (livePledge.countedInTotal) return;
+      if (!livePledge.isPendingReview) {
+        throw Exception('Only pledges with submitted proof can be confirmed.');
+      }
+
+      tx.update(pledgeRef, {'countedInTotal': true});
+      tx.update(campaignRef, {
+        'pledgedAmount': liveCampaign.pledgedAmount + livePledge.amount,
+        'backersCount': isNewBacker
+            ? liveCampaign.backersCount + 1
+            : liveCampaign.backersCount,
+      });
+    });
+
+    await _syncSupporterRewardAssignment(
+      campaignId: campaignId,
+      rewards: campaign.rewards,
+      supporterUid: pledge.backerUid,
+      supporterEmail: pledge.backerEmail,
+    );
+
+    if (pledge.backerUid != null && pledge.backerUid!.trim().isNotEmpty) {
+      await _sendCampaignContributionConfirmedNotification(
+        userId: pledge.backerUid!.trim(),
+        campaignId: campaignId,
+        campaignTitle: campaign.title,
+        amount: pledge.amount,
+      );
+    }
+  }
+
   Future<void> invalidateContribution({
     required String campaignId,
     required String pledgeId,
@@ -1753,8 +1814,10 @@ class CrowdfundingService {
     if (!pledgeSnap.exists) throw Exception('Pledge not found.');
     final pledge = _pledgeFromDoc(pledgeSnap, campaignId);
     if (pledge.isInvalidated) return;
-    if (!pledge.isCountedContribution) {
-      throw Exception('Only counted contributions can be invalidated.');
+    if (!pledge.hasProofSubmitted || pledge.isCanceled) {
+      throw Exception(
+        'Only pledges with submitted proof can be invalidated.',
+      );
     }
 
     final supporterPledges = await _getSupporterPledgesForCampaign(
@@ -1777,8 +1840,10 @@ class CrowdfundingService {
       if (!livePledgeSnap.exists) throw Exception('Pledge not found.');
       final livePledge = _pledgeFromDoc(livePledgeSnap, campaignId);
       if (livePledge.isInvalidated) return;
-      if (!livePledge.isCountedContribution) {
-        throw Exception('Only counted contributions can be invalidated.');
+      if (!livePledge.hasProofSubmitted || livePledge.isCanceled) {
+        throw Exception(
+          'Only pledges with submitted proof can be invalidated.',
+        );
       }
 
       tx.update(pledgeRef, {
@@ -1789,12 +1854,17 @@ class CrowdfundingService {
         'invalidatedByName': _displayName,
         'invalidationReason': trimmedReason,
       });
-      tx.update(campaignRef, {
-        'pledgedAmount': max(0, liveCampaign.pledgedAmount - livePledge.amount),
-        'backersCount': hasOtherCounted
-            ? liveCampaign.backersCount
-            : max(0, liveCampaign.backersCount - 1),
-      });
+      if (livePledge.isCountedContribution) {
+        tx.update(campaignRef, {
+          'pledgedAmount': max(
+            0,
+            liveCampaign.pledgedAmount - livePledge.amount,
+          ),
+          'backersCount': hasOtherCounted
+              ? liveCampaign.backersCount
+              : max(0, liveCampaign.backersCount - 1),
+        });
+      }
     });
 
     await _syncSupporterRewardAssignment(

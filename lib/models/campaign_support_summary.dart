@@ -6,10 +6,12 @@ class CampaignSupportSummary {
   final String? supporterUid;
   final String? supporterEmail;
   final int countedContributionTotal;
-  final int pendingContributionTotal;
+  final int awaitingProofContributionTotal;
+  final int awaitingReviewContributionTotal;
   final int invalidContributionTotal;
   final int countedPledgeCount;
-  final int pendingPledgeCount;
+  final int awaitingProofPledgeCount;
+  final int awaitingReviewPledgeCount;
   final int invalidPledgeCount;
   final RewardTier? activeReward;
   final DateTime? lastContributionAt;
@@ -20,14 +22,21 @@ class CampaignSupportSummary {
     required this.supporterUid,
     required this.supporterEmail,
     required this.countedContributionTotal,
-    required this.pendingContributionTotal,
+    required this.awaitingProofContributionTotal,
+    required this.awaitingReviewContributionTotal,
     required this.invalidContributionTotal,
     required this.countedPledgeCount,
-    required this.pendingPledgeCount,
+    required this.awaitingProofPledgeCount,
+    required this.awaitingReviewPledgeCount,
     required this.invalidPledgeCount,
     required this.activeReward,
     required this.lastContributionAt,
   });
+
+  int get pendingContributionTotal =>
+      awaitingProofContributionTotal + awaitingReviewContributionTotal;
+  int get pendingPledgeCount =>
+      awaitingProofPledgeCount + awaitingReviewPledgeCount;
 
   int get trackedContributionTotal =>
       countedContributionTotal +
@@ -84,10 +93,12 @@ class CampaignSupportSummary {
     if (supporterKey == null) return null;
 
     var countedContributionTotal = 0;
-    var pendingContributionTotal = 0;
+    var awaitingProofContributionTotal = 0;
+    var awaitingReviewContributionTotal = 0;
     var invalidContributionTotal = 0;
     var countedPledgeCount = 0;
-    var pendingPledgeCount = 0;
+    var awaitingProofPledgeCount = 0;
+    var awaitingReviewPledgeCount = 0;
     var invalidPledgeCount = 0;
     DateTime? lastContributionAt;
 
@@ -109,8 +120,14 @@ class CampaignSupportSummary {
         continue;
       }
 
-      pendingContributionTotal += pledge.amount;
-      pendingPledgeCount += 1;
+      if (pledge.isPendingReview) {
+        awaitingReviewContributionTotal += pledge.amount;
+        awaitingReviewPledgeCount += 1;
+        continue;
+      }
+
+      awaitingProofContributionTotal += pledge.amount;
+      awaitingProofPledgeCount += 1;
     }
 
     return CampaignSupportSummary(
@@ -119,10 +136,12 @@ class CampaignSupportSummary {
       supporterUid: supporterUid ?? pledges.first.backerUid,
       supporterEmail: supporterEmail ?? pledges.first.backerEmail,
       countedContributionTotal: countedContributionTotal,
-      pendingContributionTotal: pendingContributionTotal,
+      awaitingProofContributionTotal: awaitingProofContributionTotal,
+      awaitingReviewContributionTotal: awaitingReviewContributionTotal,
       invalidContributionTotal: invalidContributionTotal,
       countedPledgeCount: countedPledgeCount,
-      pendingPledgeCount: pendingPledgeCount,
+      awaitingProofPledgeCount: awaitingProofPledgeCount,
+      awaitingReviewPledgeCount: awaitingReviewPledgeCount,
       invalidPledgeCount: invalidPledgeCount,
       activeReward: highestEligibleReward(rewards, countedContributionTotal),
       lastContributionAt: lastContributionAt,

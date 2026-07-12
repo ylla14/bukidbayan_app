@@ -404,7 +404,22 @@ class Pledge {
 
   bool get isInvalidated => invalidatedAt != null;
   bool get isCanceled => canceledAt != null;
-  bool get isPendingProof => !countedInTotal && !isInvalidated && !isCanceled;
+
+  bool get hasProofSubmitted =>
+      (proofImageUrl != null && proofImageUrl!.trim().isNotEmpty) ||
+      (proofReferenceNumber != null && proofReferenceNumber!.trim().isNotEmpty);
+
+  /// Backer hasn't submitted proof of payment yet.
+  bool get isPendingProof =>
+      !hasProofSubmitted && !isInvalidated && !isCanceled;
+
+  /// Proof was submitted but an admin hasn't confirmed or invalidated it yet.
+  bool get isPendingReview =>
+      hasProofSubmitted && !countedInTotal && !isInvalidated && !isCanceled;
+
+  /// Still open — the backer or an admin has something left to do.
+  bool get isUnresolved => isPendingProof || isPendingReview;
+
   bool get isCountedContribution => countedInTotal && !isInvalidated;
 
   Pledge copyWith({

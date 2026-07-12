@@ -309,7 +309,7 @@ void main() {
     });
 
     test(
-      'stores supporter metadata and updates campaign counters when proof is attached',
+      'stores supporter metadata but only counts totals once an admin confirms',
       () async {
         final firestore = FakeFirebaseFirestore();
         final auth = _buildAuth(
@@ -318,6 +318,15 @@ void main() {
           displayName: 'Donor Display Name',
         );
         final service = _buildService(firestore: firestore, auth: auth);
+        final ownerAuth = _buildAuth(
+          uid: 'creator-uid',
+          email: 'creator@example.com',
+          displayName: 'Creator',
+        );
+        final ownerService = _buildService(
+          firestore: firestore,
+          auth: ownerAuth,
+        );
         final campaign = _validCampaign(
           id: 'c_donor_meta',
           creatorUid: 'creator-uid',
@@ -335,7 +344,7 @@ void main() {
           proofReferenceNumber: 'GC123456789',
         );
 
-        final updatedCampaignSnap = await firestore
+        final campaignAfterPledge = await firestore
             .collection('campaigns')
             .doc(campaign.id)
             .get();
@@ -345,8 +354,8 @@ void main() {
             .collection('pledges')
             .get();
 
-        expect(updatedCampaignSnap.data()!['pledgedAmount'], 750);
-        expect(updatedCampaignSnap.data()!['backersCount'], 1);
+        expect(campaignAfterPledge.data()!['pledgedAmount'], 0);
+        expect(campaignAfterPledge.data()!['backersCount'], 0);
         expect(pledgesSnap.docs, hasLength(1));
 
         final pledge = Pledge.fromJson({
@@ -362,12 +371,25 @@ void main() {
         expect(pledge.backerNote, 'Support para sa proyekto!');
         expect(pledge.amount, 750);
         expect(pledge.proofReferenceNumber, 'GC123456789');
-        expect(pledge.countedInTotal, isTrue);
+        expect(pledge.countedInTotal, isFalse);
+        expect(pledge.isPendingReview, isTrue);
+
+        await ownerService.confirmContribution(
+          campaignId: campaign.id,
+          pledgeId: pledge.id,
+        );
+
+        final campaignAfterConfirm = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignAfterConfirm.data()!['pledgedAmount'], 750);
+        expect(campaignAfterConfirm.data()!['backersCount'], 1);
       },
     );
 
     test(
-      'without proof, pledge is recorded as pending and campaign totals are untouched until submitPledgeProof is called',
+      'without proof, pledge is recorded as pending and campaign totals are untouched until submitPledgeProof and confirmContribution are called',
       () async {
         final firestore = FakeFirebaseFirestore();
         final auth = _buildAuth(
@@ -376,6 +398,15 @@ void main() {
           displayName: 'Donor Display Name',
         );
         final service = _buildService(firestore: firestore, auth: auth);
+        final ownerAuth = _buildAuth(
+          uid: 'creator-uid',
+          email: 'creator@example.com',
+          displayName: 'Creator',
+        );
+        final ownerService = _buildService(
+          firestore: firestore,
+          auth: ownerAuth,
+        );
         final campaign = _validCampaign(
           id: 'c_pending_proof',
           creatorUid: 'creator-uid',
@@ -411,8 +442,20 @@ void main() {
             .collection('campaigns')
             .doc(campaign.id)
             .get();
-        expect(campaignAfterProof.data()!['pledgedAmount'], 300);
-        expect(campaignAfterProof.data()!['backersCount'], 1);
+        expect(campaignAfterProof.data()!['pledgedAmount'], 0);
+        expect(campaignAfterProof.data()!['backersCount'], 0);
+
+        await ownerService.confirmContribution(
+          campaignId: campaign.id,
+          pledgeId: pending.id,
+        );
+
+        final campaignAfterConfirm = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignAfterConfirm.data()!['pledgedAmount'], 300);
+        expect(campaignAfterConfirm.data()!['backersCount'], 1);
 
         final stillPending = await service.getMyPledgeForCampaign(campaign.id);
         expect(stillPending, isNull);
@@ -458,11 +501,23 @@ void main() {
           ),
         );
 
-        await service.backCampaign(
-          campaignId: campaign.id,
-          amount: 250,
-          backerName: 'Maria Santos',
-          proofReferenceNumber: 'GC-ALREADY-PAID',
+        // A second attempt WITH proof is blocked too — proof no longer
+        // resolves a pledge instantly, so it's just as "open" as one
+        // without proof until an admin confirms or invalidates it.
+        await expectLater(
+          () => service.backCampaign(
+            campaignId: campaign.id,
+            amount: 250,
+            backerName: 'Maria Santos',
+            proofReferenceNumber: 'GC-ALREADY-PAID',
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('naka-pending ka pang pledge'),
+            ),
+          ),
         );
 
         final pendingPledges = await service.getMyPendingPledgesForCampaign(
@@ -474,8 +529,8 @@ void main() {
             .collection('campaigns')
             .doc(campaign.id)
             .get();
-        expect(campaignSnap.data()!['pledgedAmount'], 250);
-        expect(campaignSnap.data()!['backersCount'], 1);
+        expect(campaignSnap.data()!['pledgedAmount'], 0);
+        expect(campaignSnap.data()!['backersCount'], 0);
       },
     );
 
@@ -550,6 +605,15 @@ void main() {
           displayName: 'Backer Name',
         );
         final service = _buildService(firestore: firestore, auth: auth);
+        final ownerAuth = _buildAuth(
+          uid: 'creator-uid',
+          email: 'creator@example.com',
+          displayName: 'Creator',
+        );
+        final ownerService = _buildService(
+          firestore: firestore,
+          auth: ownerAuth,
+        );
         final campaign = _validCampaign(
           id: 'c_cumulative_rewards',
           creatorUid: 'creator-uid',
@@ -564,6 +628,14 @@ void main() {
           amount: 600,
           rewardId: 'r1',
           proofReferenceNumber: 'GC-FIRST-600',
+        );
+        final firstPledges = await service.getPledgesForCampaign(campaign.id);
+        final firstPledge = firstPledges.firstWhere(
+          (pledge) => pledge.amount == 600,
+        );
+        await ownerService.confirmContribution(
+          campaignId: campaign.id,
+          pledgeId: firstPledge.id,
         );
 
         await expectLater(
@@ -587,6 +659,16 @@ void main() {
           amount: 400,
           rewardId: 'r2',
           proofReferenceNumber: 'GC-UPGRADE-1000',
+        );
+        final secondPledges = await service.getPledgesForCampaign(
+          campaign.id,
+        );
+        final secondPledge = secondPledges.firstWhere(
+          (pledge) => pledge.amount == 400,
+        );
+        await ownerService.confirmContribution(
+          campaignId: campaign.id,
+          pledgeId: secondPledge.id,
         );
 
         final summary = await service.getMySupportSummary(campaign.id);
@@ -640,11 +722,32 @@ void main() {
           rewardId: 'r1',
           proofReferenceNumber: 'GC-700',
         );
+        final firstPledges = await backerService.getPledgesForCampaign(
+          campaign.id,
+        );
+        final firstPledge = firstPledges.firstWhere(
+          (pledge) => pledge.amount == 700,
+        );
+        await ownerService.confirmContribution(
+          campaignId: campaign.id,
+          pledgeId: firstPledge.id,
+        );
+
         await backerService.backCampaign(
           campaignId: campaign.id,
           amount: 400,
           rewardId: 'r2',
           proofReferenceNumber: 'GC-400',
+        );
+        final secondPledges = await backerService.getPledgesForCampaign(
+          campaign.id,
+        );
+        final secondPledge = secondPledges.firstWhere(
+          (pledge) => pledge.amount == 400,
+        );
+        await ownerService.confirmContribution(
+          campaignId: campaign.id,
+          pledgeId: secondPledge.id,
         );
 
         final initialSummary = await backerService.getMySupportSummary(
@@ -692,11 +795,176 @@ void main() {
             .doc('backer-uid')
             .collection('items')
             .get();
-        expect(notificationSnap.docs, hasLength(1));
-        expect(
-          notificationSnap.docs.single.data()['type'],
-          'campaign_contribution_invalidated',
+        // Two "confirmed" notifications (one per confirmed pledge) plus the
+        // "invalidated" one for the pledge that got invalidated afterward.
+        final invalidatedNotifications = notificationSnap.docs.where(
+          (doc) => doc.data()['type'] == 'campaign_contribution_invalidated',
         );
+        expect(invalidatedNotifications, hasLength(1));
+        final confirmedNotifications = notificationSnap.docs.where(
+          (doc) => doc.data()['type'] == 'campaign_contribution_confirmed',
+        );
+        expect(confirmedNotifications, hasLength(2));
+      },
+    );
+
+    test(
+      'invalidating a pending-review pledge (never confirmed) leaves campaign totals untouched',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final backerAuth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'backer@example.com',
+          displayName: 'Backer Name',
+        );
+        final ownerAuth = _buildAuth(
+          uid: 'creator-uid',
+          email: 'creator@example.com',
+          displayName: 'Creator Name',
+        );
+        final backerService = _buildService(
+          firestore: firestore,
+          auth: backerAuth,
+        );
+        final ownerService = _buildService(
+          firestore: firestore,
+          auth: ownerAuth,
+        );
+        final campaign = _validCampaign(
+          id: 'c_invalidate_unconfirmed',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+        ).copyWith(status: 'live');
+
+        await _seedCampaign(firestore, campaign);
+
+        await backerService.backCampaign(
+          campaignId: campaign.id,
+          amount: 500,
+          backerName: 'Maria Santos',
+          proofReferenceNumber: 'GC-SUSPICIOUS',
+        );
+        final pledges = await backerService.getPledgesForCampaign(
+          campaign.id,
+        );
+        final pledge = pledges.firstWhere((p) => p.amount == 500);
+        expect(pledge.isPendingReview, isTrue);
+
+        await ownerService.invalidateContribution(
+          campaignId: campaign.id,
+          pledgeId: pledge.id,
+          reason: 'Duplicate reference number',
+        );
+
+        final campaignSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignSnap.data()!['pledgedAmount'], 0);
+        expect(campaignSnap.data()!['backersCount'], 0);
+
+        final updatedPledges = await ownerService.getPledgesForCampaign(
+          campaign.id,
+        );
+        final invalidated = updatedPledges.firstWhere(
+          (p) => p.id == pledge.id,
+        );
+        expect(invalidated.isInvalidated, isTrue);
+        expect(invalidated.countedInTotal, isFalse);
+
+        await expectLater(
+          () => backerService.submitPledgeProof(
+            campaignId: campaign.id,
+            pledgeId: pledge.id,
+            proofReferenceNumber: 'GC-RETRY',
+          ),
+          throwsA(isA<Exception>()),
+        );
+        await expectLater(
+          () => ownerService.confirmContribution(
+            campaignId: campaign.id,
+            pledgeId: pledge.id,
+          ),
+          throwsA(isA<Exception>()),
+        );
+      },
+    );
+
+    test(
+      'confirmContribution rejects non-owners and succeeds for the campaign owner',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final backerAuth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'backer@example.com',
+          displayName: 'Backer Name',
+        );
+        final strangerAuth = _buildAuth(
+          uid: 'stranger-uid',
+          email: 'stranger@example.com',
+          displayName: 'Stranger',
+        );
+        final ownerAuth = _buildAuth(
+          uid: 'creator-uid',
+          email: 'creator@example.com',
+          displayName: 'Creator Name',
+        );
+        final backerService = _buildService(
+          firestore: firestore,
+          auth: backerAuth,
+        );
+        final strangerService = _buildService(
+          firestore: firestore,
+          auth: strangerAuth,
+        );
+        final ownerService = _buildService(
+          firestore: firestore,
+          auth: ownerAuth,
+        );
+        final campaign = _validCampaign(
+          id: 'c_confirm_ownership',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+        ).copyWith(status: 'live');
+
+        await _seedCampaign(firestore, campaign);
+
+        await backerService.backCampaign(
+          campaignId: campaign.id,
+          amount: 500,
+          backerName: 'Maria Santos',
+          proofReferenceNumber: 'GC-500',
+        );
+        final pledges = await backerService.getPledgesForCampaign(
+          campaign.id,
+        );
+        final pledge = pledges.firstWhere((p) => p.amount == 500);
+
+        await expectLater(
+          () => strangerService.confirmContribution(
+            campaignId: campaign.id,
+            pledgeId: pledge.id,
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('Only the campaign owner can confirm'),
+            ),
+          ),
+        );
+
+        await ownerService.confirmContribution(
+          campaignId: campaign.id,
+          pledgeId: pledge.id,
+        );
+
+        final campaignSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignSnap.data()!['pledgedAmount'], 500);
+        expect(campaignSnap.data()!['backersCount'], 1);
       },
     );
   });

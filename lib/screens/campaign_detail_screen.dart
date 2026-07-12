@@ -331,7 +331,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   Text(
                     hasMultiple
                         ? 'Piliin kung aling pending pledge ang gusto mong bayaran ngayon, o kanselahin ang hindi mo itutuloy.'
-                        : 'Isumite ang patunay ng bayad para maidagdag ito sa kabuuang nalikom ng campaign.',
+                        : 'Isumite ang patunay ng bayad para masuri at makumpirma ito ng admin.',
                     style: TextStyle(fontSize: 12),
                   ),
                   const SizedBox(height: 10),
@@ -459,10 +459,17 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       style: const TextStyle(fontSize: 12),
                     ),
                   ],
-                  if (summary.pendingContributionTotal > 0) ...[
+                  if (summary.awaitingProofContributionTotal > 0) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Pending proof: ${formatPeso(summary.pendingContributionTotal)}',
+                      'Naghihintay ng iyong patunay: ${formatPeso(summary.awaitingProofContributionTotal)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                  if (summary.awaitingReviewContributionTotal > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Naghihintay ng review ng admin: ${formatPeso(summary.awaitingReviewContributionTotal)}',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ],
@@ -530,7 +537,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       showConfirmSnackbar(
         context: context,
         title: 'Salamat!',
-        message: 'Naidagdag na ang pledge mo sa kabuuang nalikom.',
+        message:
+            'Naitala ang patunay mo — hinihintay na ang kumpirmasyon ng admin bago ito maidagdag sa kabuuang nalikom.',
       );
       _reload();
     } catch (e) {
@@ -1125,7 +1133,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               context: this.context,
                               title: 'Salamat!',
                               message: hasPaidAlready
-                                  ? 'Naidagdag na ang pledge mo sa kabuuang nalikom.'
+                                  ? 'Naitala ang patunay mo — hinihintay na ang kumpirmasyon ng admin bago ito maidagdag sa kabuuang nalikom.'
                                   : 'Nairecord ang pledge mo bilang pending. Bumalik dito anumang oras para magsumite ng patunay ng bayad.',
                             );
                             _reload();

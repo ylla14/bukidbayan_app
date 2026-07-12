@@ -485,7 +485,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
         .where((pledge) => pledge.countedInTotal)
         .fold<int>(0, (sum, pledge) => sum + pledge.amount);
     final filteredPendingAmount = visibleSupporters
-        .where((pledge) => pledge.isPendingProof)
+        .where((pledge) => pledge.isUnresolved)
         .fold<int>(0, (sum, pledge) => sum + pledge.amount);
     final filteredInvalidAmount = visibleSupporters
         .where((pledge) => pledge.isInvalidated)

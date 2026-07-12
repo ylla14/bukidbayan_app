@@ -112,10 +112,12 @@ class _AdminCampaignBackersScreenState
     if (built != null) return built;
 
     var countedAmount = 0;
-    var pendingAmount = 0;
+    var awaitingProofAmount = 0;
+    var awaitingReviewAmount = 0;
     var invalidAmount = 0;
     var countedCount = 0;
-    var pendingCount = 0;
+    var awaitingProofCount = 0;
+    var awaitingReviewCount = 0;
     var invalidCount = 0;
     DateTime? lastContributionAt;
 
@@ -130,9 +132,12 @@ class _AdminCampaignBackersScreenState
       } else if (pledge.isCountedContribution) {
         countedAmount += pledge.amount;
         countedCount += 1;
+      } else if (pledge.isPendingReview) {
+        awaitingReviewAmount += pledge.amount;
+        awaitingReviewCount += 1;
       } else {
-        pendingAmount += pledge.amount;
-        pendingCount += 1;
+        awaitingProofAmount += pledge.amount;
+        awaitingProofCount += 1;
       }
     }
 
@@ -142,10 +147,12 @@ class _AdminCampaignBackersScreenState
       supporterUid: pledges.first.backerUid,
       supporterEmail: pledges.first.backerEmail,
       countedContributionTotal: countedAmount,
-      pendingContributionTotal: pendingAmount,
+      awaitingProofContributionTotal: awaitingProofAmount,
+      awaitingReviewContributionTotal: awaitingReviewAmount,
       invalidContributionTotal: invalidAmount,
       countedPledgeCount: countedCount,
-      pendingPledgeCount: pendingCount,
+      awaitingProofPledgeCount: awaitingProofCount,
+      awaitingReviewPledgeCount: awaitingReviewCount,
       invalidPledgeCount: invalidCount,
       activeReward: CampaignSupportSummary.highestEligibleReward(
         rewards,
@@ -199,6 +206,7 @@ class _AdminCampaignBackersScreenState
     if (pledge.isInvalidated) return Colors.red.shade700;
     if (pledge.isCanceled) return Colors.grey.shade700;
     if (pledge.isPendingProof) return Colors.orange.shade800;
+    if (pledge.isPendingReview) return Colors.blue.shade700;
     return Colors.green.shade700;
   }
 
@@ -206,11 +214,63 @@ class _AdminCampaignBackersScreenState
     if (pledge.isInvalidated) return 'Invalidated';
     if (pledge.isCanceled) return 'Canceled';
     if (pledge.isPendingProof) return 'Pending proof';
+    if (pledge.isPendingReview) return 'Pending review';
     return 'Counted';
+  }
+
+  Future<void> _confirmContribution(Pledge pledge) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Contribution'),
+          content: Text(
+            'This will add ${formatPeso(pledge.amount)} to the campaign totals and notify the supporter. Only do this after verifying the submitted proof.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _service.confirmContribution(
+        campaignId: widget.campaignId,
+        pledgeId: pledge.id,
+      );
+      if (!mounted) return;
+      showConfirmSnackbar(
+        context: context,
+        title: 'Contribution confirmed',
+        message: 'Added to the campaign totals and the supporter was notified.',
+      );
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(
+        context: context,
+        title: 'Could not confirm',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
   }
 
   Future<void> _markContributionInvalid(Pledge pledge) async {
     final reasonController = TextEditingController();
+    final wasCounted = pledge.isCountedContribution;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -221,7 +281,9 @@ class _AdminCampaignBackersScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'This will remove ${formatPeso(pledge.amount)} from the campaign totals but keep the record for review.',
+                wasCounted
+                    ? 'This will remove ${formatPeso(pledge.amount)} from the campaign totals but keep the record for review.'
+                    : 'This pledge was never added to the campaign totals. It will be marked invalid and the supporter will be notified.',
               ),
               const SizedBox(height: 12),
               TextField(
@@ -264,8 +326,9 @@ class _AdminCampaignBackersScreenState
       showConfirmSnackbar(
         context: context,
         title: 'Contribution invalidated',
-        message:
-            'The contribution record was kept, removed from totals, and the supporter was notified.',
+        message: wasCounted
+            ? 'The contribution record was kept, removed from totals, and the supporter was notified.'
+            : 'The contribution record was kept and the supporter was notified.',
       );
       await _reload();
     } catch (e) {
@@ -456,19 +519,31 @@ class _AdminCampaignBackersScreenState
               ),
             ),
           ],
-          if (pledge.isCountedContribution) ...[
+          if (pledge.isPendingReview || pledge.isCountedContribution) ...[
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: () => _markContributionInvalid(pledge),
-                icon: const Icon(Icons.gpp_bad_outlined),
-                label: const Text('Mark Invalid'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade700,
-                  side: BorderSide(color: Colors.red.shade200),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (pledge.isPendingReview)
+                  FilledButton.icon(
+                    onPressed: () => _confirmContribution(pledge),
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Confirm'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                    ),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () => _markContributionInvalid(pledge),
+                  icon: const Icon(Icons.gpp_bad_outlined),
+                  label: const Text('Mark Invalid'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade200),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ],
@@ -662,9 +737,15 @@ class _AdminCampaignBackersScreenState
               0,
               (sum, group) => sum + group.summary.countedContributionTotal,
             );
-            final pendingAmount = groups.fold<int>(
+            final awaitingProofAmount = groups.fold<int>(
               0,
-              (sum, group) => sum + group.summary.pendingContributionTotal,
+              (sum, group) =>
+                  sum + group.summary.awaitingProofContributionTotal,
+            );
+            final awaitingReviewAmount = groups.fold<int>(
+              0,
+              (sum, group) =>
+                  sum + group.summary.awaitingReviewContributionTotal,
             );
             final invalidAmount = groups.fold<int>(
               0,
@@ -717,10 +798,19 @@ class _AdminCampaignBackersScreenState
                         SizedBox(
                           width: width,
                           child: _buildMetricCard(
-                            label: 'Pending proof',
-                            value: formatPeso(pendingAmount),
+                            label: 'Awaiting proof',
+                            value: formatPeso(awaitingProofAmount),
                             icon: Icons.hourglass_top_rounded,
                             color: Colors.orange.shade800,
+                          ),
+                        ),
+                        SizedBox(
+                          width: width,
+                          child: _buildMetricCard(
+                            label: 'Awaiting review',
+                            value: formatPeso(awaitingReviewAmount),
+                            icon: Icons.rate_review_outlined,
+                            color: Colors.blue.shade700,
                           ),
                         ),
                         SizedBox(

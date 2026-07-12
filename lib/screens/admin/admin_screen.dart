@@ -255,16 +255,16 @@ class _AdminScreenState extends State<AdminScreen> {
                   },
                 ),
 
-                AdminCard(
-                  icon: Icons.settings_outlined,
-                  title: 'Settings',
-                  description: 'Configure platform settings and preferences',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Coming soon: Settings')),
-                    );
-                  },
-                ),
+                // AdminCard(
+                //   icon: Icons.settings_outlined,
+                //   title: 'Settings',
+                //   description: 'Configure platform settings and preferences',
+                //   onTap: () {
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       const SnackBar(content: Text('Coming soon: Settings')),
+                //     );
+                //   },
+                // ),
 
                 // Additional Section
                 // Padding(
