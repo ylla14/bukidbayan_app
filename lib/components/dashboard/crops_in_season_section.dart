@@ -1,5 +1,6 @@
 import 'package:bukidbayan_app/services/crop_calendar_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -174,16 +175,29 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Text(isAdded ? 'Alisin ang Pananim' : 'Idagdag sa Aking Bukid?'),
+          title: Text(
+            isAdded
+                ? AppLanguage.text(en: 'Remove Crop', tl: 'Alisin ang Pananim')
+                : AppLanguage.text(
+                    en: 'Add to My Farm?',
+                    tl: 'Idagdag sa Aking Bukid?',
+                  ),
+          ),
           content: Text(
             isAdded
-                ? 'Gusto mo bang alisin ang ${crop.name} mula sa iyong bukid?'
-                : 'Gusto mo bang idagdag ang ${crop.name} sa iyong bukid para sa mga rekomendasyon ng kagamitan?',
+                ? AppLanguage.text(
+                    en: 'Do you want to remove ${crop.name} from your farm?',
+                    tl: 'Gusto mo bang alisin ang ${crop.name} mula sa iyong bukid?',
+                  )
+                : AppLanguage.text(
+                    en: 'Do you want to add ${crop.name} to your farm for equipment recommendations?',
+                    tl: 'Gusto mo bang idagdag ang ${crop.name} sa iyong bukid para sa mga rekomendasyon ng kagamitan?',
+                  ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: Text(AppLanguage.text(en: 'Cancel', tl: 'Kanselahin')),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -193,7 +207,11 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.pop(context, true),
-              child: Text(isAdded ? 'Remove' : 'Add'),
+              child: Text(
+                isAdded
+                    ? AppLanguage.text(en: 'Remove', tl: 'Alisin')
+                    : AppLanguage.text(en: 'Add', tl: 'Idagdag'),
+              ),
             ),
           ],
         );
@@ -238,7 +256,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Mga Pananim sa Panahon',
+          AppLanguage.text(en: 'Crops in Season', tl: 'Mga Pananim sa Panahon'),
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -258,7 +276,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
               ),
               const SizedBox(width: 8),
               Text(
-                '$currentMonth - $currentSeason',
+                '$currentMonth - ${AppLanguage.seasonLabel(currentSeason)}',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: isWet ? Colors.blue : Colors.orange,
@@ -291,8 +309,14 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
                   padding: const EdgeInsets.all(20),
                   child: Text(
                     selectedCategory == 'My Farm'
-                        ? 'Wala pang pananim na naidagdag sa Aking Bukid. Pindutin ang isang pananim para idagdag.'
-                        : 'Walang available na pananim para sa kategoryang ito.',
+                        ? AppLanguage.text(
+                            en: 'No crops have been added to My Farm yet. Tap a crop to add one.',
+                            tl: 'Wala pang pananim na naidagdag sa Aking Bukid. Pindutin ang isang pananim para idagdag.',
+                          )
+                        : AppLanguage.text(
+                            en: 'No crops are available for this category.',
+                            tl: 'Walang available na pananim para sa kategoryang ito.',
+                          ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -467,22 +491,45 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
     final plantingNow = crop.plantingMonths.contains(month);
     final harvestingNow = crop.harvestingMonths.contains(month);
     if (plantingNow && harvestingNow) return 'Magtanim + Umani';
-    if (plantingNow) return 'Pagtatanim';
-    if (harvestingNow) return 'Pag-aani';
-    if (crop.isYearRound) return 'Year-round';
+    if (plantingNow) {
+      return AppLanguage.text(en: 'Planting', tl: 'Pagtatanim');
+    }
+    if (harvestingNow) {
+      return AppLanguage.text(en: 'Harvest', tl: 'Pag-aani');
+    }
+    if (crop.isYearRound) {
+      return AppLanguage.text(en: 'Year-round', tl: 'Buong taon');
+    }
     return null;
   }
 
   String _phaseSummary(CropItem crop) {
     if (crop.isYearRound) {
-      return crop.harvestingPhase ?? 'Available all year';
+      return crop.harvestingPhase ??
+          AppLanguage.text(
+            en: 'Available all year',
+            tl: 'Available buong taon',
+          );
     }
     if (crop.plantingPhase != null && crop.harvestingPhase != null) {
-      return 'Tanim: ${crop.plantingPhase} | Ani: ${crop.harvestingPhase}';
+      return AppLanguage.text(
+        en: 'Plant: ${crop.plantingPhase} | Harvest: ${crop.harvestingPhase}',
+        tl: 'Tanim: ${crop.plantingPhase} | Ani: ${crop.harvestingPhase}',
+      );
     }
-    if (crop.plantingPhase != null) return 'Tanim: ${crop.plantingPhase}';
-    if (crop.harvestingPhase != null) return 'Ani: ${crop.harvestingPhase}';
-    return 'Pananim sa Panahon';
+    if (crop.plantingPhase != null) {
+      return AppLanguage.text(
+        en: 'Plant: ${crop.plantingPhase}',
+        tl: 'Tanim: ${crop.plantingPhase}',
+      );
+    }
+    if (crop.harvestingPhase != null) {
+      return AppLanguage.text(
+        en: 'Harvest: ${crop.harvestingPhase}',
+        tl: 'Ani: ${crop.harvestingPhase}',
+      );
+    }
+    return AppLanguage.text(en: 'Seasonal Crop', tl: 'Pananim sa Panahon');
   }
 
   Widget _buildCategoryButton(String category, Color primary) {
@@ -496,7 +543,7 @@ class _CropsInSeasonSectionState extends State<CropsInSeasonSection> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          category,
+          AppLanguage.cropCategoryLabel(category),
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.black,
             fontWeight: FontWeight.w600,

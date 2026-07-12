@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/dashboard/asset_performance.dart';
 import 'package:bukidbayan_app/components/dashboard/equipment_reliability.dart';
 import 'package:bukidbayan_app/components/dashboard/utilization_rate.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -16,9 +17,9 @@ class KpiDashboardPage extends StatefulWidget {
 
 class _KpiDashboardPageState extends State<KpiDashboardPage>
     with SingleTickerProviderStateMixin {
-  static const _green = Color(0xFF2D6A4F);
-
   late final TabController _tabController;
+
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
 
   @override
   void initState() {
@@ -34,36 +35,41 @@ class _KpiDashboardPageState extends State<KpiDashboardPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: lightColorScheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Performance Dashboard',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          backgroundColor: lightColorScheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: Text(
+            _t('Performance Dashboard', 'Dashboard ng Pagganap'),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+          ),
+          bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white.withValues(alpha: 0.65),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+            tabs: [
+              Tab(text: _t('Utilization & Uptime', 'Utilization at Uptime')),
+              Tab(text: _t('Top Performing', 'Nangunguna')),
+              Tab(text: _t('Reliability', 'Maaasahan')),
+            ],
+          ),
         ),
-        bottom: TabBar(
+        body: TabBarView(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withOpacity(0.65),
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-          tabs: const [
-            Tab(text: 'Utilization & Uptime'),
-            Tab(text: 'Top Performing'),
-            Tab(text: 'Reliability'),
+          children: const [
+            UtilizationAnalyticsPage(embedded: true),
+            AssetPerformancePage(embedded: true),
+            ReliabilityScorePage(embedded: true),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          UtilizationAnalyticsPage(embedded: true),
-          AssetPerformancePage(embedded: true),
-          ReliabilityScorePage(embedded: true),
-        ],
       ),
     );
   }

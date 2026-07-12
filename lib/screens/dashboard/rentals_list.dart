@@ -4,9 +4,9 @@
 
 import 'package:bukidbayan_app/blocs/request_bloc.dart';
 import 'package:bukidbayan_app/blocs/request_event.dart';
-import 'package:bukidbayan_app/blocs/request_state.dart';
 import 'package:bukidbayan_app/models/rent_request.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
@@ -16,13 +16,12 @@ import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum RentalsListMode {
-  myRequests,
-  incomingRequests,
-}
+enum RentalsListMode { myRequests, incomingRequests }
 
 enum _SortOrder { newest, oldest }
+
 enum _OperatorFilter { all, withOperator, withoutOperator }
+
 enum _DeliveryFilter { all, pickup, delivery }
 
 class RentalsList extends StatefulWidget {
@@ -37,6 +36,8 @@ class _RentalsListState extends State<RentalsList> {
   final RentRequestService _requestService = RentRequestService();
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   final TextEditingController _searchController = TextEditingController();
@@ -62,44 +63,67 @@ class _RentalsListState extends State<RentalsList> {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   String get _title => widget.mode == RentalsListMode.myRequests
-      ? 'Aking Rental Requests'
-      : 'Requests sa aking Kagamitan';
+      ? _t('My Rental Requests', 'Aking Rental Requests')
+      : _t('Requests for My Equipment', 'Mga Request sa Aking Kagamitan');
 
   Color _statusColor(RentRequestStatus status) {
     switch (status) {
-      case RentRequestStatus.pending:        return const Color(0xFFF59E0B);
-      case RentRequestStatus.approved:       return const Color(0xFF3B82F6);
-      case RentRequestStatus.onTheWay:   
-      case RentRequestStatus.readyForPickup: return const Color(0xFFF59E0B);
+      case RentRequestStatus.pending:
+        return const Color(0xFFF59E0B);
+      case RentRequestStatus.approved:
+        return const Color(0xFF3B82F6);
+      case RentRequestStatus.onTheWay:
+      case RentRequestStatus.readyForPickup:
+        return const Color(0xFFF59E0B);
       case RentRequestStatus.pickedUp:
       case RentRequestStatus.inProgress:
-      case RentRequestStatus.retrieving:     
-      case RentRequestStatus.returned:     
+      case RentRequestStatus.retrieving:
+      case RentRequestStatus.returned:
       case RentRequestStatus.finished:
-      case RentRequestStatus.completed:      return lightColorScheme.primary; // Forest Green (Active Brand Color)
+      case RentRequestStatus.completed:
+        return lightColorScheme.primary; // Forest Green (Active Brand Color)
       case RentRequestStatus.declined:
-      case RentRequestStatus.canceled:       return lightColorScheme.error;
+      case RentRequestStatus.canceled:
+        return lightColorScheme.error;
     }
   }
 
   String _statusLabel(RentRequestStatus status) {
     switch (status) {
-      case RentRequestStatus.onTheWay:       return 'On The Way';
-      case RentRequestStatus.inProgress:     return 'In Progress';
-      case RentRequestStatus.readyForPickup: return 'Ready for Pick Up';
-      case RentRequestStatus.pickedUp:       return 'Picked Up';
-      default:
-        return status.name[0].toUpperCase() + status.name.substring(1);
+      case RentRequestStatus.pending:
+        return _t('Pending', 'Naghihintay');
+      case RentRequestStatus.approved:
+        return _t('Approved', 'Inaprubahan');
+      case RentRequestStatus.readyForPickup:
+        return _t('Ready for Pick Up', 'Handa nang I-pick Up');
+      case RentRequestStatus.pickedUp:
+        return _t('Picked Up', 'Na-pick Up');
+      case RentRequestStatus.onTheWay:
+        return _t('On the Way', 'Papunta na');
+      case RentRequestStatus.inProgress:
+        return _t('In Progress', 'Isinasagawa');
+      case RentRequestStatus.retrieving:
+        return _t('Retrieving', 'Kinukuha na');
+      case RentRequestStatus.returned:
+        return _t('Returned', 'Naibalik');
+      case RentRequestStatus.finished:
+        return _t('Finished', 'Tapos na');
+      case RentRequestStatus.completed:
+        return _t('Completed', 'Kumpleto');
+      case RentRequestStatus.declined:
+        return _t('Declined', 'Tinanggihan');
+      case RentRequestStatus.canceled:
+        return _t('Canceled', 'Kinansela');
     }
   }
 
   String _dateSectionLabel(DateTime date) {
-    final now       = DateTime.now();
-    final today     = DateTime(now.year, now.month, now.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final target    = DateTime(date.year, date.month, date.day);
-    if (target == today)     return 'Today';
-    if (target == yesterday) return 'Yesterday';
+    final target = DateTime(date.year, date.month, date.day);
+    if (target == today) return _t('Today', 'Ngayon');
+    if (target == yesterday) return _t('Yesterday', 'Kahapon');
     return DateFormat('MMMM dd, yyyy').format(date);
   }
 
@@ -107,13 +131,13 @@ class _RentalsListState extends State<RentalsList> {
 
   int get _activeFilterCount {
     int count = 0;
-    if (_searchQuery.isNotEmpty)         count++;
+    if (_searchQuery.isNotEmpty) count++;
     count += _selectedStatuses.length;
-    if (_dateRange != null)              count++;
+    if (_dateRange != null) count++;
     if (_sortOrder == _SortOrder.oldest) count++;
     if (_operatorFilter != _OperatorFilter.all) count++;
     if (_deliveryFilter != _DeliveryFilter.all) count++;
-    if (_hasOperator != null)            count++;
+    if (_hasOperator != null) count++;
     count += _selectedDeliveryMethods.length;
     return count;
   }
@@ -121,16 +145,16 @@ class _RentalsListState extends State<RentalsList> {
   bool get _hasActiveFilters => _activeFilterCount > 0;
 
   void _clearAllFilters() => setState(() {
-        _searchController.clear();
-        _searchQuery = '';
-        _selectedStatuses.clear();
-        _dateRange = null;
-        _sortOrder = _SortOrder.newest;
-        _operatorFilter = _OperatorFilter.all;
-        _deliveryFilter = _DeliveryFilter.all;
-        _hasOperator = null;
-        _selectedDeliveryMethods.clear();
-      });
+    _searchController.clear();
+    _searchQuery = '';
+    _selectedStatuses.clear();
+    _dateRange = null;
+    _sortOrder = _SortOrder.newest;
+    _operatorFilter = _OperatorFilter.all;
+    _deliveryFilter = _DeliveryFilter.all;
+    _hasOperator = null;
+    _selectedDeliveryMethods.clear();
+  });
 
   // ── Equipment operator cache ──────────────────────────────────────────────
   // itemId → operatorIncluded. Populated on demand when operator filter is set.
@@ -182,9 +206,11 @@ class _RentalsListState extends State<RentalsList> {
       result = result.where((r) => _selectedStatuses.contains(r.status));
     }
     if (_dateRange != null) {
-      result = result.where((r) =>
-          !r.start.isAfter(_dateRange!.end) &&
-          !r.end.isBefore(_dateRange!.start));
+      result = result.where(
+        (r) =>
+            !r.start.isAfter(_dateRange!.end) &&
+            !r.end.isBefore(_dateRange!.start),
+      );
     }
     if (_operatorFilter != _OperatorFilter.all) {
       result = result.where((r) {
@@ -195,19 +221,20 @@ class _RentalsListState extends State<RentalsList> {
       });
     }
     if (_deliveryFilter != _DeliveryFilter.all) {
-      result = result.where((r) => _deliveryFilter == _DeliveryFilter.pickup
-          ? r.deliveryMethod == DeliveryMethod.pickup
-          : r.deliveryMethod == DeliveryMethod.delivery);
+      result = result.where(
+        (r) => _deliveryFilter == _DeliveryFilter.pickup
+            ? r.deliveryMethod == DeliveryMethod.pickup
+            : r.deliveryMethod == DeliveryMethod.delivery,
+      );
     }
 
-    return result.toList()
-      ..sort((a, b) {
-        final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return _sortOrder == _SortOrder.newest
-            ? bDate.compareTo(aDate)
-            : aDate.compareTo(bDate);
-      });
+    return result.toList()..sort((a, b) {
+      final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return _sortOrder == _SortOrder.newest
+          ? bDate.compareTo(aDate)
+          : aDate.compareTo(bDate);
+    });
   }
 
   Future<void> _pickDateRange(StateSetter setSheetState) async {
@@ -236,16 +263,16 @@ class _RentalsListState extends State<RentalsList> {
 
   void _openFilterSheet() {
     // Local copies so changes only commit on "Apply"
-    String localSearch                      = _searchQuery;
-    final localController                   = TextEditingController(text: localSearch);
+    String localSearch = _searchQuery;
+    final localController = TextEditingController(text: localSearch);
     final Set<RentRequestStatus> localStatuses = Set.from(_selectedStatuses);
-    DateTimeRange? localDateRange           = _dateRange;
-    _SortOrder localSort                    = _sortOrder;
-    _OperatorFilter localOperator           = _operatorFilter;
-    _DeliveryFilter localDelivery           = _deliveryFilter;
+    DateTimeRange? localDateRange = _dateRange;
+    _SortOrder localSort = _sortOrder;
+    _OperatorFilter localOperator = _operatorFilter;
+    _DeliveryFilter localDelivery = _deliveryFilter;
 
     final primary = lightColorScheme.primary;
-    final fmt     = DateFormat('MMM d');
+    final fmt = DateFormat('MMM d');
 
     showModalBottomSheet(
       context: context,
@@ -306,7 +333,7 @@ class _RentalsListState extends State<RentalsList> {
                         Icon(Icons.tune_rounded, size: 20, color: primary),
                         const SizedBox(width: 8),
                         Text(
-                          'Filter & Sort',
+                          _t('Filter & Sort', 'I-filter at Ayusin'),
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
@@ -327,7 +354,7 @@ class _RentalsListState extends State<RentalsList> {
                             });
                           },
                           child: Text(
-                            'Reset',
+                            _t('Reset', 'I-reset'),
                             style: TextStyle(
                               color: Colors.red.shade400,
                               fontWeight: FontWeight.w600,
@@ -347,31 +374,42 @@ class _RentalsListState extends State<RentalsList> {
                       controller: scrollController,
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                       children: [
-
                         // Search
                         _SheetSection(
-                          label: 'Search by item name',
+                          label: _t(
+                            'Search by item name',
+                            'Hanapin ayon sa pangalan ng kagamitan',
+                          ),
                           child: TextField(
                             controller: localController,
                             decoration: InputDecoration(
                               hintText: 'e.g. Tractor, Sprayer…',
                               hintStyle: TextStyle(
-                                  color: Colors.grey.shade400, fontSize: 14),
-                              prefixIcon: Icon(Icons.search_rounded,
-                                  size: 20, color: primary),
+                                color: Colors.grey.shade400,
+                                fontSize: 14,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search_rounded,
+                                size: 20,
+                                color: primary,
+                              ),
                               suffixIcon: localSearch.isNotEmpty
                                   ? GestureDetector(
                                       onTap: () => setSheetState(() {
                                         localController.clear();
                                         localSearch = '';
                                       }),
-                                      child: Icon(Icons.cancel_rounded,
-                                          size: 18,
-                                          color: Colors.grey.shade400),
+                                      child: Icon(
+                                        Icons.cancel_rounded,
+                                        size: 18,
+                                        color: Colors.grey.shade400,
+                                      ),
                                     )
                                   : null,
                               contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 0, horizontal: 16),
+                                vertical: 0,
+                                horizontal: 16,
+                              ),
                               filled: true,
                               fillColor: Colors.grey.shade100,
                               border: OutlineInputBorder(
@@ -380,8 +418,10 @@ class _RentalsListState extends State<RentalsList> {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(30),
-                                borderSide:
-                                    BorderSide(color: primary, width: 1.5),
+                                borderSide: BorderSide(
+                                  color: primary,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                             onChanged: (v) =>
@@ -393,25 +433,27 @@ class _RentalsListState extends State<RentalsList> {
 
                         // Sort
                         _SheetSection(
-                          label: 'Sort by date',
+                          label: _t('Sort by date', 'Ayusin ayon sa petsa'),
                           child: Row(
                             children: [
                               _SortButton(
-                                label: 'Newest first',
+                                label: _t('Newest first', 'Pinakabago muna'),
                                 icon: Icons.arrow_downward_rounded,
                                 selected: localSort == _SortOrder.newest,
                                 color: primary,
                                 onTap: () => setSheetState(
-                                    () => localSort = _SortOrder.newest),
+                                  () => localSort = _SortOrder.newest,
+                                ),
                               ),
                               const SizedBox(width: 10),
                               _SortButton(
-                                label: 'Oldest first',
+                                label: _t('Oldest first', 'Pinakaluma muna'),
                                 icon: Icons.arrow_upward_rounded,
                                 selected: localSort == _SortOrder.oldest,
                                 color: primary,
                                 onTap: () => setSheetState(
-                                    () => localSort = _SortOrder.oldest),
+                                  () => localSort = _SortOrder.oldest,
+                                ),
                               ),
                             ],
                           ),
@@ -421,12 +463,14 @@ class _RentalsListState extends State<RentalsList> {
 
                         // Date range
                         _SheetSection(
-                          label: 'Rental date range',
+                          label: _t('Rental date range', 'Saklaw ng petsa'),
                           child: GestureDetector(
                             onTap: pickDate,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: localDateRange != null
                                     ? primary.withOpacity(0.07)
@@ -441,16 +485,21 @@ class _RentalsListState extends State<RentalsList> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.date_range_rounded,
-                                      size: 18,
-                                      color: localDateRange != null
-                                          ? primary
-                                          : Colors.grey.shade500),
+                                  Icon(
+                                    Icons.date_range_rounded,
+                                    size: 18,
+                                    color: localDateRange != null
+                                        ? primary
+                                        : Colors.grey.shade500,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       localDateRange == null
-                                          ? 'Select date range'
+                                          ? _t(
+                                              'Select date range',
+                                              'Pumili ng petsa',
+                                            )
                                           : '${fmt.format(localDateRange!.start)}  →  ${fmt.format(localDateRange!.end)}',
                                       style: TextStyle(
                                         fontSize: 14,
@@ -466,9 +515,13 @@ class _RentalsListState extends State<RentalsList> {
                                   if (localDateRange != null)
                                     GestureDetector(
                                       onTap: () => setSheetState(
-                                          () => localDateRange = null),
-                                      child: Icon(Icons.cancel_rounded,
-                                          size: 16, color: primary),
+                                        () => localDateRange = null,
+                                      ),
+                                      child: Icon(
+                                        Icons.cancel_rounded,
+                                        size: 16,
+                                        color: primary,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -480,33 +533,45 @@ class _RentalsListState extends State<RentalsList> {
 
                         // Operator filter
                         _SheetSection(
-                          label: 'Operator',
+                          label: _t('Operator', 'Operator'),
                           child: Row(
                             children: [
                               _ToggleChip(
-                                label: 'All',
+                                label: _t('All', 'Lahat'),
                                 selected: localOperator == _OperatorFilter.all,
                                 color: lightColorScheme.primary,
                                 onTap: () => setSheetState(
-                                    () => localOperator = _OperatorFilter.all),
+                                  () => localOperator = _OperatorFilter.all,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               _ToggleChip(
-                                label: 'w/ Operator',
+                                label: _t('With Operator', 'May Operator'),
                                 icon: Icons.person_rounded,
-                                selected: localOperator == _OperatorFilter.withOperator,
+                                selected:
+                                    localOperator ==
+                                    _OperatorFilter.withOperator,
                                 color: lightColorScheme.primary,
-                                onTap: () => setSheetState(() =>
-                                    localOperator = _OperatorFilter.withOperator),
+                                onTap: () => setSheetState(
+                                  () => localOperator =
+                                      _OperatorFilter.withOperator,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               _ToggleChip(
-                                label: 'w/o Operator',
+                                label: _t(
+                                  'Without Operator',
+                                  'Walang Operator',
+                                ),
                                 icon: Icons.person_off_rounded,
-                                selected: localOperator == _OperatorFilter.withoutOperator,
+                                selected:
+                                    localOperator ==
+                                    _OperatorFilter.withoutOperator,
                                 color: lightColorScheme.primary,
-                                onTap: () => setSheetState(() =>
-                                    localOperator = _OperatorFilter.withoutOperator),
+                                onTap: () => setSheetState(
+                                  () => localOperator =
+                                      _OperatorFilter.withoutOperator,
+                                ),
                               ),
                             ],
                           ),
@@ -516,33 +581,39 @@ class _RentalsListState extends State<RentalsList> {
 
                         // Delivery method filter
                         _SheetSection(
-                          label: 'Delivery method',
+                          label: _t('Delivery method', 'Paraan ng pagkuha'),
                           child: Row(
                             children: [
                               _ToggleChip(
-                                label: 'All',
+                                label: _t('All', 'Lahat'),
                                 selected: localDelivery == _DeliveryFilter.all,
                                 color: lightColorScheme.primary,
                                 onTap: () => setSheetState(
-                                    () => localDelivery = _DeliveryFilter.all),
+                                  () => localDelivery = _DeliveryFilter.all,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               _ToggleChip(
-                                label: 'Pick-up',
+                                label: _t('Pick-up', 'Pick-up'),
                                 icon: Icons.storefront_rounded,
-                                selected: localDelivery == _DeliveryFilter.pickup,
+                                selected:
+                                    localDelivery == _DeliveryFilter.pickup,
                                 color: lightColorScheme.primary,
                                 onTap: () => setSheetState(
-                                    () => localDelivery = _DeliveryFilter.pickup),
+                                  () => localDelivery = _DeliveryFilter.pickup,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               _ToggleChip(
-                                label: 'Delivery',
+                                label: _t('Delivery', 'Delivery'),
                                 icon: Icons.local_shipping_rounded,
-                                selected: localDelivery == _DeliveryFilter.delivery,
+                                selected:
+                                    localDelivery == _DeliveryFilter.delivery,
                                 color: lightColorScheme.primary,
-                                onTap: () => setSheetState(() =>
-                                    localDelivery = _DeliveryFilter.delivery),
+                                onTap: () => setSheetState(
+                                  () =>
+                                      localDelivery = _DeliveryFilter.delivery,
+                                ),
                               ),
                             ],
                           ),
@@ -552,21 +623,28 @@ class _RentalsListState extends State<RentalsList> {
 
                         // Status filter
                         _SheetSection(
-                          label: 'Filter by status',
+                          label: _t(
+                            'Filter by status',
+                            'I-filter ayon sa status',
+                          ),
                           child: Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: RentRequestStatus.values.map((s) {
                               final selected = localStatuses.contains(s);
-                              final color    = _statusColor(s);
+                              final color = _statusColor(s);
                               return GestureDetector(
-                                onTap: () => setSheetState(() => selected
-                                    ? localStatuses.remove(s)
-                                    : localStatuses.add(s)),
+                                onTap: () => setSheetState(
+                                  () => selected
+                                      ? localStatuses.remove(s)
+                                      : localStatuses.add(s),
+                                ),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 150),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 8),
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: selected
                                         ? color.withOpacity(0.12)
@@ -583,8 +661,11 @@ class _RentalsListState extends State<RentalsList> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       if (selected) ...[
-                                        Icon(Icons.check_circle_rounded,
-                                            size: 13, color: color),
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 13,
+                                          color: color,
+                                        ),
                                         const SizedBox(width: 5),
                                       ],
                                       Text(
@@ -619,7 +700,7 @@ class _RentalsListState extends State<RentalsList> {
                         child: FilledButton(
                           onPressed: () {
                             setState(() {
-                              _searchQuery     = localSearch;
+                              _searchQuery = localSearch;
                               _searchController.text = localSearch;
                               _selectedStatuses
                                 ..clear()
@@ -634,16 +715,17 @@ class _RentalsListState extends State<RentalsList> {
                           style: FilledButton.styleFrom(
                             backgroundColor: primary,
                             foregroundColor: lightColorScheme.onPrimary,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Apply filters',
+                          child: Text(
+                            _t('Apply filters', 'I-apply ang filter'),
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w600),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -670,20 +752,23 @@ class _RentalsListState extends State<RentalsList> {
 
       if (key != lastKey) {
         lastKey = key;
-        final label =
-            key != null ? _dateSectionLabel(submittedAt!) : 'Unknown Date';
+        final label = key != null
+            ? _dateSectionLabel(submittedAt!)
+            : _t('Unknown Date', 'Hindi Matukoy na Petsa');
         widgets.add(_DateSectionHeader(label: label));
       }
 
-      widgets.add(_RequestCard(
-        request: request,
-        mode: widget.mode,
-        firestoreService: _firestoreService,
-        requestService: _requestService,
-        statusColor: _statusColor(request.status),
-        statusLabel: _statusLabel(request.status),
-        onDeleted: () => setState(() {}),
-      ));
+      widgets.add(
+        _RequestCard(
+          request: request,
+          mode: widget.mode,
+          firestoreService: _firestoreService,
+          requestService: _requestService,
+          statusColor: _statusColor(request.status),
+          statusLabel: _statusLabel(request.status),
+          onDeleted: () => setState(() {}),
+        ),
+      );
     }
     return widgets;
   }
@@ -694,177 +779,208 @@ class _RentalsListState extends State<RentalsList> {
   Widget build(BuildContext context) {
     final primary = lightColorScheme.primary;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _title,
-          style: TextStyle(
-            color: lightColorScheme.onPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                lightColorScheme.primary,
-                lightColorScheme.secondary,
-              ],
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _title,
+            style: TextStyle(
+              color: lightColorScheme.onPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        actions: [
-          // Filter button with badge
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.tune_rounded),
-                color: lightColorScheme.onPrimary,
-                tooltip: 'Filter & Sort',
-                onPressed: _openFilterSheet,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [lightColorScheme.primary, lightColorScheme.secondary],
               ),
-              if (_activeFilterCount > 0)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade400,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$_activeFilterCount',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: true,
+          elevation: 0,
+          actions: [
+            // Filter button with badge
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded),
+                  color: lightColorScheme.onPrimary,
+                  tooltip: _t('Filter & Sort', 'I-filter at Ayusin'),
+                  onPressed: _openFilterSheet,
+                ),
+                if (_activeFilterCount > 0)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade400,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$_activeFilterCount',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                   ),
+              ],
+            ),
+          ],
+        ),
+        body: StreamBuilder<List<RentRequest>>(
+          stream: widget.mode == RentalsListMode.myRequests
+              ? _requestService.getRequestsByRenter(_auth.currentUser!.uid)
+              : _requestService.getRequestsByOwner(_auth.currentUser!.uid),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  _t(
+                    'Error: ${snapshot.error}',
+                    'May error: ${snapshot.error}',
+                  ),
                 ),
-            ],
-          ),
-        ],
-      ),
-      body: StreamBuilder<List<RentRequest>>(
-        stream: widget.mode == RentalsListMode.myRequests
-            ? _requestService.getRequestsByRenter(_auth.currentUser!.uid)
-            : _requestService.getRequestsByOwner(_auth.currentUser!.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+              );
+            }
 
-          final raw      = snapshot.data ?? [];
-          final requests = _applyFilters(raw);
+            final raw = snapshot.data ?? [];
+            final requests = _applyFilters(raw);
 
-          if (raw.isEmpty) {
-            return const Center(
-              child: Text('No rentals to display.',
-                  style: TextStyle(fontSize: 16)),
-            );
-          }
+            if (raw.isEmpty) {
+              return Center(
+                child: Text(
+                  _t('No rentals to display.', 'Walang rental na maipapakita.'),
+                  style: const TextStyle(fontSize: 16),
+                ),
+              );
+            }
 
-          return Column(
-            children: [
-              // ── Active filter strip ─────────────────────────────────────
-              AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                child: _hasActiveFilters
-                    ? Container(
-                        color: primary.withOpacity(0.05),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            Icon(Icons.filter_alt_rounded,
-                                size: 15, color: primary),
-                            const SizedBox(width: 6),
-                            Text(
-                              '$_activeFilterCount filter${_activeFilterCount == 1 ? '' : 's'} active',
-                              style: TextStyle(
-                                fontSize: 13,
+            return Column(
+              children: [
+                // ── Active filter strip ─────────────────────────────────────
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  child: _hasActiveFilters
+                      ? Container(
+                          color: primary.withOpacity(0.05),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.filter_alt_rounded,
+                                size: 15,
                                 color: primary,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: _clearAllFilters,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.close_rounded,
+                              const SizedBox(width: 6),
+                              Text(
+                                _t(
+                                  '$_activeFilterCount filter${_activeFilterCount == 1 ? '' : 's'} active',
+                                  '$_activeFilterCount aktibong filter',
+                                ),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: _clearAllFilters,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.close_rounded,
                                       size: 14,
-                                      color: Colors.red.shade400),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    'Clear filters',
-                                    style: TextStyle(
-                                      fontSize: 12,
                                       color: Colors.red.shade400,
-                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      _t('Clear filters', 'I-clear ang filter'),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.red.shade400,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
 
-              // ── Results ─────────────────────────────────────────────────
-              Expanded(
-                child: requests.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.search_off_rounded,
-                                size: 52, color: Colors.grey.shade300),
-                            const SizedBox(height: 12),
-                            Text(
-                              'No rentals match your filters.',
-                              style: TextStyle(
+                // ── Results ─────────────────────────────────────────────────
+                Expanded(
+                  child: requests.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 52,
+                                color: Colors.grey.shade300,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _t(
+                                  'No rentals match your filters.',
+                                  'Walang rental na tugma sa iyong filter.',
+                                ),
+                                style: TextStyle(
                                   fontSize: 15,
-                                  color: Colors.grey.shade500),
-                            ),
-                            const SizedBox(height: 10),
-                            TextButton.icon(
-                              onPressed: _clearAllFilters,
-                              icon: const Icon(
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextButton.icon(
+                                onPressed: _clearAllFilters,
+                                icon: const Icon(
                                   Icons.filter_alt_off_rounded,
-                                  size: 16),
-                              label: const Text('Clear filters'),
-                              style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red.shade400),
-                            ),
-                          ],
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  _t('Clear filters', 'I-clear ang filter'),
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: _buildGroupedList(requests).length,
+                          itemBuilder: (context, index) =>
+                              _buildGroupedList(requests)[index],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        itemCount: _buildGroupedList(requests).length,
-                        itemBuilder: (context, index) =>
-                            _buildGroupedList(requests)[index],
-                      ),
-              ),
-            ],
-          );
-        },
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -934,16 +1050,17 @@ class _SortButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon,
-                  size: 15,
-                  color: selected ? color : Colors.grey.shade500),
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? color : Colors.grey.shade500,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight:
-                      selected ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                   color: selected ? color : Colors.grey.shade600,
                 ),
               ),
@@ -991,7 +1108,11 @@ class _ToggleChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 13, color: selected ? color : Colors.grey.shade500),
+              Icon(
+                icon,
+                size: 13,
+                color: selected ? color : Colors.grey.shade500,
+              ),
               const SizedBox(width: 5),
             ],
             Text(
@@ -1021,13 +1142,11 @@ class _DateSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24, bottom: 10),
       child: Row(
         children: [
-          Expanded(
-              child: Divider(color: Colors.grey.shade300, thickness: 1.2)),
+          Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1.2)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
               decoration: BoxDecoration(
                 color: Colors.green.shade700,
                 borderRadius: BorderRadius.circular(20),
@@ -1042,8 +1161,11 @@ class _DateSectionHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_month,
-                      size: 13, color: Colors.white),
+                  const Icon(
+                    Icons.calendar_month,
+                    size: 13,
+                    color: Colors.white,
+                  ),
                   const SizedBox(width: 5),
                   Text(
                     label,
@@ -1058,8 +1180,7 @@ class _DateSectionHeader extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-              child: Divider(color: Colors.grey.shade300, thickness: 1.2)),
+          Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1.2)),
         ],
       ),
     );
@@ -1086,6 +1207,8 @@ class _RequestCard extends StatelessWidget {
     required this.statusLabel,
     required this.onDeleted,
   });
+
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
 
   @override
   Widget build(BuildContext context) {
@@ -1120,7 +1243,9 @@ class _RequestCard extends StatelessWidget {
                         child: Text(
                           request.itemName,
                           style: const TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.bold),
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1128,7 +1253,9 @@ class _RequestCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(20),
@@ -1220,22 +1347,24 @@ class _RequestCard extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => BlocProvider(
-                                create: (_) => RequestBloc()
-                                  ..add(LoadRequest(request.requestId)),
+                                create: (_) =>
+                                    RequestBloc()
+                                      ..add(LoadRequest(request.requestId)),
                                 child: RequestSentPage(
-                                    requestId: request.requestId),
+                                  requestId: request.requestId,
+                                ),
                               ),
                             ),
                           ),
                           icon: const Icon(Icons.visibility_rounded, size: 16),
-                          label: const Text('View'),
+                          label: Text(_t('View', 'Tingnan')),
                           style: FilledButton.styleFrom(
                             backgroundColor: lightColorScheme.primary,
                             foregroundColor: lightColorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 10),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
                       ),
@@ -1246,22 +1375,28 @@ class _RequestCard extends StatelessWidget {
                             final confirm = await showDialog<bool>(
                               context: context,
                               builder: (_) => AlertDialog(
-                                title: const Text('Delete Request'),
-                                content: const Text(
-                                  'Are you sure you want to delete this rental request?',
+                                title: Text(
+                                  _t('Delete Request', 'Burahin ang Request'),
+                                ),
+                                content: Text(
+                                  _t(
+                                    'Are you sure you want to delete this rental request?',
+                                    'Sigurado ka bang gusto mong burahin ang rental request na ito?',
+                                  ),
                                 ),
                                 actions: [
                                   TextButton(
                                     onPressed: () =>
                                         Navigator.pop(context, false),
-                                    child: const Text('Cancel'),
+                                    child: Text(_t('Cancel', 'Huwag muna')),
                                   ),
                                   TextButton(
                                     onPressed: () =>
                                         Navigator.pop(context, true),
-                                    child: const Text('Delete',
-                                        style:
-                                            TextStyle(color: Colors.red)),
+                                    child: Text(
+                                      _t('Delete', 'Burahin'),
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1269,26 +1404,36 @@ class _RequestCard extends StatelessWidget {
                             if (confirm == true) {
                               await FirestoreService()
                                   .validateEquipmentAvailabilityWithNotification(
-                                      request.itemId);
+                                    request.itemId,
+                                  );
                               await requestService.deleteRequest(request);
                               onDeleted();
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('Request deleted')));
+                                  SnackBar(
+                                    content: Text(
+                                      _t(
+                                        'Request deleted',
+                                        'Nabura ang request',
+                                      ),
+                                    ),
+                                  ),
+                                );
                               }
                             }
                           },
-                          icon: const Icon(Icons.delete_outline_rounded,
-                              size: 16),
-                          label: const Text('Delete'),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 16,
+                          ),
+                          label: Text(_t('Delete', 'Burahin')),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
                             side: const BorderSide(color: Colors.red),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 10),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
                       ),

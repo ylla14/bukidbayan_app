@@ -2,6 +2,7 @@ import 'package:bukidbayan_app/screens/dashboard/earnings_report_page.dart';
 import 'package:bukidbayan_app/screens/dashboard/kpi_dashboard_page.dart';
 import 'package:bukidbayan_app/screens/dashboard/renter_analytics_screen.dart';
 import 'package:bukidbayan_app/services/analytics/renter_analytics_service.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
@@ -23,7 +24,7 @@ class ActionButtonsSection extends StatelessWidget {
       children: [
         // Section label
         Text(
-          "Mabilis na Aksyon",
+          AppLanguage.text(en: 'Quick Actions', tl: 'Mabilis na Aksyon'),
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -36,7 +37,10 @@ class ActionButtonsSection extends StatelessWidget {
             Expanded(
               child: _ActionCard(
                 icon: Icons.add_box_rounded,
-                label: "Aking Rental\nRequests",
+                label: AppLanguage.text(
+                  en: 'My Rental\nRequests',
+                  tl: 'Aking Rental\nRequests',
+                ),
                 color: lightColorScheme.primary,
                 onTap: () => Navigator.push(
                   context,
@@ -51,7 +55,10 @@ class ActionButtonsSection extends StatelessWidget {
             Expanded(
               child: _ActionCard(
                 icon: Icons.inbox_rounded,
-                label: "Paparating na\nRequests",
+                label: AppLanguage.text(
+                  en: 'Incoming\nRequests',
+                  tl: 'Paparating na\nRequests',
+                ),
                 color: lightColorScheme.primary,
                 onTap: () => Navigator.push(
                   context,
@@ -70,7 +77,10 @@ class ActionButtonsSection extends StatelessWidget {
         _ActionCard(
           cardKey: const Key('my_rental_analytics_button'),
           icon: Icons.insights_rounded,
-          label: "Aking Rental Analytics",
+          label: AppLanguage.text(
+            en: 'My Rental Analytics',
+            tl: 'Aking Rental Analytics',
+          ),
           color: lightColorScheme.primary,
           onTap: () => Navigator.push(
             context,
@@ -88,7 +98,10 @@ class ActionButtonsSection extends StatelessWidget {
         // Full-width earnings button
         _ActionCard(
           icon: Icons.payments_rounded,
-          label: "Kabuuang Kita mula sa Natapos na Renta",
+          label: AppLanguage.text(
+            en: 'Total Earnings from Completed Rentals',
+            tl: 'Kabuuang Kita mula sa Natapos na Renta',
+          ),
           color: lightColorScheme.primary,
           onTap: () => Navigator.push(
             context,
@@ -100,7 +113,10 @@ class ActionButtonsSection extends StatelessWidget {
 
         _ActionCard(
           icon: Icons.insights_rounded,
-          label: "Performance Dashboard",
+          label: AppLanguage.text(
+            en: 'Performance Dashboard',
+            tl: 'Dashboard ng Performance',
+          ),
           color: lightColorScheme.primary,
           onTap: () => Navigator.push(
             context,

@@ -2,6 +2,7 @@ import 'package:bukidbayan_app/models/crop_preference.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -230,13 +231,25 @@ class _MapSectionState extends State<MapSection> {
   Widget build(BuildContext context) {
     if (_userContextLoading) return _buildLoadingCard(context);
     if (_userContextError != null) {
-      return _buildErrorCard(context, 'Could not load nearby settings.');
+      return _buildErrorCard(
+        context,
+        AppLanguage.text(
+          en: 'Could not load nearby settings.',
+          tl: 'Hindi ma-load ang nearby settings.',
+        ),
+      );
     }
 
     final userContext = _userContext;
     final userId = widget.currentUserId;
     if (userId == null || userContext == null) {
-      return _buildErrorCard(context, 'Sign in to use nearby equipment.');
+      return _buildErrorCard(
+        context,
+        AppLanguage.text(
+          en: 'Sign in to use nearby equipment.',
+          tl: 'Mag-sign in para magamit ang nearby equipment.',
+        ),
+      );
     }
 
     return StreamBuilder<List<Equipment>>(
@@ -246,7 +259,13 @@ class _MapSectionState extends State<MapSection> {
           return _buildLoadingCard(context);
         }
         if (equipmentSnapshot.hasError) {
-          return _buildErrorCard(context, 'Could not load nearby equipment.');
+          return _buildErrorCard(
+            context,
+            AppLanguage.text(
+              en: 'Could not load nearby equipment.',
+              tl: 'Hindi ma-load ang nearby equipment.',
+            ),
+          );
         }
 
         final allEquipment = equipmentSnapshot.data ?? const <Equipment>[];
@@ -343,7 +362,10 @@ class _MapSectionState extends State<MapSection> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Nearby Equipment',
+              AppLanguage.text(
+                en: 'Nearby Equipment',
+                tl: 'Malapit na Kagamitan',
+              ),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -361,7 +383,7 @@ class _MapSectionState extends State<MapSection> {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                'View All',
+                AppLanguage.text(en: 'View All', tl: 'Tingnan Lahat'),
                 style: TextStyle(
                   fontSize: 13,
                   color: primary,
@@ -520,8 +542,11 @@ class _MapSectionState extends State<MapSection> {
               color: Colors.black.withValues(alpha: 0.3),
               alignment: Alignment.center,
               padding: const EdgeInsets.all(12),
-              child: const Text(
-                'Set your home or farm location to enable nearby distance search.',
+              child: Text(
+                AppLanguage.text(
+                  en: 'Set your home or farm location to enable nearby distance search.',
+                  tl: 'I-set ang iyong bahay o bukid para gumana ang nearby distance search.',
+                ),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
@@ -540,7 +565,7 @@ class _MapSectionState extends State<MapSection> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Search radius: ${radiusKm.toStringAsFixed(0)} km',
+                  '${AppLanguage.text(en: 'Search radius', tl: 'Lawak ng paghahanap')}: ${radiusKm.toStringAsFixed(0)} km',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -566,14 +591,17 @@ class _MapSectionState extends State<MapSection> {
                       force: true,
                     );
                   },
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     child: Row(
                       children: [
                         Icon(Icons.center_focus_strong_rounded, size: 14),
                         SizedBox(width: 6),
                         Text(
-                          'Recenter',
+                          AppLanguage.text(
+                            en: 'Recenter',
+                            tl: 'Ibalik sa Gitna',
+                          ),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -612,8 +640,8 @@ class _MapSectionState extends State<MapSection> {
               Expanded(
                 child: Row(
                   children: [
-                    const Text(
-                      'Nearby only',
+                    Text(
+                      AppLanguage.text(en: 'Nearby only', tl: 'Malapit lang'),
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 8),
@@ -634,14 +662,17 @@ class _MapSectionState extends State<MapSection> {
               ),
               TextButton(
                 onPressed: _resetNearbyState,
-                child: const Text('Reset'),
+                child: Text(AppLanguage.text(en: 'Reset', tl: 'I-reset')),
               ),
             ],
           ),
           const SizedBox(height: 8),
           if (coordinateOptions.isNotEmpty) ...[
-            const Text(
-              'Location source',
+            Text(
+              AppLanguage.text(
+                en: 'Location source',
+                tl: 'Pinanggalingang lokasyon',
+              ),
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
@@ -664,7 +695,10 @@ class _MapSectionState extends State<MapSection> {
             ),
             const SizedBox(height: 10),
           ],
-          const Text('Radius', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            AppLanguage.text(en: 'Radius', tl: 'Saklaw'),
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -686,8 +720,11 @@ class _MapSectionState extends State<MapSection> {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Text(
-                'Sort by distance',
+              Text(
+                AppLanguage.text(
+                  en: 'Sort by distance',
+                  tl: 'Ayusin ayon sa layo',
+                ),
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(width: 8),
@@ -704,7 +741,12 @@ class _MapSectionState extends State<MapSection> {
           if (recommendedCategories.isNotEmpty) ...[
             const SizedBox(height: 6),
             FilterChip(
-              label: const Text('Recommended for My Crops'),
+              label: Text(
+                AppLanguage.text(
+                  en: 'Recommended for My Crops',
+                  tl: 'Inirerekomenda para sa Aking Pananim',
+                ),
+              ),
               selected: _showCropRecommendedOnly && _activeCropCategory == null,
               onSelected: (enabled) {
                 setState(() {
@@ -739,10 +781,13 @@ class _MapSectionState extends State<MapSection> {
             ),
           ],
           if (recommendedCategories.isEmpty && activeCrops.isNotEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
-                'No recommendation categories available for your crop setup yet.',
+                AppLanguage.text(
+                  en: 'No recommendation categories are available for your crop setup yet.',
+                  tl: 'Wala pang available na recommendation categories para sa setup ng iyong pananim.',
+                ),
                 style: TextStyle(fontSize: 12, color: Colors.black54),
               ),
             ),
@@ -761,9 +806,14 @@ class _MapSectionState extends State<MapSection> {
       return _buildInfoMessage(
         context,
         icon: Icons.location_off_outlined,
-        title: 'Missing location',
-        subtitle:
-            'Nearby search needs home or farm coordinates. Turn off "Nearby only" to view all available equipment.',
+        title: AppLanguage.text(
+          en: 'Missing location',
+          tl: 'Kulang ang lokasyon',
+        ),
+        subtitle: AppLanguage.text(
+          en: 'Nearby search needs home or farm coordinates. Turn off "Nearby only" to view all available equipment.',
+          tl: 'Kailangan ng nearby search ang coordinates ng bahay o bukid. Patayin ang "Malapit lang" para makita ang lahat ng available na kagamitan.',
+        ),
       );
     }
 
@@ -772,15 +822,27 @@ class _MapSectionState extends State<MapSection> {
         return _buildInfoMessage(
           context,
           icon: Icons.search_off_rounded,
-          title: 'No equipment in radius',
-          subtitle: 'Try a larger radius or reset your nearby filters.',
+          title: AppLanguage.text(
+            en: 'No equipment in radius',
+            tl: 'Walang kagamitan sa loob ng saklaw',
+          ),
+          subtitle: AppLanguage.text(
+            en: 'Try a larger radius or reset your nearby filters.',
+            tl: 'Subukan ang mas malaking saklaw o i-reset ang iyong nearby filters.',
+          ),
         );
       }
       return _buildInfoMessage(
         context,
         icon: Icons.filter_alt_off_rounded,
-        title: 'No matching equipment',
-        subtitle: 'Try clearing the crop drill-down or nearby filters.',
+        title: AppLanguage.text(
+          en: 'No matching equipment',
+          tl: 'Walang tumugmang kagamitan',
+        ),
+        subtitle: AppLanguage.text(
+          en: 'Try clearing the crop drill-down or nearby filters.',
+          tl: 'Subukang alisin ang crop drill-down o nearby filters.',
+        ),
       );
     }
 
@@ -901,9 +963,9 @@ class _MapSectionState extends State<MapSection> {
   String _sourceLabel(DashboardCoordinateSource source) {
     switch (source) {
       case DashboardCoordinateSource.farm:
-        return 'Farm';
+        return AppLanguage.text(en: 'Farm', tl: 'Bukid');
       case DashboardCoordinateSource.home:
-        return 'Home';
+        return AppLanguage.text(en: 'Home', tl: 'Bahay');
     }
   }
 

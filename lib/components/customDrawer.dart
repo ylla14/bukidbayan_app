@@ -1,3 +1,4 @@
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/language_notifier.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:flutter/material.dart';
@@ -5,10 +6,7 @@ import 'package:flutter/material.dart';
 class CustomDrawer extends StatelessWidget {
   final Future<void> Function() onLogout;
 
-  const CustomDrawer({
-    super.key,
-    required this.onLogout,
-  });
+  const CustomDrawer({super.key, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +22,11 @@ class CustomDrawer extends StatelessWidget {
             builder: (_, showTl, _) {
               return ListTile(
                 leading: const Icon(Icons.language),
-                title: const Text('Language'),
+                title: Text(AppLanguage.text(en: 'Language', tl: 'Wika')),
                 subtitle: Text(
-                  showTl ? 'Tagalog' : 'English',
+                  showTl
+                      ? AppLanguage.text(en: 'Tagalog', tl: 'Tagalog')
+                      : AppLanguage.text(en: 'English', tl: 'English'),
                   style: TextStyle(
                     fontSize: 12,
                     color: lightColorScheme.primary,
@@ -56,16 +56,15 @@ class CustomDrawer extends StatelessWidget {
           // ── Logout ─────────────────────────────────────────────────────────
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              'Logout',
+            title: Text(
+              AppLanguage.text(en: 'Logout', tl: 'Mag-logout'),
               style: TextStyle(color: Colors.red),
             ),
             onTap: () async {
               await onLogout();
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/login',
-                (route) => false,
-              );
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/login', (route) => false);
             },
           ),
         ],

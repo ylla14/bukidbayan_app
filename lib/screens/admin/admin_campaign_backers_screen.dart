@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/rent/proof_page_viewer.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/models/campaign_support_summary.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
@@ -55,6 +56,8 @@ class _AdminCampaignBackersScreenState
   late final CrowdfundingService _service;
   late Future<_AdminCampaignBackersData> _future;
 
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
+
   @override
   void initState() {
     super.initState();
@@ -86,7 +89,7 @@ class _AdminCampaignBackersScreenState
     if (pledge.backerEmail != null && pledge.backerEmail!.trim().isNotEmpty) {
       return pledge.backerEmail!.trim();
     }
-    return 'Anonymous supporter';
+    return _t('Anonymous supporter', 'Hindi kilalang tagasuporta');
   }
 
   String _contactLabel(Pledge pledge) {
@@ -94,7 +97,7 @@ class _AdminCampaignBackersScreenState
     if (phone != null && phone.isNotEmpty) return phone;
     final email = pledge.backerEmail?.trim();
     if (email != null && email.isNotEmpty) return email;
-    return 'No contact info';
+    return _t('No contact info', 'Walang contact info');
   }
 
   CampaignSupportSummary _summaryForGroup({
@@ -211,11 +214,15 @@ class _AdminCampaignBackersScreenState
   }
 
   String _statusLabel(Pledge pledge) {
-    if (pledge.isInvalidated) return 'Invalidated';
-    if (pledge.isCanceled) return 'Canceled';
-    if (pledge.isPendingProof) return 'Pending proof';
-    if (pledge.isPendingReview) return 'Pending review';
-    return 'Counted';
+    if (pledge.isInvalidated) return _t('Invalidated', 'Na-invalid');
+    if (pledge.isCanceled) return _t('Canceled', 'Kinansela');
+    if (pledge.isPendingProof) {
+      return _t('Pending proof', 'Naghihintay ng patunay');
+    }
+    if (pledge.isPendingReview) {
+      return _t('Pending review', 'Naghihintay ng review');
+    }
+    return _t('Counted', 'Naibilang');
   }
 
   Future<void> _confirmContribution(Pledge pledge) async {
@@ -223,21 +230,26 @@ class _AdminCampaignBackersScreenState
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Confirm Contribution'),
+          title: Text(
+            _t('Confirm Contribution', 'Kumpirmahin ang Kontribusyon'),
+          ),
           content: Text(
-            'This will add ${formatPeso(pledge.amount)} to the campaign totals and notify the supporter. Only do this after verifying the submitted proof.',
+            _t(
+              'This will add ${formatPeso(pledge.amount)} to the campaign totals and notify the supporter. Only do this after verifying the submitted proof.',
+              'Idadagdag nito ang ${formatPeso(pledge.amount)} sa total ng campaign at aabisuhan ang tagasuporta. Gawin lang ito kapag naverify na ang ipinasa niyang patunay.',
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: Text(_t('Cancel', 'Kanselahin')),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.green.shade700,
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Confirm'),
+              child: Text(_t('Confirm', 'Kumpirmahin')),
             ),
           ],
         );
@@ -254,15 +266,18 @@ class _AdminCampaignBackersScreenState
       if (!mounted) return;
       showConfirmSnackbar(
         context: context,
-        title: 'Contribution confirmed',
-        message: 'Added to the campaign totals and the supporter was notified.',
+        title: _t('Contribution confirmed', 'Nakumpirma ang kontribusyon'),
+        message: _t(
+          'Added to the campaign totals and the supporter was notified.',
+          'Naidagdag sa total ng campaign at naabisuhan ang tagasuporta.',
+        ),
       );
       await _reload();
     } catch (e) {
       if (!mounted) return;
       showErrorSnackbar(
         context: context,
-        title: 'Could not confirm',
+        title: _t('Could not confirm', 'Hindi makumpirma'),
         message: e.toString().replaceFirst('Exception: ', ''),
       );
     }
@@ -275,23 +290,37 @@ class _AdminCampaignBackersScreenState
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Mark Contribution Invalid'),
+          title: Text(
+            _t(
+              'Mark Contribution Invalid',
+              'Markahang Invalid ang Kontribusyon',
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 wasCounted
-                    ? 'This will remove ${formatPeso(pledge.amount)} from the campaign totals but keep the record for review.'
-                    : 'This pledge was never added to the campaign totals. It will be marked invalid and the supporter will be notified.',
+                    ? _t(
+                        'This will remove ${formatPeso(pledge.amount)} from the campaign totals but keep the record for review.',
+                        'Aalisin nito ang ${formatPeso(pledge.amount)} sa total ng campaign pero mananatili ang record para sa review.',
+                      )
+                    : _t(
+                        'This pledge was never added to the campaign totals. It will be marked invalid and the supporter will be notified.',
+                        'Hindi naisama ang pledge na ito sa total ng campaign. Mamarkahan itong invalid at aabisuhan ang tagasuporta.',
+                      ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: reasonController,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Reason (optional)',
-                  hintText: 'Halimbawa: malabong screenshot o maling reference',
+                decoration: InputDecoration(
+                  labelText: _t('Reason (optional)', 'Dahilan (opsyonal)'),
+                  hintText: _t(
+                    'Example: blurry screenshot or wrong reference',
+                    'Halimbawa: malabong screenshot o maling reference',
+                  ),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -300,14 +329,14 @@ class _AdminCampaignBackersScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: Text(_t('Cancel', 'Kanselahin')),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.red.shade700,
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Mark Invalid'),
+              child: Text(_t('Mark Invalid', 'Markahang Invalid')),
             ),
           ],
         );
@@ -325,17 +354,26 @@ class _AdminCampaignBackersScreenState
       if (!mounted) return;
       showConfirmSnackbar(
         context: context,
-        title: 'Contribution invalidated',
+        title: _t(
+          'Contribution invalidated',
+          'Na-markahang invalid ang kontribusyon',
+        ),
         message: wasCounted
-            ? 'The contribution record was kept, removed from totals, and the supporter was notified.'
-            : 'The contribution record was kept and the supporter was notified.',
+            ? _t(
+                'The contribution record was kept, removed from totals, and the supporter was notified.',
+                'Napanatili ang record ng kontribusyon, inalis sa total, at naabisuhan ang tagasuporta.',
+              )
+            : _t(
+                'The contribution record was kept and the supporter was notified.',
+                'Napanatili ang record ng kontribusyon at naabisuhan ang tagasuporta.',
+              ),
       );
       await _reload();
     } catch (e) {
       if (!mounted) return;
       showErrorSnackbar(
         context: context,
-        title: 'Could not invalidate',
+        title: _t('Could not invalidate', 'Hindi ma-markahang invalid'),
         message: e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
@@ -383,7 +421,7 @@ class _AdminCampaignBackersScreenState
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Text('Canceled'),
+        child: Text(_t('Canceled', 'Kinansela')),
       );
     }
 
@@ -421,7 +459,7 @@ class _AdminCampaignBackersScreenState
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
-          'Ref: $referenceNumber',
+          '${_t('Ref', 'Ref')}: $referenceNumber',
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       );
@@ -433,7 +471,7 @@ class _AdminCampaignBackersScreenState
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Text('No proof yet'),
+      child: Text(_t('No proof yet', 'Wala pang patunay')),
     );
   }
 
@@ -467,7 +505,7 @@ class _AdminCampaignBackersScreenState
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Submitted ${_formatDate(pledge.createdAt)}',
+                      '${_t('Submitted', 'Isinumite')} ${_formatDate(pledge.createdAt)}',
                       style: TextStyle(color: Colors.grey.shade700),
                     ),
                   ],
@@ -512,7 +550,7 @@ class _AdminCampaignBackersScreenState
           if (pledge.isInvalidated && reason != null && reason.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              'Reason: $reason',
+              '${_t('Reason', 'Dahilan')}: $reason',
               style: TextStyle(
                 color: Colors.red.shade700,
                 fontWeight: FontWeight.w600,
@@ -529,7 +567,7 @@ class _AdminCampaignBackersScreenState
                   FilledButton.icon(
                     onPressed: () => _confirmContribution(pledge),
                     icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Confirm'),
+                    label: Text(_t('Confirm', 'Kumpirmahin')),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.green.shade700,
                     ),
@@ -537,7 +575,7 @@ class _AdminCampaignBackersScreenState
                 OutlinedButton.icon(
                   onPressed: () => _markContributionInvalid(pledge),
                   icon: const Icon(Icons.gpp_bad_outlined),
-                  label: const Text('Mark Invalid'),
+                  label: Text(_t('Mark Invalid', 'Markahang Invalid')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red.shade700,
                     side: BorderSide(color: Colors.red.shade200),
@@ -601,7 +639,7 @@ class _AdminCampaignBackersScreenState
                       if (lastContributionAt != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Latest contribution: ${_formatDate(lastContributionAt)}',
+                          '${_t('Latest contribution', 'Pinakahuling kontribusyon')}: ${_formatDate(lastContributionAt)}',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                       ],
@@ -625,7 +663,7 @@ class _AdminCampaignBackersScreenState
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    'Counted ${formatPeso(group.summary.countedContributionTotal)}',
+                    '${_t('Counted', 'Naibilang')} ${formatPeso(group.summary.countedContributionTotal)}',
                     style: TextStyle(
                       color: Colors.green.shade800,
                       fontWeight: FontWeight.w700,
@@ -643,7 +681,7 @@ class _AdminCampaignBackersScreenState
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Pending ${formatPeso(group.summary.pendingContributionTotal)}',
+                      '${_t('Pending', 'Naghihintay')} ${formatPeso(group.summary.pendingContributionTotal)}',
                       style: TextStyle(
                         color: Colors.orange.shade900,
                         fontWeight: FontWeight.w700,
@@ -661,7 +699,7 @@ class _AdminCampaignBackersScreenState
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Invalid ${formatPeso(group.summary.invalidContributionTotal)}',
+                      '${_t('Invalid', 'Invalid')} ${formatPeso(group.summary.invalidContributionTotal)}',
                       style: TextStyle(
                         color: Colors.red.shade800,
                         fontWeight: FontWeight.w700,
@@ -679,7 +717,7 @@ class _AdminCampaignBackersScreenState
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Active benefit: ${reward.title}',
+                      '${_t('Active benefit', 'Aktibong benepisyo')}: ${reward.title}',
                       style: TextStyle(
                         color: lightColorScheme.primary,
                         fontWeight: FontWeight.w700,
@@ -705,145 +743,167 @@ class _AdminCampaignBackersScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          widget.campaignTitle.isEmpty
-              ? 'Campaign Backers'
-              : widget.campaignTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: Text(
+            widget.campaignTitle.isEmpty
+                ? _t('Campaign Backers', 'Mga Backer ng Campaign')
+                : widget.campaignTitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          backgroundColor: lightColorScheme.primary,
+          foregroundColor: Colors.white,
         ),
-        backgroundColor: lightColorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: RefreshIndicator(
-        onRefresh: _reload,
-        child: FutureBuilder<_AdminCampaignBackersData>(
-          future: _future,
-          builder: (context, snapshot) {
-            final data = snapshot.data;
-            final pledges = data?.pledges ?? const <Pledge>[];
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                pledges.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        body: RefreshIndicator(
+          onRefresh: _reload,
+          child: FutureBuilder<_AdminCampaignBackersData>(
+            future: _future,
+            builder: (context, snapshot) {
+              final data = snapshot.data;
+              final pledges = data?.pledges ?? const <Pledge>[];
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  pledges.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            final groups = data == null
-                ? const <_SupporterGroup>[]
-                : _buildGroups(data);
-            final countedAmount = groups.fold<int>(
-              0,
-              (sum, group) => sum + group.summary.countedContributionTotal,
-            );
-            final awaitingProofAmount = groups.fold<int>(
-              0,
-              (sum, group) =>
-                  sum + group.summary.awaitingProofContributionTotal,
-            );
-            final awaitingReviewAmount = groups.fold<int>(
-              0,
-              (sum, group) =>
-                  sum + group.summary.awaitingReviewContributionTotal,
-            );
-            final invalidAmount = groups.fold<int>(
-              0,
-              (sum, group) => sum + group.summary.invalidContributionTotal,
-            );
-            final activeSupporters = groups
-                .where((group) => group.summary.countedPledgeCount > 0)
-                .length;
+              final groups = data == null
+                  ? const <_SupporterGroup>[]
+                  : _buildGroups(data);
+              final countedAmount = groups.fold<int>(
+                0,
+                (sum, group) => sum + group.summary.countedContributionTotal,
+              );
+              final awaitingProofAmount = groups.fold<int>(
+                0,
+                (sum, group) =>
+                    sum + group.summary.awaitingProofContributionTotal,
+              );
+              final awaitingReviewAmount = groups.fold<int>(
+                0,
+                (sum, group) =>
+                    sum + group.summary.awaitingReviewContributionTotal,
+              );
+              final invalidAmount = groups.fold<int>(
+                0,
+                (sum, group) => sum + group.summary.invalidContributionTotal,
+              );
+              final activeSupporters = groups
+                  .where((group) => group.summary.countedPledgeCount > 0)
+                  .length;
 
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(
-                  'Review each supporter’s proof, contribution history, and active benefit. Invalid contributions stay on record but can be removed from the totals instantly.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade700,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth >= 900
-                        ? (constraints.maxWidth - 24) / 4
-                        : constraints.maxWidth >= 600
-                        ? (constraints.maxWidth - 12) / 2
-                        : constraints.maxWidth;
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        SizedBox(
-                          width: width,
-                          child: _buildMetricCard(
-                            label: 'Active supporters',
-                            value: activeSupporters.toString(),
-                            icon: Icons.people_alt_outlined,
-                            color: lightColorScheme.primary,
-                          ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: _buildMetricCard(
-                            label: 'Counted amount',
-                            value: formatPeso(countedAmount),
-                            icon: Icons.payments_outlined,
-                            color: Colors.green.shade700,
-                          ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: _buildMetricCard(
-                            label: 'Awaiting proof',
-                            value: formatPeso(awaitingProofAmount),
-                            icon: Icons.hourglass_top_rounded,
-                            color: Colors.orange.shade800,
-                          ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: _buildMetricCard(
-                            label: 'Awaiting review',
-                            value: formatPeso(awaitingReviewAmount),
-                            icon: Icons.rate_review_outlined,
-                            color: Colors.blue.shade700,
-                          ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: _buildMetricCard(
-                            label: 'Invalidated amount',
-                            value: formatPeso(invalidAmount),
-                            icon: Icons.gpp_bad_outlined,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 18),
-                if (groups.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32),
-                    child: Center(
-                      child: Text('Wala pang backer para sa campaign na ito.'),
-                    ),
-                  )
-                else
-                  ...groups.map(
-                    (group) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _buildSupporterCard(group),
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(
+                    'Review each supporter’s proof, contribution history, and active benefit. Invalid contributions stay on record but can be removed from the totals instantly.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade700,
+                      height: 1.35,
                     ),
                   ),
-              ],
-            );
-          },
+                  const SizedBox(height: 16),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth >= 900
+                          ? (constraints.maxWidth - 24) / 4
+                          : constraints.maxWidth >= 600
+                          ? (constraints.maxWidth - 12) / 2
+                          : constraints.maxWidth;
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: width,
+                            child: _buildMetricCard(
+                              label: _t(
+                                'Active supporters',
+                                'Aktibong tagasuporta',
+                              ),
+                              value: activeSupporters.toString(),
+                              icon: Icons.people_alt_outlined,
+                              color: lightColorScheme.primary,
+                            ),
+                          ),
+                          SizedBox(
+                            width: width,
+                            child: _buildMetricCard(
+                              label: _t(
+                                'Counted amount',
+                                'Naibilang na halaga',
+                              ),
+                              value: formatPeso(countedAmount),
+                              icon: Icons.payments_outlined,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                          SizedBox(
+                            width: width,
+                            child: _buildMetricCard(
+                              label: _t(
+                                'Awaiting proof',
+                                'Naghihintay ng patunay',
+                              ),
+                              value: formatPeso(awaitingProofAmount),
+                              icon: Icons.hourglass_top_rounded,
+                              color: Colors.orange.shade800,
+                            ),
+                          ),
+                          SizedBox(
+                            width: width,
+                            child: _buildMetricCard(
+                              label: _t(
+                                'Awaiting review',
+                                'Naghihintay ng review',
+                              ),
+                              value: formatPeso(awaitingReviewAmount),
+                              icon: Icons.rate_review_outlined,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          SizedBox(
+                            width: width,
+                            child: _buildMetricCard(
+                              label: _t(
+                                'Invalidated amount',
+                                'Na-invalid na halaga',
+                              ),
+                              value: formatPeso(invalidAmount),
+                              icon: Icons.gpp_bad_outlined,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  if (groups.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Text(
+                          _t(
+                            'No backers yet for this campaign.',
+                            'Wala pang backer para sa campaign na ito.',
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ...groups.map(
+                      (group) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _buildSupporterCard(group),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

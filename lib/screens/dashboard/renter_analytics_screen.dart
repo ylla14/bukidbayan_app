@@ -3,6 +3,7 @@ import 'package:bukidbayan_app/models/renter_analytics_report.dart';
 import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
 import 'package:bukidbayan_app/services/analytics/renter_analytics_service.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -106,11 +107,15 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   String _formatCurrency(num value) =>
       _renterAnalyticsCurrency.format(value.round());
 
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
+
   String _formatDate(DateTime? value) =>
       value == null ? '-' : _renterAnalyticsDate.format(value);
 
-  String _formatCountLabel(int count) =>
-      '$count request${count == 1 ? '' : 's'}';
+  String _formatCountLabel(int count) => AppLanguage.text(
+    en: '$count request${count == 1 ? '' : 's'}',
+    tl: '$count request${count == 1 ? '' : 's'}',
+  );
 
   String _formatDateRange(RentRequest request) {
     return '${_renterAnalyticsDate.format(request.start)} - ${_renterAnalyticsDate.format(request.end)}';
@@ -151,13 +156,13 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   String _statusLabel(RentRequestStatus status) {
     switch (status) {
       case RentRequestStatus.readyForPickup:
-        return 'Ready for pick up';
+        return _t('Ready for pickup', 'Handa para kunin');
       case RentRequestStatus.pickedUp:
-        return 'Picked up';
+        return _t('Picked up', 'Nakuha na');
       case RentRequestStatus.onTheWay:
-        return 'On the way';
+        return _t('On the way', 'Papunta na');
       case RentRequestStatus.inProgress:
-        return 'In progress';
+        return _t('In progress', 'Kasalukuyan');
       default:
         final raw = status.name;
         return raw[0].toUpperCase() + raw.substring(1);
@@ -196,46 +201,73 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
   String _bucketLabel(_RenterRequestBucket bucket) {
     switch (bucket) {
       case _RenterRequestBucket.waitingReview:
-        return 'Waiting for review';
+        return _t('Waiting for review', 'Naghihintay ng review');
       case _RenterRequestBucket.confirmedUpcoming:
-        return 'Confirmed booking';
+        return _t('Confirmed booking', 'Kumpirmadong booking');
       case _RenterRequestBucket.inUse:
-        return 'Equipment in use';
+        return _t('Equipment in use', 'Kagamitang ginagamit');
       case _RenterRequestBucket.closingOut:
-        return 'Return & closeout';
+        return _t('Return & closeout', 'Pagbalik at pagsasara');
       case _RenterRequestBucket.confirmedAndActive:
-        return 'Confirmed & active';
+        return _t('Confirmed & active', 'Kumpirmado at aktibo');
       case _RenterRequestBucket.completed:
-        return 'Completed rentals';
+        return _t('Completed rentals', 'Natapos na rental');
       case _RenterRequestBucket.cancelled:
-        return 'Cancelled requests';
+        return _t('Cancelled requests', 'Kinanselang request');
       case _RenterRequestBucket.declined:
-        return 'Declined requests';
+        return _t('Declined requests', 'Tinanggihang request');
       case _RenterRequestBucket.weatherRisk:
-        return 'Weather-risk bookings';
+        return _t('Weather-risk bookings', 'Booking na may weather risk');
     }
   }
 
   String _bucketDescription(_RenterRequestBucket bucket) {
     switch (bucket) {
       case _RenterRequestBucket.waitingReview:
-        return 'Pending requests that still need an owner decision.';
+        return _t(
+          'Pending requests that still need an owner decision.',
+          'Mga pending request na naghihintay pa ng desisyon ng may-ari.',
+        );
       case _RenterRequestBucket.confirmedUpcoming:
-        return 'Approved requests that are being prepared for pickup or delivery.';
+        return _t(
+          'Approved requests that are being prepared for pickup or delivery.',
+          'Mga approved request na inihahanda para sa pickup o delivery.',
+        );
       case _RenterRequestBucket.inUse:
-        return 'Rentals that are currently picked up or actively in progress.';
+        return _t(
+          'Rentals that are currently picked up or actively in progress.',
+          'Mga rental na nakuha na o kasalukuyang ginagamit.',
+        );
       case _RenterRequestBucket.closingOut:
-        return 'Rentals that are being returned or waiting for final closeout.';
+        return _t(
+          'Rentals that are being returned or waiting for final closeout.',
+          'Mga rental na ibinabalik o naghihintay ng final closeout.',
+        );
       case _RenterRequestBucket.confirmedAndActive:
-        return 'Everything from approved bookings through final wrap-up.';
+        return _t(
+          'Everything from approved bookings through final wrap-up.',
+          'Lahat mula sa approved bookings hanggang final wrap-up.',
+        );
       case _RenterRequestBucket.completed:
-        return 'Finished and completed rentals are both counted here.';
+        return _t(
+          'Finished and completed rentals are both counted here.',
+          'Kasama rito ang finished at completed rentals.',
+        );
       case _RenterRequestBucket.cancelled:
-        return 'Requests that were cancelled before completion.';
+        return _t(
+          'Requests that were cancelled before completion.',
+          'Mga request na nakansela bago matapos.',
+        );
       case _RenterRequestBucket.declined:
-        return 'Requests that owners declined.';
+        return _t(
+          'Requests that owners declined.',
+          'Mga request na tinanggihan ng may-ari.',
+        );
       case _RenterRequestBucket.weatherRisk:
-        return 'Requests that were flagged by the weather monitor.';
+        return _t(
+          'Requests that were flagged by the weather monitor.',
+          'Mga request na na-flag ng weather monitor.',
+        );
     }
   }
 
@@ -536,7 +568,9 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
 
   Widget _buildMissingUserState() {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Rental Analytics')),
+      appBar: AppBar(
+        title: Text(_t('My Rental Analytics', 'Aking Rental Analytics')),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -549,14 +583,20 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
                 color: Colors.grey.shade400,
               ),
               const SizedBox(height: 14),
-              const Text(
-                'No signed-in renter account was found.',
+              Text(
+                _t(
+                  'No signed-in renter account was found.',
+                  'Walang nakitang renter account na naka-sign in.',
+                ),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Sign in first to view your rental analytics.',
+                _t(
+                  'Sign in first to view your rental analytics.',
+                  'Mag-sign in muna para makita ang iyong rental analytics.',
+                ),
                 style: TextStyle(color: Colors.grey.shade700),
                 textAlign: TextAlign.center,
               ),
@@ -582,7 +622,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'How to read this page',
+            _t('How to read this page', 'Paano basahin ang page na ito'),
             style: TextStyle(
               color: lightColorScheme.primary,
               fontSize: 16,
@@ -592,20 +632,26 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           const SizedBox(height: 12),
           _GuidePoint(
             icon: Icons.lock_person_outlined,
-            text:
-                'Only your own rental requests, completed-rental spending, and weather-risk flags are included.',
+            text: _t(
+              'Only your own rental requests, completed-rental spending, and weather-risk flags are included.',
+              'Kasama lamang dito ang sarili mong rental requests, spending sa completed rentals, at weather-risk flags.',
+            ),
           ),
           const SizedBox(height: 10),
-          const _GuidePoint(
+          _GuidePoint(
             icon: Icons.insights_outlined,
-            text:
-                'Waiting for review only means pending approval. Confirmed & active covers approved bookings, delivery steps, in-progress rentals, and closeout steps. Finished requests are counted with completed rentals.',
+            text: _t(
+              'Waiting for review only means pending approval. Confirmed & active covers approved bookings, delivery steps, in-progress rentals, and closeout steps. Finished requests are counted with completed rentals.',
+              'Ang waiting for review ay pending approval pa lamang. Ang confirmed at active ay kasama ang approved bookings, delivery steps, in-progress rentals, at closeout steps. Kasama ang finished requests sa completed rentals.',
+            ),
           ),
           const SizedBox(height: 10),
-          const _GuidePoint(
+          _GuidePoint(
             icon: Icons.touch_app_outlined,
-            text:
-                'Tap any stage with activity to drill down into the matching requests and open full request details.',
+            text: _t(
+              'Tap any stage with activity to drill down into the matching requests and open full request details.',
+              'Pindutin ang anumang stage na may activity para makita ang matching requests at ang buong request details.',
+            ),
           ),
         ],
       ),
@@ -617,9 +663,12 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
     final cards = [
       _KpiCard(
         key: const Key('renter_analytics_summary_waiting_review'),
-        label: 'Waiting for Review',
+        label: _t('Waiting for Review', 'Naghihintay ng Review'),
         value: report.summary.pendingRequests.toString(),
-        subtitle: 'Still pending owner approval',
+        subtitle: _t(
+          'Still pending owner approval',
+          'Naghihintay pa ng approval ng may-ari',
+        ),
         icon: Icons.hourglass_top_rounded,
         onTap: report.summary.pendingRequests == 0
             ? null
@@ -630,7 +679,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
       ),
       _KpiCard(
         key: const Key('renter_analytics_summary_confirmed_active'),
-        label: 'Confirmed & Active',
+        label: _t('Confirmed & Active', 'Kumpirmado at Aktibo'),
         value: report.summary.activeRentals.toString(),
         subtitle: _confirmedAndActiveSubtitle(report),
         icon: Icons.swap_horiz_outlined,
@@ -643,9 +692,12 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
       ),
       _KpiCard(
         key: const Key('renter_analytics_summary_completed'),
-        label: 'Completed Rentals',
+        label: _t('Completed Rentals', 'Natapos na Rental'),
         value: completedCount.toString(),
-        subtitle: 'Includes finished and completed requests',
+        subtitle: _t(
+          'Includes finished and completed requests',
+          'Kasama ang finished at completed requests',
+        ),
         icon: Icons.verified_outlined,
         onTap: completedCount == 0
             ? null
@@ -653,10 +705,12 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
       ),
       _KpiCard(
         key: const Key('renter_analytics_summary_spending'),
-        label: 'Total Spending',
+        label: _t('Total Spending', 'Kabuuang Gastos'),
         value: _formatCurrency(report.summary.totalSpending),
-        subtitle:
-            'From $completedCount completed rental${completedCount == 1 ? '' : 's'}',
+        subtitle: _t(
+          'From $completedCount completed rental${completedCount == 1 ? '' : 's'}',
+          'Mula sa $completedCount completed rental${completedCount == 1 ? '' : 's'}',
+        ),
         icon: Icons.payments_outlined,
         onTap: completedCount == 0
             ? null
@@ -702,14 +756,16 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
     }
 
     return _SectionCard(
-      title: 'Request Journey',
-      subtitle:
-          'Each request belongs to one stage below, so the counts do not overlap.',
+      title: _t('Request Journey', 'Daloy ng Request'),
+      subtitle: _t(
+        'Each request belongs to one stage below, so the counts do not overlap.',
+        'Bawat request ay nasa isang stage lang sa ibaba, kaya hindi nag-o-overlap ang bilang.',
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Open now',
+            _t('Open now', 'Bukas ngayon'),
             style: TextStyle(
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w800,
@@ -719,34 +775,46 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           const SizedBox(height: 10),
           stageTile(
             key: const Key('renter_analytics_stage_waiting_review'),
-            label: 'Waiting for review',
-            subtitle: 'Pending requests that still need an owner decision',
+            label: _t('Waiting for review', 'Naghihintay ng review'),
+            subtitle: _t(
+              'Pending requests that still need an owner decision',
+              'Mga pending request na naghihintay ng desisyon ng may-ari',
+            ),
             bucket: _RenterRequestBucket.waitingReview,
           ),
           const SizedBox(height: 10),
           stageTile(
             key: const Key('renter_analytics_stage_confirmed_booking'),
-            label: 'Confirmed booking',
-            subtitle: 'Approved, ready for pickup, or already on the way',
+            label: _t('Confirmed booking', 'Kumpirmadong booking'),
+            subtitle: _t(
+              'Approved, ready for pickup, or already on the way',
+              'Approved, handa nang kunin, o papunta na',
+            ),
             bucket: _RenterRequestBucket.confirmedUpcoming,
           ),
           const SizedBox(height: 10),
           stageTile(
             key: const Key('renter_analytics_stage_in_use'),
-            label: 'Equipment in use',
-            subtitle: 'Picked up or currently being used',
+            label: _t('Equipment in use', 'Kagamitang ginagamit'),
+            subtitle: _t(
+              'Picked up or currently being used',
+              'Nakuha na o kasalukuyang ginagamit',
+            ),
             bucket: _RenterRequestBucket.inUse,
           ),
           const SizedBox(height: 10),
           stageTile(
             key: const Key('renter_analytics_stage_closing_out'),
-            label: 'Return & closeout',
-            subtitle: 'Returning, returned, or waiting for final completion',
+            label: _t('Return & closeout', 'Pagbalik at pagsasara'),
+            subtitle: _t(
+              'Returning, returned, or waiting for final completion',
+              'Ibinabalik, naibalik na, o naghihintay ng final completion',
+            ),
             bucket: _RenterRequestBucket.closingOut,
           ),
           const SizedBox(height: 18),
           Text(
-            'Closed',
+            _t('Closed', 'Sarado'),
             style: TextStyle(
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w800,
@@ -756,28 +824,37 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           const SizedBox(height: 10),
           stageTile(
             key: const Key('renter_analytics_stage_completed'),
-            label: 'Completed rentals',
-            subtitle: 'Finished and completed rentals',
+            label: _t('Completed rentals', 'Natapos na rental'),
+            subtitle: _t(
+              'Finished and completed rentals',
+              'Finished at completed rentals',
+            ),
             bucket: _RenterRequestBucket.completed,
           ),
           const SizedBox(height: 10),
           stageTile(
             key: const Key('renter_analytics_stage_cancelled'),
-            label: 'Cancelled requests',
-            subtitle: 'Requests that were cancelled before completion',
+            label: _t('Cancelled requests', 'Kinanselang request'),
+            subtitle: _t(
+              'Requests that were cancelled before completion',
+              'Mga request na nakansela bago matapos',
+            ),
             bucket: _RenterRequestBucket.cancelled,
           ),
           const SizedBox(height: 10),
           stageTile(
             key: const Key('renter_analytics_stage_declined'),
-            label: 'Declined requests',
-            subtitle: 'Requests that owners declined',
+            label: _t('Declined requests', 'Tinanggihang request'),
+            subtitle: _t(
+              'Requests that owners declined',
+              'Mga request na tinanggihan ng may-ari',
+            ),
             bucket: _RenterRequestBucket.declined,
           ),
           if (report.summary.weatherRiskBookings > 0) ...[
             const SizedBox(height: 18),
             Text(
-              'Watchlist',
+              _t('Watchlist', 'Watchlist'),
               style: TextStyle(
                 color: Colors.grey.shade700,
                 fontWeight: FontWeight.w800,
@@ -787,8 +864,11 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
             const SizedBox(height: 10),
             stageTile(
               key: const Key('renter_analytics_stage_weather_risk'),
-              label: 'Weather-risk bookings',
-              subtitle: 'Requests that were flagged by the weather monitor',
+              label: _t('Weather-risk bookings', 'Booking na may weather risk'),
+              subtitle: _t(
+                'Requests that were flagged by the weather monitor',
+                'Mga request na na-flag ng weather monitor',
+              ),
               bucket: _RenterRequestBucket.weatherRisk,
             ),
           ],
@@ -798,7 +878,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
             child: OutlinedButton.icon(
               onPressed: _openMyRequestsList,
               icon: const Icon(Icons.list_alt_rounded),
-              label: const Text('Open My Requests'),
+              label: Text(_t('Open My Requests', 'Buksan ang Aking Requests')),
             ),
           ),
         ],
@@ -810,8 +890,11 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
     final recentRequests = _sortedRequests(report.requests).take(5).toList();
 
     return _SectionCard(
-      title: 'Recent Requests',
-      subtitle: 'Newest first. Tap a request to open the full request page.',
+      title: _t('Recent Requests', 'Mga Kamakailang Request'),
+      subtitle: _t(
+        'Newest first. Tap a request to open the full request page.',
+        'Pinakabago muna. Pindutin ang request para buksan ang buong request page.',
+      ),
       child: Column(
         children: [
           for (var i = 0; i < recentRequests.length; i++) ...[
@@ -842,7 +925,12 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
             child: TextButton.icon(
               onPressed: _openMyRequestsList,
               icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('View all rental requests'),
+              label: Text(
+                _t(
+                  'View all rental requests',
+                  'Tingnan lahat ng rental requests',
+                ),
+              ),
             ),
           ),
         ],
@@ -852,29 +940,32 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
 
   Widget _buildSpendingSection(RenterAnalyticsReport report) {
     return _SectionCard(
-      title: 'Spending & Timing',
-      subtitle: 'Spending totals use finished and completed rentals',
+      title: _t('Spending & Timing', 'Gastos at Timing'),
+      subtitle: _t(
+        'Spending totals use finished and completed rentals',
+        'Ang spending totals ay gumagamit ng finished at completed rentals',
+      ),
       child: _InfoTable(
         rows: [
           _InfoRow(
-            label: 'Total requests',
+            label: _t('Total requests', 'Kabuuang request'),
             value: report.summary.totalRequests.toString(),
           ),
           _InfoRow(
-            label: 'Total spending',
+            label: _t('Total spending', 'Kabuuang gastos'),
             value: _formatCurrency(report.summary.totalSpending),
           ),
           _InfoRow(
-            label: 'Average rental duration',
+            label: _t('Average rental duration', 'Karaniwang tagal ng rental'),
             value:
-                '${report.summary.averageRentalDurationDays.toStringAsFixed(1)} days',
+                '${report.summary.averageRentalDurationDays.toStringAsFixed(1)} ${_t('days', 'araw')}',
           ),
           _InfoRow(
-            label: 'First request',
+            label: _t('First request', 'Unang request'),
             value: _formatDate(report.firstRequestAt),
           ),
           _InfoRow(
-            label: 'Latest request',
+            label: _t('Latest request', 'Pinakabagong request'),
             value: _formatDate(report.lastRequestAt),
           ),
         ],
@@ -884,10 +975,21 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
 
   Widget _buildCategorySection(RenterAnalyticsReport report) {
     return _SectionCard(
-      title: 'Most-used Equipment Categories',
-      subtitle: 'Ranked by how often you requested each category',
+      title: _t(
+        'Most-used Equipment Categories',
+        'Pinakaginagamit na Category ng Kagamitan',
+      ),
+      subtitle: _t(
+        'Ranked by how often you requested each category',
+        'Inaayos ayon sa dalas ng pag-request mo sa bawat category',
+      ),
       child: report.categoryUsage.isEmpty
-          ? const Text('No category usage data is available yet.')
+          ? Text(
+              _t(
+                'No category usage data is available yet.',
+                'Wala pang available na category usage data.',
+              ),
+            )
           : _RenterTableScrollFrame(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -896,11 +998,17 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
                   headingRowColor: WidgetStateProperty.resolveWith(
                     (_) => lightColorScheme.primary.withValues(alpha: 0.08),
                   ),
-                  columns: const [
-                    DataColumn(label: Text('Category')),
-                    DataColumn(label: Text('Requests'), numeric: true),
-                    DataColumn(label: Text('Completed'), numeric: true),
-                    DataColumn(label: Text('Spending')),
+                  columns: [
+                    DataColumn(label: Text(_t('Category', 'Category'))),
+                    DataColumn(
+                      label: Text(_t('Requests', 'Requests')),
+                      numeric: true,
+                    ),
+                    DataColumn(
+                      label: Text(_t('Completed', 'Completed')),
+                      numeric: true,
+                    ),
+                    DataColumn(label: Text(_t('Spending', 'Spending'))),
                   ],
                   rows: report.categoryUsage
                       .map(
@@ -933,14 +1041,17 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
               color: Colors.grey.shade400,
             ),
             const SizedBox(height: 14),
-            const Text(
-              'No rental analytics yet.',
+            Text(
+              _t('No rental analytics yet.', 'Wala pang rental analytics.'),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Your analytics will appear here after you start sending rental requests.',
+              _t(
+                'Your analytics will appear here after you start sending rental requests.',
+                'Lalabas dito ang analytics mo kapag nagsimula ka nang magpadala ng rental requests.',
+              ),
               style: TextStyle(color: Colors.grey.shade700),
               textAlign: TextAlign.center,
             ),
@@ -965,7 +1076,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'My Rental Analytics',
+            _t('My Rental Analytics', 'Aking Rental Analytics'),
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
@@ -974,7 +1085,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Generated ${_renterAnalyticsDate.format(report.generatedAt)} | ${_formatCountLabel(report.summary.totalRequests)}',
+            '${_t('Generated', 'Nabuo noong')} ${_renterAnalyticsDate.format(report.generatedAt)} | ${_formatCountLabel(report.summary.totalRequests)}',
             style: TextStyle(
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w600,
@@ -1006,7 +1117,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Rental Analytics'),
+        title: Text(_t('My Rental Analytics', 'Aking Rental Analytics')),
         backgroundColor: Colors.white,
         foregroundColor: lightColorScheme.primary,
         surfaceTintColor: Colors.transparent,
@@ -1030,8 +1141,11 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
                       color: Colors.red.shade300,
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Failed to load your rental analytics.',
+                    Text(
+                      _t(
+                        'Failed to load your rental analytics.',
+                        'Hindi na-load ang iyong rental analytics.',
+                      ),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -1047,7 +1161,7 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
                     FilledButton.icon(
                       onPressed: _reload,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
+                      label: Text(_t('Retry', 'Subukan muli')),
                     ),
                   ],
                 ),
@@ -1057,7 +1171,14 @@ class _RenterAnalyticsScreenState extends State<RenterAnalyticsScreen> {
 
           final report = snapshot.data;
           if (report == null) {
-            return const Center(child: Text('No rental analytics available.'));
+            return Center(
+              child: Text(
+                _t(
+                  'No rental analytics available.',
+                  'Walang available na rental analytics.',
+                ),
+              ),
+            );
           }
 
           return _buildLoadedBody(report);
@@ -1195,7 +1316,10 @@ class _KpiCard extends StatelessWidget {
           Opacity(
             opacity: onTap != null ? 1 : 0,
             child: Text(
-              'Tap to inspect matching requests',
+              AppLanguage.text(
+                en: 'Tap to inspect matching requests',
+                tl: 'Pindutin para tingnan ang matching requests',
+              ),
               style: TextStyle(
                 color: Colors.grey.shade600,
                 fontSize: 12,
@@ -1284,7 +1408,10 @@ class _StageTile extends StatelessWidget {
                 if (onTap != null) ...[
                   const SizedBox(height: 8),
                   Text(
-                    'Tap to view these requests',
+                    AppLanguage.text(
+                      en: 'Tap to view these requests',
+                      tl: 'Pindutin para tingnan ang mga request na ito',
+                    ),
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 12,
@@ -1402,14 +1529,18 @@ class _RequestPreviewCard extends StatelessWidget {
               if (submittedAtLabel != null)
                 _MetaChip(
                   icon: Icons.schedule_outlined,
-                  label: 'Submitted $submittedAtLabel',
+                  label:
+                      '${AppLanguage.text(en: 'Submitted', tl: 'Isinumite')} $submittedAtLabel',
                 ),
               if (amountLabel != null)
                 _MetaChip(icon: Icons.payments_outlined, label: amountLabel!),
               if (request.weatherFlag)
-                const _MetaChip(
+                _MetaChip(
                   icon: Icons.cloud_outlined,
-                  label: 'Weather risk',
+                  label: AppLanguage.text(
+                    en: 'Weather risk',
+                    tl: 'Weather risk',
+                  ),
                   color: Color(0xFFD97706),
                 ),
             ],
@@ -1428,7 +1559,7 @@ class _RequestPreviewCard extends StatelessWidget {
               if (onTap != null) ...[
                 const SizedBox(width: 12),
                 Text(
-                  'Open',
+                  AppLanguage.text(en: 'Open', tl: 'Buksan'),
                   style: TextStyle(
                     color: lightColorScheme.primary,
                     fontWeight: FontWeight.w700,
@@ -1542,7 +1673,10 @@ class _RenterPullToRefreshHint extends StatelessWidget {
         Icon(Icons.swipe_down_rounded, size: 16, color: Colors.grey.shade600),
         const SizedBox(width: 6),
         Text(
-          'Pull down to refresh your analytics.',
+          AppLanguage.text(
+            en: 'Pull down to refresh your analytics.',
+            tl: 'Hilain pababa para i-refresh ang iyong analytics.',
+          ),
           style: TextStyle(
             color: Colors.grey.shade600,
             fontSize: 12,
@@ -1573,7 +1707,10 @@ class _RenterTableScrollFrame extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'Swipe horizontally to see more columns.',
+              AppLanguage.text(
+                en: 'Swipe horizontally to see more columns.',
+                tl: 'Mag-swipe pahalang para makita ang iba pang column.',
+              ),
               style: TextStyle(
                 color: Colors.grey.shade600,
                 fontSize: 12,

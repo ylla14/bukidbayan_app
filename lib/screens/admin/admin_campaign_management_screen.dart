@@ -1,6 +1,7 @@
 import 'package:bukidbayan_app/components/admin/admin_card.dart';
 import 'package:bukidbayan_app/models/campaign.dart';
 import 'package:bukidbayan_app/screens/admin/admin_campaign_backers_screen.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:bukidbayan_app/utils/money_format.dart';
@@ -23,6 +24,8 @@ class _AdminCampaignManagementScreenState
   late final CrowdfundingService _service;
   late Future<List<Campaign>> _future;
 
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
+
   @override
   void initState() {
     super.initState();
@@ -39,69 +42,81 @@ class _AdminCampaignManagementScreenState
       c.status.startsWith('ended') || DateTime.now().isAfter(c.endDate);
 
   String _statusLabel(Campaign c) {
-    if (c.status == 'draft') return 'Draft';
-    if (_isEnded(c)) return 'Tapos na';
-    if (c.status == 'live') return 'Aktibo';
+    if (c.status == 'draft') return _t('Draft', 'Draft');
+    if (_isEnded(c)) return _t('Ended', 'Tapos na');
+    if (c.status == 'live') return _t('Live', 'Aktibo');
     return c.status;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Campaign Management'),
-        backgroundColor: lightColorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: RefreshIndicator(
-        onRefresh: _reload,
-        child: FutureBuilder<List<Campaign>>(
-          future: _future,
-          builder: (context, snapshot) {
-            final campaigns = snapshot.data ?? [];
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                campaigns.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(
-                  'Piliin ang campaign para makita ang mga backer at ang kanilang patunay ng bayad.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-                if (campaigns.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: Text('Wala ka pang campaign.')),
-                  )
-                else
-                  ...campaigns.map(
-                    (campaign) => AdminCard(
-                      icon: Icons.campaign_outlined,
-                      title: campaign.title.isEmpty
-                          ? '(Walang Pamagat)'
-                          : campaign.title,
-                      description:
-                          '${_statusLabel(campaign)} • ${formatPeso(campaign.pledgedAmount)} / ${formatPeso(campaign.goalAmount)} • ${campaign.backersCount} backers',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => AdminCampaignBackersScreen(
-                              campaignId: campaign.id,
-                              campaignTitle: campaign.title,
-                              serviceOverride: _service,
-                            ),
-                          ),
-                        );
-                      },
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: Text(_t('Campaign Management', 'Pamamahala ng Kampanya')),
+          backgroundColor: lightColorScheme.primary,
+          foregroundColor: Colors.white,
+        ),
+        body: RefreshIndicator(
+          onRefresh: _reload,
+          child: FutureBuilder<List<Campaign>>(
+            future: _future,
+            builder: (context, snapshot) {
+              final campaigns = snapshot.data ?? [];
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  campaigns.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(
+                    _t(
+                      'Choose a campaign to view supporters and their payment proofs.',
+                      'Piliin ang campaign para makita ang mga tagasuporta at ang kanilang patunay ng bayad.',
                     ),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-              ],
-            );
-          },
+                  const SizedBox(height: 16),
+                  if (campaigns.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          _t(
+                            'You do not have any campaigns yet.',
+                            'Wala ka pang campaign.',
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ...campaigns.map(
+                      (campaign) => AdminCard(
+                        icon: Icons.campaign_outlined,
+                        title: campaign.title.isEmpty
+                            ? _t('(Untitled)', '(Walang Pamagat)')
+                            : campaign.title,
+                        description:
+                            '${_statusLabel(campaign)} | ${formatPeso(campaign.pledgedAmount)} / ${formatPeso(campaign.goalAmount)} | ${campaign.backersCount} ${_t('supporters', 'tagasuporta')}',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => AdminCampaignBackersScreen(
+                                campaignId: campaign.id,
+                                campaignTitle: campaign.title,
+                                serviceOverride: _service,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

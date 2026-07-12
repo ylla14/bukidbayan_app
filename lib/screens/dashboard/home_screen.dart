@@ -1,11 +1,10 @@
 import 'package:bukidbayan_app/components/dashboard/action_buttons_section.dart';
-import 'package:bukidbayan_app/components/dashboard/asset_performance.dart';
 import 'package:bukidbayan_app/components/dashboard/dashboard_calendar_section.dart';
 import 'package:bukidbayan_app/components/dashboard/greeting_section.dart';
 import 'package:bukidbayan_app/components/dashboard/map_section.dart';
 import 'package:bukidbayan_app/components/dashboard/retirement_alert_section.dart';
 import 'package:bukidbayan_app/components/dashboard/summary_cards_section.dart';
-import 'package:bukidbayan_app/components/dashboard/utilization_rate.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -47,12 +46,23 @@ class _HomeScreenState extends State<HomeScreen> {
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           leading: const Icon(Icons.calendar_month_rounded),
-          title: const Text(
-            'Smart Calendar & Suggested Actions',
+          title: Text(
+            AppLanguage.text(
+              en: 'Smart Calendar & Suggested Actions',
+              tl: 'Matalinong Kalendaryo at mga Mungkahi',
+            ),
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           subtitle: Text(
-            _isCalendarExpanded ? 'Tap to collapse' : 'Tap to expand',
+            _isCalendarExpanded
+                ? AppLanguage.text(
+                    en: 'Tap to collapse',
+                    tl: 'Pindutin para isara',
+                  )
+                : AppLanguage.text(
+                    en: 'Tap to expand',
+                    tl: 'Pindutin para buksan',
+                  ),
             style: const TextStyle(fontSize: 12),
           ),
           children: [
@@ -68,29 +78,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBar(),
-      drawer: CustomDrawer(onLogout: logout),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const GreetingSection(),
-            const SizedBox(height: 16),
-            const SummaryCardsSection(),
-            const SizedBox(height: 24),
-            ActionButtonsSection(),
-            const SizedBox(height: 16),
-            const RetirementAlertSection(),
-            // const SizedBox(height: ),
-            _buildCalendarDropdown(),
-            const SizedBox(height: 24),
-            MapSection(currentUserId: _auth.currentUser?.uid),
-            const SizedBox(height: 20),
-            const CropsInSeasonSection(),
-            const SizedBox(height: 24),
-          ],
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        appBar: const CustomAppBar(),
+        drawer: CustomDrawer(onLogout: logout),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const GreetingSection(),
+              const SizedBox(height: 16),
+              const SummaryCardsSection(),
+              const SizedBox(height: 24),
+              ActionButtonsSection(),
+              const SizedBox(height: 16),
+              const RetirementAlertSection(),
+              _buildCalendarDropdown(),
+              const SizedBox(height: 24),
+              MapSection(currentUserId: _auth.currentUser?.uid),
+              const SizedBox(height: 20),
+              const CropsInSeasonSection(),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

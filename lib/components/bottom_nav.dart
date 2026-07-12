@@ -2,6 +2,7 @@ import 'package:bukidbayan_app/components/crop_preference_dialog.dart';
 import 'package:bukidbayan_app/screens/admin/admin_screen.dart';
 import 'package:bukidbayan_app/screens/crowdfunding_screen.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +30,9 @@ class _BottomNavState extends State<BottomNav> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkCropPreferences());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _checkCropPreferences(),
+    );
   }
 
   Future<void> _checkCropPreferences() async {
@@ -48,37 +51,39 @@ class _BottomNavState extends State<BottomNav> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: screens[currentIndex],  // Each screen handles its own layout
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: currentIndex,
-        onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
-        backgroundColor: lightColorScheme.primary,
-        unselectedItemColor: Colors.white54,
-        selectedItemColor: Colors.white,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.build),
-            label: 'Equipment',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.volunteer_activism), // Crowdfunding
-            label: 'Campaigns',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        body: screens[currentIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: currentIndex,
+          onTap: (index) {
+            setState(() {
+              currentIndex = index;
+            });
+          },
+          backgroundColor: lightColorScheme.primary,
+          unselectedItemColor: Colors.white54,
+          selectedItemColor: Colors.white,
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home),
+              label: AppLanguage.text(en: 'Home', tl: 'Tahanan'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.build),
+              label: AppLanguage.text(en: 'Equipment', tl: 'Kagamitan'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.volunteer_activism),
+              label: AppLanguage.text(en: 'Campaigns', tl: 'Kampanya'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person),
+              label: AppLanguage.text(en: 'Profile', tl: 'Profile'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -119,29 +124,31 @@ class _CoopBottomNavState extends State<CoopBottomNav> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: coopScreens[currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: currentIndex,
-        onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
-        backgroundColor: lightColorScheme.primary,
-        unselectedItemColor: Colors.white54,
-        selectedItemColor: Colors.white,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.volunteer_activism),
-            label: 'Campaigns',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.admin_panel_settings),
-            label: 'Admin',
-          ),
-        ],
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        body: coopScreens[currentIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: currentIndex,
+          onTap: (index) {
+            setState(() {
+              currentIndex = index;
+            });
+          },
+          backgroundColor: lightColorScheme.primary,
+          unselectedItemColor: Colors.white54,
+          selectedItemColor: Colors.white,
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.volunteer_activism),
+              label: AppLanguage.text(en: 'Campaigns', tl: 'Kampanya'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.admin_panel_settings),
+              label: AppLanguage.text(en: 'Admin', tl: 'Admin'),
+            ),
+          ],
+        ),
       ),
     );
   }

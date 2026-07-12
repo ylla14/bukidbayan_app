@@ -5,6 +5,7 @@ import 'package:bukidbayan_app/screens/dashboard/rentals_list.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/screens/rent/rent_screen.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/dashboard_calendar_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
 import 'package:flutter/material.dart';
@@ -50,10 +51,13 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
     final userId = widget.currentUserId;
     if (userId == null) {
       return _buildCard(
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.all(16),
           child: Text(
-            'Mag-sign in para makita ang iyong matalinong kalendaryo.',
+            AppLanguage.text(
+              en: 'Sign in to view your smart calendar.',
+              tl: 'Mag-sign in para makita ang iyong matalinong kalendaryo.',
+            ),
           ),
         ),
       );
@@ -75,7 +79,9 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
           return _buildCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('Hindi ma-load ang kalendaryo: ${snapshot.error}'),
+              child: Text(
+                '${AppLanguage.text(en: 'Could not load the calendar', tl: 'Hindi ma-load ang kalendaryo')}: ${snapshot.error}',
+              ),
             ),
           );
         }
@@ -83,9 +89,14 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
         final contextData = snapshot.data;
         if (contextData == null) {
           return _buildCard(
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.all(16),
-              child: Text('Wala pang datos sa kalendaryo.'),
+              child: Text(
+                AppLanguage.text(
+                  en: 'No calendar data is available yet.',
+                  tl: 'Wala pang datos sa kalendaryo.',
+                ),
+              ),
             ),
           );
         }
@@ -112,7 +123,10 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
                       const Icon(Icons.calendar_month_rounded, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'Smart Calendar',
+                        AppLanguage.text(
+                          en: 'Smart Calendar',
+                          tl: 'Matalinong Kalendaryo',
+                        ),
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
@@ -198,7 +212,9 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
   }
 
   Widget _buildWeekdayHeader() {
-    const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final labels = AppLanguage.isTagalog
+        ? const ['Lin', 'Lun', 'Mar', 'Miy', 'Huw', 'Biy', 'Sab']
+        : const ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return Row(
       children: labels
           .map(
@@ -336,7 +352,7 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Napiling araw: $formattedDate',
+            '${AppLanguage.text(en: 'Selected day', tl: 'Napiling araw')}: $formattedDate',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -364,19 +380,28 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
               ),
             ),
           ] else
-            const Text(
-              'Walang mga kaganapan para sa araw na ito.',
+            Text(
+              AppLanguage.text(
+                en: 'No events for this day.',
+                tl: 'Walang mga kaganapan para sa araw na ito.',
+              ),
               style: TextStyle(fontSize: 12.5),
             ),
           const SizedBox(height: 10),
-          const Text(
-            'Mga Mungkahing Aksyon',
+          Text(
+            AppLanguage.text(
+              en: 'Suggested Actions',
+              tl: 'Mga Mungkahing Aksyon',
+            ),
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           if (suggestions.isEmpty)
-            const Text(
-              'Walang kailangang aksyon.',
+            Text(
+              AppLanguage.text(
+                en: 'No action is needed.',
+                tl: 'Walang kailangang aksyon.',
+              ),
               style: TextStyle(fontSize: 12, color: Colors.black54),
             )
           else
@@ -409,7 +434,10 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Demand Forecast',
+                  AppLanguage.text(
+                    en: 'Demand Forecast',
+                    tl: 'Pagtataya ng Demand',
+                  ),
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -449,8 +477,11 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
           Text(snapshot.summary, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 10),
           if (!snapshot.hasInsights)
-            const Text(
-              'Maglagay pa ng booking details tulad ng crop type, farming phase, at intended use para luminaw ang demand forecast.',
+            Text(
+              AppLanguage.text(
+                en: 'Add more booking details like crop type, farming phase, and intended use to improve the demand forecast.',
+                tl: 'Maglagay pa ng booking details tulad ng crop type, farming phase, at intended use para luminaw ang demand forecast.',
+              ),
               style: TextStyle(fontSize: 12, color: Colors.black54),
             )
           else
@@ -538,7 +569,10 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
             onPressed: () => _handleAction(
               DashboardCalendarActionTarget(
                 kind: DashboardCalendarActionKind.openEquipmentCatalog,
-                label: 'Browse Equipment',
+                label: AppLanguage.text(
+                  en: 'Browse Equipment',
+                  tl: 'Mag-browse ng Kagamitan',
+                ),
                 categoryFilter: insight.equipmentCategory,
                 searchQuery: insight.equipmentCategory,
               ),
@@ -546,7 +580,12 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-            child: const Text('Browse Equipment'),
+            child: Text(
+              AppLanguage.text(
+                en: 'Browse Equipment',
+                tl: 'Mag-browse ng Kagamitan',
+              ),
+            ),
           ),
         ],
       ),
@@ -730,11 +769,11 @@ class _DashboardCalendarSectionState extends State<DashboardCalendarSection> {
   String _forecastLevelLabel(DemandForecastLevel level) {
     switch (level) {
       case DemandForecastLevel.high:
-        return 'High Demand';
+        return AppLanguage.text(en: 'High Demand', tl: 'Mataas na Demand');
       case DemandForecastLevel.medium:
-        return 'Medium Demand';
+        return AppLanguage.text(en: 'Medium Demand', tl: 'Katamtamang Demand');
       case DemandForecastLevel.low:
-        return 'Early Signal';
+        return AppLanguage.text(en: 'Early Signal', tl: 'Maagang Senyales');
     }
   }
 
