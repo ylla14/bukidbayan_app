@@ -10,6 +10,7 @@ Campaign _validCampaign({
   String creatorUid = 'creator-uid',
   String creatorEmail = 'tester@example.com',
   String? safetyNotes,
+  List<RewardTier>? rewards,
 }) {
   return Campaign(
     id: id,
@@ -28,17 +29,19 @@ Campaign _validCampaign({
     backersCount: 0,
     endDate: DateTime.now().add(const Duration(days: 30)),
     createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    rewards: const [
-      RewardTier(
-        id: 'r1',
-        title: 'Supporter Discount',
-        minPledge: 500,
-        discountType: 'percent',
-        discountValue: 5,
-        usageLimit: 1,
-        validityDays: 90,
-      ),
-    ],
+    rewards:
+        rewards ??
+        const [
+          RewardTier(
+            id: 'r1',
+            title: 'Supporter Discount',
+            minPledge: 500,
+            discountType: 'percent',
+            discountValue: 5,
+            usageLimit: 1,
+            validityDays: 90,
+          ),
+        ],
     specs: const {'Power': '2HP', 'Voltage': '220V', 'Flow rate': '50 L/min'},
     includedItems: const ['Pump unit', 'Controller', 'Mounting kit'],
     productionTimeline: 'Week 1 procurement, Week 2 delivery, Week 3 setup.',
@@ -84,6 +87,27 @@ Future<void> _seedCampaign(
 }
 
 void main() {
+  const multiTierRewards = [
+    RewardTier(
+      id: 'r1',
+      title: 'Supporter Discount',
+      minPledge: 500,
+      discountType: 'percent',
+      discountValue: 5,
+      usageLimit: 1,
+      validityDays: 90,
+    ),
+    RewardTier(
+      id: 'r2',
+      title: 'Harvest Voucher',
+      minPledge: 1000,
+      discountType: 'fixed',
+      discountValue: 150,
+      usageLimit: 1,
+      validityDays: 120,
+    ),
+  ];
+
   group('CrowdfundingService.validateForPublish', () {
     test('returns error when safety notes are missing', () {
       final service = CrowdfundingService();
@@ -390,10 +414,289 @@ void main() {
         expect(campaignAfterProof.data()!['pledgedAmount'], 300);
         expect(campaignAfterProof.data()!['backersCount'], 1);
 
-        final stillPending = await service.getMyPledgeForCampaign(
+        final stillPending = await service.getMyPledgeForCampaign(campaign.id);
+        expect(stillPending, isNull);
+      },
+    );
+
+    test(
+      'blocks a second pay-later pledge while one pending pledge already exists',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'donor@example.com',
+          displayName: 'Donor Display Name',
+        );
+        final service = _buildService(firestore: firestore, auth: auth);
+        final campaign = _validCampaign(
+          id: 'c_single_pending_rule',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+        ).copyWith(status: 'live');
+
+        await _seedCampaign(firestore, campaign);
+
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 300,
+          backerName: 'Maria Santos',
+        );
+
+        await expectLater(
+          () => service.backCampaign(
+            campaignId: campaign.id,
+            amount: 200,
+            backerName: 'Maria Santos',
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('naka-pending ka pang pledge'),
+            ),
+          ),
+        );
+
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 250,
+          backerName: 'Maria Santos',
+          proofReferenceNumber: 'GC-ALREADY-PAID',
+        );
+
+        final pendingPledges = await service.getMyPendingPledgesForCampaign(
           campaign.id,
         );
-        expect(stillPending, isNull);
+        expect(pendingPledges, hasLength(1));
+
+        final campaignSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignSnap.data()!['pledgedAmount'], 250);
+        expect(campaignSnap.data()!['backersCount'], 1);
+      },
+    );
+
+    test(
+      'canceling a pending pledge keeps the record but removes it from active pending state',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'donor@example.com',
+          displayName: 'Donor Display Name',
+        );
+        final service = _buildService(firestore: firestore, auth: auth);
+        final campaign = _validCampaign(
+          id: 'c_cancel_pending',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+        ).copyWith(status: 'live');
+
+        await _seedCampaign(firestore, campaign);
+
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 300,
+          backerName: 'Maria Santos',
+        );
+
+        final pending = await service.getMyPledgeForCampaign(campaign.id);
+        expect(pending, isNotNull);
+
+        await service.cancelPendingPledge(
+          campaignId: campaign.id,
+          pledgeId: pending!.id,
+        );
+
+        final activePending = await service.getMyPledgeForCampaign(campaign.id);
+        expect(activePending, isNull);
+
+        final pledges = await service.getPledgesForCampaign(campaign.id);
+        expect(pledges, hasLength(1));
+        expect(pledges.single.isCanceled, isTrue);
+        expect(pledges.single.countedInTotal, isFalse);
+
+        final campaignSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(campaignSnap.data()!['pledgedAmount'], 0);
+        expect(campaignSnap.data()!['backersCount'], 0);
+
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 450,
+          backerName: 'Maria Santos',
+        );
+
+        final nextPending = await service.getMyPendingPledgesForCampaign(
+          campaign.id,
+        );
+        expect(nextPending, hasLength(1));
+        expect(nextPending.single.amount, 450);
+      },
+    );
+
+    test(
+      'uses cumulative counted support when unlocking and upgrading benefits',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final auth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'backer@example.com',
+          displayName: 'Backer Name',
+        );
+        final service = _buildService(firestore: firestore, auth: auth);
+        final campaign = _validCampaign(
+          id: 'c_cumulative_rewards',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+          rewards: multiTierRewards,
+        ).copyWith(status: 'live');
+
+        await _seedCampaign(firestore, campaign);
+
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 600,
+          rewardId: 'r1',
+          proofReferenceNumber: 'GC-FIRST-600',
+        );
+
+        await expectLater(
+          () => service.backCampaign(
+            campaignId: campaign.id,
+            amount: 250,
+            rewardId: 'r2',
+            proofReferenceNumber: 'GC-BAD-UPGRADE',
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('below the minimum pledge'),
+            ),
+          ),
+        );
+
+        await service.backCampaign(
+          campaignId: campaign.id,
+          amount: 400,
+          rewardId: 'r2',
+          proofReferenceNumber: 'GC-UPGRADE-1000',
+        );
+
+        final summary = await service.getMySupportSummary(campaign.id);
+        expect(summary, isNotNull);
+        expect(summary!.countedContributionTotal, 1000);
+        expect(summary.activeReward?.id, 'r2');
+
+        final pledges = await service.getPledgesForCampaign(campaign.id);
+        expect(
+          pledges.where((pledge) => pledge.rewardId == 'r2'),
+          hasLength(1),
+        );
+        expect(pledges.where((pledge) => pledge.rewardId == 'r1'), isEmpty);
+      },
+    );
+
+    test(
+      'invalidating a counted contribution removes it from totals, keeps the record, and notifies the supporter',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final backerAuth = _buildAuth(
+          uid: 'backer-uid',
+          email: 'backer@example.com',
+          displayName: 'Backer Name',
+        );
+        final ownerAuth = _buildAuth(
+          uid: 'creator-uid',
+          email: 'creator@example.com',
+          displayName: 'Creator Name',
+        );
+        final backerService = _buildService(
+          firestore: firestore,
+          auth: backerAuth,
+        );
+        final ownerService = _buildService(
+          firestore: firestore,
+          auth: ownerAuth,
+        );
+        final campaign = _validCampaign(
+          id: 'c_invalidation_flow',
+          creatorUid: 'creator-uid',
+          creatorEmail: 'creator@example.com',
+          rewards: multiTierRewards,
+        ).copyWith(status: 'live');
+
+        await _seedCampaign(firestore, campaign);
+
+        await backerService.backCampaign(
+          campaignId: campaign.id,
+          amount: 700,
+          rewardId: 'r1',
+          proofReferenceNumber: 'GC-700',
+        );
+        await backerService.backCampaign(
+          campaignId: campaign.id,
+          amount: 400,
+          rewardId: 'r2',
+          proofReferenceNumber: 'GC-400',
+        );
+
+        final initialSummary = await backerService.getMySupportSummary(
+          campaign.id,
+        );
+        expect(initialSummary?.countedContributionTotal, 1100);
+        expect(initialSummary?.activeReward?.id, 'r2');
+
+        final pledgesBeforeInvalidation = await ownerService
+            .getPledgesForCampaign(campaign.id);
+        final pledgeToInvalidate = pledgesBeforeInvalidation.firstWhere(
+          (pledge) => pledge.amount == 400,
+        );
+
+        await ownerService.invalidateContribution(
+          campaignId: campaign.id,
+          pledgeId: pledgeToInvalidate.id,
+          reason: 'Malabong proof image',
+        );
+
+        final updatedCampaignSnap = await firestore
+            .collection('campaigns')
+            .doc(campaign.id)
+            .get();
+        expect(updatedCampaignSnap.data()!['pledgedAmount'], 700);
+        expect(updatedCampaignSnap.data()!['backersCount'], 1);
+
+        final updatedPledges = await ownerService.getPledgesForCampaign(
+          campaign.id,
+        );
+        final invalidated = updatedPledges.firstWhere(
+          (pledge) => pledge.id == pledgeToInvalidate.id,
+        );
+        expect(invalidated.countedInTotal, isFalse);
+        expect(invalidated.isInvalidated, isTrue);
+        expect(invalidated.invalidationReason, 'Malabong proof image');
+
+        final summaryAfterInvalidation = await backerService
+            .getMySupportSummary(campaign.id);
+        expect(summaryAfterInvalidation?.countedContributionTotal, 700);
+        expect(summaryAfterInvalidation?.activeReward?.id, 'r1');
+
+        final notificationSnap = await firestore
+            .collection('notifications')
+            .doc('backer-uid')
+            .collection('items')
+            .get();
+        expect(notificationSnap.docs, hasLength(1));
+        expect(
+          notificationSnap.docs.single.data()['type'],
+          'campaign_contribution_invalidated',
+        );
       },
     );
   });

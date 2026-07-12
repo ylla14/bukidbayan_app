@@ -1,4 +1,5 @@
 import 'package:bukidbayan_app/models/campaign.dart';
+import 'package:bukidbayan_app/models/campaign_support_summary.dart';
 import 'package:bukidbayan_app/services/cloudinary_service.dart';
 import 'package:bukidbayan_app/services/crowdfunding_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
@@ -33,7 +34,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
   final CrowdfundingService service = CrowdfundingService();
   late Future<Campaign?> _future;
-  Future<Pledge?>? _pendingPledgeFuture;
+  Future<List<Pledge>>? _pendingPledgesFuture;
+  Future<CampaignSupportSummary?>? _supportSummaryFuture;
 
   String _categoryLabel(String value) => _categoryLabels[value] ?? value;
 
@@ -66,13 +68,19 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   void initState() {
     super.initState();
     _future = service.getCampaignById(widget.campaignId);
-    _pendingPledgeFuture = service.getMyPledgeForCampaign(widget.campaignId);
+    _pendingPledgesFuture = service.getMyPendingPledgesForCampaign(
+      widget.campaignId,
+    );
+    _supportSummaryFuture = service.getMySupportSummary(widget.campaignId);
   }
 
   Future<void> _reload() async {
     setState(() {
       _future = service.getCampaignById(widget.campaignId);
-      _pendingPledgeFuture = service.getMyPledgeForCampaign(widget.campaignId);
+      _pendingPledgesFuture = service.getMyPendingPledgesForCampaign(
+        widget.campaignId,
+      );
+      _supportSummaryFuture = service.getMySupportSummary(widget.campaignId);
     });
     await _future;
   }
@@ -121,6 +129,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       return 'Wala pang GCash QR ang campaign na ito. Pakisabihan muna ang manager bago tumanggap ng support.';
     }
     return null;
+  }
+
+  String _formatPendingDate(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '$month/$day/${value.year}';
   }
 
   Widget _buildGuideCard({
@@ -234,13 +248,67 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     );
   }
 
-  Widget _buildPendingProofBanner(Pledge pledge) {
+  Future<void> _cancelPendingPledge(Pledge pledge) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Kanselahin ang Pending Pledge?'),
+          content: Text(
+            'Hindi mabibilang ang ${formatPeso(pledge.amount)} na ito sa campaign hangga\'t walang patunay ng bayad. Gusto mo ba talagang kanselahin ang pending pledge na ito?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Huwag muna'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Kanselahin ang Pledge'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await service.cancelPendingPledge(
+        campaignId: pledge.campaignId,
+        pledgeId: pledge.id,
+      );
+      if (!mounted) return;
+      showConfirmSnackbar(
+        context: context,
+        title: 'Nakansela ang pending pledge',
+        message:
+            'Napanatili ang record, pero hindi na ito naghihintay ng patunay ng bayad.',
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackbar(
+        context: context,
+        title: 'Hindi makansela',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
+  Widget _buildPendingProofBanner(List<Pledge> pendingPledges) {
+    final hasMultiple = pendingPledges.length > 1;
     return Card(
       color: lightColorScheme.secondary.withValues(alpha: 0.25),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: lightColorScheme.primary.withValues(alpha: 0.25)),
+        side: BorderSide(
+          color: lightColorScheme.primary.withValues(alpha: 0.25),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -254,22 +322,150 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'May naka-pending kang pledge na ${formatPeso(pledge.amount)}',
+                    hasMultiple
+                        ? 'May ${pendingPledges.length} pending pledges ka sa campaign na ito'
+                        : 'May naka-pending kang pledge na ${formatPeso(pendingPledges.first.amount)}',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Isumite ang patunay ng bayad para maidagdag ito sa kabuuang nalikom ng campaign.',
+                  Text(
+                    hasMultiple
+                        ? 'Piliin kung aling pending pledge ang gusto mong bayaran ngayon, o kanselahin ang hindi mo itutuloy.'
+                        : 'Isumite ang patunay ng bayad para maidagdag ito sa kabuuang nalikom ng campaign.',
                     style: TextStyle(fontSize: 12),
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: () => _openSubmitProofDialog(pledge),
-                    child: Text(
-                      'Magsumite ng Patunay',
-                      style: _actionLabelStyle(context),
-                    ),
+                  const SizedBox(height: 10),
+                  ...pendingPledges.map((pledge) {
+                    final note = pledge.backerNote?.trim();
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: lightColorScheme.primary.withValues(
+                            alpha: 0.16,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            formatPeso(pledge.amount),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Ginawa noong ${_formatPendingDate(pledge.createdAt)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          if (note != null && note.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              note,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () => _openSubmitProofDialog(pledge),
+                                icon: const Icon(Icons.receipt_long_outlined),
+                                label: Text(
+                                  'Magsumite ng Patunay',
+                                  style: _actionLabelStyle(context),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _cancelPendingPledge(pledge),
+                                icon: const Icon(Icons.close_rounded),
+                                label: const Text('Kanselahin'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  Text(
+                    'Habang may open pending pledge ka rito, hindi muna available ang panibagong "pay later" pledge.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                   ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportSummaryBanner(CampaignSupportSummary summary) {
+    final reward = summary.activeReward;
+    return Card(
+      color: lightColorScheme.primary.withValues(alpha: 0.07),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: lightColorScheme.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.workspace_premium_outlined,
+              color: lightColorScheme.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'May nauna ka nang support sa campaign na ito',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Counted support: ${formatPeso(summary.countedContributionTotal)}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  if (reward != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Current benefit: ${reward.title}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                  if (summary.pendingContributionTotal > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pending proof: ${formatPeso(summary.pendingContributionTotal)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -300,7 +496,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Kanselahin'),
+              child: const Text('Bumalik'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
@@ -347,7 +543,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     }
   }
 
-  void _openBackSheet(Campaign campaign, {RewardTier? preselect}) {
+  Future<void> _openBackSheet(
+    Campaign campaign, {
+    RewardTier? preselect,
+  }) async {
     final disabledReason = _supportDisabledReason(campaign);
     if (disabledReason != null) {
       showErrorSnackbar(
@@ -358,6 +557,17 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       return;
     }
 
+    final supportSummary = await service.getMySupportSummary(campaign.id);
+    final existingPendingPledges = await service.getMyPendingPledgesForCampaign(
+      campaign.id,
+    );
+    if (!mounted) return;
+    final currentTotal = supportSummary?.countedContributionTotal ?? 0;
+    final baselineReward = supportSummary?.activeReward;
+    final hasOpenPendingPledge = existingPendingPledges.isNotEmpty;
+    final sortedRewards = [...campaign.rewards]
+      ..sort((a, b) => a.minPledge.compareTo(b.minPledge));
+
     String? fallbackName;
     try {
       fallbackName = FirebaseAuth.instance.currentUser?.displayName;
@@ -365,17 +575,64 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       fallbackName = null;
     }
 
-    RewardTier? selected =
-        preselect ??
-        (campaign.rewards.isNotEmpty ? campaign.rewards.first : null);
+    RewardTier? highestEligibleReward(int contributionAmount) {
+      if (contributionAmount <= 0) return baselineReward;
+      return CampaignSupportSummary.highestEligibleReward(
+        sortedRewards,
+        currentTotal + contributionAmount,
+      );
+    }
 
-    final amountCtrl = TextEditingController(
-      text: selected == null ? '' : selected.minPledge.toString(),
-    );
+    int minimumContributionFor(RewardTier? reward) {
+      if (reward == null) return 1;
+      final remaining = reward.minPledge - currentTotal;
+      return remaining <= 1 ? 1 : remaining;
+    }
+
+    RewardTier? resolveSelectedReward({
+      required int contributionAmount,
+      required RewardTier? currentSelection,
+    }) {
+      final autoReward = highestEligibleReward(contributionAmount);
+      RewardTier? resolved = autoReward;
+
+      if (currentSelection != null &&
+          contributionAmount > 0 &&
+          currentTotal + contributionAmount >= currentSelection.minPledge) {
+        if (resolved == null ||
+            currentSelection.minPledge > resolved.minPledge) {
+          resolved = currentSelection;
+        }
+      }
+
+      if (baselineReward != null) {
+        if (resolved == null || resolved.minPledge < baselineReward.minPledge) {
+          return baselineReward;
+        }
+      }
+      return resolved;
+    }
+
+    RewardTier? initialSelection;
+    if (preselect != null &&
+        (baselineReward == null ||
+            preselect.minPledge >= baselineReward.minPledge)) {
+      initialSelection = preselect;
+    } else if (baselineReward != null) {
+      initialSelection = baselineReward;
+    } else if (sortedRewards.isNotEmpty) {
+      initialSelection = sortedRewards.first;
+    }
+
+    RewardTier? selected = initialSelection;
+    final initialAmount = preselect == null && baselineReward != null
+        ? ''
+        : (selected == null ? '' : minimumContributionFor(selected).toString());
+    final amountCtrl = TextEditingController(text: initialAmount);
     final donorNameCtrl = TextEditingController(text: fallbackName ?? '');
     final donorPhoneCtrl = TextEditingController();
     final donorNoteCtrl = TextEditingController();
-    var hasConfirmedGcashPayment = false;
+    var paymentChoice = _ContributionPaymentChoice.paidAlready;
     String? proofImageUrl;
     String? proofReferenceNumber;
 
@@ -388,20 +645,143 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            void syncSelectionFromAmount() {
+              final parsed = int.tryParse(amountCtrl.text.trim()) ?? 0;
+              selected = resolveSelectedReward(
+                contributionAmount: parsed,
+                currentSelection: selected,
+              );
+            }
+
+            syncSelectionFromAmount();
+
             final suggestedAmounts = <int>{500, 1000, 2000, 5000};
             if (selected != null) {
-              suggestedAmounts.add(selected!.minPledge);
+              suggestedAmounts.add(minimumContributionFor(selected));
+            }
+            for (final reward in sortedRewards) {
+              suggestedAmounts.add(minimumContributionFor(reward));
             }
             final sortedSuggestions = suggestedAmounts.toList()..sort();
-            final minRequired = selected?.minPledge;
+            final minRequired = minimumContributionFor(selected);
             final parsedAmount = int.tryParse(amountCtrl.text.trim());
             final isBelowMinimum =
-                minRequired != null &&
-                parsedAmount != null &&
-                parsedAmount < minRequired;
+                parsedAmount != null && parsedAmount < minRequired;
             final qrAmount = parsedAmount != null && parsedAmount > 0
                 ? parsedAmount
-                : minRequired;
+                : (selected == null ? null : minRequired);
+            final hasPaidAlready =
+                paymentChoice == _ContributionPaymentChoice.paidAlready;
+            RewardTier? nextReward;
+            for (final reward in sortedRewards) {
+              final isUpgradeFromSelection =
+                  selected == null || reward.minPledge > selected!.minPledge;
+              if (isUpgradeFromSelection && reward.minPledge > currentTotal) {
+                nextReward = reward;
+                break;
+              }
+            }
+
+            Widget buildPaymentChoiceCard({
+              required _ContributionPaymentChoice value,
+              required IconData icon,
+              required String title,
+              required String description,
+              bool enabled = true,
+            }) {
+              final isSelected = paymentChoice == value;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: !enabled
+                      ? Colors.grey.shade100
+                      : isSelected
+                      ? lightColorScheme.primary.withValues(alpha: 0.08)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: !enabled
+                        ? Colors.grey.shade300
+                        : isSelected
+                        ? lightColorScheme.primary
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: !enabled
+                        ? null
+                        : () {
+                            if (paymentChoice == value) return;
+                            setModalState(() {
+                              paymentChoice = value;
+                              if (paymentChoice ==
+                                  _ContributionPaymentChoice.payLater) {
+                                proofImageUrl = null;
+                                proofReferenceNumber = null;
+                              }
+                            });
+                          },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            isSelected
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_off,
+                            color: isSelected
+                                ? lightColorScheme.primary
+                                : (enabled
+                                      ? Colors.grey.shade500
+                                      : Colors.grey.shade400),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(
+                            icon,
+                            color: !enabled
+                                ? Colors.grey.shade500
+                                : isSelected
+                                ? lightColorScheme.primary
+                                : Colors.grey.shade700,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: enabled
+                                        ? null
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  description,
+                                  style: TextStyle(
+                                    color: enabled
+                                        ? null
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
 
             return Padding(
               padding: EdgeInsets.only(
@@ -424,10 +804,14 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       icon: Icons.info_outline,
                       title: 'Paano sumuporta',
                       description:
-                          'Pumili ng benepisyo (opsyonal), ilagay ang halaga, i-scan ang GCash QR, at kumpirmahin lang kapag naipadala mo na ang bayad.',
+                          'Ang benepisyo ay naka-base sa total counted support mo sa campaign na ito. Kapag naabot mo ang mas mataas na threshold, automatic na maa-upgrade ang benepisyo mo.',
                     ),
                     const SizedBox(height: 12),
                     _buildGcashPaymentCard(campaign, amount: qrAmount),
+                    if (supportSummary != null) ...[
+                      const SizedBox(height: 12),
+                      _buildSupportSummaryBanner(supportSummary),
+                    ],
                     const SizedBox(height: 12),
                     if (campaign.rewards.isNotEmpty) ...[
                       const Text(
@@ -437,6 +821,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       const SizedBox(height: 8),
                       ...campaign.rewards.map((r) {
                         final isSelected = selected?.id == r.id;
+                        final isLowerThanBaseline =
+                            baselineReward != null &&
+                            r.minPledge < baselineReward.minPledge;
+                        final requiredTopUp = minimumContributionFor(r);
                         final discountDisplay = r.discountType == 'percent'
                             ? '${r.discountValue.toStringAsFixed(0)}% na diskuwento'
                             : '${formatPeso(r.discountValue.round())} na diskuwento';
@@ -451,20 +839,35 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             title: Text(
                               '${r.title} (minimum ${formatPeso(r.minPledge)})',
                             ),
-                            subtitle: Text(discountDisplay),
-                            trailing: isSelected
-                                ? const Icon(Icons.check_circle)
-                                : null,
-                            onTap: () {
-                              setModalState(() {
-                                selected = r;
-                                final currentAmount =
-                                    int.tryParse(amountCtrl.text.trim()) ?? 0;
-                                amountCtrl.text = currentAmount < r.minPledge
-                                    ? r.minPledge.toString()
-                                    : currentAmount.toString();
-                              });
-                            },
+                            subtitle: Text(
+                              currentTotal >= r.minPledge
+                                  ? '$discountDisplay • Na-unlock mo na ito'
+                                  : '$discountDisplay • Kailangan pa ng ${formatPeso(requiredTopUp)}',
+                            ),
+                            trailing: isLowerThanBaseline
+                                ? const Icon(Icons.lock_outline)
+                                : (isSelected
+                                      ? const Icon(Icons.check_circle)
+                                      : null),
+                            onTap: isLowerThanBaseline
+                                ? null
+                                : () {
+                                    setModalState(() {
+                                      selected = r;
+                                      final currentAmount =
+                                          int.tryParse(
+                                            amountCtrl.text.trim(),
+                                          ) ??
+                                          0;
+                                      final minimumAmount =
+                                          minimumContributionFor(r);
+                                      amountCtrl.text =
+                                          currentAmount < minimumAmount
+                                          ? minimumAmount.toString()
+                                          : currentAmount.toString();
+                                      syncSelectionFromAmount();
+                                    });
+                                  },
                           ),
                         );
                       }),
@@ -484,12 +887,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               label: Text(formatPeso(amount)),
                               selected:
                                   amountCtrl.text.trim() == amount.toString(),
-                              onSelected:
-                                  minRequired != null && amount < minRequired
+                              onSelected: amount < minRequired
                                   ? null
                                   : (_) {
                                       setModalState(() {
                                         amountCtrl.text = amount.toString();
+                                        syncSelectionFromAmount();
                                       });
                                     },
                             ),
@@ -501,18 +904,44 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       controller: amountCtrl,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      onChanged: (_) => setModalState(() {}),
+                      onChanged: (_) {
+                        setModalState(() {
+                          syncSelectionFromAmount();
+                        });
+                      },
                       decoration: InputDecoration(
                         labelText: 'Halaga ng pledge (PHP)',
-                        helperText: minRequired == null
+                        helperText: selected == null
                             ? 'Maglagay ng halagang nais mong ibigay.'
-                            : 'Minimum para sa napiling benepisyo: ${formatPeso(minRequired)}',
+                            : currentTotal >= selected!.minPledge
+                            ? 'Naka-lock na ang ${selected!.title}. Puwede ka lang manatili rito o mag-upgrade.'
+                            : 'Dagdag na kailangan para sa ${selected!.title}: ${formatPeso(minRequired)}',
                         errorText: isBelowMinimum
                             ? 'Dapat hindi bababa sa ${formatPeso(minRequired)}.'
                             : null,
                         border: const OutlineInputBorder(),
                       ),
                     ),
+                    if (selected != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Selected benefit: ${selected!.title}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: lightColorScheme.primary,
+                        ),
+                      ),
+                      if (nextReward != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Next upgrade: ${nextReward.title} at ${formatPeso((nextReward.minPledge - currentTotal) <= 1 ? 1 : nextReward.minPledge - currentTotal)}',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
                     const SizedBox(height: 12),
                     TextField(
                       controller: donorNameCtrl,
@@ -564,29 +993,66 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    CheckboxListTile(
-                      value: hasConfirmedGcashPayment,
-                      onChanged: (value) {
-                        setModalState(() {
-                          hasConfirmedGcashPayment = value ?? false;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: const Text(
-                        'Naipadala ko na ang bayad sa GCash QR na ito.',
-                      ),
-                      subtitle: const Text(
-                        'Pindutin lang ito pagkatapos mong mag-transfer dahil mabibilang agad ang pledge kapag kinumpirma mo.',
+                    Text(
+                      'Piliin ang status ng bayad mo',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _ProofOfPaymentField(
-                      onChanged: (result) {
-                        proofImageUrl = result.imageUrl;
-                        proofReferenceNumber = result.referenceNumber;
-                      },
+                    buildPaymentChoiceCard(
+                      value: _ContributionPaymentChoice.paidAlready,
+                      icon: Icons.check_circle_outline,
+                      title: 'Bayad na ako',
+                      description:
+                          'Naipadala mo na ang bayad sa GCash QR. Magbigay ng reference number o larawan ng resibo para mabilang agad ang pledge.',
                     ),
+                    buildPaymentChoiceCard(
+                      value: _ContributionPaymentChoice.payLater,
+                      icon: Icons.schedule_outlined,
+                      title: 'Magbabayad pa lang ako',
+                      description:
+                          'Mare-record muna ang pledge mo bilang pending. Bumalik sa campaign na ito kapag handa ka nang magsumite ng patunay ng bayad.',
+                      enabled: !hasOpenPendingPledge,
+                    ),
+                    if (hasOpenPendingPledge)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'May open pending pledge ka na sa campaign na ito. Kumpletuhin o kanselahin muna iyon bago gumawa ng panibagong pay-later pledge.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade900,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 2),
+                    if (hasPaidAlready) ...[
+                      _ProofOfPaymentField(
+                        allowSkip: false,
+                        onChanged: (result) {
+                          proofImageUrl = result.imageUrl;
+                          proofReferenceNumber = result.referenceNumber;
+                        },
+                      ),
+                    ] else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Text(
+                          'Hindi pa ito mabibilang sa total ng campaign hangga\'t hindi ka pa nakakapag-submit ng reference number o resibo.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
@@ -601,7 +1067,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             );
                             return;
                           }
-                          if (minRequired != null && raw < minRequired) {
+                          if (raw < minRequired) {
                             showErrorSnackbar(
                               context: context,
                               title: 'Masyadong mababa',
@@ -621,20 +1087,20 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             );
                             return;
                           }
-                          if (!hasConfirmedGcashPayment) {
+                          final hasProof =
+                              (proofImageUrl?.isNotEmpty ?? false) ||
+                              (proofReferenceNumber?.isNotEmpty ?? false);
+                          if (hasPaidAlready && !hasProof) {
                             showErrorSnackbar(
                               context: context,
-                              title: 'Hindi pa kumpirmado ang bayad',
+                              title: 'Kulang ang patunay',
                               message:
-                                  'I-scan muna ang GCash QR at i-check ang kumpirmasyon bago maitala ang pledge.',
+                                  'Magbigay ng reference number o larawan ng resibo para sa bayad na pledge.',
                             );
                             return;
                           }
 
                           try {
-                            final hasProof =
-                                (proofImageUrl?.isNotEmpty ?? false) ||
-                                (proofReferenceNumber?.isNotEmpty ?? false);
                             await service.backCampaign(
                               campaignId: campaign.id,
                               amount: raw,
@@ -642,8 +1108,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               backerName: donorName,
                               backerPhone: donorPhoneCtrl.text.trim(),
                               backerNote: donorNoteCtrl.text.trim(),
-                              proofImageUrl: proofImageUrl,
-                              proofReferenceNumber: proofReferenceNumber,
+                              proofImageUrl: hasPaidAlready
+                                  ? proofImageUrl
+                                  : null,
+                              proofReferenceNumber: hasPaidAlready
+                                  ? proofReferenceNumber
+                                  : null,
                             );
                             if (!mounted) {
                               return;
@@ -654,9 +1124,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             showConfirmSnackbar(
                               context: this.context,
                               title: 'Salamat!',
-                              message: hasProof
+                              message: hasPaidAlready
                                   ? 'Naidagdag na ang pledge mo sa kabuuang nalikom.'
-                                  : 'Nairecord ang pledge mo. Bumalik dito anumang oras para magsumite ng patunay ng bayad.',
+                                  : 'Nairecord ang pledge mo bilang pending. Bumalik dito anumang oras para magsumite ng patunay ng bayad.',
                             );
                             _reload();
                           } catch (e) {
@@ -678,7 +1148,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         ),
                         icon: const Icon(Icons.volunteer_activism_outlined),
                         label: Text(
-                          'Kinumpirma ko ang GCash payment',
+                          hasPaidAlready
+                              ? 'Bayad na, isumite ang pledge'
+                              : 'I-record muna ang pledge',
                           style: _actionLabelStyle(
                             context,
                             color: lightColorScheme.onPrimary,
@@ -807,14 +1279,29 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
                   ),
                 ),
-                FutureBuilder<Pledge?>(
-                  future: _pendingPledgeFuture,
+                FutureBuilder<List<Pledge>>(
+                  future: _pendingPledgesFuture,
                   builder: (context, pendingSnapshot) {
-                    final pending = pendingSnapshot.data;
-                    if (pending == null) return const SizedBox.shrink();
+                    final pendingPledges =
+                        pendingSnapshot.data ?? const <Pledge>[];
+                    if (pendingPledges.isEmpty) return const SizedBox.shrink();
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: _buildPendingProofBanner(pending),
+                      child: _buildPendingProofBanner(pendingPledges),
+                    );
+                  },
+                ),
+                FutureBuilder<CampaignSupportSummary?>(
+                  future: _supportSummaryFuture,
+                  builder: (context, summarySnapshot) {
+                    final summary = summarySnapshot.data;
+                    if (summary == null ||
+                        summary.countedContributionTotal <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: _buildSupportSummaryBanner(summary),
                     );
                   },
                 ),
@@ -1010,6 +1497,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   }
 }
 
+enum _ContributionPaymentChoice { paidAlready, payLater }
+
 enum _ProofMode { none, image, reference }
 
 /// Mutually-exclusive proof-of-payment input: an uploaded image OR a typed
@@ -1046,7 +1535,8 @@ class _ProofOfPaymentFieldState extends State<_ProofOfPaymentField> {
   void _emit() {
     widget.onChanged((
       imageUrl: _mode == _ProofMode.image ? _imageUrl : null,
-      referenceNumber: _mode == _ProofMode.reference &&
+      referenceNumber:
+          _mode == _ProofMode.reference &&
               _referenceController.text.trim().isNotEmpty
           ? _referenceController.text.trim()
           : null,
@@ -1112,10 +1602,7 @@ class _ProofOfPaymentFieldState extends State<_ProofOfPaymentField> {
                 value: _ProofMode.none,
                 label: Text('Wala pa'),
               ),
-            const ButtonSegment(
-              value: _ProofMode.image,
-              label: Text('Larawan'),
-            ),
+            const ButtonSegment(value: _ProofMode.image, label: Text('Resibo')),
             const ButtonSegment(
               value: _ProofMode.reference,
               label: Text('Reference #'),
@@ -1143,7 +1630,11 @@ class _ProofOfPaymentFieldState extends State<_ProofOfPaymentField> {
               padding: const EdgeInsets.only(bottom: 8),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(_imageUrl!, height: 120, fit: BoxFit.cover),
+                child: Image.network(
+                  _imageUrl!,
+                  height: 120,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           OutlinedButton.icon(
@@ -1155,7 +1646,9 @@ class _ProofOfPaymentFieldState extends State<_ProofOfPaymentField> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.upload_outlined),
-            label: Text(_imageUrl == null ? 'Mag-upload ng Larawan' : 'Palitan ang Larawan'),
+            label: Text(
+              _imageUrl == null ? 'Mag-upload ng Resibo' : 'Palitan ang Resibo',
+            ),
           ),
         ] else
           TextField(

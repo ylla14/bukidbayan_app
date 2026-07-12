@@ -485,7 +485,10 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
         .where((pledge) => pledge.countedInTotal)
         .fold<int>(0, (sum, pledge) => sum + pledge.amount);
     final filteredPendingAmount = visibleSupporters
-        .where((pledge) => !pledge.countedInTotal)
+        .where((pledge) => pledge.isPendingProof)
+        .fold<int>(0, (sum, pledge) => sum + pledge.amount);
+    final filteredInvalidAmount = visibleSupporters
+        .where((pledge) => pledge.isInvalidated)
         .fold<int>(0, (sum, pledge) => sum + pledge.amount);
     final overallTotalAmount = report.pledges
         .where((pledge) => pledge.countedInTotal)
@@ -740,9 +743,19 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
                     ),
                     DataCell(
                       Text(
-                        filteredPendingAmount > 0
-                            ? 'Naghihintay: ${formatPeso(filteredPendingAmount)}'
-                            : '-',
+                        [
+                              if (filteredPendingAmount > 0)
+                                'Naghihintay: ${formatPeso(filteredPendingAmount)}',
+                              if (filteredInvalidAmount > 0)
+                                'Invalid: ${formatPeso(filteredInvalidAmount)}',
+                            ].isEmpty
+                            ? '-'
+                            : [
+                                if (filteredPendingAmount > 0)
+                                  'Naghihintay: ${formatPeso(filteredPendingAmount)}',
+                                if (filteredInvalidAmount > 0)
+                                  'Invalid: ${formatPeso(filteredInvalidAmount)}',
+                              ].join(' • '),
                         key: const Key('supporter_pending_amount'),
                       ),
                     ),
@@ -756,6 +769,28 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
   }
 
   Widget _buildProofCell(Pledge pledge) {
+    if (pledge.isInvalidated) {
+      return Chip(
+        label: const Text('Invalid'),
+        backgroundColor: Colors.red.shade50,
+        labelStyle: TextStyle(
+          color: Colors.red.shade800,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
+    if (pledge.isCanceled) {
+      return Chip(
+        label: const Text('Canceled'),
+        backgroundColor: Colors.grey.shade200,
+        labelStyle: TextStyle(
+          color: Colors.grey.shade800,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
     final imageUrl = pledge.proofImageUrl?.trim();
     final referenceNumber = pledge.proofReferenceNumber?.trim();
 
@@ -773,8 +808,7 @@ class _CampaignReportScreenState extends State<CampaignReportScreen> {
             width: 40,
             height: 40,
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) =>
-                const Icon(Icons.broken_image_outlined),
+            errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
           ),
         ),
       );

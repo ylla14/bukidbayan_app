@@ -331,6 +331,19 @@ class Campaign {
   };
 }
 
+DateTime? _parseOptionalDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  try {
+    final converted = value.toDate();
+    if (converted is DateTime) return converted;
+  } catch (_) {
+    // Ignore non timestamp-like values.
+  }
+  return null;
+}
+
 class Pledge {
   final String id;
   final String campaignId;
@@ -349,6 +362,12 @@ class Pledge {
   final String? proofImageUrl;
   final String? proofReferenceNumber;
   final DateTime? proofSubmittedAt;
+  final DateTime? invalidatedAt;
+  final DateTime? canceledAt;
+  final String? invalidatedByUid;
+  final String? invalidatedByName;
+  final String? invalidationReason;
+  final String? canceledByUid;
 
   /// Whether this pledge's amount has been added to the campaign's
   /// `pledgedAmount`/`backersCount` totals. Defaults to `true` so pledges
@@ -374,8 +393,89 @@ class Pledge {
     this.proofImageUrl,
     this.proofReferenceNumber,
     this.proofSubmittedAt,
+    this.invalidatedAt,
+    this.canceledAt,
+    this.invalidatedByUid,
+    this.invalidatedByName,
+    this.invalidationReason,
+    this.canceledByUid,
     this.countedInTotal = true,
   });
+
+  bool get isInvalidated => invalidatedAt != null;
+  bool get isCanceled => canceledAt != null;
+  bool get isPendingProof => !countedInTotal && !isInvalidated && !isCanceled;
+  bool get isCountedContribution => countedInTotal && !isInvalidated;
+
+  Pledge copyWith({
+    String? id,
+    String? campaignId,
+    String? backerUid,
+    String? backerEmail,
+    String? backerName,
+    String? backerPhone,
+    String? backerNote,
+    int? amount,
+    String? rewardId,
+    DateTime? createdAt,
+    String? paymentAttemptId,
+    String? provider,
+    String? providerPaymentId,
+    DateTime? paidAt,
+    String? proofImageUrl,
+    String? proofReferenceNumber,
+    DateTime? proofSubmittedAt,
+    DateTime? invalidatedAt,
+    DateTime? canceledAt,
+    String? invalidatedByUid,
+    String? invalidatedByName,
+    String? invalidationReason,
+    String? canceledByUid,
+    bool? countedInTotal,
+    bool clearRewardId = false,
+    bool clearProofSubmittedAt = false,
+    bool clearInvalidation = false,
+    bool clearCancellation = false,
+  }) {
+    return Pledge(
+      id: id ?? this.id,
+      campaignId: campaignId ?? this.campaignId,
+      backerUid: backerUid ?? this.backerUid,
+      backerEmail: backerEmail ?? this.backerEmail,
+      backerName: backerName ?? this.backerName,
+      backerPhone: backerPhone ?? this.backerPhone,
+      backerNote: backerNote ?? this.backerNote,
+      amount: amount ?? this.amount,
+      rewardId: clearRewardId ? null : rewardId ?? this.rewardId,
+      createdAt: createdAt ?? this.createdAt,
+      paymentAttemptId: paymentAttemptId ?? this.paymentAttemptId,
+      provider: provider ?? this.provider,
+      providerPaymentId: providerPaymentId ?? this.providerPaymentId,
+      paidAt: paidAt ?? this.paidAt,
+      proofImageUrl: proofImageUrl ?? this.proofImageUrl,
+      proofReferenceNumber: proofReferenceNumber ?? this.proofReferenceNumber,
+      proofSubmittedAt: clearProofSubmittedAt
+          ? null
+          : proofSubmittedAt ?? this.proofSubmittedAt,
+      invalidatedAt: clearInvalidation
+          ? null
+          : invalidatedAt ?? this.invalidatedAt,
+      canceledAt: clearCancellation ? null : canceledAt ?? this.canceledAt,
+      invalidatedByUid: clearInvalidation
+          ? null
+          : invalidatedByUid ?? this.invalidatedByUid,
+      invalidatedByName: clearInvalidation
+          ? null
+          : invalidatedByName ?? this.invalidatedByName,
+      invalidationReason: clearInvalidation
+          ? null
+          : invalidationReason ?? this.invalidationReason,
+      canceledByUid: clearCancellation
+          ? null
+          : canceledByUid ?? this.canceledByUid,
+      countedInTotal: countedInTotal ?? this.countedInTotal,
+    );
+  }
 
   factory Pledge.fromJson(Map<String, dynamic> json) => Pledge(
     id: json['id'] as String,
@@ -387,18 +487,22 @@ class Pledge {
     backerNote: json['backerNote'] as String?,
     amount: (json['amount'] as num).toInt(),
     rewardId: json['rewardId'] as String?,
-    createdAt: DateTime.parse(json['createdAt'] as String),
+    createdAt:
+        _parseOptionalDateTime(json['createdAt']) ??
+        DateTime.fromMillisecondsSinceEpoch(0),
     paymentAttemptId: json['paymentAttemptId'] as String?,
     provider: json['provider'] as String?,
     providerPaymentId: json['providerPaymentId'] as String?,
-    paidAt: json['paidAt'] != null
-        ? DateTime.parse(json['paidAt'] as String)
-        : null,
+    paidAt: _parseOptionalDateTime(json['paidAt']),
     proofImageUrl: json['proofImageUrl'] as String?,
     proofReferenceNumber: json['proofReferenceNumber'] as String?,
-    proofSubmittedAt: json['proofSubmittedAt'] != null
-        ? DateTime.parse(json['proofSubmittedAt'] as String)
-        : null,
+    proofSubmittedAt: _parseOptionalDateTime(json['proofSubmittedAt']),
+    invalidatedAt: _parseOptionalDateTime(json['invalidatedAt']),
+    canceledAt: _parseOptionalDateTime(json['canceledAt']),
+    invalidatedByUid: json['invalidatedByUid'] as String?,
+    invalidatedByName: json['invalidatedByName'] as String?,
+    invalidationReason: json['invalidationReason'] as String?,
+    canceledByUid: json['canceledByUid'] as String?,
     countedInTotal: json['countedInTotal'] as bool? ?? true,
   );
 
@@ -428,6 +532,12 @@ class Pledge {
     'proofImageUrl': proofImageUrl,
     'proofReferenceNumber': proofReferenceNumber,
     'proofSubmittedAt': proofSubmittedAt?.toIso8601String(),
+    'invalidatedAt': invalidatedAt?.toIso8601String(),
+    'canceledAt': canceledAt?.toIso8601String(),
+    'invalidatedByUid': invalidatedByUid,
+    'invalidatedByName': invalidatedByName,
+    'invalidationReason': invalidationReason,
+    'canceledByUid': canceledByUid,
     'countedInTotal': countedInTotal,
   };
 }
