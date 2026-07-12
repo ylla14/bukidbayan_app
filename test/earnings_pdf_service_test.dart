@@ -188,4 +188,202 @@ void main() {
     expect(bytes, isNotEmpty);
     expect(bytes.length, greaterThan(1000));
   });
+
+  test(
+    'builds large all-time earnings PDFs without too many pages exceptions',
+    () async {
+      final equipment = Equipment(
+        id: 'eq-1',
+        name: 'Four-wheel Tractor',
+        description: 'Heavy-duty tractor',
+        category: 'Tractors',
+        condition: 'Good',
+        price: 2500,
+        rentalUnit: 'day',
+        landSizeRequirement: false,
+        maxCropHeightRequirement: false,
+        ownerId: 'owner-1',
+        operatorIncluded: true,
+        maintenanceRequired: true,
+        maintenanceIntervalHrs: 240,
+        hoursUsedSinceLastMaintenance: 120,
+      );
+
+      final rows = List.generate(260, (index) {
+        final start = DateTime(2025, 1, 1).add(Duration(days: index * 3));
+        final request = RentRequest(
+          requestId: 'rent-$index',
+          itemId: 'eq-1',
+          itemName: 'Four-wheel Tractor',
+          name: 'Farmer ${index + 1}',
+          address: 'Barangay ${index + 1}',
+          farmAddress: 'Sitio ${index + 1}, Cabuyao, Laguna',
+          start: start,
+          end: start.add(const Duration(days: 2)),
+          status: RentRequestStatus.completed,
+          renterId: 'renter-$index',
+          ownerId: 'owner-1',
+          createdAt: start.subtract(const Duration(days: 2)),
+          agreedPrice: 4000 + index.toDouble(),
+          agreedRentalUnit: 'day',
+          hectaresEntered: 1.5 + (index % 3),
+        );
+
+        return OwnerRentalTransactionRow(
+          request: request,
+          equipment: equipment,
+        );
+      });
+
+      final totalEarnings = rows.fold<double>(
+        0,
+        (sum, row) => sum + (row.totalPayment ?? 0),
+      );
+      final totalBookedDays = rows.fold<int>(
+        0,
+        (sum, row) => sum + row.daysRented,
+      );
+      final totalBookedHours = rows.fold<double>(
+        0,
+        (sum, row) => sum + row.estimatedBookedHours,
+      );
+
+      final report = OwnerRentalReport(
+        filter: const OwnerRentalReportFilter(),
+        allRows: rows,
+        filteredRows: rows,
+        scopedEquipment: [equipment],
+        summary: OwnerRentalSummary(
+          totalEarnings: totalEarnings,
+          completedRentals: rows.length,
+          uniqueFarmersServed: rows.length,
+          totalBookedDays: totalBookedDays,
+          estimatedBookedHours: totalBookedHours,
+          averageRentalDurationDays: totalBookedDays / rows.length,
+        ),
+        equipmentPerformance: [
+          OwnerRentalEquipmentPerformance(
+            itemId: 'eq-1',
+            itemName: 'Four-wheel Tractor',
+            categoryLabel: 'Tractors',
+            withOperator: true,
+            totalEarnings: totalEarnings,
+            completedRentals: rows.length,
+            bookedDays: totalBookedDays,
+            estimatedBookedHours: totalBookedHours,
+            uniqueFarmersServed: rows.length,
+          ),
+        ],
+        categoryPerformance: [
+          OwnerRentalCategoryPerformance(
+            categoryLabel: 'Tractors',
+            totalEarnings: totalEarnings,
+            completedRentals: rows.length,
+            bookedDays: totalBookedDays,
+            estimatedBookedHours: totalBookedHours,
+            uniqueFarmersServed: rows.length,
+          ),
+        ],
+        utilizationItems: [
+          OwnerRentalUtilizationItem(
+            equipmentId: 'eq-1',
+            equipmentName: 'Four-wheel Tractor',
+            categoryLabel: 'Tractors',
+            withOperator: true,
+            bookedHours: totalBookedHours,
+            schedulableHours: totalBookedHours * 2,
+            utilizationRate: 0.5,
+            isUnderMaintenance: false,
+            isMaintenanceDue: false,
+            isMaintenanceUpcoming: false,
+          ),
+        ],
+        maintenanceSnapshot: OwnerMaintenanceSnapshot(
+          totalOwnedEquipment: 1,
+          availableCount: 1,
+          unavailableCount: 0,
+          underMaintenanceCount: 0,
+          dueCount: 0,
+          upcomingCount: 0,
+          dueEquipment: const [],
+          upcomingEquipment: const [],
+          underMaintenanceEquipment: const [],
+        ),
+        forecastSnapshot: OwnerRentalForecastSnapshot(
+          requestsConsidered: rows.length,
+          requestsWithForecastInputs: rows.length,
+          confidence: DemandForecastConfidence.high,
+          summary:
+              'All-time demand remains healthy and this tool has consistent activity across the report window.',
+          categoryInsights: const [
+            DemandForecastInsight(
+              equipmentCategory: 'Tractors',
+              score: 0.88,
+              level: DemandForecastLevel.high,
+              matchedRequests: 260,
+              recentRequests: 14,
+              drivers: [
+                'Consistent historical land preparation demand',
+                'Stable request volume across seasons',
+              ],
+              recommendation:
+                  'Keep this equipment available and prioritize maintenance around quieter periods.',
+            ),
+          ],
+          equipmentMatches: const [
+            OwnerRentalForecastEquipmentMatch(
+              equipmentId: 'eq-1',
+              equipmentName: 'Four-wheel Tractor',
+              categoryLabel: 'Tractors',
+              demandLevel: DemandForecastLevel.high,
+              isAvailable: true,
+              isUnderMaintenance: false,
+              recommendation:
+                  'This tool continues to match strong demand signals in the owner history.',
+            ),
+          ],
+          equipmentTrends: [
+            OwnerRentalDemandTrendItem(
+              equipmentId: 'eq-1',
+              equipmentName: 'Four-wheel Tractor',
+              categoryLabel: 'Tractors',
+              trend: OwnerRentalDemandTrend.rising,
+              recentRequestCount: 14,
+              previousRequestCount: 11,
+              totalHistoricalRequests: rows.length,
+              activeHistoricalMonths: 18,
+              averageRequestsPerActiveMonth: 14.4,
+              sameMonthHistoricalCount: 16,
+              sameMonthHistoricalYears: 2,
+              sameMonthLabel: 'January',
+              peakMonth: 3,
+              peakMonthLabel: 'March',
+              peakMonthRequestCount: 19,
+              latestRequestAt: rows.first.request.createdAt,
+              note:
+                  'Recent demand remains high enough that the all-time export should still paginate cleanly.',
+            ),
+          ],
+        ),
+        utilizationWindow: AnalyticsTimeWindow(
+          start: DateTime(2025, 1, 1),
+          end: DateTime(2027, 12, 31),
+        ),
+      );
+
+      final legacyBytes = await EarningsPdfService.buildLegacyPdfBytes(
+        report: report,
+        ownerName: 'Owner One',
+      );
+      final analyticsBytes = await EarningsPdfService.buildPdfBytes(
+        report: report,
+        ownerName: 'Owner One',
+      );
+
+      expect(legacyBytes, isNotEmpty);
+      expect(analyticsBytes, isNotEmpty);
+      expect(legacyBytes.length, greaterThan(1000));
+      expect(analyticsBytes.length, greaterThan(1000));
+    },
+  );
 }

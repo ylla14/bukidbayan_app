@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:bukidbayan_app/models/demand_forecast.dart';
@@ -51,6 +52,7 @@ class EarningsPdfService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4.landscape,
+        maxPages: _legacyMaxPages(report),
         margin: const pw.EdgeInsets.all(24),
         footer: (context) => pw.Align(
           alignment: pw.Alignment.centerRight,
@@ -282,6 +284,7 @@ class EarningsPdfService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4.landscape,
+        maxPages: _analyticsMaxPages(report),
         margin: const pw.EdgeInsets.all(24),
         footer: (context) => pw.Align(
           alignment: pw.Alignment.centerRight,
@@ -568,6 +571,34 @@ class EarningsPdfService {
       bytes: bytes,
       filename:
           'owner_rental_analytics_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf',
+    );
+  }
+
+  // The pdf package defaults MultiPage to a low page cap intended to catch
+  // runaway layouts. Real all-time reports can legitimately exceed that.
+  static int _legacyMaxPages(OwnerRentalReport report) {
+    final transactionPages = (report.filteredRows.length / 12).ceil();
+    return math.max(40, transactionPages + 8);
+  }
+
+  static int _analyticsMaxPages(OwnerRentalReport report) {
+    final transactionPages = (report.filteredRows.length / 12).ceil();
+    final equipmentPages = (report.equipmentPerformance.length / 14).ceil();
+    final categoryPages = (report.categoryPerformance.length / 16).ceil();
+    final utilizationPages = (report.utilizationItems.length / 14).ceil();
+    final forecastPages =
+        (report.forecastSnapshot.categoryInsights.length / 10).ceil() +
+        (report.forecastSnapshot.equipmentMatches.length / 12).ceil() +
+        (report.forecastSnapshot.equipmentTrends.length / 8).ceil();
+
+    return math.max(
+      40,
+      14 +
+          transactionPages +
+          equipmentPages +
+          categoryPages +
+          utilizationPages +
+          forecastPages,
     );
   }
 
