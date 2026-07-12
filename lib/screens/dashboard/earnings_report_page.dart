@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:bukidbayan_app/models/analytics_time_window.dart';
 import 'package:bukidbayan_app/models/demand_forecast.dart';
 import 'package:bukidbayan_app/models/equipment.dart';
@@ -9,6 +7,7 @@ import 'package:bukidbayan_app/services/earnings_service.dart';
 import 'package:bukidbayan_app/theme/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
@@ -42,6 +41,8 @@ class _EarningsReportPageState extends State<EarningsReportPage>
   String? _error;
   int _selectedTabIndex = 0;
   bool _filtersExpanded = false;
+  bool _exportingPdf = false;
+  String? _pdfBusyMessage;
 
   @override
   void initState() {
@@ -222,31 +223,23 @@ class _EarningsReportPageState extends State<EarningsReportPage>
     return fullName.isEmpty ? 'Owner' : fullName;
   }
 
-  Future<(Uint8List, String)> _buildAnalyticsPdfData() async {
+  Future<(Uint8List, String)> _buildPdfDataInBackground({
+    required EarningsPdfDocumentKind documentKind,
+  }) async {
     final report = _report;
     if (report == null) {
       throw StateError('Report is not available.');
     }
 
     final ownerName = await _getOwnerName();
-    final bytes = await EarningsPdfService.buildPdfBytes(
-      report: report,
-      ownerName: ownerName,
-    );
-
-    return (bytes, ownerName);
-  }
-
-  Future<(Uint8List, String)> _buildLegacyPdfData() async {
-    final report = _report;
-    if (report == null) {
-      throw StateError('Report is not available.');
-    }
-
-    final ownerName = await _getOwnerName();
-    final bytes = await EarningsPdfService.buildLegacyPdfBytes(
-      report: report,
-      ownerName: ownerName,
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+    final bytes = await compute(
+      buildEarningsPdfBytesInBackground,
+      EarningsPdfBuildRequest(
+        report: report,
+        ownerName: ownerName,
+        documentKind: documentKind,
+      ),
     );
 
     return (bytes, ownerName);
@@ -254,39 +247,63 @@ class _EarningsReportPageState extends State<EarningsReportPage>
 
   bool get _showAnalyticsTab => _selectedTabIndex == 1;
 
-  Future<void> _sharePdf() async {
-    try {
-      final (bytes, _) = _showAnalyticsTab
-          ? await _buildAnalyticsPdfData()
-          : await _buildLegacyPdfData();
-      final filename = _showAnalyticsTab
-          ? 'owner_rental_analytics_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf'
-          : 'earnings_report_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf';
-      await Printing.sharePdf(bytes: bytes, filename: filename);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('PDF export failed: $error')));
+  String _pdfFilename(EarningsPdfDocumentKind documentKind) {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    switch (documentKind) {
+      case EarningsPdfDocumentKind.legacy:
+        return 'earnings_report_$today.pdf';
+      case EarningsPdfDocumentKind.analytics:
+        return 'owner_rental_analytics_$today.pdf';
     }
   }
 
-  Future<void> _printPdf() async {
+  Future<void> _runPdfAction({required bool printing}) async {
+    if (_exportingPdf) return;
+
+    final documentKind = _showAnalyticsTab
+        ? EarningsPdfDocumentKind.analytics
+        : EarningsPdfDocumentKind.legacy;
+
+    setState(() {
+      _exportingPdf = true;
+      _pdfBusyMessage = printing
+          ? 'Preparing report for printing...'
+          : 'Preparing report download...';
+    });
+
     try {
-      final (bytes, _) = _showAnalyticsTab
-          ? await _buildAnalyticsPdfData()
-          : await _buildLegacyPdfData();
-      final filename = _showAnalyticsTab
-          ? 'owner_rental_analytics_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf'
-          : 'earnings_report_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf';
-      await Printing.layoutPdf(onLayout: (_) async => bytes, name: filename);
+      final (bytes, _) = await _buildPdfDataInBackground(
+        documentKind: documentKind,
+      );
+      final filename = _pdfFilename(documentKind);
+
+      if (printing) {
+        await Printing.layoutPdf(onLayout: (_) async => bytes, name: filename);
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      }
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Print failed: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            printing ? 'Print failed: $error' : 'PDF export failed: $error',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _exportingPdf = false;
+          _pdfBusyMessage = null;
+        });
+      }
     }
   }
+
+  Future<void> _sharePdf() => _runPdfAction(printing: false);
+
+  Future<void> _printPdf() => _runPdfAction(printing: true);
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +312,114 @@ class _EarningsReportPageState extends State<EarningsReportPage>
         report != null && (_showAnalyticsTab || report.filteredRows.isNotEmpty);
     final useExpandedFilters =
         MediaQuery.sizeOf(context).width >= 840 || _filtersExpanded;
+    final content = _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+        ? _ErrorView(error: _error!, onRetry: _loadData)
+        : report == null
+        ? _ErrorView(
+            error: 'No owner analytics report is available.',
+            onRetry: _loadData,
+          )
+        : Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _FiltersBar(
+                  searchController: _searchController,
+                  reportFilter: _filter,
+                  equipmentOptions: _equipmentOptions,
+                  minPaymentController: _minPaymentController,
+                  maxPaymentController: _maxPaymentController,
+                  matchedRentalCount: report.filteredRows.length,
+                  scopedEquipmentCount: report.scopedEquipment.length,
+                  isExpanded: useExpandedFilters,
+                  onToggleExpanded: MediaQuery.sizeOf(context).width >= 840
+                      ? null
+                      : () {
+                          setState(() {
+                            _filtersExpanded = !_filtersExpanded;
+                          });
+                        },
+                  onSearchChanged: (value) {
+                    _rebuildReport(_filter.copyWith(searchQuery: value));
+                  },
+                  onPickDateRange: _pickDateRange,
+                  onEquipmentChanged: (equipmentId) {
+                    _rebuildReport(_filter.copyWith(equipmentId: equipmentId));
+                  },
+                  onOperatorChanged: (operatorFilter) {
+                    _rebuildReport(
+                      _filter.copyWith(operatorFilter: operatorFilter),
+                    );
+                  },
+                  onMinPaymentChanged: (value) {
+                    _rebuildReport(
+                      _filter.copyWith(
+                        minPayment: value.trim().isEmpty
+                            ? null
+                            : double.tryParse(value),
+                      ),
+                    );
+                  },
+                  onMaxPaymentChanged: (value) {
+                    _rebuildReport(
+                      _filter.copyWith(
+                        maxPayment: value.trim().isEmpty
+                            ? null
+                            : double.tryParse(value),
+                      ),
+                    );
+                  },
+                  onClear: _clearFilters,
+                  onApplyCurrentMonthFilter: _applyCurrentMonthFilter,
+                  onApplyLast30DaysFilter: _applyLast30DaysFilter,
+                  onClearDateRangeFilter: _clearDateRangeFilter,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: lightColorScheme.primary,
+                    unselectedLabelColor: Colors.black54,
+                    indicatorColor: lightColorScheme.primary,
+                    indicatorWeight: 3,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+                    tabs: const [
+                      Tab(text: 'Earnings'),
+                      Tab(text: 'Analytics'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _EarningsTab(
+                      report: report,
+                      hasBottomActions: showBottomActions,
+                      onRefresh: _refreshReport,
+                    ),
+                    _AnalyticsTab(
+                      report: report,
+                      hasBottomActions: showBottomActions,
+                      onRefresh: _refreshReport,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
 
     return Scaffold(
       appBar: AppBar(
@@ -309,120 +434,64 @@ class _EarningsReportPageState extends State<EarningsReportPage>
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
-            onPressed: _loadData,
+            onPressed: _exportingPdf ? null : _loadData,
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? _ErrorView(error: _error!, onRetry: _loadData)
-          : report == null
-          ? _ErrorView(
-              error: 'No owner analytics report is available.',
-              onRetry: _loadData,
-            )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _FiltersBar(
-                    searchController: _searchController,
-                    reportFilter: _filter,
-                    equipmentOptions: _equipmentOptions,
-                    minPaymentController: _minPaymentController,
-                    maxPaymentController: _maxPaymentController,
-                    matchedRentalCount: report.filteredRows.length,
-                    scopedEquipmentCount: report.scopedEquipment.length,
-                    isExpanded: useExpandedFilters,
-                    onToggleExpanded: MediaQuery.sizeOf(context).width >= 840
-                        ? null
-                        : () {
-                            setState(() {
-                              _filtersExpanded = !_filtersExpanded;
-                            });
-                          },
-                    onSearchChanged: (value) {
-                      _rebuildReport(_filter.copyWith(searchQuery: value));
-                    },
-                    onPickDateRange: _pickDateRange,
-                    onEquipmentChanged: (equipmentId) {
-                      _rebuildReport(
-                        _filter.copyWith(equipmentId: equipmentId),
-                      );
-                    },
-                    onOperatorChanged: (operatorFilter) {
-                      _rebuildReport(
-                        _filter.copyWith(operatorFilter: operatorFilter),
-                      );
-                    },
-                    onMinPaymentChanged: (value) {
-                      _rebuildReport(
-                        _filter.copyWith(
-                          minPayment: value.trim().isEmpty
-                              ? null
-                              : double.tryParse(value),
-                        ),
-                      );
-                    },
-                    onMaxPaymentChanged: (value) {
-                      _rebuildReport(
-                        _filter.copyWith(
-                          maxPayment: value.trim().isEmpty
-                              ? null
-                              : double.tryParse(value),
-                        ),
-                      );
-                    },
-                    onClear: _clearFilters,
-                    onApplyCurrentMonthFilter: _applyCurrentMonthFilter,
-                    onApplyLast30DaysFilter: _applyLast30DaysFilter,
-                    onClearDateRangeFilter: _clearDateRangeFilter,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+      body: Stack(
+        children: [
+          IgnorePointer(ignoring: _exportingPdf, child: content),
+          if (_exportingPdf)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.12),
+                child: Center(
                   child: Container(
+                    width: 260,
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
                     ),
-                    child: TabBar(
-                      controller: _tabController,
-                      labelColor: lightColorScheme.primary,
-                      unselectedLabelColor: Colors.black54,
-                      indicatorColor: lightColorScheme.primary,
-                      indicatorWeight: 3,
-                      labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-                      tabs: const [
-                        Tab(text: 'Earnings'),
-                        Tab(text: 'Analytics'),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 14),
+                        Text(
+                          _pdfBusyMessage ?? 'Preparing report...',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey.shade800,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Large all-time exports may take a moment.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _EarningsTab(
-                        report: report,
-                        hasBottomActions: showBottomActions,
-                        onRefresh: _refreshReport,
-                      ),
-                      _AnalyticsTab(
-                        report: report,
-                        hasBottomActions: showBottomActions,
-                        onRefresh: _refreshReport,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
+        ],
+      ),
       bottomNavigationBar: report == null || !showBottomActions || _loading
           ? null
           : SafeArea(
@@ -432,7 +501,7 @@ class _EarningsReportPageState extends State<EarningsReportPage>
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: _sharePdf,
+                        onPressed: _exportingPdf ? null : _sharePdf,
                         icon: const Icon(Icons.download_rounded),
                         label: const Text(
                           'Download',
@@ -454,7 +523,7 @@ class _EarningsReportPageState extends State<EarningsReportPage>
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: _printPdf,
+                        onPressed: _exportingPdf ? null : _printPdf,
                         icon: const Icon(Icons.print_rounded),
                         label: const Text(
                           'Print',

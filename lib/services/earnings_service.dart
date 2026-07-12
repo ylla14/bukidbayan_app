@@ -8,6 +8,37 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+enum EarningsPdfDocumentKind { legacy, analytics }
+
+class EarningsPdfBuildRequest {
+  final OwnerRentalReport report;
+  final String ownerName;
+  final EarningsPdfDocumentKind documentKind;
+
+  const EarningsPdfBuildRequest({
+    required this.report,
+    required this.ownerName,
+    required this.documentKind,
+  });
+}
+
+Future<Uint8List> buildEarningsPdfBytesInBackground(
+  EarningsPdfBuildRequest request,
+) {
+  switch (request.documentKind) {
+    case EarningsPdfDocumentKind.legacy:
+      return EarningsPdfService.buildLegacyPdfBytes(
+        report: request.report,
+        ownerName: request.ownerName,
+      );
+    case EarningsPdfDocumentKind.analytics:
+      return EarningsPdfService.buildPdfBytes(
+        report: request.report,
+        ownerName: request.ownerName,
+      );
+  }
+}
+
 class EarningsPdfService {
   static Future<Uint8List> buildLegacyPdfBytes({
     required OwnerRentalReport report,
