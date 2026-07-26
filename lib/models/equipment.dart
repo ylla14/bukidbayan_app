@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum EquipmentStatus {
   available,
   unavailable,
-  underMaintenance;
+  underMaintenance,
+  retired;
 
   static EquipmentStatus fromString(String? value) {
     switch (value) {
@@ -13,6 +14,8 @@ enum EquipmentStatus {
         return EquipmentStatus.unavailable;
       case 'under_maintenance':
         return EquipmentStatus.underMaintenance;
+      case 'retired':
+        return EquipmentStatus.retired;
       default:
         return EquipmentStatus.available;
     }
@@ -26,6 +29,8 @@ enum EquipmentStatus {
         return 'unavailable';
       case EquipmentStatus.underMaintenance:
         return 'under_maintenance';
+      case EquipmentStatus.retired:
+        return 'retired';
     }
   }
 }
@@ -123,6 +128,7 @@ class Equipment {
   final int maintenanceCount;
   final int majorBreakdownCount;
   final bool retirementFlaggedByAdmin;
+  final DateTime? retiredAt;
 
   const Equipment({
     this.id,
@@ -187,6 +193,7 @@ class Equipment {
     this.maintenanceCount = 0,
     this.majorBreakdownCount = 0,
     this.retirementFlaggedByAdmin = false,
+    this.retiredAt,
   });
 
   bool get isAvailable => status == EquipmentStatus.available;
@@ -277,6 +284,7 @@ class Equipment {
       'maintenanceCount': maintenanceCount,
       'majorBreakdownCount': majorBreakdownCount,
       'retirementFlaggedByAdmin': retirementFlaggedByAdmin,
+      'retiredAt': retiredAt != null ? Timestamp.fromDate(retiredAt!) : null,
     };
   }
 
@@ -395,6 +403,7 @@ class Equipment {
       majorBreakdownCount: (data['majorBreakdownCount'] as num?)?.toInt() ?? 0,
       retirementFlaggedByAdmin:
           data['retirementFlaggedByAdmin'] as bool? ?? false,
+      retiredAt: asDate(data['retiredAt']),
     );
   }
 
@@ -460,6 +469,7 @@ class Equipment {
     int? maintenanceCount,
     int? majorBreakdownCount,
     bool? retirementFlaggedByAdmin,
+    DateTime? retiredAt,
   }) {
     return Equipment(
       id: id,
@@ -531,6 +541,7 @@ class Equipment {
       majorBreakdownCount: majorBreakdownCount ?? this.majorBreakdownCount,
       retirementFlaggedByAdmin:
           retirementFlaggedByAdmin ?? this.retirementFlaggedByAdmin,
+      retiredAt: retiredAt ?? this.retiredAt,
     );
   }
 }

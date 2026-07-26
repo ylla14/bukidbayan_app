@@ -54,33 +54,56 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
     if (_filterStatus != null) {
       list = list.where((eq) => eq['status'] == _filterStatus).toList();
     }
-    if (_sortColumn == null) return list;
-    list.sort((a, b) {
-      int cmp;
-      switch (_sortColumn) {
-        case 'maintenance':
-          cmp = ((a['maintenanceCount'] as int?) ?? 0)
-              .compareTo((b['maintenanceCount'] as int?) ?? 0);
-        case 'breakdowns':
-          final aName = a['name'] as String? ?? '';
-          final bName = b['name'] as String? ?? '';
-          final aCount = StrikeService.isMotorizedEquipment(aName)
-              ? (a['majorBreakdownCount'] as int?) ?? 0
-              : (a['damageReportCount'] as int?) ?? 0;
-          final bCount = StrikeService.isMotorizedEquipment(bName)
-              ? (b['majorBreakdownCount'] as int?) ?? 0
-              : (b['damageReportCount'] as int?) ?? 0;
-          cmp = aCount.compareTo(bCount);
-        default:
-          return 0;
-      }
-      return _sortAscending ? cmp : -cmp;
+    if (_sortColumn != null) {
+      list.sort((a, b) {
+        int cmp;
+        switch (_sortColumn) {
+          case 'maintenance':
+            cmp = ((a['maintenanceCount'] as int?) ?? 0)
+                .compareTo((b['maintenanceCount'] as int?) ?? 0);
+          case 'breakdowns':
+            final aName = a['name'] as String? ?? '';
+            final bName = b['name'] as String? ?? '';
+            final aCount = StrikeService.isMotorizedEquipment(aName)
+                ? (a['majorBreakdownCount'] as int?) ?? 0
+                : (a['damageReportCount'] as int?) ?? 0;
+            final bCount = StrikeService.isMotorizedEquipment(bName)
+                ? (b['majorBreakdownCount'] as int?) ?? 0
+                : (b['damageReportCount'] as int?) ?? 0;
+            cmp = aCount.compareTo(bCount);
+          default:
+            return 0;
+        }
+        return _sortAscending ? cmp : -cmp;
+      });
+    }
+
+    // Retired equipment always sinks to the bottom regardless of the
+    // active sort/filter — split-and-concatenate rather than folding this
+    // into the comparator above, since List.sort isn't guaranteed stable.
+    final active =
+        list.where((eq) => eq['status'] != 'retired').toList();
+    final retired =
+        list.where((eq) => eq['status'] == 'retired').toList();
+    return [...active, ...retired];
+  }
+
+  Future<void> _sendRetirementFlagNotification({
+    required String ownerId,
+    required String name,
+  }) async {
+    await _db.collection('notifications').doc(ownerId).collection('items').add({
+      'type': 'equipment_retirement_flagged',
+      'title': 'Equipment Flagged for Retirement',
+      'body':
+          'Your co-op has flagged "$name" for retirement based on its maintenance and breakdown history. Please review it and consider retiring it from active service.',
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
     });
-    return list;
   }
 
   Future<void> _toggleRetirementFlag(
-      String id, bool current, String name) async {
+      String id, bool current, String name, String? ownerId) async {
     final newValue = !current;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -119,6 +142,13 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
           .collection('equipment')
           .doc(id)
           .update({'retirementFlaggedByAdmin': newValue});
+      if (newValue && ownerId != null && ownerId.isNotEmpty) {
+        try {
+          await _sendRetirementFlagNotification(ownerId: ownerId, name: name);
+        } catch (_) {
+          // Non-fatal — the flag itself already succeeded.
+        }
+      }
     } catch (e) {
       setState(() {
         final idx = _equipment.indexWhere((e) => e['_id'] == id);
@@ -197,6 +227,9 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
 
       final catCounts = <String, int>{};
       for (final eq in equipment) {
+        // Retired equipment stays visible in the inventory table but is
+        // excluded from the Equipment Demographics statistics.
+        if (eq['status'] == 'retired') continue;
         final cat = (eq['category'] as String? ?? '').trim();
         final key = cat.isEmpty ? 'Uncategorized' : cat;
         catCounts[key] = (catCounts[key] ?? 0) + 1;
@@ -225,6 +258,7 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
     switch (status) {
       case 'available':        return Colors.green;
       case 'under_maintenance': return Colors.orange;
+      case 'retired':           return Colors.black54;
       default:                 return Colors.red;
     }
   }
@@ -234,6 +268,7 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
       case 'available':         return 'Available';
       case 'unavailable':       return 'Unavailable';
       case 'under_maintenance': return 'Under Maintenance';
+      case 'retired':           return 'Retired';
       default:                  return status ?? '—';
     }
   }
@@ -643,6 +678,7 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                   PopupMenuItem(
                       value: 'under_maintenance',
                       child: Text('Under Maintenance')),
+                  PopupMenuItem(value: 'retired', child: Text('Retired')),
                 ],
                 child: filterChip(
                   label: _filterStatus != null
@@ -977,8 +1013,8 @@ class _AdminEquipmentScreenState extends State<AdminEquipmentScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 4, vertical: 4),
                             child: GestureDetector(
-                              onTap: () =>
-                                  _toggleRetirementFlag(id, flagged, name),
+                              onTap: () => _toggleRetirementFlag(
+                                  id, flagged, name, eq['ownerId'] as String?),
                               child: Icon(
                                 flagged ? Icons.flag : Icons.flag_outlined,
                                 size: 18,

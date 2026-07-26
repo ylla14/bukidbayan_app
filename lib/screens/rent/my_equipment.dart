@@ -203,7 +203,10 @@ class _MyEquipmentState extends State<MyEquipment> {
 
   // ── Sorting + filtering ───────────────────────────────────────
   List<Equipment> _applyFilterAndSort(List<Equipment> list) {
-    var result = List<Equipment>.from(list);
+    // Retired equipment is treated as sold/scrapped IRL — it's removed from
+    // the owner's own view entirely (still in Firestore, still visible to
+    // the admin as a retired record).
+    var result = list.where((e) => e.status != EquipmentStatus.retired).toList();
 
     if (_filter.statusFilter != null) {
       result = result.where((e) => e.status == _filter.statusFilter).toList();
@@ -931,13 +934,15 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                               }
                             },
                           ),
-                          const VerticalDivider(width: 1, thickness: 1),
-                          _CardAction(
-                            icon: Icons.delete_outline,
-                            label: 'Delete',
-                            color: Colors.red.shade500,
-                            onTap: () => _deleteEquipment(context, equipment),
-                          ),
+                          if (equipment.status != EquipmentStatus.retired) ...[
+                            const VerticalDivider(width: 1, thickness: 1),
+                            _CardAction(
+                              icon: Icons.archive_outlined,
+                              label: 'Retire',
+                              color: Colors.red.shade500,
+                              onTap: () => _retireEquipment(context, equipment),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1565,8 +1570,8 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
     }
   }
 
-  // ── Delete equipment ──────────────────────────────────────────
-  Future<void> _deleteEquipment(
+  // ── Retire equipment (soft delete — archived, not physically removed) ──
+  Future<void> _retireEquipment(
       BuildContext context, Equipment equipment) async {
     final activeSnap = await FirebaseFirestore.instance
         .collection('rentRequests')
@@ -1587,12 +1592,12 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
           title: const Row(children: [
             Icon(Icons.block, color: Colors.red, size: 20),
             SizedBox(width: 8),
-            Text('Cannot Delete'),
+            Text('Cannot Retire'),
           ]),
           content: Text(
             'This equipment has ${activeSnap.docs.length} active '
             '${activeSnap.docs.length == 1 ? 'booking' : 'bookings'}. '
-            'Please resolve all active bookings before deleting.',
+            'Please resolve all active bookings before retiring it.',
           ),
           actions: [
             TextButton(
@@ -1609,9 +1614,9 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+          Icon(Icons.archive_outlined, color: Colors.red, size: 20),
           SizedBox(width: 8),
-          Flexible(child: Text('Burahin ang Kagamitan')),
+          Flexible(child: Text('I-retiro ang Kagamitan')),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1622,14 +1627,17 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                 style: const TextStyle(color: Colors.black87, fontSize: 14),
                 children: [
                   const TextSpan(
-                      text: 'Sigurado ka bang gusto mong burahin ang '),
+                      text: 'Sigurado ka bang gusto mong i-retiro ang '),
                   TextSpan(
                     text: '"${equipment.name}"',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const TextSpan(
                       text:
-                          '? Hindi na maaaring bawiin ang pagkilos na ito.'),
+                          '? Ito ay para sa kagamitang naibenta na o naging '
+                          'iskrap — mawawala ito sa iyong listahan pagkatapos '
+                          'nito, pero mananatili ang record at kasaysayan '
+                          'nito para sa cooperative.'),
                 ],
               ),
             ),
@@ -1645,7 +1653,7 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Burahin'),
+            child: const Text('I-retiro'),
           ),
         ],
       ),
@@ -1653,17 +1661,17 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
     if (confirmed != true || !context.mounted) return;
 
     try {
-      await _firestoreService.deleteEquipment(equipment.id!);
+      await _firestoreService.retireEquipment(equipment.id!);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('"${equipment.name}" has been deleted.'),
+          content: Text('"${equipment.name}" has been retired.'),
           backgroundColor: Colors.red.shade600,
         ));
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error deleting equipment: $e'),
+          content: Text('Error retiring equipment: $e'),
           backgroundColor: Colors.red,
         ));
       }
@@ -1696,6 +1704,10 @@ class _StatusPill extends StatelessWidget {
       case EquipmentStatus.unavailable:
         bg = Colors.grey.shade600;
         label = 'Unavailable';
+        break;
+      case EquipmentStatus.retired:
+        bg = Colors.black54;
+        label = 'Retired';
         break;
     }
 
@@ -1890,6 +1902,7 @@ class _ActiveFilterBar extends StatelessWidget {
         EquipmentStatus.available => 'Available',
         EquipmentStatus.unavailable => 'Unavailable',
         EquipmentStatus.underMaintenance => 'Maintenance',
+        EquipmentStatus.retired => 'Retired',
       };
       chips.add(_chip(
           label: label, icon: Icons.circle, color: Colors.blueGrey));

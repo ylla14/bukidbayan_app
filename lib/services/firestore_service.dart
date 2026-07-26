@@ -83,12 +83,16 @@ class FirestoreService {
     }
   }
 
-  // Delete equipment
-  Future<void> deleteEquipment(String equipmentId) async {
+  // Retire equipment (soft delete — archived, not physically removed)
+  Future<void> retireEquipment(String equipmentId) async {
     try {
-      await _firestore.collection('equipment').doc(equipmentId).delete();
+      await _firestore.collection('equipment').doc(equipmentId).update({
+        'status': EquipmentStatus.retired.toValue(),
+        'retiredAt': FieldValue.serverTimestamp(),
+        'isAvailable': false,
+      });
     } catch (e) {
-      throw Exception('Error deleting equipment: $e');
+      throw Exception('Error retiring equipment: $e');
     }
   }
 
