@@ -6,6 +6,7 @@ import 'package:bukidbayan_app/models/review.dart';
 import 'package:bukidbayan_app/screens/rent/equipment_listing_form_screen.dart';
 import 'package:bukidbayan_app/screens/rent/product_page.dart';
 import 'package:bukidbayan_app/screens/rent/request_sent.dart';
+import 'package:bukidbayan_app/services/app_language.dart';
 import 'package:bukidbayan_app/services/maintenance_service.dart';
 import 'package:bukidbayan_app/services/strike_service.dart';
 import 'package:bukidbayan_app/services/firestore_service.dart';
@@ -123,6 +124,8 @@ class MyEquipment extends StatefulWidget {
 class _MyEquipmentState extends State<MyEquipment> {
   final FirestoreService _firestoreService = FirestoreService();
 
+  String _t(String en, String tl) => AppLanguage.text(en: en, tl: tl);
+
   _FilterState _filter = const _FilterState();
 
   final Map<String, double> _ratingCache = {};
@@ -150,23 +153,24 @@ class _MyEquipmentState extends State<MyEquipment> {
         .where('ownerId', isEqualTo: uid)
         .snapshots()
         .listen((snap) {
-      final ids = snap.docs
-          .map((d) => d.id)
-          .where((id) => !_ratingFetchedIds.contains(id))
-          .toList();
+          final ids = snap.docs
+              .map((d) => d.id)
+              .where((id) => !_ratingFetchedIds.contains(id))
+              .toList();
 
-      if (ids.isEmpty) return;
-      _ratingFetchedIds.addAll(ids);
-      _fetchRatingsForIds(ids);
-    });
+          if (ids.isEmpty) return;
+          _ratingFetchedIds.addAll(ids);
+          _fetchRatingsForIds(ids);
+        });
   }
 
   Future<void> _fetchRatingsForIds(List<String> ids) async {
     const chunkSize = 30;
     final chunks = <List<String>>[];
     for (var i = 0; i < ids.length; i += chunkSize) {
-      chunks.add(ids.sublist(
-          i, i + chunkSize > ids.length ? ids.length : i + chunkSize));
+      chunks.add(
+        ids.sublist(i, i + chunkSize > ids.length ? ids.length : i + chunkSize),
+      );
     }
 
     final futures = chunks.map((chunk) async {
@@ -188,7 +192,8 @@ class _MyEquipmentState extends State<MyEquipment> {
               ? 0
               : double.parse(
                   (ratings.reduce((a, b) => a + b) / ratings.length)
-                      .toStringAsFixed(1));
+                      .toStringAsFixed(1),
+                );
         }
       } catch (_) {
         for (final id in chunk) {
@@ -206,7 +211,9 @@ class _MyEquipmentState extends State<MyEquipment> {
     // Retired equipment is treated as sold/scrapped IRL — it's removed from
     // the owner's own view entirely (still in Firestore, still visible to
     // the admin as a retired record).
-    var result = list.where((e) => e.status != EquipmentStatus.retired).toList();
+    var result = list
+        .where((e) => e.status != EquipmentStatus.retired)
+        .toList();
 
     if (_filter.statusFilter != null) {
       result = result.where((e) => e.status == _filter.statusFilter).toList();
@@ -233,8 +240,9 @@ class _MyEquipmentState extends State<MyEquipment> {
         case EquipmentSortOption.ratingLow:
           return (_ratingCache[a.id] ?? 0).compareTo(_ratingCache[b.id] ?? 0);
         case EquipmentSortOption.maintenanceHours:
-          return b.hoursUsedSinceLastMaintenance
-              .compareTo(a.hoursUsedSinceLastMaintenance);
+          return b.hoursUsedSinceLastMaintenance.compareTo(
+            a.hoursUsedSinceLastMaintenance,
+          );
         case EquipmentSortOption.newest:
           final aDate = a.createdAt ?? DateTime(2000);
           final bDate = b.createdAt ?? DateTime(2000);
@@ -284,12 +292,16 @@ class _MyEquipmentState extends State<MyEquipment> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: lightColorScheme.primary
-                                    .withOpacity(0.1),
+                                color: lightColorScheme.primary.withOpacity(
+                                  0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(Icons.tune_rounded,
-                                  color: lightColorScheme.primary, size: 18),
+                              child: Icon(
+                                Icons.tune_rounded,
+                                color: lightColorScheme.primary,
+                                size: 18,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Column(
@@ -335,16 +347,20 @@ class _MyEquipmentState extends State<MyEquipment> {
                             children: EquipmentSortOption.values.map((opt) {
                               final selected = _filter.sortOption == opt;
                               return ChoiceChip(
-                                avatar: Icon(opt.icon,
-                                    size: 14,
-                                    color: selected
-                                        ? Colors.white
-                                        : lightColorScheme.primary),
+                                avatar: Icon(
+                                  opt.icon,
+                                  size: 14,
+                                  color: selected
+                                      ? Colors.white
+                                      : lightColorScheme.primary,
+                                ),
                                 label: Text(opt.label),
                                 selected: selected,
                                 onSelected: (_) => setSheetState(
-                                    () => _filter =
-                                        _filter.copyWith(sortOption: opt)),
+                                  () => _filter = _filter.copyWith(
+                                    sortOption: opt,
+                                  ),
+                                ),
                                 selectedColor: lightColorScheme.primary,
                                 labelStyle: TextStyle(
                                   fontSize: 12,
@@ -366,7 +382,9 @@ class _MyEquipmentState extends State<MyEquipment> {
                                 ),
                                 showCheckmark: false,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
                               );
                             }).toList(),
                           ),
@@ -422,9 +440,11 @@ class _MyEquipmentState extends State<MyEquipment> {
                                   icon: Icons.build_rounded,
                                   color: Colors.red,
                                   value: _filter.onlyForMaintenance,
-                                  onChanged: (v) => setSheetState(() =>
-                                      _filter = _filter.copyWith(
-                                          onlyForMaintenance: v)),
+                                  onChanged: (v) => setSheetState(
+                                    () => _filter = _filter.copyWith(
+                                      onlyForMaintenance: v,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -434,9 +454,11 @@ class _MyEquipmentState extends State<MyEquipment> {
                                   icon: Icons.warning_amber_rounded,
                                   color: Colors.amber.shade700,
                                   value: _filter.onlyUpcomingMaintenance,
-                                  onChanged: (v) => setSheetState(() =>
-                                      _filter = _filter.copyWith(
-                                          onlyUpcomingMaintenance: v)),
+                                  onChanged: (v) => setSheetState(
+                                    () => _filter = _filter.copyWith(
+                                      onlyUpcomingMaintenance: v,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -461,14 +483,15 @@ class _MyEquipmentState extends State<MyEquipment> {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => setSheetState(
-                                () => _filter = const _FilterState()),
+                              () => _filter = const _FilterState(),
+                            ),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(color: Colors.grey.shade300),
                               foregroundColor: Colors.black54,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                             child: const Text('I-reset'),
                           ),
@@ -485,9 +508,9 @@ class _MyEquipmentState extends State<MyEquipment> {
                               backgroundColor: lightColorScheme.primary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                             child: const Text('Ilapat'),
                           ),
@@ -528,8 +551,8 @@ class _MyEquipmentState extends State<MyEquipment> {
       avatar: Icon(icon, size: 14, color: selected ? Colors.white : color),
       label: Text(label),
       selected: selected,
-      onSelected: (_) => setSheetState(
-          () => _filter = _filter.copyWith(statusFilter: value)),
+      onSelected: (_) =>
+          setSheetState(() => _filter = _filter.copyWith(statusFilter: value)),
       selectedColor: color,
       labelStyle: TextStyle(
         fontSize: 12,
@@ -561,8 +584,7 @@ class _MyEquipmentState extends State<MyEquipment> {
         decoration: BoxDecoration(
           color: value ? color.withOpacity(0.08) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: value ? color : Colors.grey.shade300),
+          border: Border.all(color: value ? color : Colors.grey.shade300),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -597,129 +619,133 @@ class _MyEquipmentState extends State<MyEquipment> {
   Widget build(BuildContext context) {
     final String uid = FirebaseAuth.instance.currentUser!.uid;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Aking Equipment',
-          style: TextStyle(
-            color: lightColorScheme.onPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [lightColorScheme.primary, lightColorScheme.secondary],
+    return AppLanguageScope(
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _t('My Equipment', 'Aking Equipment'),
+            style: TextStyle(
+              color: lightColorScheme.onPrimary,
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.tune_rounded),
-                color: Colors.white,
-                tooltip: 'Ayusin at I-filter',
-                onPressed: _showSortSheet,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [lightColorScheme.primary, lightColorScheme.secondary],
               ),
-              if (_hasActiveFilters)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.amber,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(14),
-        children: [
-          // ── Overdue returns banner ────────────────────────────
-          _OverdueReturnsSection(ownerId: uid),
-
-          // ── Active filter chips row ───────────────────────────
-          if (_hasActiveFilters) ...[
-            _ActiveFilterBar(
-              filter: _filter,
-              onClear: () => setState(() => _filter = const _FilterState()),
             ),
-            const SizedBox(height: 10),
-          ],
-
-          // ── Equipment list ────────────────────────────────────
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('equipment')
-                .where('ownerId', isEqualTo: uid)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 60),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
-
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return _EmptyState(
-                  icon: Icons.agriculture_rounded,
-                  title: 'Walang kagamitan pa',
-                  subtitle:
-                      'Mag-lista ng iyong unang kagamitan para magsimulang mag-rent out.',
-                );
-              }
-
-              final rawList = snapshot.data!.docs
-                  .map((doc) => Equipment.fromFirestore(doc))
-                  .toList();
-
-              final filteredList = _applyFilterAndSort(rawList);
-
-              if (filteredList.isEmpty) {
-                return _EmptyState(
-                  icon: Icons.filter_list_off,
-                  title: 'Walang nagtutugmang kagamitan',
-                  subtitle: 'Subukang baguhin ang iyong filter.',
-                  action: TextButton(
-                    onPressed: () =>
-                        setState(() => _filter = const _FilterState()),
-                    child: const Text('I-clear ang Filter'),
-                  ),
-                );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      '${filteredList.length} kagamitan',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                        fontWeight: FontWeight.w500,
+          ),
+          centerTitle: true,
+          actions: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded),
+                  color: Colors.white,
+                  tooltip: _t('Sort & Filter', 'Ayusin at I-filter'),
+                  onPressed: _showSortSheet,
+                ),
+                if (_hasActiveFilters)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.amber,
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ),
-                  ...filteredList.map((eq) => buildEquipmentCard(context, eq)),
-                ],
-              );
-            },
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(14),
+          children: [
+            // ── Overdue returns banner ────────────────────────────
+            _OverdueReturnsSection(ownerId: uid),
+
+            // ── Active filter chips row ───────────────────────────
+            if (_hasActiveFilters) ...[
+              _ActiveFilterBar(
+                filter: _filter,
+                onClear: () => setState(() => _filter = const _FilterState()),
+              ),
+              const SizedBox(height: 10),
+            ],
+
+            // ── Equipment list ────────────────────────────────────
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('equipment')
+                  .where('ownerId', isEqualTo: uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 60),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _EmptyState(
+                    icon: Icons.agriculture_rounded,
+                    title: 'Walang kagamitan pa',
+                    subtitle:
+                        'Mag-lista ng iyong unang kagamitan para magsimulang mag-rent out.',
+                  );
+                }
+
+                final rawList = snapshot.data!.docs
+                    .map((doc) => Equipment.fromFirestore(doc))
+                    .toList();
+
+                final filteredList = _applyFilterAndSort(rawList);
+
+                if (filteredList.isEmpty) {
+                  return _EmptyState(
+                    icon: Icons.filter_list_off,
+                    title: 'Walang nagtutugmang kagamitan',
+                    subtitle: 'Subukang baguhin ang iyong filter.',
+                    action: TextButton(
+                      onPressed: () =>
+                          setState(() => _filter = const _FilterState()),
+                      child: const Text('I-clear ang Filter'),
+                    ),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        '${filteredList.length} kagamitan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    ...filteredList.map(
+                      (eq) => buildEquipmentCard(context, eq),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -764,11 +790,15 @@ class _MyEquipmentState extends State<MyEquipment> {
         );
 
         final avgRating = _ratingCache[equipment.id] ?? -1;
-final suggestRetirement = equipment.retirementFlaggedByAdmin ||
-    equipment.damageReportCount >= StrikeService.kDamageRetirementThreshold ||
-    (StrikeService.isMotorizedEquipment(equipment.name) &&
-        equipment.majorBreakdownCount >= StrikeService.kMajorBreakdownThreshold);
-        final hasBadge = avgRating >= 0 ||
+        final suggestRetirement =
+            equipment.retirementFlaggedByAdmin ||
+            equipment.damageReportCount >=
+                StrikeService.kDamageRetirementThreshold ||
+            (StrikeService.isMotorizedEquipment(equipment.name) &&
+                equipment.majorBreakdownCount >=
+                    StrikeService.kMajorBreakdownThreshold);
+        final hasBadge =
+            avgRating >= 0 ||
             equipment.isForMaintenance ||
             equipment.isUpcomingMaintenance ||
             suggestRetirement;
@@ -802,7 +832,8 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                                   equipment.imageUrls.first,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _bannerPlaceholder(),
+                                  errorBuilder: (_, __, ___) =>
+                                      _bannerPlaceholder(),
                                 )
                               : _bannerPlaceholder(),
                         ),
@@ -816,7 +847,12 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
 
                     // ── Content ─────────────────────────────────
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0), // was 14,12,14,0
+                      padding: const EdgeInsets.fromLTRB(
+                        12,
+                        10,
+                        12,
+                        0,
+                      ), // was 14,12,14,0
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -838,7 +874,8 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                               Text(
                                 '₱${equipment.price}/${equipment.rentalUnit}',
                                 style: TextStyle(
-                                  fontSize: 12, // was 15, moved inline to save a row
+                                  fontSize:
+                                      12, // was 15, moved inline to save a row
                                   fontWeight: FontWeight.w700,
                                   color: lightColorScheme.primary,
                                 ),
@@ -848,7 +885,10 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                           const SizedBox(height: 2),
                           Text(
                             equipment.category ?? 'No category',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade500), // was 12
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                            ), // was 12
                           ),
 
                           // ── Badge row ────────────────────────
@@ -858,18 +898,26 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                               spacing: 5,
                               runSpacing: 5,
                               children: [
-                                if (avgRating >= 0) _RatingBadge(rating: avgRating),
+                                if (avgRating >= 0)
+                                  _RatingBadge(rating: avgRating),
                                 if (equipment.isForMaintenance)
                                   _BadgePill(
-                                    label: 'For Maintenance',
+                                    label: _t(
+                                      'For Maintenance',
+                                      'Kailangan ng Maintenance',
+                                    ),
                                     icon: Icons.build_rounded,
                                     textColor: Colors.red.shade700,
                                     bgColor: Colors.red.shade50,
                                     borderColor: Colors.red.shade200,
                                   ),
-                                if (!equipment.isForMaintenance && equipment.isUpcomingMaintenance)
+                                if (!equipment.isForMaintenance &&
+                                    equipment.isUpcomingMaintenance)
                                   _BadgePill(
-                                    label: 'Upcoming Maintenance',
+                                    label: _t(
+                                      'Upcoming Maintenance',
+                                      'Malapit nang Mag-Maintenance',
+                                    ),
                                     icon: Icons.warning_amber_rounded,
                                     textColor: Colors.amber.shade800,
                                     bgColor: Colors.amber.shade50,
@@ -877,7 +925,10 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                                   ),
                                 if (suggestRetirement)
                                   _BadgePill(
-                                    label: 'Suggest Retirement',
+                                    label: _t(
+                                      'Suggest Retirement',
+                                      'Suggest Retirement',
+                                    ),
                                     icon: Icons.archive_outlined,
                                     textColor: Colors.deepOrange.shade700,
                                     bgColor: Colors.deepOrange.shade50,
@@ -896,7 +947,7 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                     IntrinsicHeight(
                       child: Row(
                         children: [
-                         _CardAction(
+                          _CardAction(
                             icon: Icons.edit_outlined,
                             label: 'Edit',
                             color: lightColorScheme.primary,
@@ -904,7 +955,8 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                               context,
                               MaterialPageRoute(
                                 builder: (_) => EquipmentListingScreen(
-                                    existingEquipment: tempItem),
+                                  existingEquipment: tempItem,
+                                ),
                               ),
                             ),
                           ),
@@ -913,18 +965,17 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                             icon: equipment.status == EquipmentStatus.available
                                 ? Icons.build_outlined
                                 : Icons.check_circle_outline,
-                            label:
-                                equipment.status == EquipmentStatus.available
-                                    ? 'Maintenance'
-                                    : 'Set Available',
-                            color: equipment.status ==
-                                    EquipmentStatus.unavailable
+                            label: equipment.status == EquipmentStatus.available
+                                ? 'Maintenance'
+                                : _t('Set Available', 'Gawing Available'),
+                            color:
+                                equipment.status == EquipmentStatus.unavailable
                                 ? Colors.grey.shade400
                                 : equipment.status == EquipmentStatus.available
-                                    ? const Color(0xFFF59E0B)
-                                    : Colors.green.shade600,
-                            enabled: equipment.status !=
-                                EquipmentStatus.unavailable,
+                                ? const Color(0xFFF59E0B)
+                                : Colors.green.shade600,
+                            enabled:
+                                equipment.status != EquipmentStatus.unavailable,
                             onTap: () async {
                               if (equipment.status ==
                                   EquipmentStatus.available) {
@@ -938,7 +989,7 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                             const VerticalDivider(width: 1, thickness: 1),
                             _CardAction(
                               icon: Icons.archive_outlined,
-                              label: 'Retire',
+                              label: _t('Retire', 'I-retiro'),
                               color: Colors.red.shade500,
                               onTap: () => _retireEquipment(context, equipment),
                             ),
@@ -967,8 +1018,11 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
       height: 160,
       color: Colors.grey.shade100,
       child: Center(
-        child: Icon(Icons.agriculture_rounded,
-            color: Colors.grey.shade400, size: 48),
+        child: Icon(
+          Icons.agriculture_rounded,
+          color: Colors.grey.shade400,
+          size: 48,
+        ),
       ),
     );
   }
@@ -984,17 +1038,20 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Run')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Run'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
-    final snapshot =
-        await FirebaseFirestore.instance.collection('equipment').get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('equipment')
+        .get();
     int updated = 0, skipped = 0;
     for (final doc in snapshot.docs) {
       final data = doc.data();
@@ -1012,9 +1069,11 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
       updated++;
     }
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Migration done. Updated: $updated, Skipped: $skipped')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Migration done. Updated: $updated, Skipped: $skipped'),
+        ),
+      );
     }
   }
 
@@ -1028,17 +1087,20 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Rollback')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Rollback'),
+          ),
         ],
       ),
     );
     if (confirm != true) return;
-    final snapshot =
-        await FirebaseFirestore.instance.collection('equipment').get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('equipment')
+        .get();
     int updated = 0;
     for (final doc in snapshot.docs) {
       final data = doc.data();
@@ -1052,9 +1114,13 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
       updated++;
     }
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: Text(
-              'Rollback done. Restored isAvailable on $updated docs.')));
+            'Rollback done. Restored isAvailable on $updated docs.',
+          ),
+        ),
+      );
     }
   }
 
@@ -1071,13 +1137,13 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         .doc(userId)
         .collection('items')
         .add({
-      'title': title,
-      'body': body,
-      'type': type,
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
-      ...extra,
-    });
+          'title': title,
+          'body': body,
+          'type': type,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          ...extra,
+        });
   }
 
   Future<List<_AffectedBooking>> _fetchAffectedBookings({
@@ -1095,7 +1161,10 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         .get();
 
     final maintenanceEndDay = DateTime(
-        maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+      maintenanceEnd.year,
+      maintenanceEnd.month,
+      maintenanceEnd.day,
+    );
     final sortedDocs = snap.docs.toList()
       ..sort((a, b) {
         final aStart = (a.data()['start'] as Timestamp).toDate();
@@ -1109,27 +1178,39 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
       for (final doc in sortedDocs) {
         final request = RentRequest.fromDoc(doc);
         final bookingStart = DateTime(
-            request.start.year, request.start.month, request.start.day);
-        final bookingEnd =
-            DateTime(request.end.year, request.end.month, request.end.day);
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
         final overlaps =
             bookingStart.isBefore(
-                maintenanceEndDay.add(const Duration(days: 1))) &&
+              maintenanceEndDay.add(const Duration(days: 1)),
+            ) &&
             bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
         if (!overlaps) continue;
-        results.add(_AffectedBooking(
-          renterName: request.name,
-          start: request.start,
-          end: request.end,
-          willBeCancelled: true,
-        ));
+        results.add(
+          _AffectedBooking(
+            renterName: request.name,
+            start: request.start,
+            end: request.end,
+            willBeCancelled: true,
+          ),
+        );
       }
     } else {
       DateTime blockedUntil = maintenanceEndDay;
       for (final doc in sortedDocs) {
         final request = RentRequest.fromDoc(doc);
         final bookingStart = DateTime(
-            request.start.year, request.start.month, request.start.day);
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
         if (bookingStart.isAfter(blockedUntil)) continue;
 
         final bookingDuration = request.end.difference(request.start);
@@ -1144,18 +1225,19 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         final exceedsAvailability =
             availableUntil != null && newEnd.isAfter(availableUntil);
 
-        results.add(_AffectedBooking(
-          renterName: request.name,
-          start: request.start,
-          end: request.end,
-          willBeCancelled: exceedsAvailability,
-          newStart: exceedsAvailability ? null : newStart,
-          newEnd: exceedsAvailability ? null : newEnd,
-        ));
+        results.add(
+          _AffectedBooking(
+            renterName: request.name,
+            start: request.start,
+            end: request.end,
+            willBeCancelled: exceedsAvailability,
+            newStart: exceedsAvailability ? null : newStart,
+            newEnd: exceedsAvailability ? null : newEnd,
+          ),
+        );
 
         if (!exceedsAvailability) {
-          blockedUntil =
-              DateTime(newEnd.year, newEnd.month, newEnd.day);
+          blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
         }
       }
     }
@@ -1164,7 +1246,9 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
 
   // ── Schedule maintenance ──────────────────────────────────────
   Future<void> _scheduleMaintenance(
-      BuildContext context, Equipment equipment) async {
+    BuildContext context,
+    Equipment equipment,
+  ) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -1172,14 +1256,21 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) =>
           _MaintenanceDatePicker(equipmentName: equipment.name, today: today),
     );
     if (picked == null || !context.mounted) return;
 
-    final maintenanceEnd =
-        DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
+    final maintenanceEnd = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      23,
+      59,
+      59,
+    );
     final durationDays = maintenanceEnd.difference(today).inDays + 1;
     final isUnforeseen = durationDays > 7;
 
@@ -1198,17 +1289,20 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         title: Row(
           children: [
             Icon(
-              isUnforeseen
-                  ? Icons.warning_amber_rounded
-                  : Icons.build_outlined,
+              isUnforeseen ? Icons.warning_amber_rounded : Icons.build_outlined,
               color: isUnforeseen ? Colors.red : Colors.orange,
               size: 20,
             ),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(isUnforeseen
-                  ? 'Hindi Inaasahang Maintenance'
-                  : 'I-schedule ang Maintenance'),
+              child: Text(
+                isUnforeseen
+                    ? _t(
+                        'Unforeseen Maintenance',
+                        'Hindi Inaasahang Maintenance',
+                      )
+                    : _t('Schedule Maintenance', 'I-schedule ang Maintenance'),
+              ),
             ),
           ],
         ),
@@ -1220,16 +1314,14 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Panahon ng Maintenance: ${DateFormat('MMM d').format(today)} – ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}',
+                  '${_t('Maintenance Period', 'Panahon ng Maintenance')}: ${DateFormat('MMM d').format(today)} – ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '$durationDays na araw',
+                  _t('$durationDays day(s)', '$durationDays na araw'),
                   style: TextStyle(
-                    color: isUnforeseen
-                        ? Colors.red
-                        : lightColorScheme.primary,
+                    color: isUnforeseen ? Colors.red : lightColorScheme.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1242,9 +1334,12 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.red.shade200),
                     ),
-                    child: const Text(
-                      'Ang maintenance ay higit sa 7 araw. Lahat ng booking sa panahong ito ay IKAKANSELA.',
-                      style: TextStyle(color: Colors.red, fontSize: 13),
+                    child: Text(
+                      _t(
+                        'This maintenance is longer than 7 days. All bookings within this period will be CANCELED.',
+                        'Ang maintenance ay higit sa 7 araw. Lahat ng booking sa panahong ito ay IKAKANSELA.',
+                      ),
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
                     ),
                   )
                 else
@@ -1256,103 +1351,127 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                       border: Border.all(color: lightColorScheme.primary),
                     ),
                     child: Text(
-                      'Ang mga booking sa panahong ito ay ire-reschedule pagkatapos ng maintenance.',
+                      _t(
+                        'Bookings within this period will be rescheduled after maintenance.',
+                        'Ang mga booking sa panahong ito ay ire-reschedule pagkatapos ng maintenance.',
+                      ),
                       style: TextStyle(
-                          color: lightColorScheme.primary, fontSize: 13),
+                        color: lightColorScheme.primary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 if (affectedBookings.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text(
-                    'Mga Apektadong Booking (${affectedBookings.length})',
+                    '${_t('Affected Bookings', 'Mga Apektadong Booking')} (${affectedBookings.length})',
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  ...affectedBookings.map((b) => Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
+                  ...affectedBookings.map(
+                    (b) => Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: b.willBeCancelled
+                            ? Colors.red.shade50
+                            : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
                           color: b.willBeCancelled
-                              ? Colors.red.shade50
-                              : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: b.willBeCancelled
-                                ? Colors.red.shade200
-                                : Colors.orange.shade300,
-                          ),
+                              ? Colors.red.shade200
+                              : Colors.orange.shade300,
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              b.willBeCancelled
-                                  ? Icons.cancel_outlined
-                                  : Icons.event_repeat,
-                              size: 16,
-                              color: b.willBeCancelled
-                                  ? Colors.red.shade700
-                                  : Colors.orange.shade800,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(b.renterName,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13)),
-                                  Text(
-                                    '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade700),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            b.willBeCancelled
+                                ? Icons.cancel_outlined
+                                : Icons.event_repeat,
+                            size: 16,
+                            color: b.willBeCancelled
+                                ? Colors.red.shade700
+                                : Colors.orange.shade800,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  b.renterName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
                                   ),
-                                  if (!b.willBeCancelled &&
-                                      b.newStart != null &&
-                                      b.newEnd != null) ...[
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.arrow_forward,
-                                            size: 12,
-                                            color: Colors.orange.shade700),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.orange.shade800,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                ),
+                                Text(
+                                  '${DateFormat('MMM d').format(b.start)} – ${DateFormat('MMM d, yyyy').format(b.end)}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                if (!b.willBeCancelled &&
+                                    b.newStart != null &&
+                                    b.newEnd != null) ...[
                                   const SizedBox(height: 2),
-                                  Text(
-                                    b.willBeCancelled
-                                        ? 'Ikakansela'
-                                        : 'Ire-reschedule',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: b.willBeCancelled
-                                          ? Colors.red.shade700
-                                          : Colors.orange.shade800,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 12,
+                                        color: Colors.orange.shade700,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${DateFormat('MMM d').format(b.newStart!)} – ${DateFormat('MMM d, yyyy').format(b.newEnd!)}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.orange.shade800,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
-                              ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  b.willBeCancelled
+                                      ? _t('Will be canceled', 'Ikakansela')
+                                      : _t(
+                                          'Will be rescheduled',
+                                          'Ire-reschedule',
+                                        ),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: b.willBeCancelled
+                                        ? Colors.red.shade700
+                                        : Colors.orange.shade800,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      )),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ] else ...[
                   const SizedBox(height: 12),
-                  const Text('Walang booking ang maaapektuhan.',
-                      style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  Text(
+                    _t(
+                      'No bookings will be affected.',
+                      'Walang booking ang maaapektuhan.',
+                    ),
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
                 ],
               ],
             ),
@@ -1360,16 +1479,18 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(_t('Cancel', 'Kanselahin')),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  isUnforeseen ? Colors.red : lightColorScheme.primary,
+              backgroundColor: isUnforeseen
+                  ? Colors.red
+                  : lightColorScheme.primary,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Kumpirmahin'),
+            child: Text(_t('Confirm', 'Kumpirmahin')),
           ),
         ],
       ),
@@ -1408,21 +1529,34 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         });
 
       DateTime blockedUntil = DateTime(
-          maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
       final maintenanceEndDay = DateTime(
-          maintenanceEnd.year, maintenanceEnd.month, maintenanceEnd.day);
+        maintenanceEnd.year,
+        maintenanceEnd.month,
+        maintenanceEnd.day,
+      );
 
       for (final doc in sortedDocs) {
         final request = RentRequest.fromDoc(doc);
         final bookingStart = DateTime(
-            request.start.year, request.start.month, request.start.day);
-        final bookingEnd =
-            DateTime(request.end.year, request.end.month, request.end.day);
+          request.start.year,
+          request.start.month,
+          request.start.day,
+        );
+        final bookingEnd = DateTime(
+          request.end.year,
+          request.end.month,
+          request.end.day,
+        );
 
         if (isUnforeseen) {
           final overlaps =
               bookingStart.isBefore(
-                  maintenanceEndDay.add(const Duration(days: 1))) &&
+                maintenanceEndDay.add(const Duration(days: 1)),
+              ) &&
               bookingEnd.isAfter(today.subtract(const Duration(days: 1)));
           if (!overlaps) continue;
 
@@ -1433,18 +1567,21 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
                 '${DateFormat('MMM d').format(today)} hanggang ${DateFormat('MMM d, yyyy').format(maintenanceEnd)}. '
                 'Paumanhin sa abala.',
           });
-          notifFutures.add(_sendNotification(
-            userId: request.renterId,
-            title: '🔧 Kinansela ang Booking — Maintenance',
-            body: 'Ang iyong booking para sa "${equipment.name}" '
-                '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
-                'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw).',
-            type: 'maintenance_cancel',
-            extra: {
-              'requestId': request.requestId,
-              'equipmentId': equipment.id,
-            },
-          ));
+          notifFutures.add(
+            _sendNotification(
+              userId: request.renterId,
+              title: '🔧 Kinansela ang Booking — Maintenance',
+              body:
+                  'Ang iyong booking para sa "${equipment.name}" '
+                  '(${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)}) '
+                  'ay kinansela dahil sa hindi inaasahang maintenance ($durationDays na araw).',
+              type: 'maintenance_cancel',
+              extra: {
+                'requestId': request.requestId,
+                'equipmentId': equipment.id,
+              },
+            ),
+          );
         } else {
           if (bookingStart.isAfter(blockedUntil)) continue;
           final bookingDuration = request.end.difference(request.start);
@@ -1456,7 +1593,8 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
             request.start.minute,
           ).add(const Duration(days: 1));
           final newEnd = newStart.add(bookingDuration);
-          final exceedsAvailability = equipment.availableUntil != null &&
+          final exceedsAvailability =
+              equipment.availableUntil != null &&
               newEnd.isAfter(equipment.availableUntil!);
 
           if (exceedsAvailability) {
@@ -1465,17 +1603,20 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
               'declineReason':
                   'Hindi ma-reschedule ang booking pagkatapos ng maintenance.',
             });
-            notifFutures.add(_sendNotification(
-              userId: request.renterId,
-              title: '🔧 Kinansela ang Booking — Labas ng Availability',
-              body: 'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
-                  'pagkatapos ng maintenance. Kinansela na ang iyong booking.',
-              type: 'maintenance_cancel',
-              extra: {
-                'requestId': request.requestId,
-                'equipmentId': equipment.id,
-              },
-            ));
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '🔧 Kinansela ang Booking — Labas ng Availability',
+                body:
+                    'Hindi ma-reschedule ang iyong booking para sa "${equipment.name}" '
+                    'pagkatapos ng maintenance. Kinansela na ang iyong booking.',
+                type: 'maintenance_cancel',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                },
+              ),
+            );
           } else {
             batch.update(doc.reference, {
               'start': Timestamp.fromDate(newStart),
@@ -1484,23 +1625,26 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
               'originalEnd': Timestamp.fromDate(request.end),
               'maintenanceRescheduled': true,
             });
-            notifFutures.add(_sendNotification(
-              userId: request.renterId,
-              title: '📅 Na-reschedule ang Booking — Maintenance',
-              body: 'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
-                  '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
-                  'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
-              type: 'maintenance_reschedule',
-              extra: {
-                'requestId': request.requestId,
-                'equipmentId': equipment.id,
-                'ownerId': equipment.ownerId,
-                'canCancel': true,
-                'canAccept': true,
-                'newStart': Timestamp.fromDate(newStart),
-                'newEnd': Timestamp.fromDate(newEnd),
-              },
-            ));
+            notifFutures.add(
+              _sendNotification(
+                userId: request.renterId,
+                title: '📅 Na-reschedule ang Booking — Maintenance',
+                body:
+                    'Ang iyong booking para sa "${equipment.name}" ay inilipat mula '
+                    '${DateFormat('MMM d').format(request.start)} – ${DateFormat('MMM d').format(request.end)} '
+                    'patungong ${DateFormat('MMM d').format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
+                type: 'maintenance_reschedule',
+                extra: {
+                  'requestId': request.requestId,
+                  'equipmentId': equipment.id,
+                  'ownerId': equipment.ownerId,
+                  'canCancel': true,
+                  'canAccept': true,
+                  'newStart': Timestamp.fromDate(newStart),
+                  'newEnd': Timestamp.fromDate(newEnd),
+                },
+              ),
+            );
             blockedUntil = DateTime(newEnd.year, newEnd.month, newEnd.day);
           }
         }
@@ -1510,42 +1654,61 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
       await Future.wait(notifFutures);
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(isUnforeseen
-              ? '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.'
-              : '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.'),
-          backgroundColor: isUnforeseen ? Colors.red : Colors.green,
-          duration: const Duration(seconds: 4),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isUnforeseen
+                  ? _t(
+                      '⚠️ Maintenance set. Affected bookings have been canceled.',
+                      '⚠️ Maintenance na-set. Ang mga apektadong booking ay kinansela.',
+                    )
+                  : _t(
+                      '✅ Maintenance scheduled. Bookings have been rescheduled.',
+                      '✅ Maintenance na-schedule. Ang mga booking ay na-reschedule.',
+                    ),
+            ),
+            backgroundColor: isUnforeseen ? Colors.red : Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
 
   // ── End maintenance ───────────────────────────────────────────
   Future<void> _endMaintenance(
-      BuildContext context, Equipment equipment) async {
+    BuildContext context,
+    Equipment equipment,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Tapusin ang Maintenance'),
-        content: const Text('Markahan ang kagamitan bilang available na?'),
+        title: Text(_t('End Maintenance', 'Tapusin ang Maintenance')),
+        content: Text(
+          _t(
+            'Mark this equipment as available now?',
+            'Markahan ang kagamitan bilang available na?',
+          ),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(_t('Cancel', 'Kanselahin')),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade600,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Markahan Bilang Available'),
+            child: Text(_t('Mark as Available', 'Markahan Bilang Available')),
           ),
         ],
       ),
@@ -1556,53 +1719,74 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         .collection('equipment')
         .doc(equipment.id)
         .update({
-      'status': EquipmentStatus.available.toValue(),
-      'isAvailable': true,
-      'maintenanceStart': null,
-      'maintenanceEnd': null,
-    });
+          'status': EquipmentStatus.available.toValue(),
+          'isAvailable': true,
+          'maintenanceStart': null,
+          'maintenanceEnd': null,
+        });
     await MaintenanceService().resetMaintenanceHours(equipment.id!);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('✅ Equipment is now available.'),
-          backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              '✅ Equipment is now available.',
+              '✅ Available na ang kagamitan.',
+            ),
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
 
   // ── Retire equipment (soft delete — archived, not physically removed) ──
   Future<void> _retireEquipment(
-      BuildContext context, Equipment equipment) async {
+    BuildContext context,
+    Equipment equipment,
+  ) async {
     final activeSnap = await FirebaseFirestore.instance
         .collection('rentRequests')
         .where('itemId', isEqualTo: equipment.id)
-        .where('status', whereIn: [
-          'pending',
-          'approved',
-          'onTheWay',
-          'inProgress',
-          'readyForPickup',
-        ])
+        .where(
+          'status',
+          whereIn: [
+            'pending',
+            'approved',
+            'onTheWay',
+            'inProgress',
+            'readyForPickup',
+          ],
+        )
         .get();
 
     if (activeSnap.docs.isNotEmpty && context.mounted) {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Row(children: [
-            Icon(Icons.block, color: Colors.red, size: 20),
-            SizedBox(width: 8),
-            Text('Cannot Retire'),
-          ]),
+          title: Row(
+            children: [
+              const Icon(Icons.block, color: Colors.red, size: 20),
+              const SizedBox(width: 8),
+              Text(_t('Cannot Retire', 'Hindi Maaaring I-retiro')),
+            ],
+          ),
           content: Text(
-            'This equipment has ${activeSnap.docs.length} active '
-            '${activeSnap.docs.length == 1 ? 'booking' : 'bookings'}. '
-            'Please resolve all active bookings before retiring it.',
+            _t(
+              'This equipment has ${activeSnap.docs.length} active '
+                  '${activeSnap.docs.length == 1 ? 'booking' : 'bookings'}. '
+                  'Please resolve all active bookings before retiring it.',
+              'Ang kagamitang ito ay may ${activeSnap.docs.length} '
+                  'aktibong booking. Pakiayos muna ang lahat ng aktibong '
+                  'booking bago ito i-retiro.',
+            ),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK')),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(_t('OK', 'OK')),
+            ),
           ],
         ),
       );
@@ -1613,11 +1797,15 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(children: [
-          Icon(Icons.archive_outlined, color: Colors.red, size: 20),
-          SizedBox(width: 8),
-          Flexible(child: Text('I-retiro ang Kagamitan')),
-        ]),
+        title: Row(
+          children: [
+            const Icon(Icons.archive_outlined, color: Colors.red, size: 20),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(_t('Retire Equipment', 'I-retiro ang Kagamitan')),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1626,18 +1814,24 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
               text: TextSpan(
                 style: const TextStyle(color: Colors.black87, fontSize: 14),
                 children: [
-                  const TextSpan(
-                      text: 'Sigurado ka bang gusto mong i-retiro ang '),
+                  TextSpan(
+                    text: _t(
+                      'Are you sure you want to retire ',
+                      'Sigurado ka bang gusto mong i-retiro ang ',
+                    ),
+                  ),
                   TextSpan(
                     text: '"${equipment.name}"',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const TextSpan(
-                      text:
-                          '? Ito ay para sa kagamitang naibenta na o naging '
-                          'iskrap — mawawala ito sa iyong listahan pagkatapos '
-                          'nito, pero mananatili ang record at kasaysayan '
-                          'nito para sa cooperative.'),
+                  TextSpan(
+                    text: _t(
+                      '? This is for equipment that has been sold or turned '
+                          'into scrap.',
+                      '? Ito ay para sa kagamitang naibenta na o naging '
+                          'iskrap.',
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1645,15 +1839,16 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Kanselahin')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(_t('Cancel', 'Kanselahin')),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('I-retiro'),
+            child: Text(_t('Retire', 'I-retiro')),
           ),
         ],
       ),
@@ -1663,17 +1858,28 @@ final suggestRetirement = equipment.retirementFlaggedByAdmin ||
     try {
       await _firestoreService.retireEquipment(equipment.id!);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('"${equipment.name}" has been retired.'),
-          backgroundColor: Colors.red.shade600,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _t(
+                '"${equipment.name}" has been retired.',
+                '"${equipment.name}" ay na-retiro na.',
+              ),
+            ),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error retiring equipment: $e'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _t('Error retiring equipment: $e', 'Error sa pag-retiro: $e'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -1699,7 +1905,10 @@ class _StatusPill extends StatelessWidget {
         break;
       case EquipmentStatus.underMaintenance:
         bg = Colors.orange.shade600;
-        label = 'Under Maintenance';
+        label = AppLanguage.text(
+          en: 'Under Maintenance',
+          tl: 'Nagpapa-Maintenance',
+        );
         break;
       case EquipmentStatus.unavailable:
         bg = Colors.grey.shade600;
@@ -1707,7 +1916,7 @@ class _StatusPill extends StatelessWidget {
         break;
       case EquipmentStatus.retired:
         bg = Colors.black54;
-        label = 'Retired';
+        label = AppLanguage.text(en: 'Retired', tl: 'Retirado');
         break;
     }
 
@@ -1866,8 +2075,7 @@ class _RatingBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color:
-                  hasRating ? Colors.amber.shade800 : Colors.grey.shade500,
+              color: hasRating ? Colors.amber.shade800 : Colors.grey.shade500,
             ),
           ),
         ],
@@ -1891,11 +2099,13 @@ class _ActiveFilterBar extends StatelessWidget {
     final chips = <Widget>[];
 
     if (filter.sortOption != EquipmentSortOption.newest) {
-      chips.add(_chip(
-        label: filter.sortOption.label,
-        icon: filter.sortOption.icon,
-        color: lightColorScheme.primary,
-      ));
+      chips.add(
+        _chip(
+          label: filter.sortOption.label,
+          icon: filter.sortOption.icon,
+          color: lightColorScheme.primary,
+        ),
+      );
     }
     if (filter.statusFilter != null) {
       final label = switch (filter.statusFilter!) {
@@ -1904,20 +2114,27 @@ class _ActiveFilterBar extends StatelessWidget {
         EquipmentStatus.underMaintenance => 'Maintenance',
         EquipmentStatus.retired => 'Retired',
       };
-      chips.add(_chip(
-          label: label, icon: Icons.circle, color: Colors.blueGrey));
+      chips.add(
+        _chip(label: label, icon: Icons.circle, color: Colors.blueGrey),
+      );
     }
     if (filter.onlyForMaintenance) {
-      chips.add(_chip(
+      chips.add(
+        _chip(
           label: 'For Maintenance',
           icon: Icons.build_rounded,
-          color: Colors.red));
+          color: Colors.red,
+        ),
+      );
     }
     if (filter.onlyUpcomingMaintenance) {
-      chips.add(_chip(
+      chips.add(
+        _chip(
           label: 'Upcoming Maint.',
           icon: Icons.warning_amber_rounded,
-          color: Colors.amber.shade800));
+          color: Colors.amber.shade800,
+        ),
+      );
     }
 
     return Row(
@@ -1932,8 +2149,7 @@ class _ActiveFilterBar extends StatelessWidget {
           onTap: onClear,
           child: Container(
             margin: const EdgeInsets.only(left: 8),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: Colors.red.shade50,
               borderRadius: BorderRadius.circular(20),
@@ -1944,11 +2160,14 @@ class _ActiveFilterBar extends StatelessWidget {
               children: [
                 Icon(Icons.close, size: 12, color: Colors.red.shade600),
                 const SizedBox(width: 4),
-                Text('I-clear',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.red.shade600,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  'I-clear',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.red.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1957,10 +2176,11 @@ class _ActiveFilterBar extends StatelessWidget {
     );
   }
 
-  Widget _chip(
-      {required String label,
-      required IconData icon,
-      required Color color}) {
+  Widget _chip({
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -1974,11 +2194,14 @@ class _ActiveFilterBar extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: color,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -2031,10 +2254,7 @@ class _EmptyState extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             textAlign: TextAlign.center,
           ),
-          if (action != null) ...[
-            const SizedBox(height: 12),
-            action!,
-          ],
+          if (action != null) ...[const SizedBox(height: 12), action!],
         ],
       ),
     );
@@ -2077,8 +2297,7 @@ class _MaintenanceDatePicker extends StatefulWidget {
   });
 
   @override
-  State<_MaintenanceDatePicker> createState() =>
-      _MaintenanceDatePickerState();
+  State<_MaintenanceDatePicker> createState() => _MaintenanceDatePickerState();
 }
 
 class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
@@ -2122,22 +2341,29 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                   color: lightColorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.build_outlined,
-                    color: lightColorScheme.primary, size: 18),
+                child: Icon(
+                  Icons.build_outlined,
+                  color: lightColorScheme.primary,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'I-schedule ang Maintenance',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w700),
+                  Text(
+                    AppLanguage.text(
+                      en: 'Schedule Maintenance',
+                      tl: 'I-schedule ang Maintenance',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Text(
                     widget.equipmentName,
-                    style: TextStyle(
-                        color: Colors.grey.shade500, fontSize: 12),
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                   ),
                 ],
               ),
@@ -2145,7 +2371,7 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
           ),
           const SizedBox(height: 20),
           _DateRow(
-            label: 'Simula',
+            label: AppLanguage.text(en: 'Start', tl: 'Simula'),
             value: DateFormat('EEEE, MMM d, yyyy').format(widget.today),
             icon: Icons.today,
             color: Colors.blue,
@@ -2153,10 +2379,13 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
           ),
           const SizedBox(height: 10),
           _DateRow(
-            label: 'Katapusan',
+            label: AppLanguage.text(en: 'End', tl: 'Katapusan'),
             value: _selectedEnd != null
                 ? DateFormat('EEEE, MMM d, yyyy').format(_selectedEnd!)
-                : 'Pindutin para pumili',
+                : AppLanguage.text(
+                    en: 'Tap to select',
+                    tl: 'Pindutin para pumili',
+                  ),
             icon: Icons.event,
             color: Colors.orange,
             isFixed: false,
@@ -2166,7 +2395,10 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                 initialDate: widget.today.add(const Duration(days: 1)),
                 firstDate: widget.today.add(const Duration(days: 1)),
                 lastDate: widget.today.add(const Duration(days: 365)),
-                helpText: 'Select maintenance end date',
+                helpText: AppLanguage.text(
+                  en: 'Select maintenance end date',
+                  tl: 'Piliin ang katapusan ng maintenance',
+                ),
               );
               if (picked != null) setState(() => _selectedEnd = picked);
             },
@@ -2193,17 +2425,21 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                     _isUnforeseen
                         ? Icons.warning_amber_rounded
                         : Icons.info_outline,
-                    color: _isUnforeseen
-                        ? Colors.red
-                        : Colors.orange.shade700,
+                    color: _isUnforeseen ? Colors.red : Colors.orange.shade700,
                     size: 18,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _isUnforeseen
-                          ? '$_durationDays na araw — Hindi Inaasahan. Lahat ng booking ay IKAKANSELA.'
-                          : '$_durationDays na araw — Ang mga booking ay ire-reschedule pagkatapos ng maintenance.',
+                          ? AppLanguage.text(
+                              en: '$_durationDays day(s) — Unforeseen. All bookings will be CANCELED.',
+                              tl: '$_durationDays na araw — Hindi Inaasahan. Lahat ng booking ay IKAKANSELA.',
+                            )
+                          : AppLanguage.text(
+                              en: '$_durationDays day(s) — Bookings will be rescheduled after maintenance.',
+                              tl: '$_durationDays na araw — Ang mga booking ay ire-reschedule pagkatapos ng maintenance.',
+                            ),
                       style: TextStyle(
                         color: _isUnforeseen
                             ? Colors.red.shade700
@@ -2226,9 +2462,10 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text('Kanselahin'),
+                  child: Text(AppLanguage.text(en: 'Cancel', tl: 'Kanselahin')),
                 ),
               ),
               const SizedBox(width: 12),
@@ -2244,9 +2481,12 @@ class _MaintenanceDatePickerState extends State<_MaintenanceDatePicker> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text('Kumpirmahin'),
+                  child: Text(
+                    AppLanguage.text(en: 'Confirm', tl: 'Kumpirmahin'),
+                  ),
                 ),
               ),
             ],
@@ -2285,8 +2525,7 @@ class _DateRow extends StatelessWidget {
           color: isFixed ? Colors.grey.shade50 : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color:
-                isFixed ? Colors.grey.shade300 : color.withOpacity(0.5),
+            color: isFixed ? Colors.grey.shade300 : color.withOpacity(0.5),
           ),
         ),
         child: Row(
@@ -2323,8 +2562,7 @@ class _DateRow extends StatelessWidget {
             ),
             if (!isFixed) ...[
               const Spacer(),
-              Icon(Icons.chevron_right,
-                  color: Colors.grey.shade400, size: 18),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 18),
             ],
           ],
         ),
@@ -2359,8 +2597,9 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
 
   Future<void> _loadData() async {
     try {
-      final forecast = await WeatherService()
-          .getOrFetchForecast(requestLocationPermission: false);
+      final forecast = await WeatherService().getOrFetchForecast(
+        requestLocationPermission: false,
+      );
       final today = DateTime.now();
       final todayDay = DateTime(today.year, today.month, today.day);
 
@@ -2384,14 +2623,10 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
           .where('status', whereIn: ['approved', 'readyForPickup'])
           .get();
 
-      final bookings = snap.docs
-          .map((d) => RentRequest.fromDoc(d))
-          .where((r) {
-            final startDay =
-                DateTime(r.start.year, r.start.month, r.start.day);
-            return startDay == todayDay;
-          })
-          .toList();
+      final bookings = snap.docs.map((d) => RentRequest.fromDoc(d)).where((r) {
+        final startDay = DateTime(r.start.year, r.start.month, r.start.day);
+        return startDay == todayDay;
+      }).toList();
 
       if (mounted) {
         setState(() {
@@ -2415,15 +2650,10 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
         .where('status', whereIn: ['pending', 'approved', 'readyForPickup'])
         .get();
 
-    final upcoming = snap.docs
-        .map((d) => RentRequest.fromDoc(d))
-        .where((r) {
-          final startDay =
-              DateTime(r.start.year, r.start.month, r.start.day);
-          return !startDay.isBefore(todayDay);
-        })
-        .toList()
-      ..sort((a, b) => a.start.compareTo(b.start));
+    final upcoming = snap.docs.map((d) => RentRequest.fromDoc(d)).where((r) {
+      final startDay = DateTime(r.start.year, r.start.month, r.start.day);
+      return !startDay.isBefore(todayDay);
+    }).toList()..sort((a, b) => a.start.compareTo(b.start));
 
     if (!mounted) return;
 
@@ -2440,11 +2670,14 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                    'Ang lahat ng nakatalagang booking mula ngayon ay ililipat ng isang araw.'),
+                  'Ang lahat ng nakatalagang booking mula ngayon ay ililipat ng isang araw.',
+                ),
                 if (upcoming.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  const Text('Mga Apektadong Booking:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Mga Apektadong Booking:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 6),
                   ...upcoming.map((r) {
                     final newStart = r.start.add(const Duration(days: 1));
@@ -2454,28 +2687,37 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.person_outline,
-                              size: 14, color: Colors.black54),
+                          const Icon(
+                            Icons.person_outline,
+                            size: 14,
+                            color: Colors.black54,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(r.name,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13)),
+                                Text(
+                                  r.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 Text(
                                   'Dati: ${fmt.format(r.start)} – ${fmt.format(r.end)}',
                                   style: const TextStyle(
-                                      fontSize: 12, color: Colors.black54),
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
                                 ),
                                 Text(
                                   'Bago: ${fmt.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}',
                                   style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.blue.shade700,
-                                      fontWeight: FontWeight.w500),
+                                    fontSize: 12,
+                                    color: Colors.blue.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
@@ -2491,8 +2733,9 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Huwag')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huwag'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade600,
@@ -2515,47 +2758,51 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
       final newStart = r.start.add(const Duration(days: 1));
       final newEnd = r.end.add(const Duration(days: 1));
 
-      futures.add(db.collection('rentRequests').doc(r.requestId).update({
-        'start': Timestamp.fromDate(newStart),
-        'end': Timestamp.fromDate(newEnd),
-        'weatherPostponed': true,
-        'originalStart': Timestamp.fromDate(r.start),
-        'originalEnd': Timestamp.fromDate(r.end),
-      }));
+      futures.add(
+        db.collection('rentRequests').doc(r.requestId).update({
+          'start': Timestamp.fromDate(newStart),
+          'end': Timestamp.fromDate(newEnd),
+          'weatherPostponed': true,
+          'originalStart': Timestamp.fromDate(r.start),
+          'originalEnd': Timestamp.fromDate(r.end),
+        }),
+      );
 
-      futures.add(db
-          .collection('notifications')
-          .doc(r.renterId)
-          .collection('items')
-          .add({
-        'type': 'maintenance_reschedule',
-        'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
-        'body': 'Ang iyong booking para sa "${widget.equipment.name}" '
-            '(${fmt2.format(r.start)} – ${fmt2.format(r.end)}) '
-            'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
-            'Bagong petsa: ${fmt2.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
-        'requestId': r.requestId,
-        'equipmentId': widget.equipment.id,
-        'ownerId': widget.equipment.ownerId,
-        'canCancel': true,
-        'canAccept': true,
-        'newStart': Timestamp.fromDate(newStart),
-        'newEnd': Timestamp.fromDate(newEnd),
-        'originalStart': Timestamp.fromDate(r.start),
-        'originalEnd': Timestamp.fromDate(r.end),
-        'createdAt': FieldValue.serverTimestamp(),
-        'read': false,
-      }));
+      futures.add(
+        db.collection('notifications').doc(r.renterId).collection('items').add({
+          'type': 'maintenance_reschedule',
+          'title': '📅 Na-reschedule ang Booking — Masamang Panahon',
+          'body':
+              'Ang iyong booking para sa "${widget.equipment.name}" '
+              '(${fmt2.format(r.start)} – ${fmt2.format(r.end)}) '
+              'ay inilipat ng isang araw dahil sa masamang kondisyon ng panahon. '
+              'Bagong petsa: ${fmt2.format(newStart)} – ${DateFormat('MMM d, yyyy').format(newEnd)}.',
+          'requestId': r.requestId,
+          'equipmentId': widget.equipment.id,
+          'ownerId': widget.equipment.ownerId,
+          'canCancel': true,
+          'canAccept': true,
+          'newStart': Timestamp.fromDate(newStart),
+          'newEnd': Timestamp.fromDate(newEnd),
+          'originalStart': Timestamp.fromDate(r.start),
+          'originalEnd': Timestamp.fromDate(r.end),
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
+        }),
+      );
     }
 
     await Future.wait(futures);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Na-postpone ang mga booking ng isang araw dahil sa masamang panahon.'),
-        backgroundColor: Colors.blue,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Na-postpone ang mga booking ng isang araw dahil sa masamang panahon.',
+          ),
+          backgroundColor: Colors.blue,
+        ),
+      );
       setState(() {
         _todayBookings = [];
         _isBadWeather = false;
@@ -2582,16 +2829,20 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.thunderstorm_outlined,
-              color: Colors.white70, size: 18),
+          const Icon(
+            Icons.thunderstorm_outlined,
+            color: Colors.white70,
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               '${_todayBookings.length} booking today affected by bad weather.',
               style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500),
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -2602,9 +2853,12 @@ class _WeatherPostponeSectionState extends State<_WeatherPostponeSection> {
               foregroundColor: Colors.blue.shade700,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               textStyle: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+                borderRadius: BorderRadius.circular(8),
+              ),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -2666,12 +2920,16 @@ class _OverdueReturnsSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.red.shade600,
                   borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(13)),
+                    top: Radius.circular(13),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Colors.white, size: 18),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Unreturned Equipment  •  ${overdue.length}',
@@ -2703,7 +2961,9 @@ class _OverdueReturnsSection extends StatelessWidget {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         child: Row(
                           children: [
                             Container(
@@ -2713,24 +2973,31 @@ class _OverdueReturnsSection extends StatelessWidget {
                                 color: Colors.red.shade50,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(Icons.agriculture_rounded,
-                                  color: Colors.red.shade400, size: 20),
+                              child: Icon(
+                                Icons.agriculture_rounded,
+                                color: Colors.red.shade400,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(r.itemName,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13)),
+                                  Text(
+                                    r.itemName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                   const SizedBox(height: 2),
                                   Text(
                                     '${r.name}  •  Due ${DateFormat('MMM dd').format(r.end)}',
                                     style: TextStyle(
-                                        color: Colors.grey.shade500,
-                                        fontSize: 11),
+                                      color: Colors.grey.shade500,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -2738,7 +3005,9 @@ class _OverdueReturnsSection extends StatelessWidget {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.red.shade600,
                                 borderRadius: BorderRadius.circular(20),
@@ -2748,9 +3017,10 @@ class _OverdueReturnsSection extends StatelessWidget {
                                     ? 'Due today'
                                     : '$days ${days == 1 ? 'day' : 'days'} late',
                                 style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700),
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ],
